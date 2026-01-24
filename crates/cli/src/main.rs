@@ -8,6 +8,9 @@
 //!
 //! # Run admin database migrations
 //! np-cli migrate admin
+//!
+//! # Run all database migrations
+//! np-cli migrate all
 //! ```
 //!
 //! # Future Commands
@@ -61,24 +64,29 @@ enum MigrateTarget {
     All,
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     // Initialize tracing
     tracing_subscriber::fmt::init();
 
     let cli = Cli::parse();
 
-    match cli.command {
+    let result = match cli.command {
         Commands::Migrate { target } => match target {
-            MigrateTarget::Storefront => {
-                commands::migrate::storefront();
-            }
-            MigrateTarget::Admin => {
-                commands::migrate::admin();
-            }
+            MigrateTarget::Storefront => commands::migrate::storefront().await,
+            MigrateTarget::Admin => commands::migrate::admin().await,
             MigrateTarget::All => {
-                commands::migrate::storefront();
-                commands::migrate::admin();
+                if let Err(e) = commands::migrate::storefront().await {
+                    Err(e)
+                } else {
+                    commands::migrate::admin().await
+                }
             }
         },
+    };
+
+    if let Err(e) = result {
+        tracing::error!("Migration failed: {e}");
+        std::process::exit(1);
     }
 }
