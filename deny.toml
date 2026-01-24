@@ -1,0 +1,93 @@
+# cargo-deny configuration
+# https://embarkstudios.github.io/cargo-deny/
+
+[graph]
+targets = ["x86_64-unknown-linux-gnu", "aarch64-unknown-linux-gnu"]
+all-features = false
+no-default-features = false
+
+[output]
+feature-depth = 1
+
+# Advisory database checks
+[advisories]
+ignore = [
+    # # RUSTSEC-2023-0071: RSA Marvin Attack timing sidechannel during decryption.
+    # # Our use case is server-side key generation only - we generate keypairs and
+    # # return the private key to clients. We do NOT perform RSA decryption server-side,
+    # # so this vulnerability does not affect us. Monitor for a patched version.
+    # { id = "RUSTSEC-2023-0071", reason = "Key generation only - no decryption operations" },
+]
+
+# License checks
+[licenses]
+allow = [
+    # Permissive licenses
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "BSL-1.0",  # Boost Software License - OSI/FSF approved
+    "CDLA-Permissive-2.0",  # Community Data License Agreement - Linux Foundation
+    "ISC",  # Functionally equivalent to MIT/BSD, used by OpenBSD
+    "MPL-2.0",  # Mozilla Public License - OSI/FSF approved, weak copyleft
+    "OpenSSL",  # OpenSSL License - FSF Free/Libre
+    "Unlicense",
+    "Zlib",
+    "0BSD",  # Zero-Clause BSD - OSI approved, public domain equivalent
+    # Unicode licenses
+    "Unicode-3.0",
+]
+confidence-threshold = 0.8
+exceptions = []
+
+[licenses.private]
+ignore = false
+registries = []
+
+# Crate bans
+[bans]
+multiple-versions = "warn"
+wildcards = "allow"
+highlight = "all"
+workspace-default-features = "allow"
+external-default-features = "allow"
+
+allow = []
+
+# PERMANENT: RustCrypto requires rand_core 0.6
+# for the CryptoRngCore trait used in key generation. rand 0.9 uses rand_core 0.9,
+# which is incompatible.
+# See: https://github.com/RustCrypto/elliptic-curves/issues/1058
+# DO NOT REMOVE these skips until RustCrypto supports rand_core 0.9.
+skip = [
+    { crate = "getrandom@0.2", reason = "PERMANENT: follows rand_core version split for RustCrypto compatibility" },
+    { crate = "rand_core@0.6", reason = "PERMANENT: RustCrypto requires rand_core 0.6 for CryptoRngCore trait" },
+    { crate = "rand@0.8", reason = "sqlx-postgres depends on rand 0.8" },
+    { crate = "rand_chacha@0.3", reason = "transitive from rand 0.8" },
+    { crate = "thiserror@1", reason = "graphql-parser, tower-sessions, and webauthn-rs use thiserror 1.x" },
+    { crate = "thiserror-impl@1", reason = "transitive from thiserror 1.x" },
+    { crate = "reqwest@0.12", reason = "sentry depends on reqwest 0.12" },
+    { crate = "base64@0.21", reason = "webauthn-rs depends on base64 0.21" },
+    { crate = "nom@7", reason = "webauthn-rs depends on nom 7 via x509-parser" },
+    { crate = "foldhash@0.1", reason = "sqlx depends on older foldhash via hashbrown" },
+    { crate = "hashbrown@0.15", reason = "sqlx uses older hashbrown via hashlink" },
+    { crate = "hashbrown@0.14", reason = "lettre and governor depend on older hashbrown" },
+    { crate = "object@0.32", reason = "lettre build dependency uses older object" },
+    { crate = "openssl-probe@0.1", reason = "lettre depends on older openssl-probe via native-tls" },
+]
+
+skip-tree = []
+
+# Source checks
+[sources]
+unknown-registry = "warn"
+unknown-git = "warn"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []
+
+[sources.allow-org]
+github = ["PistachioHQ"]
+gitlab = []
+bitbucket = []

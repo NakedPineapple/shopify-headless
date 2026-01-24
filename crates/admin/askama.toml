@@ -1,0 +1,9 @@
+# Askama template configuration
+# https://djc.github.io/askama/configuration.html
+
+[general]
+# Directories to search for templates (relative to crate root)
+dirs = ["templates"]
+
+# Default escape mode for templates
+escape = "html"

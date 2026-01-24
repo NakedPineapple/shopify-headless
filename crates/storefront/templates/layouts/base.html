@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Naked Pineapple{% endblock %}</title>
+
+    <!-- Preconnect to external domains -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="/static/css/main.css">
+
+    <!-- Meta tags -->
+    <meta name="description" content="{% block description %}{% endblock %}">
+    {% block meta %}{% endblock %}
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="{% block og_title %}{{ self.title() }}{% endblock %}">
+    <meta property="og:description" content="{% block og_description %}{{ self.description() }}{% endblock %}">
+    <meta property="og:type" content="{% block og_type %}website{% endblock %}">
+    <meta property="og:image" content="{% block og_image %}{% endblock %}">
+
+    <!-- Analytics - Head Scripts -->
+    {#
+    TODO: Implement analytics snippets
+    These should be conditionally rendered based on AnalyticsConfig.
+
+    Google Analytics 4:
+    {% if ga4_measurement_id %}
+    <script async src="https://www.googletagmanager.com/gtag/js?id={{ ga4_measurement_id }}"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', '{{ ga4_measurement_id }}');
+    </script>
+    {% endif %}
+
+    Meta Pixel:
+    {% if meta_pixel_id %}
+    <script>
+        !function(f,b,e,v,n,t,s)
+        {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+        n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+        if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+        n.queue=[];t=b.createElement(e);t.async=!0;
+        t.src=v;s=b.getElementsByTagName(e)[0];
+        s.parentNode.insertBefore(t,s)}(window, document,'script',
+        'https://connect.facebook.net/en_US/fbevents.js');
+        fbq('init', '{{ meta_pixel_id }}');
+        fbq('track', 'PageView');
+    </script>
+    {% endif %}
+
+    TikTok Pixel:
+    {% if tiktok_pixel_id %}
+    <script>
+        !function (w, d, t) {
+            w.TiktokAnalyticsObject=t;var ttq=w[t]=w[t]||[];
+            ttq.methods=["page","track","identify","instances","debug","on","off","once","ready","alias","group","enableCookie","disableCookie"];
+            ttq.setAndDefer=function(t,e){t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}};
+            for(var i=0;i<ttq.methods.length;i++)ttq.setAndDefer(ttq,ttq.methods[i]);
+            ttq.instance=function(t){for(var e=ttq._i[t]||[],n=0;n<ttq.methods.length;n++)ttq.setAndDefer(e,ttq.methods[n]);return e};
+            ttq.load=function(e,n){var i="https://analytics.tiktok.com/i18n/pixel/events.js";
+            ttq._i=ttq._i||{};ttq._i[e]=[];ttq._i[e]._u=i;ttq._t=ttq._t||{};ttq._t[e]=+new Date;ttq._o=ttq._o||{};ttq._o[e]=n||{};
+            var o=document.createElement("script");o.type="text/javascript";o.async=!0;o.src=i+"?sdkid="+e+"&lib="+t;
+            var a=document.getElementsByTagName("script")[0];a.parentNode.insertBefore(o,a)};
+            ttq.load('{{ tiktok_pixel_id }}');
+            ttq.page();
+        }(window, document, 'ttq');
+    </script>
+    {% endif %}
+    #}
+
+    {% block head %}{% endblock %}
+</head>
+<body class="min-h-screen bg-white text-gray-900">
+    <!-- Skip to main content link for accessibility -->
+    <a href="#main" class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-black text-white px-4 py-2 z-50">
+        Skip to main content
+    </a>
+
+    <!-- Header -->
+    <header class="sticky top-0 z-40 bg-white border-b border-gray-200">
+        {#
+        TODO: Implement header with:
+        - Logo
+        - Navigation menu
+        - Search
+        - Account link
+        - Cart with item count badge (HTMX: hx-get="/cart/count" hx-trigger="load, cart-updated from:body")
+        #}
+        <nav class="container mx-auto px-4 py-4 flex items-center justify-between">
+            <a href="/" class="text-xl font-bold">Naked Pineapple</a>
+            <div class="flex items-center gap-4">
+                <a href="/products">Shop</a>
+                <a href="/account">Account</a>
+                <a href="/cart" class="relative">
+                    Cart
+                    <span id="cart-count" hx-get="/cart/count" hx-trigger="load, cart-updated from:body">
+                        <!-- Cart count badge loaded via HTMX -->
+                    </span>
+                </a>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Main content -->
+    <main id="main" class="flex-1">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-100 border-t border-gray-200 mt-auto">
+        {#
+        TODO: Implement footer with:
+        - Newsletter signup
+        - Navigation links
+        - Social links
+        - Copyright
+        - Legal links (terms, privacy, etc.)
+        #}
+        <div class="container mx-auto px-4 py-8">
+            <p class="text-center text-gray-600">
+                &copy; {% now "Y" %} Naked Pineapple. All rights reserved.
+            </p>
+        </div>
+    </footer>
+
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@2.0.0"></script>
+
+    <!-- Analytics - Page-specific events -->
+    {#
+    TODO: Inject page-specific analytics events here.
+    Events are passed from handlers via AnalyticsEvents struct.
+
+    Example for purchase event:
+    {% if analytics_events.ga4 %}
+    <script>{{ analytics_events.ga4|safe }}</script>
+    {% endif %}
+    {% if analytics_events.meta %}
+    <script>{{ analytics_events.meta|safe }}</script>
+    {% endif %}
+    #}
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

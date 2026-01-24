@@ -1,0 +1,453 @@
+version: '3'
+
+tasks:
+  # ============================================================================
+  # Top-level tasks
+  # ============================================================================
+
+  default:
+    desc: "Run all checks"
+    cmds:
+      - task: check
+
+  lint:
+    desc: "Run all linters"
+    cmds:
+      - task: rust:clippy
+
+  fmt:
+    desc: "Format all code"
+    cmds:
+      - task: rust:fmt
+
+  fmt:check:
+    desc: "Check formatting without modifying files"
+    cmds:
+      - task: rust:fmt:check
+
+  build:
+    desc: "Build the server"
+    deps:
+      - css:build
+    cmds:
+      - task: rust:build
+
+  test:
+    desc: "Run all tests"
+    cmds:
+      - task: rust:test
+
+  test:integration:
+    desc: "Run integration tests"
+    cmds:
+      - task: rust:test:integration
+
+  coverage:
+    desc: "Generate test coverage report"
+    cmds:
+      - task: rust:coverage
+
+  coverage:integration:
+    desc: "Generate integration test coverage report"
+    cmds:
+      - task: rust:coverage:integration
+
+  dev:
+    desc: "Run Tailwind watch and storefront with auto-reload"
+    deps:
+      - css:watch
+      - rust:run:dev:storefront
+
+  check:
+    desc: "Run all checks (fmt, lint, audit, deny)"
+    cmds:
+      - task: fmt:check
+      - task: lint
+      - task: rust:audit
+      - task: rust:deny
+
+  # ============================================================================
+  # Setup tasks
+  # ============================================================================
+        
+  setup:
+    desc: "Setup development environment"
+    cmds:
+      - task: setup:signing
+      - task: setup:cocogitto
+      - task: setup:hooks
+      - task: setup:tools
+
+  setup:tools:
+    desc: "Check required tools are installed"
+    cmds:
+      - |
+        MISSING=""
+
+        if ! command -v cargo-audit >/dev/null 2>&1; then
+          MISSING="${MISSING}cargo-audit (cargo install cargo-audit)\n"
+        fi
+
+        if ! command -v cargo-deny >/dev/null 2>&1; then
+          MISSING="${MISSING}cargo-deny (cargo install cargo-deny)\n"
+        fi
+
+        if ! command -v sqlx >/dev/null 2>&1; then
+          MISSING="${MISSING}sqlx-cli (cargo install sqlx-cli)\n"
+        fi
+
+        if ! command -v cargo-hack >/dev/null 2>&1; then
+          MISSING="${MISSING}cargo-hack (cargo install cargo-hack)\n"
+        fi
+
+        if ! command -v cargo-llvm-cov >/dev/null 2>&1; then
+          MISSING="${MISSING}cargo-llvm-cov (cargo install cargo-llvm-cov)\n"
+        fi
+
+        if ! command -v cargo-watch >/dev/null 2>&1; then
+          MISSING="${MISSING}cargo-watch (cargo install cargo-watch)\n"
+        fi
+
+        if ! command -v tailwindcss >/dev/null 2>&1; then
+          MISSING="${MISSING}tailwindcss (brew install tailwindcss)\n"
+        fi
+
+        if [ -n "$MISSING" ]; then
+          echo "Missing tools:"
+          echo -e "$MISSING"
+        else
+          echo "All tools installed"
+        fi
+    silent: true
+
+  setup:signing:
+    desc: "Configure SSH commit signing"
+    cmds:
+      - |
+        echo "Configuring commit signing..."
+
+        ALLOWED_DOMAINS="@pistachiohq.com"
+
+        git config commit.gpgsign true
+        git config gpg.format ssh
+
+        EMAIL=$(git config user.email)
+        SIGNING_KEY=$(git config user.signingkey)
+
+        if [[ -z "$EMAIL" ]] || [[ -z "$SIGNING_KEY" ]]; then
+          echo "Error: Missing configuration"
+          echo "Run: git config user.email your-email@pistachiohq.com"
+          echo "Run: git config user.signingkey ~/.ssh/id_ed25519.pub"
+          exit 1
+        fi
+
+        VALID_DOMAIN=false
+        for domain in $ALLOWED_DOMAINS; do
+          if [[ "$EMAIL" == *"$domain" ]]; then
+            VALID_DOMAIN=true
+            break
+          fi
+        done
+
+        if [[ "$VALID_DOMAIN" != "true" ]]; then
+          echo "Error: Email '$EMAIL' is not from an authorized domain"
+          echo "Allowed domains: $ALLOWED_DOMAINS"
+          echo "Run: git config user.email your-email@pistachiohq.com"
+          exit 1
+        fi
+
+        mkdir -p .git
+
+        if [[ -f "$SIGNING_KEY" ]]; then
+          echo "$EMAIL $(cat $SIGNING_KEY)" > .git/allowed_signers
+        else
+          echo "$EMAIL $SIGNING_KEY" > .git/allowed_signers
+        fi
+
+        git config gpg.ssh.allowedSignersFile .git/allowed_signers
+
+        echo "SSH signing configured for $EMAIL"
+    status:
+      - test -f .git/allowed_signers
+      - git config --get gpg.ssh.allowedSignersFile | grep -q ".git/allowed_signers"
+
+  setup:cocogitto:
+    desc: "Check cocogitto is installed"
+    cmds:
+      - |
+        if ! command -v cog >/dev/null 2>&1; then
+          echo "cocogitto not found"
+          echo "Please install: brew install cocogitto"
+          echo "Or: cargo install cocogitto"
+        else
+          echo "cocogitto installed"
+        fi
+    silent: true
+
+  setup:hooks:
+    desc: "Install git hooks via lefthook"
+    cmds:
+      - lefthook install
+    status:
+      - test -f .git/hooks/prepare-commit-msg || test -f .git/hooks/lefthook-run
+
+  # ============================================================================
+  # Clean tasks
+  # ============================================================================
+
+  clean:
+    desc: "Run cargo clean"
+    cmds:
+      - cargo clean
+
+  deep-clean:
+    desc: "Clean plus delete all generated files"
+    cmds:
+      - task: clean
+      - rm -f Cargo.lock
+      - rm -f crates/storefront/static/css/main.css
+      - rm -rf .task
+      - rm -rf .sqlx
+
+  rebuild:
+    desc: "Rebuild everything without cleaning"
+    cmds:
+      - task: sqlx:prepare
+      - task: rust:build
+
+  deep-clean:rebuild:
+    desc: "Deep clean and rebuild everything"
+    cmds:
+      - task: deep-clean
+      - task: rebuild
+
+  # ============================================================================
+  # Database tasks
+  # ============================================================================
+
+  db:start:
+    desc: "Start PostgreSQL in Docker for development"
+    dir: docker-compose
+    cmds:
+      - docker compose -f docker-compose.infra.yml up -d postgres
+      - |
+        echo "Waiting for PostgreSQL to be ready..."
+        until docker exec nakedpineapple-postgres pg_isready -U postgres > /dev/null 2>&1; do
+          sleep 1
+        done
+        echo "PostgreSQL is ready"
+    status:
+      - docker ps --filter "name=nakedpineapple-postgres" --filter "status=running" | grep -q nakedpineapple-postgres
+
+  db:stop:
+    desc: "Stop PostgreSQL Docker container"
+    dir: docker-compose
+    cmds:
+      - docker compose -f docker-compose.infra.yml stop postgres
+      - docker compose -f docker-compose.infra.yml rm -f postgres
+
+  db:migrate:
+    desc: "Run all database migrations"
+    cmds:
+      - task: db:migrate:storefront
+      - task: db:migrate:admin
+
+  db:migrate:storefront:
+    desc: "Run storefront database migrations"
+    cmds:
+      - cargo run -p naked-pineapple-cli -- migrate storefront
+
+  db:migrate:admin:
+    desc: "Run admin database migrations"
+    cmds:
+      - cargo run -p naked-pineapple-cli -- migrate admin
+
+  db:reset:
+    desc: "Reset database (drop and recreate)"
+    dir: docker-compose
+    cmds:
+      - docker compose -f docker-compose.infra.yml stop postgres
+      - docker compose -f docker-compose.infra.yml rm -f postgres
+      - docker volume rm docker-compose_postgres_data 2>/dev/null || true
+      - task: db:start
+      - task: db:migrate
+
+  sqlx:prepare:
+    desc: "Generate sqlx offline cache"
+    cmds:
+      - cargo sqlx prepare --workspace
+
+  sqlx:check:
+    desc: "Verify sqlx cache is up to date"
+    cmds:
+      - cargo sqlx prepare --workspace --check
+
+  # ============================================================================
+  # CSS tasks (Tailwind)
+  # ============================================================================
+
+  css:watch:
+    desc: "Tailwind watch mode for development"
+    cmds:
+      - tailwindcss -i ./crates/storefront/static/css/input.css -o ./crates/storefront/static/css/main.css --watch
+
+  css:build:
+    desc: "Tailwind production build (minified)"
+    cmds:
+      - tailwindcss -i ./crates/storefront/static/css/input.css -o ./crates/storefront/static/css/main.css --minify
+
+  # ============================================================================
+  # Changelog tasks
+  # ============================================================================
+
+  changelog:
+    desc: "Generate changelog from conventional commits"
+    cmds:
+      - cog changelog
+
+  changelog:check:
+    desc: "Verify all commits follow conventional commit format"
+    cmds:
+      - cog check
+
+  bump:
+    desc: "Bump version and update changelog"
+    cmds:
+      - cog bump --auto
+
+  bump:dry-run:
+    desc: "Preview version bump without making changes"
+    cmds:
+      - cog bump --auto --dry-run
+
+  # ============================================================================
+  # Rust tasks
+  # ============================================================================
+
+  rust:build:
+    desc: "Build in debug mode"
+    cmds:
+      - cargo build
+
+  rust:build:release:
+    desc: "Build in release mode"
+    cmds:
+      - cargo build --release
+
+  rust:test:
+    desc: "Run tests"
+    cmds:
+      - cargo test
+
+  rust:test:integration:
+    desc: "Run integration tests"
+    cmds:
+      - cargo test -p naked-pineapple-integration-tests
+
+  rust:coverage:
+    desc: "Generate HTML test coverage report"
+    cmds:
+      - cargo llvm-cov --workspace --html --open
+
+  rust:coverage:integration:
+    desc: "Generate HTML integration test coverage report"
+    cmds:
+      - cargo llvm-cov --html --open -p naked-pineapple-integration-tests
+
+  rust:coverage:lcov:
+    desc: "Generate lcov coverage report for CI integration"
+    cmds:
+      - cargo llvm-cov --workspace --lcov --output-path lcov.info
+
+  rust:coverage:integration:lcov:
+    desc: "Generate lcov integration test coverage report"
+    cmds:
+      - cargo llvm-cov --lcov --output-path lcov.info -p naked-pineapple-integration-tests
+
+  rust:run:dev:storefront:
+    desc: "Run storefront with cargo watch for auto-reload"
+    cmds:
+      - cargo watch -x 'run -p naked-pineapple-storefront'
+
+  rust:run:dev:admin:
+    desc: "Run admin with cargo watch for auto-reload"
+    cmds:
+      - cargo watch -x 'run -p naked-pineapple-admin'
+
+  rust:clippy:
+    desc: "Run clippy linter"
+    cmds:
+      # Note: Don't use --all-features because some crates have mutually exclusive features
+      - cargo clippy --all-targets -- -D warnings
+
+  rust:fmt:
+    desc: "Format code"
+    cmds:
+      - cargo fmt
+
+  rust:fmt:check:
+    desc: "Check formatting without modifying files"
+    cmds:
+      - cargo fmt --check
+
+  rust:audit:
+    desc: "Check for security vulnerabilities in dependencies"
+    cmds:
+      - cargo audit --deny warnings
+
+  rust:deny:
+    desc: "Check dependencies against policy (licenses, bans, advisories)"
+    cmds:
+      - cargo deny --all-features --exclude-dev check --deny warnings --allow unmatched-organization
+
+  rust:hack:
+    desc: "Run clippy across feature combinations"
+    cmds:
+      - cargo hack clippy --feature-powerset -- -D warnings
+
+  rust:update:
+    desc: "Update dependencies to latest compatible versions"
+    cmds:
+      - cargo update
+
+  rust:build:nightly:
+    desc: "Build with nightly toolchain"
+    cmds:
+      - cargo +nightly build
+
+  rust:test:nightly:
+    desc: "Run tests with nightly toolchain"
+    cmds:
+      - cargo +nightly test
+
+  # ============================================================================
+  # CI tasks
+  # ============================================================================
+
+  ci:fmt:
+    desc: "Format check for CI"
+    cmds:
+      - cargo fmt --check
+
+  ci:lint:
+    desc: "Lint check for CI"
+    cmds:
+      # Note: Don't use --all-features because some crates may have mutually exclusive features
+      - cargo clippy --all-targets -- -D warnings
+
+  ci:build:
+    desc: "Build for CI"
+    cmds:
+      - task: css:build
+      - cargo build --release
+
+  ci:test:
+    desc: "Test for CI"
+    cmds:
+      - cargo test
+
+  ci:security:
+    desc: "Security checks for CI"
+    cmds:
+      - cargo audit --deny warnings
+      - cargo deny --all-features --exclude-dev check --deny warnings --allow unmatched-organization

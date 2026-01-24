@@ -1,0 +1,14 @@
+[net]
+git-fetch-with-cli = true
+
+# Local Development Path Overrides
+#
+# Copy this file to `.cargo/config.toml` to use local checkouts of dependencies
+# instead of the git versions. This is useful for development when you need to
+# modify these libraries alongside libgn.
+#
+# Usage:
+#   cp .cargo/config.toml.example .cargo/config.toml
+#   # Edit paths to match your local checkout locations
+#
+# Note: .cargo/config.toml is gitignored

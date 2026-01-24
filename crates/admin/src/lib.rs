@@ -1,0 +1,26 @@
+//! Naked Pineapple Admin library.
+//!
+//! This crate provides the admin functionality as a library,
+//! allowing it to be tested and reused.
+//!
+//! # Security
+//!
+//! This crate contains HIGH PRIVILEGE access:
+//! - Shopify Admin API (full store management)
+//! - Claude API (AI chat)
+//! - Admin user management
+//!
+//! Only deploy on Tailscale-protected infrastructure with MDM verification.
+
+#![cfg_attr(not(test), forbid(unsafe_code))]
+
+pub mod claude;
+pub mod config;
+pub mod db;
+pub mod error;
+pub mod middleware;
+pub mod models;
+pub mod routes;
+pub mod services;
+pub mod shopify;
+pub mod state;

@@ -1,0 +1,37 @@
+[package]
+name = "naked-pineapple-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "CLI tools for Naked Pineapple (migrations, management)"
+readme = "README.md"
+keywords = ["ecommerce", "cli", "migrations", "database"]
+categories = ["command-line-utilities"]
+publish = false
+
+[[bin]]
+name = "np-cli"
+path = "src/main.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+naked-pineapple-core = { workspace = true }
+
+# CLI
+clap = { version = "4", features = ["derive"] }
+
+# Database
+sqlx = { workspace = true }
+
+# Async runtime
+tokio = { workspace = true }
+
+# Utilities
+dotenvy = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }

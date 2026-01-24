@@ -1,0 +1,58 @@
+/* Tailwind CSS input file */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Custom styles for Naked Pineapple storefront.
+ *
+ * TODO: Add brand-specific styles here:
+ * - Custom color variables
+ * - Typography styles
+ * - Component styles
+ * - Animation utilities
+ */
+
+@layer base {
+    /* TODO: Add base styles
+    html {
+        font-family: 'Inter', sans-serif;
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+        font-family: 'Playfair Display', serif;
+    }
+    */
+}
+
+@layer components {
+    /* TODO: Add component classes
+    .btn {
+        @apply px-4 py-2 rounded-lg font-medium transition-colors;
+    }
+
+    .btn-primary {
+        @apply bg-black text-white hover:bg-gray-800;
+    }
+
+    .btn-secondary {
+        @apply bg-white text-black border border-black hover:bg-gray-100;
+    }
+
+    .input {
+        @apply w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent;
+    }
+
+    .card {
+        @apply bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden;
+    }
+    */
+}
+
+@layer utilities {
+    /* TODO: Add utility classes
+    .text-balance {
+        text-wrap: balance;
+    }
+    */
+}

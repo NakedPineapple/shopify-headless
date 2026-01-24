@@ -1,0 +1,78 @@
+[package]
+name = "naked-pineapple-storefront"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "Public storefront binary for Naked Pineapple (port 3000)"
+readme = "README.md"
+keywords = ["ecommerce", "storefront", "shopify", "axum"]
+categories = ["web-programming::http-server"]
+publish = false
+
+[[bin]]
+name = "naked-pineapple-storefront"
+path = "src/main.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+naked-pineapple-core = { workspace = true }
+
+# Web framework
+axum = { workspace = true }
+tokio = { workspace = true }
+tower = { workspace = true }
+tower-http = { workspace = true }
+
+# Database
+sqlx = { workspace = true }
+
+# Templating
+askama = { workspace = true }
+askama_web = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# GraphQL client
+graphql_client = { workspace = true }
+reqwest = { workspace = true }
+
+# Auth
+webauthn-rs = { workspace = true }
+webauthn-rs-proto = { workspace = true }
+tower-sessions = { workspace = true }
+tower-sessions-sqlx-store = { workspace = true }
+argon2 = "0.5"
+
+# Error tracking
+sentry = { workspace = true }
+sentry-tower = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+# Utilities
+dotenvy = { workspace = true }
+url = { workspace = true }
+base64 = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+rand = { workspace = true }
+thiserror = { workspace = true }
+
+# Markdown & Content
+# NOTE: syntect feature disabled to avoid unmaintained bincode/yaml-rust deps
+# Re-enable when syntect updates dependencies or use alternative highlighting
+comrak = { version = "0.50", default-features = false }
+gray_matter = "0.3"
+
+# Caching
+moka = { workspace = true }
+
+# Rate limiting
+governor = "0.10"
+tower_governor = "0.8"

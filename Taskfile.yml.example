@@ -1,0 +1,808 @@
+version: '3'
+
+tasks:
+  # ============================================================================
+  # Top-level tasks
+  # ============================================================================
+
+  default:
+    desc: "Run all checks"
+    cmds:
+      - task: check
+
+  lint:
+    desc: "Run all linters"
+    cmds:
+      - task: buf:lint
+      - task: rust:clippy
+
+  fmt:
+    desc: "Format all code"
+    cmds:
+      - task: buf:format
+      - task: rust:fmt
+
+  fmt:check:
+    desc: "Check formatting without modifying files"
+    cmds:
+      - task: buf:format:check
+      - task: rust:fmt:check
+
+  build:
+    desc: "Build the server"
+    cmds:
+      - task: gen
+      - task: rust:build
+
+  test:
+    desc: "Run all tests"
+    cmds:
+      - task: rust:test
+
+  test:integration:
+    desc: "Run integration tests"
+    cmds:
+      - task: rust:test:integration
+
+  coverage:
+    desc: "Generate test coverage report"
+    cmds:
+      - task: rust:coverage
+
+  coverage:integration:
+    desc: "Generate integration test coverage report"
+    cmds:
+      - task: rust:coverage:integration
+
+  dev:
+    desc: "Run dev server with in-memory backends"
+    cmds:
+      - task: rust:run:dev
+
+  check:
+    desc: "Run all checks (fmt, lint, audit, deny)"
+    cmds:
+      - task: fmt:check
+      - task: lint
+      - task: rust:audit
+      - task: rust:deny
+
+  # ============================================================================
+  # Setup tasks
+  # ============================================================================
+
+  setup:
+    desc: "Setup development environment"
+    cmds:
+      - task: setup:signing
+      - task: setup:cocogitto
+      - task: setup:hooks
+      - task: setup:tools
+
+  setup:tools:
+    desc: "Check required tools are installed"
+    cmds:
+      - |
+        MISSING=""
+
+        if ! command -v buf >/dev/null 2>&1; then
+          MISSING="${MISSING}buf (brew install bufbuild/buf/buf)\n"
+        fi
+
+        if ! command -v cargo-audit >/dev/null 2>&1; then
+          MISSING="${MISSING}cargo-audit (cargo install cargo-audit)\n"
+        fi
+
+        if ! command -v cargo-deny >/dev/null 2>&1; then
+          MISSING="${MISSING}cargo-deny (cargo install cargo-deny)\n"
+        fi
+
+        if ! command -v sqlx >/dev/null 2>&1; then
+          MISSING="${MISSING}sqlx-cli (cargo install sqlx-cli)\n"
+        fi
+
+        if ! command -v cargo-hack >/dev/null 2>&1; then
+          MISSING="${MISSING}cargo-hack (cargo install cargo-hack)\n"
+        fi
+
+        if ! command -v cargo-llvm-cov >/dev/null 2>&1; then
+          MISSING="${MISSING}cargo-llvm-cov (cargo install cargo-llvm-cov)\n"
+        fi
+
+        if [ -n "$MISSING" ]; then
+          echo "Missing tools:"
+          echo -e "$MISSING"
+        else
+          echo "All tools installed"
+        fi
+    silent: true
+
+  setup:signing:
+    desc: "Configure SSH commit signing"
+    cmds:
+      - |
+        echo "Configuring commit signing..."
+
+        ALLOWED_DOMAINS="@pistachiohq.com"
+
+        git config commit.gpgsign true
+        git config gpg.format ssh
+
+        EMAIL=$(git config user.email)
+        SIGNING_KEY=$(git config user.signingkey)
+
+        if [[ -z "$EMAIL" ]] || [[ -z "$SIGNING_KEY" ]]; then
+          echo "Error: Missing configuration"
+          echo "Run: git config user.email your-email@pistachiohq.com"
+          echo "Run: git config user.signingkey ~/.ssh/id_ed25519.pub"
+          exit 1
+        fi
+
+        VALID_DOMAIN=false
+        for domain in $ALLOWED_DOMAINS; do
+          if [[ "$EMAIL" == *"$domain" ]]; then
+            VALID_DOMAIN=true
+            break
+          fi
+        done
+
+        if [[ "$VALID_DOMAIN" != "true" ]]; then
+          echo "Error: Email '$EMAIL' is not from an authorized domain"
+          echo "Allowed domains: $ALLOWED_DOMAINS"
+          echo "Run: git config user.email your-email@pistachiohq.com"
+          exit 1
+        fi
+
+        mkdir -p .git
+
+        if [[ -f "$SIGNING_KEY" ]]; then
+          echo "$EMAIL $(cat $SIGNING_KEY)" > .git/allowed_signers
+        else
+          echo "$EMAIL $SIGNING_KEY" > .git/allowed_signers
+        fi
+
+        git config gpg.ssh.allowedSignersFile .git/allowed_signers
+
+        echo "SSH signing configured for $EMAIL"
+    status:
+      - test -f .git/allowed_signers
+      - git config --get gpg.ssh.allowedSignersFile | grep -q ".git/allowed_signers"
+
+  setup:cocogitto:
+    desc: "Check cocogitto is installed"
+    cmds:
+      - |
+        if ! command -v cog >/dev/null 2>&1; then
+          echo "cocogitto not found"
+          echo "Please install: brew install cocogitto"
+          echo "Or: cargo install cocogitto"
+        else
+          echo "cocogitto installed"
+        fi
+    silent: true
+
+  setup:hooks:
+    desc: "Install git hooks via lefthook"
+    cmds:
+      - lefthook install
+    status:
+      - test -f .git/hooks/prepare-commit-msg || test -f .git/hooks/lefthook-run
+
+  # ============================================================================
+  # Clean tasks
+  # ============================================================================
+
+  clean:
+    desc: "Run cargo clean"
+    cmds:
+      - cargo clean
+
+  deep-clean:
+    desc: "Clean plus delete all generated files"
+    cmds:
+      - task: clean
+      - rm -f Cargo.lock
+      - rm -rf .task
+      - rm -rf crates/services/analytics/.sqlx
+      - rm -rf crates/services/authn/.sqlx
+      - rm -rf crates/services/authz/.sqlx
+      - rm -rf crates/services/key/.sqlx
+      - rm -rf crates/services/tenant/.sqlx
+      - rm -rf crates/services/user/.sqlx
+      - rm -rf crates/internal-api/proto/definitions/.buf_deps
+      - rm -f crates/internal-api/proto/definitions/buf.lock
+
+  rebuild:
+    desc: "Rebuild everything (proto, db, sqlx cache) without cleaning"
+    cmds:
+      - task: gen
+      - task: db:start
+      - defer: { task: db:stop }
+      - sleep 2
+      - task: db:migrate
+      - task: sqlx:prepare
+      - task: rust:build
+
+  deep-clean:rebuild:
+    desc: "Deep clean and rebuild everything (proto, db, sqlx cache)"
+    cmds:
+      - task: deep-clean
+      - task: rebuild
+
+  # ============================================================================
+  # Database tasks
+  # ============================================================================
+
+  db:start:
+    desc: "Start PostgreSQL in Docker for development"
+    dir: docker-compose
+    cmds:
+      - docker compose -f docker-compose.infra.yml up -d postgres
+      - |
+        echo "Waiting for PostgreSQL to be ready..."
+        until docker exec pistachio-postgres pg_isready -U postgres > /dev/null 2>&1; do
+          sleep 1
+        done
+        echo "PostgreSQL is ready"
+    status:
+      - docker ps --filter "name=pistachio-postgres" --filter "status=running" | grep -q pistachio-postgres
+
+  db:stop:
+    desc: "Stop PostgreSQL Docker container"
+    dir: docker-compose
+    cmds:
+      - docker compose -f docker-compose.infra.yml stop postgres
+      - docker compose -f docker-compose.infra.yml rm -f postgres
+
+  db:migrate:
+    desc: "Run all database migrations"
+    cmds:
+      - task: db:migrate:authn
+      - task: db:migrate:authz
+      - task: db:migrate:tenant
+      - task: db:migrate:user
+      - task: db:migrate:key
+      - task: db:migrate:analytics
+
+  db:migrate:authn:
+    desc: "Run authn service migrations"
+    dir: crates/services/authn
+    cmds:
+      - |
+        for f in migrations/V*.up.sql; do
+          [ -f "$f" ] || continue
+          echo "Running $f..."
+          docker exec -i pistachio-postgres psql -U authn_admin -d authn < "$f"
+        done
+
+  db:migrate:authz:
+    desc: "Run authz service migrations"
+    dir: crates/services/authz
+    cmds:
+      - |
+        for f in migrations/V*.up.sql; do
+          [ -f "$f" ] || continue
+          echo "Running $f..."
+          docker exec -i pistachio-postgres psql -U authz_admin -d authz < "$f"
+        done
+
+  db:migrate:tenant:
+    desc: "Run tenant service migrations"
+    dir: crates/services/tenant
+    cmds:
+      - |
+        for f in migrations/V*.up.sql; do
+          [ -f "$f" ] || continue
+          echo "Running $f..."
+          docker exec -i pistachio-postgres psql -U tenant_admin -d tenant < "$f"
+        done
+
+  db:migrate:user:
+    desc: "Run user service migrations"
+    dir: crates/services/user
+    cmds:
+      - |
+        for f in migrations/V*.up.sql; do
+          [ -f "$f" ] || continue
+          echo "Running $f..."
+          docker exec -i pistachio-postgres psql -U user_admin -d user < "$f"
+        done
+
+  db:migrate:key:
+    desc: "Run key service migrations"
+    dir: crates/services/key
+    cmds:
+      - |
+        for f in migrations/V*.up.sql; do
+          [ -f "$f" ] || continue
+          echo "Running $f..."
+          docker exec -i pistachio-postgres psql -U key_admin -d key < "$f"
+        done
+
+  db:migrate:analytics:
+    desc: "Run analytics service migrations"
+    dir: crates/services/analytics
+    cmds:
+      - |
+        for f in migrations/V*.up.sql; do
+          [ -f "$f" ] || continue
+          echo "Running $f..."
+          docker exec -i pistachio-postgres psql -U analytics_admin -d analytics < "$f"
+        done
+
+  db:reset:
+    desc: "Reset database (drop and recreate)"
+    dir: docker-compose
+    cmds:
+      - docker compose -f docker-compose.infra.yml stop postgres
+      - docker compose -f docker-compose.infra.yml rm -f postgres
+      - docker volume rm docker-compose_postgres_data 2>/dev/null || true
+      - task: db:start
+      - task: db:migrate
+
+  sqlx:prepare:
+    desc: "Generate sqlx offline cache for all services"
+    cmds:
+      - task: sqlx:prepare:authn
+      - task: sqlx:prepare:authz
+      - task: sqlx:prepare:tenant
+      - task: sqlx:prepare:user
+      - task: sqlx:prepare:key
+      - task: sqlx:prepare:analytics
+
+  sqlx:prepare:authn:
+    desc: "Generate sqlx offline cache for authn service"
+    dir: crates/services/authn
+    cmds:
+      - cargo sqlx prepare
+    env:
+      DATABASE_URL: postgres://authn_admin:authn_admin_password@localhost:5432/authn
+
+  sqlx:prepare:authz:
+    desc: "Generate sqlx offline cache for authz service"
+    dir: crates/services/authz
+    cmds:
+      - cargo sqlx prepare
+    env:
+      DATABASE_URL: postgres://authz_admin:authz_admin_password@localhost:5432/authz
+
+  sqlx:prepare:tenant:
+    desc: "Generate sqlx offline cache for tenant service"
+    dir: crates/services/tenant
+    cmds:
+      - cargo sqlx prepare -- --features postgres
+    env:
+      DATABASE_URL: postgres://tenant_admin:tenant_admin_password@localhost:5432/tenant
+
+  sqlx:prepare:user:
+    desc: "Generate sqlx offline cache for user service"
+    dir: crates/services/user
+    cmds:
+      - cargo sqlx prepare -- --features postgres
+    env:
+      DATABASE_URL: postgres://user_admin:user_admin_password@localhost:5432/user
+
+  sqlx:prepare:key:
+    desc: "Generate sqlx offline cache for key service"
+    dir: crates/services/key
+    cmds:
+      - cargo sqlx prepare -- --features postgres
+    env:
+      DATABASE_URL: postgres://key_admin:key_admin_password@localhost:5432/key
+
+  sqlx:prepare:analytics:
+    desc: "Generate sqlx offline cache for analytics service"
+    dir: crates/services/analytics
+    cmds:
+      - cargo sqlx prepare -- --features postgres
+    env:
+      DATABASE_URL: postgres://analytics_admin:analytics_admin_password@localhost:5432/analytics
+
+  sqlx:check:
+    desc: "Verify sqlx cache is up to date for all services"
+    cmds:
+      - task: sqlx:check:authn
+      - task: sqlx:check:authz
+      - task: sqlx:check:tenant
+      - task: sqlx:check:user
+      - task: sqlx:check:key
+      - task: sqlx:check:analytics
+
+  sqlx:check:authn:
+    desc: "Verify sqlx cache for authn service"
+    dir: crates/services/authn
+    cmds:
+      - cargo sqlx prepare --check
+    env:
+      DATABASE_URL: postgres://authn_admin:authn_admin_password@localhost:5432/authn
+
+  sqlx:check:authz:
+    desc: "Verify sqlx cache for authz service"
+    dir: crates/services/authz
+    cmds:
+      - cargo sqlx prepare --check
+    env:
+      DATABASE_URL: postgres://authz_admin:authz_admin_password@localhost:5432/authz
+
+  sqlx:check:tenant:
+    desc: "Verify sqlx cache for tenant service"
+    dir: crates/services/tenant
+    cmds:
+      - cargo sqlx prepare --check -- --features postgres
+    env:
+      DATABASE_URL: postgres://tenant_admin:tenant_admin_password@localhost:5432/tenant
+
+  sqlx:check:user:
+    desc: "Verify sqlx cache for user service"
+    dir: crates/services/user
+    cmds:
+      - cargo sqlx prepare --check -- --features postgres
+    env:
+      DATABASE_URL: postgres://user_admin:user_admin_password@localhost:5432/user
+
+  sqlx:check:key:
+    desc: "Verify sqlx cache for key service"
+    dir: crates/services/key
+    cmds:
+      - cargo sqlx prepare --check -- --features postgres
+    env:
+      DATABASE_URL: postgres://key_admin:key_admin_password@localhost:5432/key
+
+  sqlx:check:analytics:
+    desc: "Verify sqlx cache for analytics service"
+    dir: crates/services/analytics
+    cmds:
+      - cargo sqlx prepare --check -- --features postgres
+    env:
+      DATABASE_URL: postgres://analytics_admin:analytics_admin_password@localhost:5432/analytics
+
+  # ============================================================================
+  # Changelog tasks
+  # ============================================================================
+
+  changelog:
+    desc: "Generate changelog from conventional commits"
+    cmds:
+      - cog changelog
+
+  changelog:check:
+    desc: "Verify all commits follow conventional commit format"
+    cmds:
+      - cog check
+
+  bump:
+    desc: "Bump version and update changelog"
+    cmds:
+      - cog bump --auto
+
+  bump:dry-run:
+    desc: "Preview version bump without making changes"
+    cmds:
+      - cog bump --auto --dry-run
+
+  # ============================================================================
+  # Buf / Protobuf tasks
+  # ============================================================================
+
+  buf:lint:
+    desc: "Lint internal protobuf files with buf"
+    dir: crates/internal-api/proto/definitions
+    cmds:
+      - buf lint
+
+  buf:format:
+    desc: "Format internal protobuf files with buf"
+    dir: crates/internal-api/proto/definitions
+    cmds:
+      - buf format -w
+
+  buf:format:check:
+    desc: "Check internal protobuf formatting without modifying files"
+    dir: crates/internal-api/proto/definitions
+    cmds:
+      - buf format --diff --exit-code
+
+  buf:deps:
+    desc: "Update and export buf dependencies for internal protos"
+    dir: crates/internal-api/proto/definitions
+    cmds:
+      - buf dep update
+      - rm -rf .buf_deps
+      - buf export buf.build/bufbuild/protovalidate --output .buf_deps
+      - buf export buf.build/googleapis/googleapis --output .buf_deps
+    sources:
+      - buf.yaml
+      - buf.lock
+    generates:
+      - .buf_deps/**/*.proto
+
+  # ============================================================================
+  # Code generation tasks
+  # ============================================================================
+
+  gen:proto:
+    desc: "Generate Rust code from internal protobuf definitions"
+    dir: crates/internal-api/proto
+    cmds:
+      - cargo build
+    sources:
+      - definitions/**/*.proto
+      - definitions/.buf_deps/**/*.proto
+      - build.rs
+      - Cargo.toml
+    generates:
+      - target/debug/build/internal-proto-*/out/*.rs
+
+  gen:
+    desc: "Generate all code from protobuf definitions"
+    cmds:
+      - task: buf:deps
+      - task: gen:proto
+
+  # ============================================================================
+  # Rust tasks
+  # ============================================================================
+
+  rust:build:
+    desc: "Build in debug mode"
+    cmds:
+      - cargo build
+
+  rust:build:release:
+    desc: "Build in release mode"
+    cmds:
+      - cargo build --release
+
+  rust:test:
+    desc: "Run tests"
+    cmds:
+      - cargo test
+
+  rust:test:integration:
+    desc: "Run integration tests"
+    cmds:
+      - cargo test -p pistachio-integration-tests
+
+  rust:coverage:
+    desc: "Generate HTML test coverage report"
+    cmds:
+      - cargo llvm-cov --html --open
+
+  rust:coverage:integration:
+    desc: "Generate HTML integration test coverage report"
+    cmds:
+      - cargo llvm-cov --html --open -p pistachio-integration-tests
+
+  rust:coverage:lcov:
+    desc: "Generate lcov coverage report for CI integration"
+    cmds:
+      - cargo llvm-cov --lcov --output-path lcov.info
+
+  rust:coverage:integration:lcov:
+    desc: "Generate lcov integration test coverage report"
+    cmds:
+      - cargo llvm-cov --lcov --output-path lcov.info -p pistachio-integration-tests
+
+  rust:run:dev:
+    desc: "Run dev server with in-memory backends"
+    cmds:
+      - cargo run -p pistachio-dev-server -- --in-memory
+
+  rust:clippy:
+    desc: "Run clippy linter"
+    cmds:
+      # Note: Don't use --all-features because some crates have mutually exclusive features
+      # (e.g., pistachio-sts has memory vs redis). Use rust:hack for feature coverage.
+      - cargo clippy --all-targets -- -D warnings
+
+  rust:fmt:
+    desc: "Format code"
+    cmds:
+      - cargo fmt
+
+  rust:fmt:check:
+    desc: "Check formatting without modifying files"
+    cmds:
+      - cargo fmt --check
+
+  rust:audit:
+    desc: "Check for security vulnerabilities in dependencies"
+    cmds:
+      - cargo audit --deny warnings
+
+  rust:deny:
+    desc: "Check dependencies against policy (licenses, bans, advisories)"
+    cmds:
+      - cargo deny --all-features --exclude-dev check --deny warnings --allow unmatched-organization
+
+  rust:hack:
+    desc: "Run clippy across feature combinations for all packages"
+    cmds:
+      - task: rust:hack:authn-client
+      - task: rust:hack:common
+      - task: rust:hack:infra-analytics
+      - task: rust:hack:infra-cache
+      - task: rust:hack:infra-config
+      - task: rust:hack:infra-database
+      - task: rust:hack:infra-events
+      - task: rust:hack:infra-observability
+      - task: rust:hack:infra-secrets
+      - task: rust:hack:infra-server
+      - task: rust:hack:internal-proto
+      - task: rust:hack:pistachio-api-gateway
+      - task: rust:hack:pistachio-authn
+      - task: rust:hack:pistachio-authz
+      - task: rust:hack:pistachio-crypto
+      - task: rust:hack:pistachio-dev-server
+      - task: rust:hack:pistachio-migrate
+      - task: rust:hack:pistachio-public-api
+      - task: rust:hack:pistachio-ratelimiter
+      - task: rust:hack:pistachio-sts
+      - task: rust:hack:pistachio-tenant
+      - task: rust:hack:pistachio-user
+      - task: rust:hack:ratelimiter-client
+      - task: rust:hack:sts-client
+      - task: rust:hack:tenant-client
+
+  # Individual package hack tasks - each configured for valid feature combinations
+  rust:hack:authn-client:
+    cmds:
+      - cargo hack clippy -p authn-client --feature-powerset -- -D warnings
+
+  rust:hack:common:
+    cmds:
+      - cargo hack clippy -p common --feature-powerset -- -D warnings
+
+  rust:hack:infra-analytics:
+    cmds:
+      - cargo hack clippy -p infra-analytics --feature-powerset -- -D warnings
+
+  rust:hack:infra-cache:
+    cmds:
+      - cargo hack clippy -p infra-cache --feature-powerset -- -D warnings
+
+  rust:hack:infra-config:
+    cmds:
+      - cargo hack clippy -p infra-config --feature-powerset -- -D warnings
+
+  rust:hack:infra-database:
+    desc: "Requires at least one backend: sqlite or postgres"
+    cmds:
+      - cargo hack clippy -p infra-database --feature-powerset --exclude-no-default-features --exclude-features default -- -D warnings
+
+  rust:hack:infra-events:
+    cmds:
+      - cargo hack clippy -p infra-events --feature-powerset -- -D warnings
+
+  rust:hack:infra-observability:
+    cmds:
+      - cargo hack clippy -p infra-observability --feature-powerset -- -D warnings
+
+  rust:hack:infra-secrets:
+    cmds:
+      - cargo hack clippy -p infra-secrets --feature-powerset -- -D warnings
+
+  rust:hack:infra-server:
+    cmds:
+      - cargo hack clippy -p infra-server --feature-powerset -- -D warnings
+
+  rust:hack:internal-proto:
+    cmds:
+      - cargo hack clippy -p internal-proto --feature-powerset -- -D warnings
+
+  rust:hack:pistachio-api-gateway:
+    cmds:
+      - cargo hack clippy -p pistachio-api-gateway --feature-powerset -- -D warnings
+
+  rust:hack:pistachio-authn:
+    desc: "Requires database backend - uses all-features"
+    cmds:
+      - cargo clippy -p pistachio-authn --all-features -- -D warnings
+
+  rust:hack:pistachio-authz:
+    desc: "Requires database backend - uses all-features"
+    cmds:
+      - cargo clippy -p pistachio-authz --all-features -- -D warnings
+
+  rust:hack:pistachio-crypto:
+    cmds:
+      - cargo hack clippy -p pistachio-crypto --feature-powerset -- -D warnings
+
+  rust:hack:pistachio-dev-server:
+    cmds:
+      - cargo hack clippy -p pistachio-dev-server --feature-powerset -- -D warnings
+
+  rust:hack:pistachio-migrate:
+    cmds:
+      - cargo hack clippy -p pistachio-migrate --feature-powerset -- -D warnings
+
+  rust:hack:pistachio-public-api:
+    cmds:
+      - cargo hack clippy -p pistachio-public-api --feature-powerset -- -D warnings
+
+  rust:hack:pistachio-ratelimiter:
+    desc: "Requires cache backend - uses all-features"
+    cmds:
+      - cargo clippy -p pistachio-ratelimiter --all-features -- -D warnings
+
+  rust:hack:pistachio-sts:
+    desc: "STS has mutually exclusive features (memory vs redis) - test valid combinations"
+    cmds:
+      # Cannot use --all-features because memory and redis are mutually exclusive
+      - cargo clippy -p pistachio-sts --no-default-features --features memory,local-secrets -- -D warnings
+      - cargo clippy -p pistachio-sts --no-default-features --features redis,local-secrets -- -D warnings
+      - cargo clippy -p pistachio-sts --no-default-features --features memory,vault-secrets -- -D warnings
+      - cargo clippy -p pistachio-sts --no-default-features --features redis,vault-secrets -- -D warnings
+
+  rust:hack:pistachio-tenant:
+    desc: "Requires database backend - uses all-features"
+    cmds:
+      - cargo clippy -p pistachio-tenant --all-features -- -D warnings
+
+  rust:hack:pistachio-user:
+    desc: "Requires database backend - uses all-features"
+    cmds:
+      - cargo clippy -p pistachio-user --all-features -- -D warnings
+
+  rust:hack:ratelimiter-client:
+    cmds:
+      - cargo hack clippy -p ratelimiter-client --feature-powerset -- -D warnings
+
+  rust:hack:sts-client:
+    cmds:
+      - cargo hack clippy -p sts-client --feature-powerset -- -D warnings
+
+  rust:hack:tenant-client:
+    cmds:
+      - cargo hack clippy -p tenant-client --feature-powerset -- -D warnings
+
+  rust:update:
+    desc: "Update dependencies to latest compatible versions"
+    cmds:
+      - cargo update
+
+  rust:build:nightly:
+    desc: "Build with nightly toolchain"
+    cmds:
+      - cargo +nightly build
+
+  rust:test:nightly:
+    desc: "Run tests with nightly toolchain"
+    cmds:
+      - cargo +nightly test
+
+  # ============================================================================
+  # CI tasks
+  # ============================================================================
+
+  ci:fmt:
+    desc: "Format check for CI"
+    cmds:
+      - task: buf:format:check
+      - cargo fmt --check
+
+  ci:lint:
+    desc: "Lint check for CI"
+    cmds:
+      - task: buf:lint
+      # Note: Don't use --all-features because some crates have mutually exclusive features
+      - cargo clippy --all-targets -- -D warnings
+      # Test all feature combinations
+      - task: rust:hack
+
+  ci:build:
+    desc: "Build for CI"
+    cmds:
+      - task: gen
+      - cargo build --release
+
+  ci:test:
+    desc: "Test for CI"
+    cmds:
+      - cargo test
+
+  ci:security:
+    desc: "Security checks for CI"
+    cmds:
+      - cargo audit --deny warnings
+      - cargo deny --all-features --exclude-dev check --deny warnings --allow unmatched-organization

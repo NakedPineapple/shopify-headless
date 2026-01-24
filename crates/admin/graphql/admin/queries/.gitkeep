@@ -1,0 +1,73 @@
+# GraphQL query files for Shopify Admin API
+#
+# SECURITY: These queries use the HIGH PRIVILEGE Admin API.
+# Only deploy on Tailscale-protected infrastructure.
+#
+# Create .graphql files here for type-safe queries.
+# Example files to create:
+#
+# products.graphql:
+#   - GetProducts
+#   - GetProduct
+#   - UpdateProduct
+#
+# orders.graphql:
+#   - GetOrders
+#   - GetOrder
+#   - FulfillOrder
+#   - CancelOrder
+#
+# customers.graphql:
+#   - GetCustomers
+#   - GetCustomer
+#
+# inventory.graphql:
+#   - GetInventoryLevels
+#   - AdjustInventory
+#   - SetInventory
+#
+# Example query (orders.graphql):
+#
+# query GetOrders($first: Int!, $after: String) {
+#   orders(first: $first, after: $after, sortKey: CREATED_AT, reverse: true) {
+#     pageInfo {
+#       hasNextPage
+#       endCursor
+#     }
+#     edges {
+#       node {
+#         id
+#         name
+#         createdAt
+#         displayFinancialStatus
+#         displayFulfillmentStatus
+#         totalPriceSet {
+#           shopMoney {
+#             amount
+#             currencyCode
+#           }
+#         }
+#         customer {
+#           id
+#           email
+#           firstName
+#           lastName
+#         }
+#         lineItems(first: 10) {
+#           edges {
+#             node {
+#               title
+#               quantity
+#               originalUnitPriceSet {
+#                 shopMoney {
+#                   amount
+#                   currencyCode
+#                 }
+#               }
+#             }
+#           }
+#         }
+#       }
+#     }
+#   }
+# }

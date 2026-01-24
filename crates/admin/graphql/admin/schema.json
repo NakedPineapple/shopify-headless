@@ -1,0 +1,25 @@
+{
+  "__comment": "Shopify Admin API Schema",
+  "__instructions": [
+    "This file should contain the Shopify Admin API GraphQL schema.",
+    "Download from: https://shopify.dev/docs/api/admin-graphql",
+    "",
+    "To update:",
+    "1. Run: task graphql:update:admin",
+    "2. Or manually download the introspection query result",
+    "",
+    "The schema is used by graphql-client to generate type-safe Rust code",
+    "for GraphQL queries in the queries/ directory.",
+    "",
+    "SECURITY NOTE: This schema is for the Admin API which has HIGH PRIVILEGE",
+    "access to store data. Only use in the admin binary on Tailscale-protected",
+    "infrastructure."
+  ],
+  "data": {
+    "__schema": {
+      "queryType": { "name": "QueryRoot" },
+      "mutationType": { "name": "Mutation" },
+      "types": []
+    }
+  }
+}

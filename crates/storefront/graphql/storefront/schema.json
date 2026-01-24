@@ -1,0 +1,21 @@
+{
+  "__comment": "Shopify Storefront API Schema",
+  "__instructions": [
+    "This file should contain the Shopify Storefront API GraphQL schema.",
+    "Download from: https://shopify.dev/docs/api/storefront",
+    "",
+    "To update:",
+    "1. Run: task graphql:update:storefront",
+    "2. Or manually download the introspection query result",
+    "",
+    "The schema is used by graphql-client to generate type-safe Rust code",
+    "for GraphQL queries in the queries/ directory."
+  ],
+  "data": {
+    "__schema": {
+      "queryType": { "name": "QueryRoot" },
+      "mutationType": { "name": "Mutation" },
+      "types": []
+    }
+  }
+}
