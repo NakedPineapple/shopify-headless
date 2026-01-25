@@ -51,9 +51,11 @@
 pub mod account;
 pub mod api;
 pub mod auth;
+pub mod blog;
 pub mod cart;
 pub mod collections;
 pub mod home;
+pub mod pages;
 pub mod products;
 pub mod shopify_auth;
 
@@ -146,6 +148,10 @@ pub fn routes() -> Router<AppState> {
         .nest("/products", product_routes())
         // Collection routes
         .nest("/collections", collection_routes())
+        // Blog routes
+        .nest("/blog", blog::router())
+        // Static content pages
+        .merge(pages::router())
         // Cart routes
         .nest("/cart", cart_routes())
         // Checkout redirect

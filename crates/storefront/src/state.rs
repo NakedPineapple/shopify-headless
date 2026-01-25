@@ -1,5 +1,6 @@
 //! Application state shared across handlers.
 
+use std::path::Path;
 use std::sync::Arc;
 
 use sqlx::PgPool;
@@ -7,17 +8,20 @@ use url::Url;
 use webauthn_rs::prelude::*;
 
 use crate::config::StorefrontConfig;
+use crate::content::{ContentError, ContentStore};
 use crate::shopify::{CustomerClient, StorefrontClient};
 
-/// Error creating `WebAuthn` configuration.
+/// Error creating application state.
 #[derive(Debug, thiserror::Error)]
-pub enum WebauthnConfigError {
+pub enum AppStateError {
     #[error("invalid base_url: {0}")]
     InvalidUrl(#[from] url::ParseError),
     #[error("base_url must have a host")]
     MissingHost,
     #[error("webauthn error: {0}")]
     WebAuthn(#[from] WebauthnError),
+    #[error("content error: {0}")]
+    Content(#[from] ContentError),
 }
 
 /// Application state shared across all handlers.
@@ -35,6 +39,7 @@ struct AppStateInner {
     storefront: StorefrontClient,
     customer: CustomerClient,
     webauthn: Webauthn,
+    content: ContentStore,
 }
 
 impl AppState {
@@ -44,14 +49,20 @@ impl AppState {
     ///
     /// * `config` - Storefront configuration
     /// * `pool` - `PostgreSQL` connection pool
+    /// * `content_dir` - Path to content directory for markdown files
     ///
     /// # Errors
     ///
-    /// Returns an error if the `WebAuthn` configuration is invalid.
-    pub fn new(config: StorefrontConfig, pool: PgPool) -> Result<Self, WebauthnConfigError> {
+    /// Returns an error if the `WebAuthn` configuration is invalid or content fails to load.
+    pub fn new(
+        config: StorefrontConfig,
+        pool: PgPool,
+        content_dir: &Path,
+    ) -> Result<Self, AppStateError> {
         let storefront = StorefrontClient::new(&config.shopify);
         let customer = CustomerClient::new(&config.shopify);
         let webauthn = create_webauthn(&config)?;
+        let content = ContentStore::load(content_dir)?;
 
         Ok(Self {
             inner: Arc::new(AppStateInner {
@@ -60,6 +71,7 @@ impl AppState {
                 storefront,
                 customer,
                 webauthn,
+                content,
             }),
         })
     }
@@ -93,17 +105,20 @@ impl AppState {
     pub fn webauthn(&self) -> &Webauthn {
         &self.inner.webauthn
     }
+
+    /// Get a reference to the content store.
+    #[must_use]
+    pub fn content(&self) -> &ContentStore {
+        &self.inner.content
+    }
 }
 
 /// Create a `WebAuthn` instance from configuration.
-fn create_webauthn(config: &StorefrontConfig) -> Result<Webauthn, WebauthnConfigError> {
+fn create_webauthn(config: &StorefrontConfig) -> Result<Webauthn, AppStateError> {
     // Parse the base URL to get the origin and RP ID
     let url = Url::parse(&config.base_url)?;
 
-    let rp_id = url
-        .host_str()
-        .ok_or(WebauthnConfigError::MissingHost)?
-        .to_owned();
+    let rp_id = url.host_str().ok_or(AppStateError::MissingHost)?.to_owned();
 
     let builder = WebauthnBuilder::new(&rp_id, &url)?
         .rp_name("Naked Pineapple")

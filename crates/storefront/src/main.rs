@@ -26,12 +26,15 @@
 #![allow(dead_code)]
 #![allow(unused_imports)]
 
+use std::path::Path;
+
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::{Router, routing::get};
 use tower_http::services::ServeDir;
 
 mod config;
+mod content;
 mod db;
 mod error;
 mod filters;
@@ -74,8 +77,10 @@ async fn main() {
     // let customer_client = shopify::CustomerClient::new(&config.shopify);
 
     // Build application state
-    let state =
-        AppState::new(config.clone(), pool).expect("Failed to initialize application state");
+    // Content is loaded from the storefront crate's `content/` directory
+    let content_dir = Path::new("crates/storefront/content");
+    let state = AppState::new(config.clone(), pool, content_dir)
+        .expect("Failed to initialize application state");
 
     // Create session layer
     let session_layer = middleware::create_session_layer(state.pool(), state.config());
