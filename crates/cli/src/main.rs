@@ -11,14 +11,16 @@
 //!
 //! # Run all database migrations
 //! np-cli migrate all
+//!
+//! # Create admin user
+//! np-cli admin create -e admin@example.com -n "Admin Name" -r super_admin
 //! ```
 //!
-//! # Future Commands
+//! # Commands
 //!
 //! - `migrate` - Run database migrations
-//! - `seed` - Seed database with test data
-//! - `user create` - Create admin users
-//! - `cache clear` - Clear API caches
+//! - `admin create` - Create admin users
+//! - `seed` - Seed database with test data (TODO)
 
 #![cfg_attr(not(test), forbid(unsafe_code))]
 
@@ -41,17 +43,11 @@ enum Commands {
         #[command(subcommand)]
         target: MigrateTarget,
     },
-    // TODO: Add more commands
-    // /// Seed database with test data
-    // Seed {
-    //     #[command(subcommand)]
-    //     target: SeedTarget,
-    // },
-    // /// Manage admin users
-    // User {
-    //     #[command(subcommand)]
-    //     action: UserAction,
-    // },
+    /// Manage admin users
+    Admin {
+        #[command(subcommand)]
+        action: AdminAction,
+    },
 }
 
 #[derive(Subcommand)]
@@ -64,6 +60,24 @@ enum MigrateTarget {
     All,
 }
 
+#[derive(Subcommand)]
+enum AdminAction {
+    /// Create a new admin user
+    Create {
+        /// Admin email address
+        #[arg(short, long)]
+        email: String,
+
+        /// Admin display name
+        #[arg(short, long)]
+        name: String,
+
+        /// Admin role (`super_admin`, `admin`, `viewer`)
+        #[arg(short, long, default_value = "admin")]
+        role: String,
+    },
+}
+
 #[tokio::main]
 async fn main() {
     // Initialize tracing
@@ -71,22 +85,29 @@ async fn main() {
 
     let cli = Cli::parse();
 
-    let result = match cli.command {
-        Commands::Migrate { target } => match target {
-            MigrateTarget::Storefront => commands::migrate::storefront().await,
-            MigrateTarget::Admin => commands::migrate::admin().await,
-            MigrateTarget::All => {
-                if let Err(e) = commands::migrate::storefront().await {
-                    Err(e)
-                } else {
-                    commands::migrate::admin().await
-                }
-            }
-        },
-    };
+    let result: Result<(), Box<dyn std::error::Error>> = run(cli).await;
 
     if let Err(e) = result {
-        tracing::error!("Migration failed: {e}");
+        tracing::error!("Command failed: {e}");
         std::process::exit(1);
     }
+}
+
+async fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
+    match cli.command {
+        Commands::Migrate { target } => match target {
+            MigrateTarget::Storefront => commands::migrate::storefront().await?,
+            MigrateTarget::Admin => commands::migrate::admin().await?,
+            MigrateTarget::All => {
+                commands::migrate::storefront().await?;
+                commands::migrate::admin().await?;
+            }
+        },
+        Commands::Admin { action } => match action {
+            AdminAction::Create { email, name, role } => {
+                commands::admin::create_user(&email, &name, &role).await?;
+            }
+        },
+    }
+    Ok(())
 }

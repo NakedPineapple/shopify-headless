@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE admin.admin_credential\n            SET public_key = $1\n            WHERE credential_id = $2\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Bytea",
+        "Bytea"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6d1be5abc7f159b4ba337f20ec4f53d09f6db23d15f5f51cb2489ffb66e6c0b9"
+}

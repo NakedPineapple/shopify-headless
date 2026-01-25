@@ -277,6 +277,7 @@ tasks:
     cmds:
       - task: sqlx:prepare:storefront
       - task: sqlx:prepare:admin
+      - task: sqlx:prepare:cli
 
   sqlx:prepare:storefront:
     desc: "Generate sqlx offline cache for storefront"
@@ -289,6 +290,14 @@ tasks:
   sqlx:prepare:admin:
     desc: "Generate sqlx offline cache for admin"
     dir: crates/admin
+    cmds:
+      - cargo sqlx prepare
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/np_admin
+
+  sqlx:prepare:cli:
+    desc: "Generate sqlx offline cache for CLI"
+    dir: crates/cli
     cmds:
       - cargo sqlx prepare
     env:

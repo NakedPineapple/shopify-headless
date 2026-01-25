@@ -110,6 +110,7 @@ define_id!(OrderId);
 define_id!(CartId);
 define_id!(AddressId);
 define_id!(AdminUserId);
+define_id!(AdminCredentialId);
 define_id!(ChatSessionId);
 define_id!(ChatMessageId);
 

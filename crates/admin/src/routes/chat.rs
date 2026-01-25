@@ -1,6 +1,7 @@
 //! Chat route handlers for Claude AI integration.
 //!
 //! Provides HTTP endpoints for chat sessions and messages.
+//! All routes require admin authentication.
 
 use askama::Template;
 use axum::response::sse::{Event, KeepAlive};
@@ -15,9 +16,10 @@ use futures::stream;
 use serde::{Deserialize, Serialize};
 use std::convert::Infallible;
 
-use naked_pineapple_core::{AdminUserId, ChatSessionId};
+use naked_pineapple_core::ChatSessionId;
 
 use crate::claude::ClaudeClient;
+use crate::middleware::RequireAdminAuth;
 use crate::models::chat::{ChatMessage, ChatSession};
 use crate::services::{ChatError, ChatService};
 use crate::state::AppState;
@@ -142,7 +144,7 @@ impl IntoResponse for ChatError {
 /// Render the chat interface page.
 ///
 /// GET /chat
-async fn chat_page() -> impl IntoResponse {
+async fn chat_page(RequireAdminAuth(_admin): RequireAdminAuth) -> impl IntoResponse {
     Html(
         ChatPageTemplate
             .render()
@@ -155,14 +157,12 @@ async fn chat_page() -> impl IntoResponse {
 /// GET /chat/sessions
 async fn list_sessions(
     State(state): State<AppState>,
+    RequireAdminAuth(admin): RequireAdminAuth,
 ) -> Result<Json<Vec<SessionResponse>>, ChatError> {
-    // TODO: Get admin user from session auth
-    let admin_user_id = AdminUserId::new(1);
-
     let claude = ClaudeClient::new(state.config().claude());
     let service = ChatService::new(state.pool(), &claude, state.shopify());
 
-    let sessions = service.list_sessions(admin_user_id).await?;
+    let sessions = service.list_sessions(admin.id).await?;
 
     Ok(Json(sessions.into_iter().map(Into::into).collect()))
 }
@@ -172,14 +172,12 @@ async fn list_sessions(
 /// POST /chat/sessions
 async fn create_session(
     State(state): State<AppState>,
+    RequireAdminAuth(admin): RequireAdminAuth,
 ) -> Result<(StatusCode, Json<SessionResponse>), ChatError> {
-    // TODO: Get admin user from session auth
-    let admin_user_id = AdminUserId::new(1);
-
     let claude = ClaudeClient::new(state.config().claude());
     let service = ChatService::new(state.pool(), &claude, state.shopify());
 
-    let session = service.create_session(admin_user_id).await?;
+    let session = service.create_session(admin.id).await?;
 
     Ok((StatusCode::CREATED, Json(session.into())))
 }
@@ -189,6 +187,7 @@ async fn create_session(
 /// GET /chat/sessions/:id
 async fn get_session(
     State(state): State<AppState>,
+    RequireAdminAuth(_admin): RequireAdminAuth,
     Path(id): Path<i32>,
 ) -> Result<Json<SessionWithMessagesResponse>, ChatError> {
     let session_id = ChatSessionId::new(id);
@@ -216,6 +215,7 @@ async fn get_session(
 /// Returns all new messages (user message + assistant response + any tool use).
 async fn send_message(
     State(state): State<AppState>,
+    RequireAdminAuth(_admin): RequireAdminAuth,
     Path(id): Path<i32>,
     Json(request): Json<SendMessageRequest>,
 ) -> Result<Json<SendMessageResponse>, ChatError> {
@@ -264,6 +264,7 @@ enum StreamEventData {
 /// Streams events as the assistant responds, including tool use.
 async fn send_message_stream(
     State(state): State<AppState>,
+    RequireAdminAuth(_admin): RequireAdminAuth,
     Path(id): Path<i32>,
     Json(request): Json<SendMessageRequest>,
 ) -> Response {

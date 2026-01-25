@@ -19,7 +19,7 @@ path = "src/main.rs"
 workspace = true
 
 [dependencies]
-naked-pineapple-core = { workspace = true }
+naked-pineapple-core = { workspace = true, features = ["postgres"] }
 
 # CLI
 clap = { version = "4", features = ["derive"] }

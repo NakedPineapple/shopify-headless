@@ -32,6 +32,7 @@
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::{Router, routing::get};
+use tower_http::services::ServeDir;
 
 mod claude;
 mod config;
@@ -45,6 +46,7 @@ mod shopify;
 mod state;
 
 use config::AdminConfig;
+use middleware::create_session_layer;
 use state::AppState;
 
 #[tokio::main]
@@ -71,20 +73,19 @@ async fn main() {
     // NOTE: Migrations are NOT run automatically on startup.
     // Run them explicitly via: cargo run -p naked-pineapple-cli -- migrate admin
 
-    // TODO: Initialize clients
-    // let shopify_client = shopify::AdminClient::new(&config.shopify);
-    // let claude_client = claude::ClaudeClient::new(&config.claude);
+    // Create session layer (PostgreSQL-backed with SameSite=Strict)
+    let session_layer = create_session_layer(&pool, &config);
 
-    // Build application state
-    let state = AppState::new(config.clone(), pool);
+    // Build application state (includes WebAuthn)
+    let state = AppState::new(config.clone(), pool).expect("Failed to create application state");
 
     // Build router
     let app = Router::new()
         .route("/health", get(health))
         .route("/health/ready", get(readiness))
         .merge(routes::routes())
-        // TODO: Add middleware stack
-        // .layer(middleware::stack())
+        .nest_service("/static", ServeDir::new("crates/admin/static"))
+        .layer(session_layer)
         .with_state(state);
 
     // Start server

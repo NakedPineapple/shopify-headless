@@ -19,6 +19,7 @@
 //! cargo run -p naked-pineapple-cli -- migrate admin
 //! ```
 
+pub mod admin_users;
 pub mod chat;
 
 use std::time::Duration;
@@ -28,6 +29,7 @@ use sqlx::PgPool;
 use sqlx::postgres::PgPoolOptions;
 use thiserror::Error;
 
+pub use admin_users::AdminUserRepository;
 pub use chat::ChatRepository;
 
 /// Errors that can occur during repository operations.
