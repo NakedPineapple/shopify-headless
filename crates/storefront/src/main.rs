@@ -29,6 +29,7 @@
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::{Router, routing::get};
+use tower_http::services::ServeDir;
 
 mod config;
 mod db;
@@ -76,14 +77,16 @@ async fn main() {
     let state =
         AppState::new(config.clone(), pool).expect("Failed to initialize application state");
 
+    // Create session layer
+    let session_layer = middleware::create_session_layer(state.pool(), state.config());
+
     // Build router
     let app = Router::new()
         .route("/health", get(health))
         .route("/health/ready", get(readiness))
-        // TODO: Add routes
-        // .merge(routes::routes())
-        // TODO: Add middleware stack
-        // .layer(middleware::stack())
+        .merge(routes::routes())
+        .nest_service("/static", ServeDir::new("crates/storefront/static"))
+        .layer(session_layer)
         .with_state(state);
 
     // Start server

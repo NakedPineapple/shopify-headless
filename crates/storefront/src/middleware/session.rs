@@ -27,8 +27,13 @@ pub fn create_session_layer(
     config: &StorefrontConfig,
 ) -> SessionManagerLayer<PostgresStore> {
     // Create the PostgreSQL session store
-    // Note: The sessions table must be created via migration
-    let store = PostgresStore::new(pool.clone());
+    // Note: The sessions table must be created via migration in the storefront schema.
+    // We use just "sessions" here since the connection's search_path includes storefront.
+    let store = PostgresStore::new(pool.clone())
+        .with_schema_name("storefront")
+        .expect("valid schema name")
+        .with_table_name("sessions")
+        .expect("valid table name");
 
     // Determine if we're in production (HTTPS)
     let is_secure = config.base_url.starts_with("https://");
