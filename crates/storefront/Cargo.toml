@@ -76,3 +76,6 @@ moka = { workspace = true }
 # Rate limiting
 governor = "0.10"
 tower_governor = "0.8"
+
+# Security
+secrecy = { workspace = true }

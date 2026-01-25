@@ -91,3 +91,6 @@ rand = "0.9"
 
 # Caching
 moka = { version = "0.12", features = ["future"] }
+
+# Security
+secrecy = "0.10"

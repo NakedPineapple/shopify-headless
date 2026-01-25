@@ -2,79 +2,505 @@
 //!
 //! # Environment Variables
 //!
-//! ```env
-//! ADMIN_DATABASE_URL=postgres://user:pass@localhost/np_admin
-//! ADMIN_HOST=127.0.0.1
-//! ADMIN_PORT=3001
-//! ADMIN_BASE_URL=http://localhost:3001
-//! ADMIN_SESSION_SECRET=your-secure-admin-session-secret
+//! ## Required
+//! - `ADMIN_DATABASE_URL` - PostgreSQL connection string
+//! - `ADMIN_BASE_URL` - Public URL for the admin panel
+//! - `ADMIN_SESSION_SECRET` - Session signing secret (min 32 chars, high entropy)
+//! - `SHOPIFY_STORE` - Shopify store domain (e.g., your-store.myshopify.com)
+//! - `SHOPIFY_ADMIN_ACCESS_TOKEN` - Shopify Admin API access token (HIGH PRIVILEGE)
+//! - `CLAUDE_API_KEY` - Anthropic Claude API key
+//! - `SMTP_HOST` - SMTP server hostname
+//! - `SMTP_USERNAME` - SMTP authentication username
+//! - `SMTP_PASSWORD` - SMTP authentication password
+//! - `SMTP_FROM` - Email sender address
 //!
-//! # Shopify Admin API (HIGH PRIVILEGE)
-//! SHOPIFY_STORE=your-store.myshopify.com
-//! SHOPIFY_API_VERSION=2026-01
-//! SHOPIFY_ADMIN_ACCESS_TOKEN=...
-//!
-//! # Claude API
-//! CLAUDE_API_KEY=...
-//!
-//! # Sentry
-//! SENTRY_DSN=https://key@sentry.io/project
-//!
-//! # Email (for notifications)
-//! SMTP_HOST=smtp.example.com
-//! SMTP_PORT=587
-//! SMTP_USERNAME=...
-//! SMTP_PASSWORD=...
-//! SMTP_FROM=admin@nakedpineapple.com
-//! ```
-//!
-//! # Future Implementation
-//!
-//! ```rust,ignore
-//! use std::net::IpAddr;
-//!
-//! #[derive(Debug, Clone)]
-//! pub struct AdminConfig {
-//!     pub database_url: String,
-//!     pub host: IpAddr,
-//!     pub port: u16,
-//!     pub base_url: String,
-//!     pub session_secret: String,
-//!     pub shopify: ShopifyAdminConfig,
-//!     pub claude: ClaudeConfig,
-//!     pub email: EmailConfig,
-//!     pub sentry_dsn: Option<String>,
-//! }
-//!
-//! #[derive(Debug, Clone)]
-//! pub struct ShopifyAdminConfig {
-//!     pub store: String,
-//!     pub api_version: String,
-//!     pub access_token: String,  // HIGH PRIVILEGE TOKEN
-//! }
-//!
-//! #[derive(Debug, Clone)]
-//! pub struct ClaudeConfig {
-//!     pub api_key: String,
-//!     pub model: String,  // e.g., "claude-sonnet-4-20250514"
-//! }
-//!
-//! #[derive(Debug, Clone)]
-//! pub struct EmailConfig {
-//!     pub smtp_host: String,
-//!     pub smtp_port: u16,
-//!     pub smtp_username: String,
-//!     pub smtp_password: String,
-//!     pub from_address: String,
-//! }
-//!
-//! impl AdminConfig {
-//!     pub fn from_env() -> Result<Self, ConfigError> {
-//!         dotenvy::dotenv().ok();
-//!         // Load and validate all environment variables
-//!         // ...
-//!     }
-//! }
-//! ```
+//! ## Optional
+//! - `ADMIN_HOST` - Bind address (default: 127.0.0.1)
+//! - `ADMIN_PORT` - Listen port (default: 3001)
+//! - `SHOPIFY_API_VERSION` - API version (default: 2026-01)
+//! - `CLAUDE_MODEL` - Claude model ID (default: claude-sonnet-4-20250514)
+//! - `SMTP_PORT` - SMTP port (default: 587)
+//! - `SENTRY_DSN` - Sentry error tracking DSN
 
-// TODO: Implement AdminConfig
+use std::collections::HashMap;
+use std::net::{IpAddr, SocketAddr};
+
+use secrecy::{ExposeSecret, SecretString};
+use thiserror::Error;
+
+const MIN_SESSION_SECRET_LENGTH: usize = 32;
+const MIN_ENTROPY_BITS_PER_CHAR: f64 = 3.5;
+const DEFAULT_CLAUDE_MODEL: &str = "claude-sonnet-4-20250514";
+
+/// Blocklist of common placeholder patterns (case-insensitive)
+const PLACEHOLDER_PATTERNS: &[&str] = &[
+    "your-",
+    "changeme",
+    "replace",
+    "placeholder",
+    "example",
+    "secret",
+    "password",
+    "xxx",
+    "todo",
+    "fixme",
+    "insert",
+    "enter-",
+    "put-your",
+    "add-your",
+];
+
+/// Configuration errors that can occur during loading.
+#[derive(Debug, Error)]
+pub enum ConfigError {
+    #[error("Missing environment variable: {0}")]
+    MissingEnvVar(String),
+    #[error("Invalid environment variable {0}: {1}")]
+    InvalidEnvVar(String, String),
+    #[error("Insecure secret in {0}: {1}")]
+    InsecureSecret(String, String),
+}
+
+/// Admin application configuration.
+#[derive(Debug, Clone)]
+pub struct AdminConfig {
+    /// PostgreSQL database connection URL (contains password)
+    pub database_url: SecretString,
+    /// IP address to bind the server to
+    pub host: IpAddr,
+    /// Port to listen on
+    pub port: u16,
+    /// Public base URL for the admin panel
+    pub base_url: String,
+    /// Session signing secret
+    pub session_secret: SecretString,
+    /// Shopify Admin API configuration
+    pub shopify: ShopifyAdminConfig,
+    /// Claude AI configuration
+    pub claude: ClaudeConfig,
+    /// Email configuration
+    pub email: EmailConfig,
+    /// Sentry DSN for error tracking
+    pub sentry_dsn: Option<String>,
+}
+
+/// Shopify Admin API configuration.
+///
+/// Implements `Debug` manually to redact the HIGH PRIVILEGE access token.
+#[derive(Clone)]
+pub struct ShopifyAdminConfig {
+    /// Shopify store domain (e.g., your-store.myshopify.com)
+    pub store: String,
+    /// Shopify API version (e.g., 2026-01)
+    pub api_version: String,
+    /// Admin API access token (HIGH PRIVILEGE - full store access)
+    pub access_token: SecretString,
+}
+
+impl std::fmt::Debug for ShopifyAdminConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ShopifyAdminConfig")
+            .field("store", &self.store)
+            .field("api_version", &self.api_version)
+            .field("access_token", &"[REDACTED]")
+            .finish()
+    }
+}
+
+/// Claude AI API configuration.
+///
+/// Implements `Debug` manually to redact the API key.
+#[derive(Clone)]
+pub struct ClaudeConfig {
+    /// Anthropic API key
+    pub api_key: SecretString,
+    /// Model ID (e.g., claude-sonnet-4-20250514)
+    pub model: String,
+}
+
+impl std::fmt::Debug for ClaudeConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ClaudeConfig")
+            .field("api_key", &"[REDACTED]")
+            .field("model", &self.model)
+            .finish()
+    }
+}
+
+/// Email (SMTP) configuration.
+///
+/// Implements `Debug` manually to redact the password.
+#[derive(Clone)]
+pub struct EmailConfig {
+    /// SMTP server hostname
+    pub smtp_host: String,
+    /// SMTP server port
+    pub smtp_port: u16,
+    /// SMTP authentication username
+    pub smtp_username: String,
+    /// SMTP authentication password
+    pub smtp_password: SecretString,
+    /// Email sender address (From header)
+    pub from_address: String,
+}
+
+impl std::fmt::Debug for EmailConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("EmailConfig")
+            .field("smtp_host", &self.smtp_host)
+            .field("smtp_port", &self.smtp_port)
+            .field("smtp_username", &self.smtp_username)
+            .field("smtp_password", &"[REDACTED]")
+            .field("from_address", &self.from_address)
+            .finish()
+    }
+}
+
+impl AdminConfig {
+    /// Load configuration from environment variables.
+    ///
+    /// Calls `dotenvy::dotenv()` to load from `.env` file if present.
+    ///
+    /// # Errors
+    ///
+    /// Returns `ConfigError` if required variables are missing, invalid, or
+    /// if secrets fail validation (placeholder detection, entropy check).
+    pub fn from_env() -> Result<Self, ConfigError> {
+        // Load .env file if present (ignore errors if not found)
+        let _ = dotenvy::dotenv();
+
+        let database_url = get_required_secret("ADMIN_DATABASE_URL")?;
+        let host = get_env_or_default("ADMIN_HOST", "127.0.0.1")
+            .parse::<IpAddr>()
+            .map_err(|e| ConfigError::InvalidEnvVar("ADMIN_HOST".to_string(), e.to_string()))?;
+        let port = get_env_or_default("ADMIN_PORT", "3001")
+            .parse::<u16>()
+            .map_err(|e| ConfigError::InvalidEnvVar("ADMIN_PORT".to_string(), e.to_string()))?;
+        let base_url = get_required_env("ADMIN_BASE_URL")?;
+        let session_secret = get_validated_secret("ADMIN_SESSION_SECRET")?;
+        validate_session_secret(&session_secret, "ADMIN_SESSION_SECRET")?;
+
+        let shopify = ShopifyAdminConfig::from_env()?;
+        let claude = ClaudeConfig::from_env()?;
+        let email = EmailConfig::from_env()?;
+        let sentry_dsn = get_optional_env("SENTRY_DSN");
+
+        Ok(Self {
+            database_url,
+            host,
+            port,
+            base_url,
+            session_secret,
+            shopify,
+            claude,
+            email,
+            sentry_dsn,
+        })
+    }
+
+    /// Returns the socket address for binding the server.
+    #[must_use]
+    pub fn socket_addr(&self) -> SocketAddr {
+        SocketAddr::new(self.host, self.port)
+    }
+}
+
+impl ShopifyAdminConfig {
+    fn from_env() -> Result<Self, ConfigError> {
+        Ok(Self {
+            store: get_required_env("SHOPIFY_STORE")?,
+            api_version: get_env_or_default("SHOPIFY_API_VERSION", "2026-01"),
+            access_token: get_validated_secret("SHOPIFY_ADMIN_ACCESS_TOKEN")?,
+        })
+    }
+}
+
+impl ClaudeConfig {
+    fn from_env() -> Result<Self, ConfigError> {
+        Ok(Self {
+            api_key: get_validated_secret("CLAUDE_API_KEY")?,
+            model: get_env_or_default("CLAUDE_MODEL", DEFAULT_CLAUDE_MODEL),
+        })
+    }
+}
+
+impl EmailConfig {
+    fn from_env() -> Result<Self, ConfigError> {
+        let smtp_port = get_env_or_default("SMTP_PORT", "587")
+            .parse::<u16>()
+            .map_err(|e| ConfigError::InvalidEnvVar("SMTP_PORT".to_string(), e.to_string()))?;
+
+        Ok(Self {
+            smtp_host: get_required_env("SMTP_HOST")?,
+            smtp_port,
+            smtp_username: get_required_env("SMTP_USERNAME")?,
+            smtp_password: get_validated_secret("SMTP_PASSWORD")?,
+            from_address: get_required_env("SMTP_FROM")?,
+        })
+    }
+}
+
+// =============================================================================
+// Helper Functions
+// =============================================================================
+
+/// Get a required environment variable.
+fn get_required_env(key: &str) -> Result<String, ConfigError> {
+    std::env::var(key).map_err(|_| ConfigError::MissingEnvVar(key.to_string()))
+}
+
+/// Get a required environment variable as a secret.
+fn get_required_secret(key: &str) -> Result<SecretString, ConfigError> {
+    let value = get_required_env(key)?;
+    Ok(SecretString::from(value))
+}
+
+/// Get an optional environment variable.
+fn get_optional_env(key: &str) -> Option<String> {
+    std::env::var(key).ok()
+}
+
+/// Get an environment variable with a default value.
+fn get_env_or_default(key: &str, default: &str) -> String {
+    std::env::var(key).unwrap_or_else(|_| default.to_string())
+}
+
+/// Validate that a session secret meets minimum length requirements.
+fn validate_session_secret(secret: &SecretString, var_name: &str) -> Result<(), ConfigError> {
+    let value = secret.expose_secret();
+    if value.len() < MIN_SESSION_SECRET_LENGTH {
+        return Err(ConfigError::InsecureSecret(
+            var_name.to_string(),
+            format!(
+                "must be at least {} characters (got {})",
+                MIN_SESSION_SECRET_LENGTH,
+                value.len()
+            ),
+        ));
+    }
+    Ok(())
+}
+
+/// Calculate Shannon entropy in bits per character.
+fn shannon_entropy(s: &str) -> f64 {
+    if s.is_empty() {
+        return 0.0;
+    }
+
+    let mut freq: HashMap<char, usize> = HashMap::new();
+    for c in s.chars() {
+        *freq.entry(c).or_insert(0) += 1;
+    }
+
+    let len = s.len() as f64;
+    freq.values()
+        .map(|&count| {
+            let p = count as f64 / len;
+            -p * p.log2()
+        })
+        .sum()
+}
+
+/// Validate that a secret is not a placeholder and has sufficient entropy.
+fn validate_secret_strength(secret: &str, var_name: &str) -> Result<(), ConfigError> {
+    let lower = secret.to_lowercase();
+
+    // Check blocklist
+    for pattern in PLACEHOLDER_PATTERNS {
+        if lower.contains(pattern) {
+            return Err(ConfigError::InsecureSecret(
+                var_name.to_string(),
+                format!("appears to be a placeholder (contains '{pattern}')"),
+            ));
+        }
+    }
+
+    // Check entropy (real secrets like API keys have high entropy)
+    let entropy = shannon_entropy(secret);
+    if entropy < MIN_ENTROPY_BITS_PER_CHAR {
+        return Err(ConfigError::InsecureSecret(
+            var_name.to_string(),
+            format!(
+                "entropy too low ({entropy:.2} bits/char, need >= {MIN_ENTROPY_BITS_PER_CHAR:.1}). Use a randomly generated secret."
+            ),
+        ));
+    }
+
+    Ok(())
+}
+
+/// Load and validate a secret from environment.
+fn get_validated_secret(key: &str) -> Result<SecretString, ConfigError> {
+    let value = get_required_env(key)?;
+    validate_secret_strength(&value, key)?;
+    Ok(SecretString::from(value))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_shannon_entropy_empty() {
+        assert!((shannon_entropy("") - 0.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn test_shannon_entropy_single_char() {
+        // All same character = 0 entropy
+        assert!((shannon_entropy("aaaaaaa") - 0.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn test_shannon_entropy_two_chars() {
+        // "ab" has entropy of 1 bit per char (50% a, 50% b)
+        let entropy = shannon_entropy("ab");
+        assert!((entropy - 1.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_shannon_entropy_high() {
+        // Random-looking string should have high entropy
+        let entropy = shannon_entropy("aB3$xY9!mK2@nL5#");
+        assert!(entropy > 3.5);
+    }
+
+    #[test]
+    fn test_validate_secret_strength_placeholder() {
+        let result = validate_secret_strength("your-api-key-here", "TEST_VAR");
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, ConfigError::InsecureSecret(_, _)));
+    }
+
+    #[test]
+    fn test_validate_secret_strength_changeme() {
+        let result = validate_secret_strength("changeme123", "TEST_VAR");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_validate_secret_strength_low_entropy() {
+        let result = validate_secret_strength("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "TEST_VAR");
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, ConfigError::InsecureSecret(_, _)));
+    }
+
+    #[test]
+    fn test_validate_secret_strength_valid() {
+        // High-entropy random string
+        let result = validate_secret_strength("aB3$xY9!mK2@nL5#pQ7&rT0*uW4^zC6", "TEST_VAR");
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_validate_session_secret_too_short() {
+        let secret = SecretString::from("short");
+        let result = validate_session_secret(&secret, "TEST_SESSION");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_validate_session_secret_valid_length() {
+        let secret = SecretString::from("a".repeat(32));
+        let result = validate_session_secret(&secret, "TEST_SESSION");
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_socket_addr() {
+        let config = AdminConfig {
+            database_url: SecretString::from("postgres://localhost/test"),
+            host: "127.0.0.1".parse().unwrap(),
+            port: 3001,
+            base_url: "http://localhost:3001".to_string(),
+            session_secret: SecretString::from("x".repeat(32)),
+            shopify: ShopifyAdminConfig {
+                store: "test.myshopify.com".to_string(),
+                api_version: "2026-01".to_string(),
+                access_token: SecretString::from("shpat_test"),
+            },
+            claude: ClaudeConfig {
+                api_key: SecretString::from("sk-ant-test"),
+                model: DEFAULT_CLAUDE_MODEL.to_string(),
+            },
+            email: EmailConfig {
+                smtp_host: "smtp.example.com".to_string(),
+                smtp_port: 587,
+                smtp_username: "user".to_string(),
+                smtp_password: SecretString::from("pass"),
+                from_address: "admin@example.com".to_string(),
+            },
+            sentry_dsn: None,
+        };
+
+        let addr = config.socket_addr();
+        assert_eq!(addr.ip().to_string(), "127.0.0.1");
+        assert_eq!(addr.port(), 3001);
+    }
+
+    #[test]
+    fn test_default_claude_model() {
+        assert_eq!(DEFAULT_CLAUDE_MODEL, "claude-sonnet-4-20250514");
+    }
+
+    #[test]
+    fn test_shopify_admin_config_debug_redacts_secrets() {
+        let config = ShopifyAdminConfig {
+            store: "test.myshopify.com".to_string(),
+            api_version: "2026-01".to_string(),
+            access_token: SecretString::from("shpat_super_secret_admin_token"),
+        };
+
+        let debug_output = format!("{config:?}");
+
+        // Public fields should be visible
+        assert!(debug_output.contains("test.myshopify.com"));
+        assert!(debug_output.contains("2026-01"));
+
+        // Secret fields should be redacted
+        assert!(debug_output.contains("[REDACTED]"));
+        assert!(!debug_output.contains("shpat_super_secret_admin_token"));
+    }
+
+    #[test]
+    fn test_claude_config_debug_redacts_secrets() {
+        let config = ClaudeConfig {
+            api_key: SecretString::from("sk-ant-super-secret-key"),
+            model: "claude-sonnet-4-20250514".to_string(),
+        };
+
+        let debug_output = format!("{config:?}");
+
+        // Public fields should be visible
+        assert!(debug_output.contains("claude-sonnet-4-20250514"));
+
+        // Secret fields should be redacted
+        assert!(debug_output.contains("[REDACTED]"));
+        assert!(!debug_output.contains("sk-ant-super-secret-key"));
+    }
+
+    #[test]
+    fn test_email_config_debug_redacts_secrets() {
+        let config = EmailConfig {
+            smtp_host: "smtp.example.com".to_string(),
+            smtp_port: 587,
+            smtp_username: "admin@example.com".to_string(),
+            smtp_password: SecretString::from("super_secret_smtp_password"),
+            from_address: "noreply@example.com".to_string(),
+        };
+
+        let debug_output = format!("{config:?}");
+
+        // Public fields should be visible
+        assert!(debug_output.contains("smtp.example.com"));
+        assert!(debug_output.contains("587"));
+        assert!(debug_output.contains("admin@example.com"));
+        assert!(debug_output.contains("noreply@example.com"));
+
+        // Secret fields should be redacted
+        assert!(debug_output.contains("[REDACTED]"));
+        assert!(!debug_output.contains("super_secret_smtp_password"));
+    }
+}
