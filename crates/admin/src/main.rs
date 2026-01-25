@@ -82,8 +82,7 @@ async fn main() {
     let app = Router::new()
         .route("/health", get(health))
         .route("/health/ready", get(readiness))
-        // TODO: Add routes
-        // .merge(routes::routes())
+        .merge(routes::routes())
         // TODO: Add middleware stack
         // .layer(middleware::stack())
         .with_state(state);

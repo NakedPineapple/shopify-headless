@@ -12,6 +12,82 @@ use naked_pineapple_core::{CredentialId, Email, UserId};
 use super::RepositoryError;
 use crate::models::user::{User, UserCredential};
 
+// =============================================================================
+// Internal Row Types
+// =============================================================================
+
+/// Internal row type for `PostgreSQL` user queries.
+#[derive(Debug, sqlx::FromRow)]
+struct UserRow {
+    id: i32,
+    email: String,
+    email_verified: bool,
+    created_at: DateTime<Utc>,
+    updated_at: DateTime<Utc>,
+}
+
+impl TryFrom<UserRow> for User {
+    type Error = RepositoryError;
+
+    fn try_from(row: UserRow) -> Result<Self, Self::Error> {
+        let email = Email::parse(&row.email).map_err(|e| {
+            RepositoryError::DataCorruption(format!("invalid email in database: {e}"))
+        })?;
+
+        Ok(Self {
+            id: UserId::new(row.id),
+            email,
+            email_verified: row.email_verified,
+            created_at: row.created_at,
+            updated_at: row.updated_at,
+        })
+    }
+}
+
+/// Internal row type for `PostgreSQL` user with password queries.
+#[derive(Debug, sqlx::FromRow)]
+struct UserWithPasswordRow {
+    id: i32,
+    email: String,
+    email_verified: bool,
+    created_at: DateTime<Utc>,
+    updated_at: DateTime<Utc>,
+    password_hash: Option<String>,
+}
+
+/// Internal row type for `PostgreSQL` user credential queries.
+#[derive(Debug, sqlx::FromRow)]
+struct UserCredentialRow {
+    id: i32,
+    user_id: i32,
+    credential_id: Vec<u8>,
+    public_key: Vec<u8>,
+    name: String,
+    created_at: DateTime<Utc>,
+}
+
+impl TryFrom<UserCredentialRow> for UserCredential {
+    type Error = RepositoryError;
+
+    fn try_from(row: UserCredentialRow) -> Result<Self, Self::Error> {
+        let passkey: Passkey = serde_json::from_slice(&row.public_key)
+            .map_err(|e| RepositoryError::DataCorruption(format!("invalid passkey data: {e}")))?;
+
+        Ok(Self {
+            id: CredentialId::new(row.id),
+            user_id: UserId::new(row.user_id),
+            webauthn_id: row.credential_id,
+            passkey,
+            name: row.name,
+            created_at: row.created_at,
+        })
+    }
+}
+
+// =============================================================================
+// Repository
+// =============================================================================
+
 /// Repository for user database operations.
 pub struct UserRepository<'a> {
     pool: &'a PgPool,
@@ -31,7 +107,8 @@ impl<'a> UserRepository<'a> {
     /// Returns `RepositoryError::Database` if the query fails.
     /// Returns `RepositoryError::DataCorruption` if the email in the database is invalid.
     pub async fn get_by_email(&self, email: &Email) -> Result<Option<User>, RepositoryError> {
-        let row = sqlx::query!(
+        let row = sqlx::query_as!(
+            UserRow,
             r#"
             SELECT id, email, email_verified,
                    created_at as "created_at: DateTime<Utc>",
@@ -44,22 +121,7 @@ impl<'a> UserRepository<'a> {
         .fetch_optional(self.pool)
         .await?;
 
-        match row {
-            Some(r) => {
-                let email = Email::parse(&r.email).map_err(|e| {
-                    RepositoryError::DataCorruption(format!("invalid email in database: {e}"))
-                })?;
-
-                Ok(Some(User {
-                    id: UserId::new(r.id),
-                    email,
-                    email_verified: r.email_verified,
-                    created_at: r.created_at,
-                    updated_at: r.updated_at,
-                }))
-            }
-            None => Ok(None),
-        }
+        row.map(TryInto::try_into).transpose()
     }
 
     /// Get a user by their ID.
@@ -69,7 +131,8 @@ impl<'a> UserRepository<'a> {
     /// Returns `RepositoryError::Database` if the query fails.
     /// Returns `RepositoryError::DataCorruption` if the email in the database is invalid.
     pub async fn get_by_id(&self, id: UserId) -> Result<Option<User>, RepositoryError> {
-        let row = sqlx::query!(
+        let row = sqlx::query_as!(
+            UserRow,
             r#"
             SELECT id, email, email_verified,
                    created_at as "created_at: DateTime<Utc>",
@@ -82,22 +145,7 @@ impl<'a> UserRepository<'a> {
         .fetch_optional(self.pool)
         .await?;
 
-        match row {
-            Some(r) => {
-                let email = Email::parse(&r.email).map_err(|e| {
-                    RepositoryError::DataCorruption(format!("invalid email in database: {e}"))
-                })?;
-
-                Ok(Some(User {
-                    id: UserId::new(r.id),
-                    email,
-                    email_verified: r.email_verified,
-                    created_at: r.created_at,
-                    updated_at: r.updated_at,
-                }))
-            }
-            None => Ok(None),
-        }
+        row.map(TryInto::try_into).transpose()
     }
 
     /// Create a new user with just an email (no password).
@@ -107,7 +155,8 @@ impl<'a> UserRepository<'a> {
     /// Returns `RepositoryError::Conflict` if the email already exists.
     /// Returns `RepositoryError::Database` for other database errors.
     pub async fn create(&self, email: &Email) -> Result<User, RepositoryError> {
-        let row = sqlx::query!(
+        let row = sqlx::query_as!(
+            UserRow,
             r#"
             INSERT INTO storefront.user (email)
             VALUES ($1)
@@ -128,17 +177,7 @@ impl<'a> UserRepository<'a> {
             RepositoryError::Database(e)
         })?;
 
-        let email = Email::parse(&row.email).map_err(|e| {
-            RepositoryError::DataCorruption(format!("invalid email in database: {e}"))
-        })?;
-
-        Ok(User {
-            id: UserId::new(row.id),
-            email,
-            email_verified: row.email_verified,
-            created_at: row.created_at,
-            updated_at: row.updated_at,
-        })
+        row.try_into()
     }
 
     /// Create a new user with email and password.
@@ -155,7 +194,8 @@ impl<'a> UserRepository<'a> {
         let mut tx = self.pool.begin().await?;
 
         // Create user
-        let row = sqlx::query!(
+        let row = sqlx::query_as!(
+            UserRow,
             r#"
             INSERT INTO storefront.user (email)
             VALUES ($1)
@@ -176,17 +216,7 @@ impl<'a> UserRepository<'a> {
             RepositoryError::Database(e)
         })?;
 
-        let parsed_email = Email::parse(&row.email).map_err(|e| {
-            RepositoryError::DataCorruption(format!("invalid email in database: {e}"))
-        })?;
-
-        let user = User {
-            id: UserId::new(row.id),
-            email: parsed_email,
-            email_verified: row.email_verified,
-            created_at: row.created_at,
-            updated_at: row.updated_at,
-        };
+        let user: User = row.try_into()?;
 
         // Create password entry
         sqlx::query!(
@@ -216,7 +246,8 @@ impl<'a> UserRepository<'a> {
         &self,
         email: &Email,
     ) -> Result<Option<(User, String)>, RepositoryError> {
-        let row = sqlx::query!(
+        let row = sqlx::query_as!(
+            UserWithPasswordRow,
             r#"
             SELECT u.id, u.email, u.email_verified,
                    u.created_at as "created_at: DateTime<Utc>",
@@ -263,7 +294,8 @@ impl<'a> UserRepository<'a> {
         &self,
         user_id: UserId,
     ) -> Result<Vec<UserCredential>, RepositoryError> {
-        let rows = sqlx::query!(
+        let rows = sqlx::query_as!(
+            UserCredentialRow,
             r#"
             SELECT id, user_id, credential_id, public_key, name,
                    created_at as "created_at: DateTime<Utc>"
@@ -276,23 +308,7 @@ impl<'a> UserRepository<'a> {
         .fetch_all(self.pool)
         .await?;
 
-        let mut credentials = Vec::with_capacity(rows.len());
-        for r in rows {
-            let passkey: Passkey = serde_json::from_slice(&r.public_key).map_err(|e| {
-                RepositoryError::DataCorruption(format!("invalid passkey data: {e}"))
-            })?;
-
-            credentials.push(UserCredential {
-                id: CredentialId::new(r.id),
-                user_id: UserId::new(r.user_id),
-                webauthn_id: r.credential_id,
-                passkey,
-                name: r.name,
-                created_at: r.created_at,
-            });
-        }
-
-        Ok(credentials)
+        rows.into_iter().map(TryInto::try_into).collect()
     }
 
     /// Create a new credential for a user.
@@ -311,7 +327,8 @@ impl<'a> UserRepository<'a> {
             RepositoryError::DataCorruption(format!("failed to serialize passkey: {e}"))
         })?;
 
-        let row = sqlx::query!(
+        let row = sqlx::query_as!(
+            UserCredentialRow,
             r#"
             INSERT INTO storefront.user_credential (user_id, credential_id, public_key, counter, name)
             VALUES ($1, $2, $3, $4, $5)
@@ -335,17 +352,7 @@ impl<'a> UserRepository<'a> {
             RepositoryError::Database(e)
         })?;
 
-        let passkey: Passkey = serde_json::from_slice(&row.public_key)
-            .map_err(|e| RepositoryError::DataCorruption(format!("invalid passkey data: {e}")))?;
-
-        Ok(UserCredential {
-            id: CredentialId::new(row.id),
-            user_id: UserId::new(row.user_id),
-            webauthn_id: row.credential_id,
-            passkey,
-            name: row.name,
-            created_at: row.created_at,
-        })
+        row.try_into()
     }
 
     /// Get a credential by its `WebAuthn` credential ID.
@@ -358,7 +365,8 @@ impl<'a> UserRepository<'a> {
         &self,
         credential_id: &[u8],
     ) -> Result<Option<UserCredential>, RepositoryError> {
-        let row = sqlx::query!(
+        let row = sqlx::query_as!(
+            UserCredentialRow,
             r#"
             SELECT id, user_id, credential_id, public_key, name,
                    created_at as "created_at: DateTime<Utc>"
@@ -370,23 +378,7 @@ impl<'a> UserRepository<'a> {
         .fetch_optional(self.pool)
         .await?;
 
-        match row {
-            Some(r) => {
-                let passkey: Passkey = serde_json::from_slice(&r.public_key).map_err(|e| {
-                    RepositoryError::DataCorruption(format!("invalid passkey data: {e}"))
-                })?;
-
-                Ok(Some(UserCredential {
-                    id: CredentialId::new(r.id),
-                    user_id: UserId::new(r.user_id),
-                    webauthn_id: r.credential_id,
-                    passkey,
-                    name: r.name,
-                    created_at: r.created_at,
-                }))
-            }
-            None => Ok(None),
-        }
+        row.map(TryInto::try_into).transpose()
     }
 
     /// Update the counter for a credential (after successful authentication).

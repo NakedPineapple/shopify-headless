@@ -1,0 +1,72 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO admin.chat_message (chat_session_id, role, content)\n            VALUES ($1, $2, $3)\n            RETURNING id, chat_session_id, role as \"role: ChatRole\",\n                      content, created_at as \"created_at: DateTime<Utc>\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "chat_session_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "role: ChatRole",
+        "type_info": {
+          "Custom": {
+            "name": "admin.chat_role",
+            "kind": {
+              "Enum": [
+                "user",
+                "assistant",
+                "tool_use",
+                "tool_result"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "content",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        {
+          "Custom": {
+            "name": "admin.chat_role",
+            "kind": {
+              "Enum": [
+                "user",
+                "assistant",
+                "tool_use",
+                "tool_result"
+              ]
+            }
+          }
+        },
+        "Jsonb"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "360050fb4eff482dd451c89b25ec784914b68cd8ee818883f23c829d2f0b1ade"
+}

@@ -31,14 +31,7 @@ use serde::{Deserialize, Serialize};
 macro_rules! define_id {
     ($name:ident) => {
         #[derive(
-            Debug,
-            Clone,
-            Copy,
-            PartialEq,
-            Eq,
-            Hash,
-            ::serde::Serialize,
-            ::serde::Deserialize
+            Debug, Clone, Copy, PartialEq, Eq, Hash, ::serde::Serialize, ::serde::Deserialize,
         )]
         #[serde(transparent)]
         pub struct $name(i32);

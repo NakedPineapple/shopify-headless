@@ -1,0 +1,347 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}AI Chat{% endblock %}
+
+{% block page_title %}AI Chat{% endblock %}
+
+{% block content %}
+<div class="flex h-[calc(100vh-8rem)]">
+    <!-- Session sidebar -->
+    <div class="w-64 bg-white border-r border-gray-200 flex flex-col">
+        <div class="p-4 border-b border-gray-200">
+            <button
+                id="new-session-btn"
+                class="w-full bg-coral-600 text-white py-2 px-4 rounded-md hover:bg-coral-700 transition-colors font-medium"
+            >
+                New Chat
+            </button>
+        </div>
+
+        <div id="sessions-list" class="flex-1 overflow-y-auto">
+            <!-- Sessions loaded via JS -->
+            <div class="p-4 text-gray-500 text-sm">Loading sessions...</div>
+        </div>
+    </div>
+
+    <!-- Chat area -->
+    <div class="flex-1 flex flex-col bg-gray-50">
+        <!-- Messages container -->
+        <div id="messages" class="flex-1 overflow-y-auto p-6 space-y-4">
+            <div id="empty-state" class="flex items-center justify-center h-full text-gray-400">
+                <div class="text-center">
+                    <svg class="mx-auto h-12 w-12 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                    <p class="text-lg font-medium">Start a conversation</p>
+                    <p class="text-sm mt-1">Ask questions about orders, products, customers, or inventory.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Input area -->
+        <div class="border-t border-gray-200 bg-white p-4">
+            <form id="message-form" class="flex gap-3">
+                <input
+                    type="text"
+                    id="message-input"
+                    name="message"
+                    placeholder="Ask about orders, products, customers..."
+                    class="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-coral-500 focus:border-transparent"
+                    autocomplete="off"
+                    disabled
+                >
+                <button
+                    type="submit"
+                    id="send-btn"
+                    class="bg-coral-600 text-white py-2 px-6 rounded-md hover:bg-coral-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled
+                >
+                    Send
+                </button>
+            </form>
+            <p id="status-message" class="text-sm text-gray-500 mt-2 hidden"></p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    // State
+    let currentSessionId = null;
+    let isLoading = false;
+
+    // DOM elements
+    const sessionsListEl = document.getElementById('sessions-list');
+    const messagesEl = document.getElementById('messages');
+    const emptyStateEl = document.getElementById('empty-state');
+    const messageForm = document.getElementById('message-form');
+    const messageInput = document.getElementById('message-input');
+    const sendBtn = document.getElementById('send-btn');
+    const newSessionBtn = document.getElementById('new-session-btn');
+    const statusMessageEl = document.getElementById('status-message');
+
+    // Load sessions on page load
+    loadSessions();
+
+    // Event listeners
+    newSessionBtn.addEventListener('click', createSession);
+    messageForm.addEventListener('submit', handleSubmit);
+
+    async function loadSessions() {
+        try {
+            const response = await fetch('/chat/sessions');
+            const sessions = await response.json();
+
+            if (sessions.length === 0) {
+                sessionsListEl.innerHTML = '<div class="p-4 text-gray-500 text-sm">No chat sessions yet</div>';
+            } else {
+                sessionsListEl.innerHTML = sessions.map(session => `
+                    <button
+                        class="session-item w-full text-left px-4 py-3 hover:bg-gray-100 border-b border-gray-100"
+                        data-session-id="${session.id}"
+                    >
+                        <div class="font-medium text-sm truncate">${escapeHtml(session.title || 'Untitled')}</div>
+                        <div class="text-xs text-gray-500">${formatDate(session.updated_at)}</div>
+                    </button>
+                `).join('');
+
+                // Add click handlers
+                sessionsListEl.querySelectorAll('.session-item').forEach(item => {
+                    item.addEventListener('click', () => selectSession(parseInt(item.dataset.sessionId)));
+                });
+            }
+        } catch (error) {
+            sessionsListEl.innerHTML = '<div class="p-4 text-red-500 text-sm">Failed to load sessions</div>';
+        }
+    }
+
+    async function createSession() {
+        try {
+            newSessionBtn.disabled = true;
+            newSessionBtn.textContent = 'Creating...';
+
+            const response = await fetch('/chat/sessions', { method: 'POST' });
+            const session = await response.json();
+
+            await loadSessions();
+            selectSession(session.id);
+        } catch (error) {
+            showStatus('Failed to create session', 'error');
+        } finally {
+            newSessionBtn.disabled = false;
+            newSessionBtn.textContent = 'New Chat';
+        }
+    }
+
+    async function selectSession(sessionId) {
+        currentSessionId = sessionId;
+
+        // Update UI
+        sessionsListEl.querySelectorAll('.session-item').forEach(item => {
+            item.classList.toggle('bg-gray-100', parseInt(item.dataset.sessionId) === sessionId);
+        });
+
+        messageInput.disabled = false;
+        sendBtn.disabled = false;
+        emptyStateEl.classList.add('hidden');
+
+        // Load messages
+        try {
+            const response = await fetch(`/chat/sessions/${sessionId}`);
+            const data = await response.json();
+
+            renderMessages(data.messages);
+        } catch (error) {
+            showStatus('Failed to load messages', 'error');
+        }
+    }
+
+    function renderMessages(messages) {
+        if (messages.length === 0) {
+            messagesEl.innerHTML = '';
+            emptyStateEl.classList.remove('hidden');
+            messagesEl.appendChild(emptyStateEl);
+            return;
+        }
+
+        emptyStateEl.classList.add('hidden');
+        messagesEl.innerHTML = messages.map(msg => renderMessage(msg)).join('');
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    function renderMessage(msg) {
+        const isUser = msg.role === 'user';
+        const isToolUse = msg.role === 'tooluse';
+        const isToolResult = msg.role === 'toolresult';
+
+        if (isToolUse) {
+            return `
+                <div class="flex justify-start">
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 max-w-2xl">
+                        <div class="text-xs text-blue-600 font-medium mb-1">Using tool: ${escapeHtml(msg.content.name || 'unknown')}</div>
+                        <pre class="text-xs text-blue-800 overflow-x-auto">${escapeHtml(JSON.stringify(msg.content.input, null, 2))}</pre>
+                    </div>
+                </div>
+            `;
+        }
+
+        if (isToolResult) {
+            const isError = msg.content.is_error;
+            return `
+                <div class="flex justify-start">
+                    <div class="${isError ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'} border rounded-lg px-4 py-2 max-w-2xl">
+                        <div class="text-xs ${isError ? 'text-red-600' : 'text-green-600'} font-medium mb-1">Tool result</div>
+                        <pre class="text-xs ${isError ? 'text-red-800' : 'text-green-800'} overflow-x-auto whitespace-pre-wrap">${escapeHtml(msg.content.content || '')}</pre>
+                    </div>
+                </div>
+            `;
+        }
+
+        const text = msg.content.text || '';
+        return `
+            <div class="flex ${isUser ? 'justify-end' : 'justify-start'}">
+                <div class="${isUser ? 'bg-coral-600 text-white' : 'bg-white border border-gray-200'} rounded-lg px-4 py-3 max-w-2xl">
+                    <div class="whitespace-pre-wrap">${escapeHtml(text)}</div>
+                </div>
+            </div>
+        `;
+    }
+
+    async function handleSubmit(event) {
+        event.preventDefault();
+
+        if (!currentSessionId || isLoading) return;
+
+        const message = messageInput.value.trim();
+        if (!message) return;
+
+        isLoading = true;
+        messageInput.value = '';
+        messageInput.disabled = true;
+        sendBtn.disabled = true;
+        showStatus('Sending message...', 'info');
+
+        // Add user message optimistically
+        appendMessage({ role: 'user', content: { text: message } });
+
+        try {
+            const response = await fetch(`/chat/sessions/${currentSessionId}/messages/stream`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message })
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to send message');
+            }
+
+            // Handle SSE stream
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+            let currentAssistantMessage = null;
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || '';
+
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        const data = line.slice(6);
+                        if (data === '[DONE]') continue;
+
+                        try {
+                            const event = JSON.parse(data);
+                            handleStreamEvent(event, currentAssistantMessage);
+
+                            if (event.type === 'assistant_start') {
+                                currentAssistantMessage = { role: 'assistant', content: { text: '' } };
+                                appendMessage(currentAssistantMessage);
+                            } else if (event.type === 'text_delta' && currentAssistantMessage) {
+                                currentAssistantMessage.content.text += event.text;
+                                updateLastMessage(currentAssistantMessage);
+                            } else if (event.type === 'tool_use') {
+                                appendMessage({ role: 'tooluse', content: event });
+                            } else if (event.type === 'tool_result') {
+                                appendMessage({ role: 'toolresult', content: event });
+                            }
+                        } catch (e) {
+                            console.error('Failed to parse SSE event:', e);
+                        }
+                    }
+                }
+            }
+
+            hideStatus();
+            await loadSessions(); // Refresh session list for updated titles
+        } catch (error) {
+            showStatus('Failed to send message: ' + error.message, 'error');
+        } finally {
+            isLoading = false;
+            messageInput.disabled = false;
+            sendBtn.disabled = false;
+            messageInput.focus();
+        }
+    }
+
+    function handleStreamEvent(event, currentMsg) {
+        // Event handling is done inline in handleSubmit
+    }
+
+    function appendMessage(msg) {
+        emptyStateEl.classList.add('hidden');
+        const html = renderMessage(msg);
+        messagesEl.insertAdjacentHTML('beforeend', html);
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    function updateLastMessage(msg) {
+        const lastMsgEl = messagesEl.lastElementChild;
+        if (lastMsgEl) {
+            const textEl = lastMsgEl.querySelector('.whitespace-pre-wrap');
+            if (textEl) {
+                textEl.textContent = msg.content.text;
+            }
+        }
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    function showStatus(message, type) {
+        statusMessageEl.textContent = message;
+        statusMessageEl.classList.remove('hidden', 'text-gray-500', 'text-red-500');
+        statusMessageEl.classList.add(type === 'error' ? 'text-red-500' : 'text-gray-500');
+    }
+
+    function hideStatus() {
+        statusMessageEl.classList.add('hidden');
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function formatDate(isoString) {
+        const date = new Date(isoString);
+        const now = new Date();
+        const diffMs = now - date;
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMs / 3600000);
+        const diffDays = Math.floor(diffMs / 86400000);
+
+        if (diffMins < 1) return 'Just now';
+        if (diffMins < 60) return `${diffMins}m ago`;
+        if (diffHours < 24) return `${diffHours}h ago`;
+        if (diffDays < 7) return `${diffDays}d ago`;
+        return date.toLocaleDateString();
+    }
+})();
+</script>
+{% endblock %}

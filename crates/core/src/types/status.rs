@@ -95,6 +95,11 @@ pub enum EmailVerificationStatus {
 
 /// Chat message role for Claude AI integration.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[cfg_attr(feature = "postgres", derive(sqlx::Type))]
+#[cfg_attr(
+    feature = "postgres",
+    sqlx(type_name = "admin.chat_role", rename_all = "snake_case")
+)]
 #[serde(rename_all = "snake_case")]
 pub enum ChatRole {
     User,

@@ -203,6 +203,12 @@ impl AdminConfig {
     pub const fn socket_addr(&self) -> SocketAddr {
         SocketAddr::new(self.host, self.port)
     }
+
+    /// Returns a reference to the Claude configuration.
+    #[must_use]
+    pub const fn claude(&self) -> &ClaudeConfig {
+        &self.claude
+    }
 }
 
 impl ShopifyAdminConfig {

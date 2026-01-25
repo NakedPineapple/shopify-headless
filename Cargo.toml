@@ -69,7 +69,7 @@ askama_web = { version = "0.15", features = ["axum-0.8"] }
 # NOTE: reqwest feature uses old reqwest 0.11-0.12; use graphql_client for codegen,
 # make HTTP requests with reqwest 0.13+ directly to avoid unmaintained deps
 graphql_client = "0.16"
-reqwest = { version = "0.13", features = ["json"] }
+reqwest = { version = "0.13", features = ["json", "stream"] }
 
 # Auth
 webauthn-rs = { version = "0.5", features = ["danger-allow-state-serialisation", "conditional-ui"] }

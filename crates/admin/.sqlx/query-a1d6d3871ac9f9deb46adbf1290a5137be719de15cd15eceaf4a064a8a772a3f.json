@@ -1,0 +1,58 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT id, chat_session_id, role as \"role: ChatRole\",\n                   content, created_at as \"created_at: DateTime<Utc>\"\n            FROM admin.chat_message\n            WHERE chat_session_id = $1\n            ORDER BY created_at ASC\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "chat_session_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "role: ChatRole",
+        "type_info": {
+          "Custom": {
+            "name": "admin.chat_role",
+            "kind": {
+              "Enum": [
+                "user",
+                "assistant",
+                "tool_use",
+                "tool_result"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "content",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "a1d6d3871ac9f9deb46adbf1290a5137be719de15cd15eceaf4a064a8a772a3f"
+}
