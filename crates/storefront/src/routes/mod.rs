@@ -30,6 +30,11 @@
 //! POST /auth/register          - Register action
 //! POST /auth/logout            - Logout action
 //!
+//! # Shopify Customer OAuth
+//! GET  /auth/shopify/login     - Redirect to Shopify OAuth
+//! GET  /auth/shopify/callback  - Handle OAuth callback
+//! POST /auth/shopify/logout    - Logout from Shopify
+//!
 //! # `WebAuthn` API
 //! POST /api/auth/webauthn/register/start      - Start passkey registration
 //! POST /api/auth/webauthn/register/finish     - Finish passkey registration
@@ -38,6 +43,8 @@
 //!
 //! # Account (requires auth)
 //! GET  /account                - Account overview
+//! GET  /account/orders         - Order history
+//! GET  /account/addresses      - Address list
 //! GET  /account/passkeys       - Passkey management
 //! ```
 
@@ -48,6 +55,7 @@ pub mod cart;
 pub mod collections;
 pub mod home;
 pub mod products;
+pub mod shopify_auth;
 
 use axum::{
     Router,
@@ -62,6 +70,10 @@ pub fn auth_routes() -> Router<AppState> {
         .route("/login", get(auth::login_page).post(auth::login))
         .route("/register", get(auth::register_page).post(auth::register))
         .route("/logout", post(auth::logout))
+        // Shopify Customer Account OAuth
+        .route("/shopify/login", get(shopify_auth::login))
+        .route("/shopify/callback", get(shopify_auth::callback))
+        .route("/shopify/logout", post(shopify_auth::logout))
 }
 
 /// Create the `WebAuthn` API routes router.
@@ -106,7 +118,21 @@ pub fn cart_routes() -> Router<AppState> {
 
 /// Create the account routes router.
 pub fn account_routes() -> Router<AppState> {
-    Router::new().route("/", get(account::index))
+    use axum::routing::delete;
+
+    Router::new()
+        .route("/", get(account::index))
+        .route("/orders", get(account::orders))
+        .route(
+            "/addresses",
+            get(account::addresses).post(account::create_address),
+        )
+        .route("/addresses/new", get(account::new_address))
+        .route(
+            "/addresses/{id}",
+            post(account::update_address).delete(account::delete_address),
+        )
+        .route("/addresses/{id}/edit", get(account::edit_address))
     // TODO: Add passkey management routes
     // .route("/passkeys", get(account::passkeys))
 }

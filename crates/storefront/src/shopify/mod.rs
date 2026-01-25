@@ -42,9 +42,11 @@
 #![allow(dead_code)]
 #![allow(unused_imports)]
 
+pub mod customer;
 mod storefront;
 pub mod types;
 
+pub use customer::{CustomerAccessToken, CustomerClient};
 pub use storefront::StorefrontClient;
 pub use types::*;
 
@@ -76,6 +78,10 @@ pub enum ShopifyError {
     /// User error from mutation (e.g., invalid input).
     #[error("User error: {0}")]
     UserError(String),
+
+    /// OAuth error (token exchange, refresh, etc.).
+    #[error("OAuth error: {0}")]
+    OAuth(String),
 }
 
 /// A GraphQL error returned by the Shopify API.

@@ -1,0 +1,102 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Order History | Naked Pineapple{% endblock %}
+
+{% block content %}
+<div class="py-8 md:py-12">
+    <div class="page-width">
+        <!-- Breadcrumb -->
+        <nav class="text-sm text-muted-foreground mb-8" aria-label="Breadcrumb">
+            <ol class="flex items-center gap-2 list-none">
+                <li><a href="/" class="hover:text-primary transition-colors">Home</a></li>
+                <li><i class="ph ph-caret-right text-xs"></i></li>
+                <li><a href="/account" class="hover:text-primary transition-colors">Account</a></li>
+                <li><i class="ph ph-caret-right text-xs"></i></li>
+                <li class="text-foreground">Orders</li>
+            </ol>
+        </nav>
+
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+            <div>
+                <h1 class="font-display text-3xl md:text-4xl font-semibold text-foreground">
+                    Order History
+                </h1>
+                <p class="text-muted-foreground mt-2">
+                    View and track your orders
+                </p>
+            </div>
+            <a href="/account" class="btn btn-outline">
+                <i class="ph ph-arrow-left mr-2"></i>
+                Back to Account
+            </a>
+        </div>
+
+        {% if orders.is_empty() %}
+        <div class="card p-12 text-center">
+            <div class="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
+                <i class="ph ph-package text-3xl text-muted-foreground"></i>
+            </div>
+            <h2 class="text-xl font-semibold text-foreground mb-2">No orders yet</h2>
+            <p class="text-muted-foreground mb-6">
+                Once you place an order, it will appear here.
+            </p>
+            <a href="/products" class="btn btn-primary">
+                Start Shopping
+            </a>
+        </div>
+        {% else %}
+        <div class="space-y-4">
+            {% for order in orders %}
+            <div class="card p-6">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div class="flex items-start gap-4">
+                        <div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                            <i class="ph ph-package text-xl text-primary"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-foreground">Order {{ order.name }}</h3>
+                            <p class="text-sm text-muted-foreground">
+                                Placed on {{ order.processed_at }}
+                            </p>
+                        </div>
+                    </div>
+                    <div class="flex flex-col md:flex-row md:items-center gap-4">
+                        <div class="flex items-center gap-2">
+                            {% match order.fulfillment_status.as_deref() %}
+                                {% when Some with ("FULFILLED") %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                                    <i class="ph-fill ph-check-circle mr-1"></i>
+                                    Fulfilled
+                                </span>
+                                {% when Some with ("PARTIALLY_FULFILLED") %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                                    <i class="ph ph-hourglass mr-1"></i>
+                                    Partially Fulfilled
+                                </span>
+                                {% when Some with ("UNFULFILLED") %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                                    <i class="ph ph-clock mr-1"></i>
+                                    Processing
+                                </span>
+                                {% when Some with (status) %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200">
+                                    {{ status }}
+                                </span>
+                                {% when None %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200">
+                                    Pending
+                                </span>
+                            {% endmatch %}
+                        </div>
+                        <div class="text-right">
+                            <p class="font-semibold text-foreground">${{ order.total_price.amount }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

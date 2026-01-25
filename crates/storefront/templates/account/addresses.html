@@ -1,0 +1,111 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Addresses | Naked Pineapple{% endblock %}
+
+{% block content %}
+<div class="py-8 md:py-12">
+    <div class="page-width">
+        <!-- Breadcrumb -->
+        <nav class="text-sm text-muted-foreground mb-8" aria-label="Breadcrumb">
+            <ol class="flex items-center gap-2 list-none">
+                <li><a href="/" class="hover:text-primary transition-colors">Home</a></li>
+                <li><i class="ph ph-caret-right text-xs"></i></li>
+                <li><a href="/account" class="hover:text-primary transition-colors">Account</a></li>
+                <li><i class="ph ph-caret-right text-xs"></i></li>
+                <li class="text-foreground">Addresses</li>
+            </ol>
+        </nav>
+
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+            <div>
+                <h1 class="font-display text-3xl md:text-4xl font-semibold text-foreground">
+                    Addresses
+                </h1>
+                <p class="text-muted-foreground mt-2">
+                    Manage your saved addresses
+                </p>
+            </div>
+            <div class="flex items-center gap-4">
+                <a href="/account" class="btn btn-outline">
+                    <i class="ph ph-arrow-left mr-2"></i>
+                    Back to Account
+                </a>
+                <a href="/account/addresses/new" class="btn btn-primary">
+                    <i class="ph ph-plus mr-2"></i>
+                    Add Address
+                </a>
+            </div>
+        </div>
+
+        {% if addresses.is_empty() %}
+        <div class="card p-12 text-center">
+            <div class="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
+                <i class="ph ph-map-pin text-3xl text-muted-foreground"></i>
+            </div>
+            <h2 class="text-xl font-semibold text-foreground mb-2">No addresses saved</h2>
+            <p class="text-muted-foreground mb-6">
+                Add an address to make checkout faster.
+            </p>
+            <a href="/account/addresses/new" class="btn btn-primary">
+                <i class="ph ph-plus mr-2"></i>
+                Add Address
+            </a>
+        </div>
+        {% else %}
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6" id="addresses-list">
+            {% for address in addresses %}
+            <div class="card p-6 relative" id="address-{{ address.id }}">
+                {% if self.is_default(&address.id) %}
+                <span class="absolute top-4 right-4 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary">
+                    Default
+                </span>
+                {% endif %}
+
+                <address class="not-italic text-foreground mb-4">
+                    <p class="font-semibold">
+                        {% if let Some(first) = address.first_name %}{{ first }} {% endif %}
+                        {% if let Some(last) = address.last_name %}{{ last }}{% endif %}
+                    </p>
+                    {% if let Some(company) = address.company %}
+                    <p class="text-muted-foreground">{{ company }}</p>
+                    {% endif %}
+                    {% if let Some(addr1) = address.address1 %}
+                    <p>{{ addr1 }}</p>
+                    {% endif %}
+                    {% if let Some(addr2) = address.address2 %}
+                    <p>{{ addr2 }}</p>
+                    {% endif %}
+                    <p>
+                        {% if let Some(city) = address.city %}{{ city }}, {% endif %}
+                        {% if let Some(province) = address.province_code %}{{ province }} {% endif %}
+                        {% if let Some(zip) = address.zip %}{{ zip }}{% endif %}
+                    </p>
+                    {% if let Some(country) = address.country %}
+                    <p>{{ country }}</p>
+                    {% endif %}
+                    {% if let Some(phone) = address.phone %}
+                    <p class="text-muted-foreground mt-2">{{ phone }}</p>
+                    {% endif %}
+                </address>
+
+                <div class="flex items-center gap-2 pt-4 border-t border-border">
+                    <a href="/account/addresses/{{ address.id }}/edit" class="btn btn-outline btn-sm flex-1 justify-center">
+                        <i class="ph ph-pencil mr-1"></i>
+                        Edit
+                    </a>
+                    <button type="button"
+                            class="btn btn-outline btn-sm text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                            hx-delete="/account/addresses/{{ address.id }}"
+                            hx-target="#address-{{ address.id }}"
+                            hx-swap="outerHTML"
+                            hx-confirm="Are you sure you want to delete this address?">
+                        <i class="ph ph-trash"></i>
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

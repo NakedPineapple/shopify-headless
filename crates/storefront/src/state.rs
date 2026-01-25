@@ -7,7 +7,7 @@ use url::Url;
 use webauthn_rs::prelude::*;
 
 use crate::config::StorefrontConfig;
-use crate::shopify::StorefrontClient;
+use crate::shopify::{CustomerClient, StorefrontClient};
 
 /// Error creating `WebAuthn` configuration.
 #[derive(Debug, thiserror::Error)]
@@ -33,6 +33,7 @@ struct AppStateInner {
     config: StorefrontConfig,
     pool: PgPool,
     storefront: StorefrontClient,
+    customer: CustomerClient,
     webauthn: Webauthn,
 }
 
@@ -49,6 +50,7 @@ impl AppState {
     /// Returns an error if the `WebAuthn` configuration is invalid.
     pub fn new(config: StorefrontConfig, pool: PgPool) -> Result<Self, WebauthnConfigError> {
         let storefront = StorefrontClient::new(&config.shopify);
+        let customer = CustomerClient::new(&config.shopify);
         let webauthn = create_webauthn(&config)?;
 
         Ok(Self {
@@ -56,6 +58,7 @@ impl AppState {
                 config,
                 pool,
                 storefront,
+                customer,
                 webauthn,
             }),
         })
@@ -77,6 +80,12 @@ impl AppState {
     #[must_use]
     pub fn storefront(&self) -> &StorefrontClient {
         &self.inner.storefront
+    }
+
+    /// Get a reference to the Shopify Customer Account API client.
+    #[must_use]
+    pub fn customer(&self) -> &CustomerClient {
+        &self.inner.customer
     }
 
     /// Get a reference to the `WebAuthn` configuration.

@@ -1,0 +1,179 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}{% if is_edit %}Edit Address{% else %}Add Address{% endif %} | Naked Pineapple{% endblock %}
+
+{% block content %}
+<div class="py-8 md:py-12">
+    <div class="page-width max-w-2xl">
+        <!-- Breadcrumb -->
+        <nav class="text-sm text-muted-foreground mb-8" aria-label="Breadcrumb">
+            <ol class="flex items-center gap-2 list-none">
+                <li><a href="/" class="hover:text-primary transition-colors">Home</a></li>
+                <li><i class="ph ph-caret-right text-xs"></i></li>
+                <li><a href="/account" class="hover:text-primary transition-colors">Account</a></li>
+                <li><i class="ph ph-caret-right text-xs"></i></li>
+                <li><a href="/account/addresses" class="hover:text-primary transition-colors">Addresses</a></li>
+                <li><i class="ph ph-caret-right text-xs"></i></li>
+                <li class="text-foreground">{% if is_edit %}Edit{% else %}Add{% endif %}</li>
+            </ol>
+        </nav>
+
+        <div class="mb-8">
+            <h1 class="font-display text-3xl md:text-4xl font-semibold text-foreground">
+                {% if is_edit %}Edit Address{% else %}Add Address{% endif %}
+            </h1>
+        </div>
+
+        {% if let Some(err) = error %}
+        <div class="mb-6 p-4 rounded-lg bg-destructive/10 border border-destructive/20">
+            <div class="flex items-center gap-2 text-destructive">
+                <i class="ph ph-warning-circle text-lg"></i>
+                <span>{{ err }}</span>
+            </div>
+        </div>
+        {% endif %}
+
+        <form action="{% if let Some(id) = address_id %}/account/addresses/{{ id }}{% else %}/account/addresses{% endif %}"
+              method="post"
+              class="card p-6 space-y-6"
+              hx-boost="false">
+
+            <div class="grid md:grid-cols-2 gap-4">
+                <div>
+                    <label for="first_name" class="block text-sm font-medium text-foreground mb-1.5">
+                        First Name
+                    </label>
+                    <input type="text"
+                           id="first_name"
+                           name="first_name"
+                           value="{% if let Some(addr) = address %}{% if let Some(v) = addr.first_name %}{{ v }}{% endif %}{% endif %}"
+                           class="input"
+                           required>
+                </div>
+                <div>
+                    <label for="last_name" class="block text-sm font-medium text-foreground mb-1.5">
+                        Last Name
+                    </label>
+                    <input type="text"
+                           id="last_name"
+                           name="last_name"
+                           value="{% if let Some(addr) = address %}{% if let Some(v) = addr.last_name %}{{ v }}{% endif %}{% endif %}"
+                           class="input"
+                           required>
+                </div>
+            </div>
+
+            <div>
+                <label for="company" class="block text-sm font-medium text-foreground mb-1.5">
+                    Company <span class="text-muted-foreground">(optional)</span>
+                </label>
+                <input type="text"
+                       id="company"
+                       name="company"
+                       value="{% if let Some(addr) = address %}{% if let Some(v) = addr.company %}{{ v }}{% endif %}{% endif %}"
+                       class="input">
+            </div>
+
+            <div>
+                <label for="address1" class="block text-sm font-medium text-foreground mb-1.5">
+                    Address
+                </label>
+                <input type="text"
+                       id="address1"
+                       name="address1"
+                       value="{% if let Some(addr) = address %}{% if let Some(v) = addr.address1 %}{{ v }}{% endif %}{% endif %}"
+                       class="input"
+                       placeholder="Street address"
+                       required>
+            </div>
+
+            <div>
+                <label for="address2" class="block text-sm font-medium text-foreground mb-1.5">
+                    Apartment, suite, etc. <span class="text-muted-foreground">(optional)</span>
+                </label>
+                <input type="text"
+                       id="address2"
+                       name="address2"
+                       value="{% if let Some(addr) = address %}{% if let Some(v) = addr.address2 %}{{ v }}{% endif %}{% endif %}"
+                       class="input">
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-4">
+                <div>
+                    <label for="city" class="block text-sm font-medium text-foreground mb-1.5">
+                        City
+                    </label>
+                    <input type="text"
+                           id="city"
+                           name="city"
+                           value="{% if let Some(addr) = address %}{% if let Some(v) = addr.city %}{{ v }}{% endif %}{% endif %}"
+                           class="input"
+                           required>
+                </div>
+                <div>
+                    <label for="province" class="block text-sm font-medium text-foreground mb-1.5">
+                        State / Province
+                    </label>
+                    <input type="text"
+                           id="province"
+                           name="province"
+                           value="{% if let Some(addr) = address %}{% if let Some(v) = addr.province_code %}{{ v }}{% endif %}{% endif %}"
+                           class="input"
+                           required>
+                </div>
+                <div>
+                    <label for="zip" class="block text-sm font-medium text-foreground mb-1.5">
+                        ZIP / Postal Code
+                    </label>
+                    <input type="text"
+                           id="zip"
+                           name="zip"
+                           value="{% if let Some(addr) = address %}{% if let Some(v) = addr.zip %}{{ v }}{% endif %}{% endif %}"
+                           class="input"
+                           required>
+                </div>
+            </div>
+
+            <div>
+                <label for="country" class="block text-sm font-medium text-foreground mb-1.5">
+                    Country
+                </label>
+                <select id="country" name="country" class="input" required>
+                    <option value="">Select a country</option>
+                    <option value="US" {% if let Some(addr) = address %}{% if let Some(code) = addr.country_code %}{% if code == "US" %}selected{% endif %}{% endif %}{% endif %}>United States</option>
+                    <option value="CA" {% if let Some(addr) = address %}{% if let Some(code) = addr.country_code %}{% if code == "CA" %}selected{% endif %}{% endif %}{% endif %}>Canada</option>
+                    <option value="GB" {% if let Some(addr) = address %}{% if let Some(code) = addr.country_code %}{% if code == "GB" %}selected{% endif %}{% endif %}{% endif %}>United Kingdom</option>
+                    <option value="AU" {% if let Some(addr) = address %}{% if let Some(code) = addr.country_code %}{% if code == "AU" %}selected{% endif %}{% endif %}{% endif %}>Australia</option>
+                </select>
+            </div>
+
+            <div>
+                <label for="phone" class="block text-sm font-medium text-foreground mb-1.5">
+                    Phone <span class="text-muted-foreground">(optional)</span>
+                </label>
+                <input type="tel"
+                       id="phone"
+                       name="phone"
+                       value="{% if let Some(addr) = address %}{% if let Some(v) = addr.phone %}{{ v }}{% endif %}{% endif %}"
+                       class="input"
+                       placeholder="+1 (555) 123-4567">
+            </div>
+
+            <div class="flex items-center gap-4 pt-4 border-t border-border">
+                <button type="submit" class="btn btn-primary">
+                    {% if is_edit %}
+                    <i class="ph ph-check mr-2"></i>
+                    Save Changes
+                    {% else %}
+                    <i class="ph ph-plus mr-2"></i>
+                    Add Address
+                    {% endif %}
+                </button>
+                <a href="/account/addresses" class="btn btn-outline">
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

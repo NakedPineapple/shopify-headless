@@ -96,6 +96,8 @@ pub struct ShopifyStorefrontConfig {
     pub storefront_public_token: String,
     /// Storefront API private access token (server-side only)
     pub storefront_private_token: SecretString,
+    /// Customer Account API numeric shop ID (found in Shopify admin URL)
+    pub customer_shop_id: String,
     /// Customer Account API OAuth client ID
     pub customer_client_id: String,
     /// Customer Account API OAuth client secret
@@ -109,6 +111,7 @@ impl std::fmt::Debug for ShopifyStorefrontConfig {
             .field("api_version", &self.api_version)
             .field("storefront_public_token", &self.storefront_public_token)
             .field("storefront_private_token", &"[REDACTED]")
+            .field("customer_shop_id", &self.customer_shop_id)
             .field("customer_client_id", &self.customer_client_id)
             .field("customer_client_secret", &"[REDACTED]")
             .finish()
@@ -190,6 +193,7 @@ impl ShopifyStorefrontConfig {
             api_version: get_env_or_default("SHOPIFY_API_VERSION", "2026-01"),
             storefront_public_token: get_required_env("SHOPIFY_STOREFRONT_PUBLIC_TOKEN")?,
             storefront_private_token: get_validated_secret("SHOPIFY_STOREFRONT_PRIVATE_TOKEN")?,
+            customer_shop_id: get_required_env("SHOPIFY_CUSTOMER_SHOP_ID")?,
             customer_client_id: get_required_env("SHOPIFY_CUSTOMER_CLIENT_ID")?,
             customer_client_secret: get_validated_secret("SHOPIFY_CUSTOMER_CLIENT_SECRET")?,
         })
@@ -393,6 +397,7 @@ mod tests {
                 api_version: "2026-01".to_string(),
                 storefront_public_token: "public".to_string(),
                 storefront_private_token: SecretString::from("private"),
+                customer_shop_id: "12345678901".to_string(),
                 customer_client_id: "client_id".to_string(),
                 customer_client_secret: SecretString::from("client_secret"),
             },
@@ -412,6 +417,7 @@ mod tests {
             api_version: "2026-01".to_string(),
             storefront_public_token: "public_token_value".to_string(),
             storefront_private_token: SecretString::from("super_secret_private_token"),
+            customer_shop_id: "12345678901".to_string(),
             customer_client_id: "client_id_value".to_string(),
             customer_client_secret: SecretString::from("super_secret_client_secret"),
         };

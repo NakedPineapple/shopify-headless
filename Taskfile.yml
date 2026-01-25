@@ -542,3 +542,22 @@ tasks:
         msg: "SHOPIFY_STORE environment variable is required"
       - sh: '[ -n "$SHOPIFY_STOREFRONT_PRIVATE_TOKEN" ]'
         msg: "SHOPIFY_STOREFRONT_PRIVATE_TOKEN environment variable is required"
+
+  graphql:update:customer:
+    desc: "Download Shopify Customer Account API GraphQL schema"
+    cmds:
+      - |
+        echo "Downloading Shopify Customer Account API schema..."
+        mkdir -p crates/storefront/graphql/customer
+        curl -s -X POST "https://shopify.com/${SHOPIFY_CUSTOMER_SHOP_ID}/account/customer/api/${SHOPIFY_API_VERSION:-2026-01}/graphql" \
+          -H "Content-Type: application/json" \
+          -H "Authorization: ${SHOPIFY_CUSTOMER_ACCESS_TOKEN}" \
+          -H "User-Agent: NakedPineapple/1.0" \
+          -d '{"query":"{ __schema { queryType { name } mutationType { name } subscriptionType { name } types { ...FullType } directives { name description locations args { ...InputValue } } } } fragment FullType on __Type { kind name description fields(includeDeprecated: true) { name description args { ...InputValue } type { ...TypeRef } isDeprecated deprecationReason } inputFields { ...InputValue } interfaces { ...TypeRef } enumValues(includeDeprecated: true) { name description isDeprecated deprecationReason } possibleTypes { ...TypeRef } } fragment InputValue on __InputValue { name description type { ...TypeRef } defaultValue } fragment TypeRef on __Type { kind name ofType { kind name ofType { kind name ofType { kind name ofType { kind name ofType { kind name ofType { kind name ofType { kind name } } } } } } } }"}' \
+          | jq '.data' > crates/storefront/graphql/customer/schema.json
+        echo "Schema saved to crates/storefront/graphql/customer/schema.json"
+    preconditions:
+      - sh: '[ -n "$SHOPIFY_CUSTOMER_SHOP_ID" ]'
+        msg: "SHOPIFY_CUSTOMER_SHOP_ID environment variable is required (numeric shop ID)"
+      - sh: '[ -n "$SHOPIFY_CUSTOMER_ACCESS_TOKEN" ]'
+        msg: "SHOPIFY_CUSTOMER_ACCESS_TOKEN is required - obtain via Customer OAuth flow first (token starts with shcat_)"
