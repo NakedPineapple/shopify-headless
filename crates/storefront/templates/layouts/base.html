@@ -17,8 +17,8 @@
     {% block meta %}{% endblock %}
 
     <!-- Open Graph -->
-    <meta property="og:title" content="{% block og_title %}{{ self.title() }}{% endblock %}">
-    <meta property="og:description" content="{% block og_description %}{{ self.description() }}{% endblock %}">
+    <meta property="og:title" content="{% block og_title %}Naked Pineapple{% endblock %}">
+    <meta property="og:description" content="{% block og_description %}{% endblock %}">
     <meta property="og:type" content="{% block og_type %}website{% endblock %}">
     <meta property="og:image" content="{% block og_image %}{% endblock %}">
 
@@ -124,7 +124,7 @@
         #}
         <div class="container mx-auto px-4 py-8">
             <p class="text-center text-gray-600">
-                &copy; {% now "Y" %} Naked Pineapple. All rights reserved.
+                &copy; {{ ""|current_year }} Naked Pineapple. All rights reserved.
             </p>
         </div>
     </footer>

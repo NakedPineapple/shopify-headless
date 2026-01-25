@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE storefront.user_credential\n            SET counter = $1\n            WHERE credential_id = $2\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Bytea"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b1887523210234cf9171215e51476f6ddda39550d5e5d0c65d219da40abd16ae"
+}

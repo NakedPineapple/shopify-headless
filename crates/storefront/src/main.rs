@@ -33,6 +33,7 @@ use axum::{Router, routing::get};
 mod config;
 mod db;
 mod error;
+mod filters;
 mod middleware;
 mod models;
 mod routes;
@@ -72,7 +73,8 @@ async fn main() {
     // let customer_client = shopify::CustomerClient::new(&config.shopify);
 
     // Build application state
-    let state = AppState::new(config.clone(), pool);
+    let state =
+        AppState::new(config.clone(), pool).expect("Failed to initialize application state");
 
     // Build router
     let app = Router::new()

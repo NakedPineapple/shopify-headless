@@ -19,7 +19,7 @@ path = "src/main.rs"
 workspace = true
 
 [dependencies]
-naked-pineapple-core = { workspace = true }
+naked-pineapple-core = { workspace = true, features = ["postgres"] }
 
 # Web framework
 axum = { workspace = true }

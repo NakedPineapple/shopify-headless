@@ -273,14 +273,48 @@ tasks:
       - task: db:migrate
 
   sqlx:prepare:
-    desc: "Generate sqlx offline cache"
+    desc: "Generate sqlx offline cache for all services"
     cmds:
-      - cargo sqlx prepare --workspace
+      - task: sqlx:prepare:storefront
+      - task: sqlx:prepare:admin
+
+  sqlx:prepare:storefront:
+    desc: "Generate sqlx offline cache for storefront"
+    dir: crates/storefront
+    cmds:
+      - cargo sqlx prepare
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/np_storefront
+
+  sqlx:prepare:admin:
+    desc: "Generate sqlx offline cache for admin"
+    dir: crates/admin
+    cmds:
+      - cargo sqlx prepare
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/np_admin
 
   sqlx:check:
     desc: "Verify sqlx cache is up to date"
     cmds:
-      - cargo sqlx prepare --workspace --check
+      - task: sqlx:check:storefront
+      - task: sqlx:check:admin
+
+  sqlx:check:storefront:
+    desc: "Verify storefront sqlx cache is up to date"
+    dir: crates/storefront
+    cmds:
+      - cargo sqlx prepare --check
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/np_storefront
+
+  sqlx:check:admin:
+    desc: "Verify admin sqlx cache is up to date"
+    dir: crates/admin
+    cmds:
+      - cargo sqlx prepare --check
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/np_admin
 
   # ============================================================================
   # CSS tasks (Tailwind)

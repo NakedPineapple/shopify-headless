@@ -21,11 +21,34 @@
 //! cargo run -p naked-pineapple-cli -- migrate storefront
 //! ```
 
+pub mod users;
+
 use std::time::Duration;
 
 use secrecy::ExposeSecret;
 use sqlx::PgPool;
 use sqlx::postgres::PgPoolOptions;
+use thiserror::Error;
+
+/// Errors that can occur during repository operations.
+#[derive(Debug, Error)]
+pub enum RepositoryError {
+    /// Database error from sqlx.
+    #[error("database error: {0}")]
+    Database(#[from] sqlx::Error),
+
+    /// Data in the database is corrupted or invalid.
+    #[error("data corruption: {0}")]
+    DataCorruption(String),
+
+    /// Requested entity was not found.
+    #[error("not found")]
+    NotFound,
+
+    /// Constraint violation (e.g., unique email).
+    #[error("constraint violation: {0}")]
+    Conflict(String),
+}
 
 /// Create a `PostgreSQL` connection pool with sensible defaults.
 ///

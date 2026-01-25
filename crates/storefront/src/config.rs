@@ -18,7 +18,7 @@
 //! - `SHOPIFY_API_VERSION` - API version (default: 2026-01)
 //! - `GA4_MEASUREMENT_ID` - Google Analytics 4 measurement ID
 //! - `META_PIXEL_ID` - Meta (Facebook) pixel ID
-//! - `TIKTOK_PIXEL_ID` - `TikTok` pixel ID
+//! - `TIKTOK_PIXEL_ID` - TikTok pixel ID
 //! - `PINTEREST_TAG_ID` - Pinterest tag ID
 //! - `GOOGLE_ADS_ID` - Google Ads conversion ID
 //! - `GOOGLE_ADS_CONVERSION_LABEL` - Google Ads conversion label
@@ -122,7 +122,7 @@ pub struct AnalyticsConfig {
     pub ga4_measurement_id: Option<String>,
     /// Meta (Facebook) pixel ID
     pub meta_pixel_id: Option<String>,
-    /// `TikTok` pixel ID
+    /// TikTok pixel ID
     pub tiktok_pixel_id: Option<String>,
     /// Pinterest tag ID
     pub pinterest_tag_id: Option<String>,

@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE storefront.user\n            SET email_verified = TRUE\n            WHERE id = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "df4c4b8fd1616a60e17b1dcaadfd539e2c549d343244c491f40ad0ff5cce0c67"
+}
