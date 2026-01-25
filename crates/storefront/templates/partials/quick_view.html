@@ -40,6 +40,10 @@
                 {% endfor %}
             </select>
         </div>
+        {% else %}
+        {% if let Some(first_variant) = product.variants.first() %}
+        <input type="hidden" id="quick-view-variant" value="{{ first_variant.id }}">
+        {% endif %}
         {% endif %}
 
         <!-- Quantity Selector -->
@@ -66,11 +70,12 @@
         </div>
 
         <!-- Add to Cart Button -->
+        {% if !product.variants.is_empty() %}
         <button type="button"
                 class="btn btn-primary w-full justify-center"
                 hx-post="/cart/add"
                 hx-vals='js:{
-                    "variant_id": document.getElementById("quick-view-variant")?.value || "{{ product.variants[0].id }}",
+                    "variant_id": document.getElementById("quick-view-variant")?.value || "",
                     "quantity": parseInt(document.getElementById("quick-view-quantity")?.value || 1)
                 }'
                 hx-swap="none"
@@ -78,6 +83,14 @@
             <i class="ph ph-tote mr-2"></i>
             Add to Cart
         </button>
+        {% else %}
+        <button type="button"
+                class="btn btn-primary w-full justify-center opacity-50 cursor-not-allowed"
+                disabled>
+            <i class="ph ph-tote mr-2"></i>
+            Out of Stock
+        </button>
+        {% endif %}
 
         <!-- View Full Details Link -->
         <a href="/products/{{ product.handle }}"

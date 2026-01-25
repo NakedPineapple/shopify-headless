@@ -4,11 +4,17 @@ use askama::Template;
 use askama_web::WebTemplate;
 use axum::{
     extract::{Path, Query, State},
-    response::IntoResponse,
+    http::StatusCode,
+    response::{IntoResponse, Response},
 };
 use serde::Deserialize;
+use tracing::instrument;
 
 use crate::filters;
+use crate::shopify::types::{
+    Money, Product as ShopifyProduct, ProductRecommendationIntent,
+};
+use crate::shopify::ShopifyError;
 use crate::state::AppState;
 
 /// Product display data for templates.
@@ -47,6 +53,58 @@ pub struct PaginationQuery {
     pub sort: Option<String>,
 }
 
+// =============================================================================
+// Type Conversions
+// =============================================================================
+
+/// Format a Shopify Money type as a price string.
+fn format_price(money: &Money) -> String {
+    // Parse the amount string to format it properly
+    if let Ok(amount) = money.amount.parse::<f64>() {
+        format!("${amount:.2}")
+    } else {
+        format!("${}", money.amount)
+    }
+}
+
+impl From<&ShopifyProduct> for ProductView {
+    fn from(product: &ShopifyProduct) -> Self {
+        Self {
+            handle: product.handle.clone(),
+            title: product.title.clone(),
+            description: product.description_html.clone(),
+            price: format_price(&product.price_range.min_variant_price),
+            compare_at_price: product
+                .compare_at_price_range
+                .as_ref()
+                .filter(|r| r.min_variant_price.amount != "0.0")
+                .map(|r| format_price(&r.min_variant_price)),
+            featured_image: product.featured_image.as_ref().map(|img| ImageView {
+                url: img.url.clone(),
+                alt: img.alt_text.clone().unwrap_or_default(),
+            }),
+            images: product
+                .images
+                .iter()
+                .map(|img| ImageView {
+                    url: img.url.clone(),
+                    alt: img.alt_text.clone().unwrap_or_default(),
+                })
+                .collect(),
+            variants: product
+                .variants
+                .iter()
+                .map(|v| VariantView {
+                    id: v.id.clone(),
+                    title: v.title.clone(),
+                    price: format_price(&v.price),
+                })
+                .collect(),
+            ingredients: None, // Could parse from metafields if available
+        }
+    }
+}
+
 /// Product listing page template.
 #[derive(Template, WebTemplate)]
 #[template(path = "products/index.html")]
@@ -72,76 +130,153 @@ pub struct QuickViewTemplate {
     pub product: ProductView,
 }
 
+/// Products per page for pagination.
+const PRODUCTS_PER_PAGE: i64 = 12;
+
 /// Display product listing page.
+#[instrument(skip(state))]
 pub async fn index(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
     Query(query): Query<PaginationQuery>,
-) -> impl IntoResponse {
+) -> Response {
     let current_page = query.page.unwrap_or(1);
 
-    // TODO: Fetch products from Shopify Storefront API
-    let products = Vec::new();
-    let total_pages = 1;
+    // Fetch products from Shopify Storefront API
+    let result = state
+        .storefront()
+        .get_products(Some(PRODUCTS_PER_PAGE), None, None, None, None)
+        .await;
 
-    ProductsIndexTemplate {
-        products,
-        current_page,
-        total_pages,
-        has_more_pages: current_page < total_pages,
+    match result {
+        Ok(connection) => {
+            let products: Vec<ProductView> =
+                connection.products.iter().map(ProductView::from).collect();
+
+            // Estimate total pages (Shopify doesn't give total count easily)
+            let has_more = connection.page_info.has_next_page;
+
+            ProductsIndexTemplate {
+                products,
+                current_page,
+                total_pages: if has_more { current_page + 1 } else { current_page },
+                has_more_pages: has_more,
+            }
+            .into_response()
+        }
+        Err(e) => {
+            tracing::error!("Failed to fetch products: {e}");
+            // Return empty products page on error
+            ProductsIndexTemplate {
+                products: Vec::new(),
+                current_page: 1,
+                total_pages: 1,
+                has_more_pages: false,
+            }
+            .into_response()
+        }
     }
 }
 
 /// Display product detail page.
-pub async fn show(
-    State(_state): State<AppState>,
-    Path(handle): Path<String>,
-) -> impl IntoResponse {
-    // TODO: Fetch product from Shopify Storefront API
-    let product = ProductView {
-        handle: handle.clone(),
-        title: "Product Not Found".to_string(),
-        description: "This product could not be found.".to_string(),
-        price: "$0.00".to_string(),
-        compare_at_price: None,
-        featured_image: None,
-        images: Vec::new(),
-        variants: vec![VariantView {
-            id: "default".to_string(),
-            title: "Default".to_string(),
-            price: "$0.00".to_string(),
-        }],
-        ingredients: None,
-    };
+#[instrument(skip(state))]
+pub async fn show(State(state): State<AppState>, Path(handle): Path<String>) -> Response {
+    // Fetch product from Shopify Storefront API
+    let result = state.storefront().get_product_by_handle(&handle).await;
 
-    let related_products = Vec::new();
+    match result {
+        Ok(shopify_product) => {
+            let product = ProductView::from(&shopify_product);
 
-    ProductShowTemplate {
-        product,
-        related_products,
+            // Fetch related products
+            let related_products = state
+                .storefront()
+                .get_product_recommendations(
+                    &shopify_product.id,
+                    Some(ProductRecommendationIntent::Related),
+                )
+                .await
+                .map(|products| products.iter().take(4).map(ProductView::from).collect())
+                .unwrap_or_default();
+
+            ProductShowTemplate {
+                product,
+                related_products,
+            }
+            .into_response()
+        }
+        Err(ShopifyError::NotFound(_)) => {
+            // Return 404 for missing products
+            (
+                StatusCode::NOT_FOUND,
+                ProductShowTemplate {
+                    product: ProductView {
+                        handle: handle.clone(),
+                        title: "Product Not Found".to_string(),
+                        description: "This product could not be found.".to_string(),
+                        price: "$0.00".to_string(),
+                        compare_at_price: None,
+                        featured_image: None,
+                        images: Vec::new(),
+                        variants: Vec::new(),
+                        ingredients: None,
+                    },
+                    related_products: Vec::new(),
+                },
+            )
+                .into_response()
+        }
+        Err(e) => {
+            tracing::error!("Failed to fetch product {handle}: {e}");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                ProductShowTemplate {
+                    product: ProductView {
+                        handle,
+                        title: "Error".to_string(),
+                        description: "An error occurred loading this product.".to_string(),
+                        price: "$0.00".to_string(),
+                        compare_at_price: None,
+                        featured_image: None,
+                        images: Vec::new(),
+                        variants: Vec::new(),
+                        ingredients: None,
+                    },
+                    related_products: Vec::new(),
+                },
+            )
+                .into_response()
+        }
     }
 }
 
 /// Display quick view fragment (for HTMX).
-pub async fn quick_view(
-    State(_state): State<AppState>,
-    Path(handle): Path<String>,
-) -> impl IntoResponse {
-    // TODO: Fetch product from Shopify Storefront API
-    let product = ProductView {
-        handle: handle.clone(),
-        title: "Product".to_string(),
-        description: String::new(),
-        price: "$0.00".to_string(),
-        compare_at_price: None,
-        featured_image: None,
-        images: Vec::new(),
-        variants: vec![VariantView {
-            id: "default".to_string(),
-            title: "Default".to_string(),
-            price: "$0.00".to_string(),
-        }],
-        ingredients: None,
-    };
+#[instrument(skip(state))]
+pub async fn quick_view(State(state): State<AppState>, Path(handle): Path<String>) -> Response {
+    // Fetch product from Shopify Storefront API
+    let result = state.storefront().get_product_by_handle(&handle).await;
 
-    QuickViewTemplate { product }
+    match result {
+        Ok(shopify_product) => {
+            let product = ProductView::from(&shopify_product);
+            QuickViewTemplate { product }.into_response()
+        }
+        Err(e) => {
+            tracing::error!("Failed to fetch product for quick view {handle}: {e}");
+            // Return a minimal error fragment
+            QuickViewTemplate {
+                product: ProductView {
+                    handle,
+                    title: "Product Not Found".to_string(),
+                    description: String::new(),
+                    price: "$0.00".to_string(),
+                    compare_at_price: None,
+                    featured_image: None,
+                    images: Vec::new(),
+                    variants: Vec::new(),
+                    ingredients: None,
+                },
+            }
+            .into_response()
+        }
+    }
 }

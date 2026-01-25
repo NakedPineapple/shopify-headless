@@ -4,11 +4,15 @@ use askama::Template;
 use askama_web::WebTemplate;
 use axum::{
     extract::{Path, Query, State},
-    response::IntoResponse,
+    http::StatusCode,
+    response::{IntoResponse, Response},
 };
 use serde::Deserialize;
+use tracing::instrument;
 
 use crate::filters;
+use crate::shopify::types::Collection as ShopifyCollection;
+use crate::shopify::ShopifyError;
 use crate::state::AppState;
 
 pub use super::products::{ImageView, ProductView};
@@ -29,6 +33,28 @@ pub struct PaginationQuery {
     pub sort: Option<String>,
 }
 
+// =============================================================================
+// Type Conversions
+// =============================================================================
+
+impl From<&ShopifyCollection> for CollectionView {
+    fn from(collection: &ShopifyCollection) -> Self {
+        Self {
+            handle: collection.handle.clone(),
+            title: collection.title.clone(),
+            description: if collection.description.is_empty() {
+                None
+            } else {
+                Some(collection.description.clone())
+            },
+            image: collection.image.as_ref().map(|img| ImageView {
+                url: img.url.clone(),
+                alt: img.alt_text.clone().unwrap_or_default(),
+            }),
+        }
+    }
+}
+
 /// Collection listing page template.
 #[derive(Template, WebTemplate)]
 #[template(path = "collections/index.html")]
@@ -47,38 +73,108 @@ pub struct CollectionShowTemplate {
     pub has_more_pages: bool,
 }
 
-/// Display collection listing page.
-pub async fn index(State(_state): State<AppState>) -> impl IntoResponse {
-    // TODO: Fetch collections from Shopify Storefront API
-    let collections = Vec::new();
+/// Products per page for collection view.
+const PRODUCTS_PER_PAGE: i64 = 12;
 
-    CollectionsIndexTemplate { collections }
+/// Display collection listing page.
+#[instrument(skip(state))]
+pub async fn index(State(state): State<AppState>) -> Response {
+    // Fetch collections from Shopify Storefront API
+    let result = state.storefront().get_collections(Some(50), None, None).await;
+
+    match result {
+        Ok(connection) => {
+            let collections: Vec<CollectionView> = connection
+                .collections
+                .iter()
+                .map(CollectionView::from)
+                .collect();
+
+            CollectionsIndexTemplate { collections }.into_response()
+        }
+        Err(e) => {
+            tracing::error!("Failed to fetch collections: {e}");
+            CollectionsIndexTemplate {
+                collections: Vec::new(),
+            }
+            .into_response()
+        }
+    }
 }
 
 /// Display collection detail page with products.
+#[instrument(skip(state))]
 pub async fn show(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
     Path(handle): Path<String>,
     Query(query): Query<PaginationQuery>,
-) -> impl IntoResponse {
+) -> Response {
     let current_page = query.page.unwrap_or(1);
 
-    // TODO: Fetch collection and products from Shopify Storefront API
-    let collection = CollectionView {
-        handle: handle.clone(),
-        title: "Collection Not Found".to_string(),
-        description: None,
-        image: None,
-    };
+    // Fetch collection and products from Shopify Storefront API
+    let result = state
+        .storefront()
+        .get_collection_by_handle(&handle, Some(PRODUCTS_PER_PAGE), None)
+        .await;
 
-    let products = Vec::new();
-    let total_pages = 1;
+    match result {
+        Ok(shopify_collection) => {
+            let collection = CollectionView::from(&shopify_collection);
+            let products: Vec<ProductView> = shopify_collection
+                .products
+                .iter()
+                .map(ProductView::from)
+                .collect();
 
-    CollectionShowTemplate {
-        collection,
-        products,
-        current_page,
-        total_pages,
-        has_more_pages: current_page < total_pages,
+            // Note: For proper pagination, we'd need to track page info
+            // For now, assume single page of products
+            let has_more = products.len() as i64 >= PRODUCTS_PER_PAGE;
+
+            CollectionShowTemplate {
+                collection,
+                products,
+                current_page,
+                total_pages: if has_more { current_page + 1 } else { current_page },
+                has_more_pages: has_more,
+            }
+            .into_response()
+        }
+        Err(ShopifyError::NotFound(_)) => {
+            (
+                StatusCode::NOT_FOUND,
+                CollectionShowTemplate {
+                    collection: CollectionView {
+                        handle: handle.clone(),
+                        title: "Collection Not Found".to_string(),
+                        description: None,
+                        image: None,
+                    },
+                    products: Vec::new(),
+                    current_page: 1,
+                    total_pages: 1,
+                    has_more_pages: false,
+                },
+            )
+                .into_response()
+        }
+        Err(e) => {
+            tracing::error!("Failed to fetch collection {handle}: {e}");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                CollectionShowTemplate {
+                    collection: CollectionView {
+                        handle,
+                        title: "Error".to_string(),
+                        description: Some("An error occurred loading this collection.".to_string()),
+                        image: None,
+                    },
+                    products: Vec::new(),
+                    current_page: 1,
+                    total_pages: 1,
+                    has_more_pages: false,
+                },
+            )
+                .into_response()
+        }
     }
 }

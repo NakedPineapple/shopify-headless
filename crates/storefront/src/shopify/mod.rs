@@ -99,9 +99,47 @@ pub struct GraphQLErrorLocation {
 }
 
 fn format_graphql_errors(errors: &[GraphQLError]) -> String {
+    if errors.is_empty() {
+        return "(no error details provided)".to_string();
+    }
+
     errors
         .iter()
-        .map(|e| e.message.clone())
+        .enumerate()
+        .map(|(i, e)| {
+            let mut parts = Vec::new();
+
+            // Include message if present
+            if !e.message.is_empty() {
+                parts.push(e.message.clone());
+            }
+
+            // Include path if present
+            if !e.path.is_empty() {
+                let path_str = e
+                    .path
+                    .iter()
+                    .map(|p| match p {
+                        serde_json::Value::String(s) => s.clone(),
+                        other => other.to_string(),
+                    })
+                    .collect::<Vec<_>>()
+                    .join(".");
+                parts.push(format!("path: {path_str}"));
+            }
+
+            // Include location if present
+            if !e.locations.is_empty() {
+                let loc = &e.locations[0];
+                parts.push(format!("at line {}:{}", loc.line, loc.column));
+            }
+
+            if parts.is_empty() {
+                format!("[error {}]: (no details)", i + 1)
+            } else {
+                parts.join(" ")
+            }
+        })
         .collect::<Vec<_>>()
         .join("; ")
 }
@@ -134,6 +172,44 @@ mod tests {
         assert_eq!(
             err.to_string(),
             "GraphQL errors: Field not found; Invalid ID"
+        );
+    }
+
+    #[test]
+    fn test_graphql_error_empty_messages() {
+        // Test with empty messages but with path info
+        let errors = vec![GraphQLError {
+            message: String::new(),
+            locations: vec![GraphQLErrorLocation { line: 5, column: 10 }],
+            path: vec![
+                serde_json::Value::String("products".to_string()),
+                serde_json::Value::Number(0.into()),
+            ],
+        }];
+        let err = ShopifyError::GraphQL(errors);
+        assert_eq!(
+            err.to_string(),
+            "GraphQL errors: path: products.0 at line 5:10"
+        );
+    }
+
+    #[test]
+    fn test_graphql_error_no_details() {
+        let errors = vec![GraphQLError {
+            message: String::new(),
+            locations: vec![],
+            path: vec![],
+        }];
+        let err = ShopifyError::GraphQL(errors);
+        assert_eq!(err.to_string(), "GraphQL errors: [error 1]: (no details)");
+    }
+
+    #[test]
+    fn test_graphql_error_empty_vec() {
+        let err = ShopifyError::GraphQL(vec![]);
+        assert_eq!(
+            err.to_string(),
+            "GraphQL errors: (no error details provided)"
         );
     }
 

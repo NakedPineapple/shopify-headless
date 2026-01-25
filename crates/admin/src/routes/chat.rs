@@ -19,6 +19,7 @@ use std::convert::Infallible;
 use naked_pineapple_core::ChatSessionId;
 
 use crate::claude::ClaudeClient;
+use crate::filters;
 use crate::middleware::RequireAdminAuth;
 use crate::models::chat::{ChatMessage, ChatSession};
 use crate::routes::dashboard::AdminUserView;

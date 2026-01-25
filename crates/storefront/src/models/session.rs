@@ -27,4 +27,7 @@ pub mod keys {
 
     /// Key for `WebAuthn` authentication challenge state.
     pub const WEBAUTHN_AUTH: &str = "webauthn_auth";
+
+    /// Key for storing the Shopify cart ID.
+    pub const CART_ID: &str = "cart_id";
 }

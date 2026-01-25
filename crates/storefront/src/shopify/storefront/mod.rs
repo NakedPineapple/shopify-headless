@@ -113,8 +113,10 @@ impl StorefrontClient {
             .inner
             .client
             .post(&self.inner.endpoint)
+            // Private access tokens use a different header than public tokens
+            // See: https://shopify.dev/docs/storefronts/headless/building-with-the-storefront-api/getting-started
             .header(
-                "X-Shopify-Storefront-Access-Token",
+                "Shopify-Storefront-Private-Token",
                 &self.inner.access_token,
             )
             .header("Content-Type", "application/json")
@@ -122,8 +124,10 @@ impl StorefrontClient {
             .send()
             .await?;
 
+        let status = response.status();
+
         // Check for rate limiting
-        if response.status() == reqwest::StatusCode::TOO_MANY_REQUESTS {
+        if status == reqwest::StatusCode::TOO_MANY_REQUESTS {
             let retry_after = response
                 .headers()
                 .get("Retry-After")
@@ -133,12 +137,46 @@ impl StorefrontClient {
             return Err(ShopifyError::RateLimited(retry_after));
         }
 
-        let response: Response<Q::ResponseData> = response.json().await?;
+        // Get response body as text first for better error diagnostics
+        let response_text = response.text().await?;
+
+        // Check for non-success status codes
+        if !status.is_success() {
+            tracing::error!(
+                status = %status,
+                body = %response_text.chars().take(500).collect::<String>(),
+                "Shopify API returned non-success status"
+            );
+            return Err(ShopifyError::GraphQL(vec![super::GraphQLError {
+                message: format!("HTTP {status}: {}", response_text.chars().take(200).collect::<String>()),
+                locations: vec![],
+                path: vec![],
+            }]));
+        }
+
+        // Parse the response
+        let response: Response<Q::ResponseData> = match serde_json::from_str(&response_text) {
+            Ok(r) => r,
+            Err(e) => {
+                tracing::error!(
+                    error = %e,
+                    body = %response_text.chars().take(500).collect::<String>(),
+                    "Failed to parse Shopify GraphQL response"
+                );
+                return Err(ShopifyError::Parse(e));
+            }
+        };
 
         // Check for GraphQL errors
         if let Some(errors) = response.errors
             && !errors.is_empty()
         {
+            // Log the raw errors for debugging
+            tracing::debug!(
+                errors = ?errors,
+                "GraphQL errors in response"
+            );
+
             return Err(ShopifyError::GraphQL(
                 errors
                     .into_iter()
@@ -170,6 +208,10 @@ impl StorefrontClient {
         }
 
         response.data.ok_or_else(|| {
+            tracing::error!(
+                body = %response_text.chars().take(500).collect::<String>(),
+                "Shopify GraphQL response has no data and no errors"
+            );
             ShopifyError::GraphQL(vec![super::GraphQLError {
                 message: "No data in response".to_string(),
                 locations: vec![],

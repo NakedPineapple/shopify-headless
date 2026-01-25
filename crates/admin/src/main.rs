@@ -38,6 +38,7 @@ mod claude;
 mod config;
 mod db;
 mod error;
+mod filters;
 mod middleware;
 mod models;
 mod routes;

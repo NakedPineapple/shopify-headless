@@ -16,6 +16,15 @@
 //! POST /api/auth/webauthn/register/start      - Start passkey registration (auth required)
 //! POST /api/auth/webauthn/register/finish     - Finish passkey registration (auth required)
 //!
+//! # Products (auth required)
+//! GET  /products               - Products list
+//!
+//! # Orders (auth required)
+//! GET  /orders                 - Orders list
+//!
+//! # Customers (auth required)
+//! GET  /customers              - Customers list
+//!
 //! # Chat (Claude AI) - auth required
 //! GET  /chat/sessions          - List chat sessions
 //! POST /chat/sessions          - Create new chat session
@@ -26,7 +35,10 @@
 pub mod api;
 pub mod auth;
 pub mod chat;
+pub mod customers;
 pub mod dashboard;
+pub mod orders;
+pub mod products;
 
 use axum::{Router, routing::get};
 
@@ -36,6 +48,11 @@ use crate::state::AppState;
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/", get(dashboard::dashboard))
+        // List views
+        .route("/products", get(products::index))
+        .route("/orders", get(orders::index))
+        .route("/customers", get(customers::index))
+        // Auth
         .merge(auth::router())
         .merge(api::router())
         .merge(chat::router())

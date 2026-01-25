@@ -122,6 +122,8 @@ pub fn routes() -> Router<AppState> {
         .nest("/collections", collection_routes())
         // Cart routes
         .nest("/cart", cart_routes())
+        // Checkout redirect
+        .route("/checkout", get(cart::checkout))
         // Account routes (TODO: add auth middleware)
         .nest("/account", account_routes())
         // Auth routes

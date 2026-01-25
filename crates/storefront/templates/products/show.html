@@ -100,8 +100,14 @@
                         </button>
                         {% endfor %}
                     </div>
-                    <input type="hidden" id="selected-variant" value="{{ product.variants[0].id }}">
+                    {% if let Some(first_variant) = product.variants.first() %}
+                    <input type="hidden" id="selected-variant" value="{{ first_variant.id }}">
+                    {% endif %}
                 </div>
+                {% else %}
+                {% if let Some(first_variant) = product.variants.first() %}
+                <input type="hidden" id="selected-variant" value="{{ first_variant.id }}">
+                {% endif %}
                 {% endif %}
 
                 <!-- Quantity Selector -->
@@ -129,11 +135,12 @@
 
                 <!-- Add to Cart -->
                 <div class="space-y-3">
+                    {% if !product.variants.is_empty() %}
                     <button type="button"
                             class="btn btn-primary w-full justify-center text-lg py-4"
                             hx-post="/cart/add"
                             hx-vals='js:{
-                                "variant_id": document.getElementById("selected-variant")?.value || "{{ product.variants[0].id }}",
+                                "variant_id": document.getElementById("selected-variant")?.value || "",
                                 "quantity": parseInt(document.getElementById("product-quantity")?.value || 1)
                             }'
                             hx-swap="none"
@@ -141,6 +148,14 @@
                         <i class="ph ph-tote mr-2"></i>
                         Add to Cart
                     </button>
+                    {% else %}
+                    <button type="button"
+                            class="btn btn-primary w-full justify-center text-lg py-4 opacity-50 cursor-not-allowed"
+                            disabled>
+                        <i class="ph ph-tote mr-2"></i>
+                        Out of Stock
+                    </button>
+                    {% endif %}
 
                     <button type="button" class="btn btn-outline w-full justify-center">
                         <i class="ph ph-heart mr-2"></i>

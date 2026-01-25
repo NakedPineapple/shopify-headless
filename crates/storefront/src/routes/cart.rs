@@ -1,17 +1,23 @@
 //! Cart route handlers.
 //!
 //! Cart operations use HTMX for dynamic updates without full page reloads.
+//! Cart IDs are stored in the session and mapped to Shopify carts.
 
 use askama::Template;
 use askama_web::WebTemplate;
 use axum::{
     Form,
     extract::State,
-    response::{Html, IntoResponse},
+    http::StatusCode,
+    response::{AppendHeaders, Html, IntoResponse, Redirect, Response},
 };
 use serde::Deserialize;
+use tower_sessions::Session;
+use tracing::instrument;
 
 use crate::filters;
+use crate::models::session_keys;
+use crate::shopify::types::{Cart as ShopifyCart, CartLineInput, CartLineUpdateInput, Money};
 use crate::state::AppState;
 
 /// Cart item display data for templates.
@@ -50,6 +56,68 @@ impl CartView {
             item_count: 0,
         }
     }
+}
+
+// =============================================================================
+// Type Conversions
+// =============================================================================
+
+/// Format a Shopify Money type as a price string.
+fn format_price(money: &Money) -> String {
+    if let Ok(amount) = money.amount.parse::<f64>() {
+        format!("${amount:.2}")
+    } else {
+        format!("${}", money.amount)
+    }
+}
+
+impl From<&ShopifyCart> for CartView {
+    fn from(cart: &ShopifyCart) -> Self {
+        Self {
+            items: cart.lines.iter().map(CartItemView::from).collect(),
+            subtotal: format_price(&cart.cost.subtotal),
+            item_count: u32::try_from(cart.total_quantity).unwrap_or(0),
+        }
+    }
+}
+
+impl From<&crate::shopify::types::CartLine> for CartItemView {
+    fn from(line: &crate::shopify::types::CartLine) -> Self {
+        Self {
+            id: line.id.clone(),
+            handle: line.merchandise.product.handle.clone(),
+            title: line.merchandise.product.title.clone(),
+            variant_title: if line.merchandise.title == "Default Title" {
+                None
+            } else {
+                Some(line.merchandise.title.clone())
+            },
+            quantity: u32::try_from(line.quantity).unwrap_or(1),
+            price: format_price(&line.cost.amount_per_quantity),
+            line_price: format_price(&line.cost.total_amount),
+            image: line.merchandise.image.as_ref().map(|img| ImageView {
+                url: img.url.clone(),
+            }),
+        }
+    }
+}
+
+// =============================================================================
+// Session Helpers
+// =============================================================================
+
+/// Get the cart ID from the session.
+async fn get_cart_id(session: &Session) -> Option<String> {
+    session
+        .get::<String>(session_keys::CART_ID)
+        .await
+        .ok()
+        .flatten()
+}
+
+/// Set the cart ID in the session.
+async fn set_cart_id(session: &Session, cart_id: &str) -> Result<(), tower_sessions::session::Error> {
+    session.insert(session_keys::CART_ID, cart_id).await
 }
 
 /// Add to cart form data.
@@ -94,50 +162,189 @@ pub struct CartCountTemplate {
 }
 
 /// Display cart page.
-pub async fn show(State(_state): State<AppState>) -> impl IntoResponse {
-    // TODO: Fetch cart from session/Shopify
-    let cart = CartView::empty();
+#[instrument(skip(state, session))]
+pub async fn show(State(state): State<AppState>, session: Session) -> impl IntoResponse {
+    // Get cart ID from session
+    let cart = match get_cart_id(&session).await {
+        Some(cart_id) => {
+            // Fetch cart from Shopify
+            match state.storefront().get_cart(&cart_id).await {
+                Ok(shopify_cart) => CartView::from(&shopify_cart),
+                Err(e) => {
+                    tracing::warn!("Failed to fetch cart {cart_id}: {e}");
+                    CartView::empty()
+                }
+            }
+        }
+        None => CartView::empty(),
+    };
 
     CartShowTemplate { cart }
 }
 
 /// Add item to cart (HTMX).
+///
+/// Creates a new cart if one doesn't exist, or adds to existing cart.
+/// Returns an HTMX trigger to update the cart count badge.
+#[instrument(skip(state, session))]
 pub async fn add(
-    State(_state): State<AppState>,
-    Form(_form): Form<AddToCartForm>,
-) -> impl IntoResponse {
-    // TODO: Add item to cart via Shopify Storefront API
+    State(state): State<AppState>,
+    session: Session,
+    Form(form): Form<AddToCartForm>,
+) -> Response {
+    let quantity = i64::from(form.quantity.unwrap_or(1));
+    let line = CartLineInput {
+        merchandise_id: form.variant_id,
+        quantity,
+        attributes: None,
+        selling_plan_id: None,
+    };
 
-    // Return empty response - cart count will be updated via HTMX trigger
-    Html("")
+    let result = match get_cart_id(&session).await {
+        Some(cart_id) => {
+            // Add to existing cart
+            state.storefront().add_to_cart(&cart_id, vec![line]).await
+        }
+        None => {
+            // Create new cart with this item
+            state.storefront().create_cart(Some(vec![line]), None).await
+        }
+    };
+
+    match result {
+        Ok(cart) => {
+            // Save cart ID to session
+            if let Err(e) = set_cart_id(&session, &cart.id).await {
+                tracing::error!("Failed to save cart ID to session: {e}");
+            }
+
+            let count = u32::try_from(cart.total_quantity).unwrap_or(0);
+
+            // Return cart count with HTMX trigger to update other elements
+            (
+                AppendHeaders([("HX-Trigger", "cart-updated")]),
+                CartCountTemplate { count },
+            )
+                .into_response()
+        }
+        Err(e) => {
+            tracing::error!("Failed to add item to cart: {e}");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Html("<span class=\"text-red-500\">Error adding to cart</span>"),
+            )
+                .into_response()
+        }
+    }
 }
 
 /// Update cart item quantity (HTMX).
+#[instrument(skip(state, session))]
 pub async fn update(
-    State(_state): State<AppState>,
-    Form(_form): Form<UpdateCartForm>,
-) -> impl IntoResponse {
-    // TODO: Update cart via Shopify Storefront API
-    let cart = CartView::empty();
+    State(state): State<AppState>,
+    session: Session,
+    Form(form): Form<UpdateCartForm>,
+) -> Response {
+    let Some(cart_id) = get_cart_id(&session).await else {
+        return CartItemsTemplate {
+            cart: CartView::empty(),
+        }
+        .into_response();
+    };
 
-    CartItemsTemplate { cart }
+    let line_update = CartLineUpdateInput {
+        id: form.line_id,
+        quantity: Some(i64::from(form.quantity)),
+        merchandise_id: None,
+        attributes: None,
+        selling_plan_id: None,
+    };
+
+    match state.storefront().update_cart(&cart_id, vec![line_update]).await {
+        Ok(shopify_cart) => {
+            let cart = CartView::from(&shopify_cart);
+            (
+                AppendHeaders([("HX-Trigger", "cart-updated")]),
+                CartItemsTemplate { cart },
+            )
+                .into_response()
+        }
+        Err(e) => {
+            tracing::error!("Failed to update cart: {e}");
+            CartItemsTemplate {
+                cart: CartView::empty(),
+            }
+            .into_response()
+        }
+    }
 }
 
 /// Remove item from cart (HTMX).
+#[instrument(skip(state, session))]
 pub async fn remove(
-    State(_state): State<AppState>,
-    Form(_form): Form<RemoveFromCartForm>,
-) -> impl IntoResponse {
-    // TODO: Remove item from cart via Shopify Storefront API
-    let cart = CartView::empty();
+    State(state): State<AppState>,
+    session: Session,
+    Form(form): Form<RemoveFromCartForm>,
+) -> Response {
+    let Some(cart_id) = get_cart_id(&session).await else {
+        return CartItemsTemplate {
+            cart: CartView::empty(),
+        }
+        .into_response();
+    };
 
-    CartItemsTemplate { cart }
+    match state
+        .storefront()
+        .remove_from_cart(&cart_id, vec![form.line_id])
+        .await
+    {
+        Ok(shopify_cart) => {
+            let cart = CartView::from(&shopify_cart);
+            (
+                AppendHeaders([("HX-Trigger", "cart-updated")]),
+                CartItemsTemplate { cart },
+            )
+                .into_response()
+        }
+        Err(e) => {
+            tracing::error!("Failed to remove from cart: {e}");
+            CartItemsTemplate {
+                cart: CartView::empty(),
+            }
+            .into_response()
+        }
+    }
 }
 
 /// Get cart count badge (HTMX).
-pub async fn count(State(_state): State<AppState>) -> impl IntoResponse {
-    // TODO: Get cart count from session/Shopify
-    let count = 0;
+#[instrument(skip(state, session))]
+pub async fn count(State(state): State<AppState>, session: Session) -> impl IntoResponse {
+    let count = match get_cart_id(&session).await {
+        Some(cart_id) => state
+            .storefront()
+            .get_cart(&cart_id)
+            .await
+            .map(|cart| u32::try_from(cart.total_quantity).unwrap_or(0))
+            .unwrap_or(0),
+        None => 0,
+    };
 
     CartCountTemplate { count }
+}
+
+/// Redirect to Shopify checkout.
+#[instrument(skip(state, session))]
+pub async fn checkout(State(state): State<AppState>, session: Session) -> Response {
+    let Some(cart_id) = get_cart_id(&session).await else {
+        // No cart, redirect to cart page
+        return Redirect::to("/cart").into_response();
+    };
+
+    match state.storefront().get_cart(&cart_id).await {
+        Ok(cart) => Redirect::to(&cart.checkout_url).into_response(),
+        Err(e) => {
+            tracing::error!("Failed to get cart for checkout: {e}");
+            Redirect::to("/cart").into_response()
+        }
+    }
 }
