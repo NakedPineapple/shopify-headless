@@ -16,6 +16,12 @@
 //! POST /api/auth/webauthn/register/start      - Start passkey registration (auth required)
 //! POST /api/auth/webauthn/register/finish     - Finish passkey registration (auth required)
 //!
+//! # Shopify OAuth (super_admin only)
+//! GET  /shopify                - Shopify settings page
+//! GET  /shopify/connect        - Start OAuth flow
+//! GET  /shopify/callback       - OAuth callback
+//! GET  /shopify/disconnect     - Disconnect from Shopify
+//!
 //! # Products (auth required)
 //! GET  /products               - Products list
 //!
@@ -39,6 +45,7 @@ pub mod customers;
 pub mod dashboard;
 pub mod orders;
 pub mod products;
+pub mod shopify;
 
 use axum::{Router, routing::get};
 
@@ -56,4 +63,6 @@ pub fn routes() -> Router<AppState> {
         .merge(auth::router())
         .merge(api::router())
         .merge(chat::router())
+        // Shopify OAuth
+        .merge(shopify::router())
 }

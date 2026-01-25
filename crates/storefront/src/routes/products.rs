@@ -11,10 +11,8 @@ use serde::Deserialize;
 use tracing::instrument;
 
 use crate::filters;
-use crate::shopify::types::{
-    Money, Product as ShopifyProduct, ProductRecommendationIntent,
-};
 use crate::shopify::ShopifyError;
+use crate::shopify::types::{Money, Product as ShopifyProduct, ProductRecommendationIntent};
 use crate::state::AppState;
 
 /// Product display data for templates.
@@ -60,11 +58,10 @@ pub struct PaginationQuery {
 /// Format a Shopify Money type as a price string.
 fn format_price(money: &Money) -> String {
     // Parse the amount string to format it properly
-    if let Ok(amount) = money.amount.parse::<f64>() {
-        format!("${amount:.2}")
-    } else {
-        format!("${}", money.amount)
-    }
+    money.amount.parse::<f64>().map_or_else(
+        |_| format!("${}", money.amount),
+        |amount| format!("${amount:.2}"),
+    )
 }
 
 impl From<&ShopifyProduct> for ProductView {
@@ -158,7 +155,11 @@ pub async fn index(
             ProductsIndexTemplate {
                 products,
                 current_page,
-                total_pages: if has_more { current_page + 1 } else { current_page },
+                total_pages: if has_more {
+                    current_page + 1
+                } else {
+                    current_page
+                },
                 has_more_pages: has_more,
             }
             .into_response()

@@ -45,11 +45,10 @@ pub struct CustomerView {
 
 /// Format a Shopify Money type as a price string.
 fn format_price(money: &Money) -> String {
-    if let Ok(amount) = money.amount.parse::<f64>() {
-        format!("${amount:.2}")
-    } else {
-        format!("${}", money.amount)
-    }
+    money.amount.parse::<f64>().map_or_else(
+        |_| format!("${}", money.amount),
+        |amount| format!("${amount:.2}"),
+    )
 }
 
 impl From<&Customer> for CustomerView {

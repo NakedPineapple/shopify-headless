@@ -49,6 +49,7 @@ pub struct CartView {
 
 impl CartView {
     /// Create an empty cart.
+    #[must_use]
     pub fn empty() -> Self {
         Self {
             items: Vec::new(),
@@ -64,11 +65,10 @@ impl CartView {
 
 /// Format a Shopify Money type as a price string.
 fn format_price(money: &Money) -> String {
-    if let Ok(amount) = money.amount.parse::<f64>() {
-        format!("${amount:.2}")
-    } else {
-        format!("${}", money.amount)
-    }
+    money.amount.parse::<f64>().map_or_else(
+        |_| format!("${}", money.amount),
+        |amount| format!("${amount:.2}"),
+    )
 }
 
 impl From<&ShopifyCart> for CartView {
@@ -116,7 +116,10 @@ async fn get_cart_id(session: &Session) -> Option<String> {
 }
 
 /// Set the cart ID in the session.
-async fn set_cart_id(session: &Session, cart_id: &str) -> Result<(), tower_sessions::session::Error> {
+async fn set_cart_id(
+    session: &Session,
+    cart_id: &str,
+) -> Result<(), tower_sessions::session::Error> {
     session.insert(session_keys::CART_ID, cart_id).await
 }
 
@@ -260,7 +263,11 @@ pub async fn update(
         selling_plan_id: None,
     };
 
-    match state.storefront().update_cart(&cart_id, vec![line_update]).await {
+    match state
+        .storefront()
+        .update_cart(&cart_id, vec![line_update])
+        .await
+    {
         Ok(shopify_cart) => {
             let cart = CartView::from(&shopify_cart);
             (

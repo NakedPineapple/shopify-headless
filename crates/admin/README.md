@@ -55,5 +55,6 @@ The server listens on `http://localhost:3001`.
 See `.env.example` for required environment variables:
 
 - `ADMIN_DATABASE_URL` - PostgreSQL connection string
-- `SHOPIFY_ADMIN_ACCESS_TOKEN` - Admin API token (HIGH PRIVILEGE)
+- `SHOPIFY_ADMIN_CLIENT_ID` - Admin API OAuth client ID (HIGH PRIVILEGE)
+- `SHOPIFY_ADMIN_CLIENT_SECRET` - Admin API OAuth client secret (HIGH PRIVILEGE)
 - `CLAUDE_API_KEY` - Claude API key for AI chat

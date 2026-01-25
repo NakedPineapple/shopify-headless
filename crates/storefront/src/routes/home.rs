@@ -32,11 +32,10 @@ pub struct ImageView {
 
 /// Format a Shopify Money type as a price string.
 fn format_price(money: &Money) -> String {
-    if let Ok(amount) = money.amount.parse::<f64>() {
-        format!("${amount:.2}")
-    } else {
-        format!("${}", money.amount)
-    }
+    money.amount.parse::<f64>().map_or_else(
+        |_| format!("${}", money.amount),
+        |amount| format!("${amount:.2}"),
+    )
 }
 
 impl From<&ShopifyProduct> for ProductView {
@@ -83,11 +82,13 @@ pub async fn home(State(state): State<AppState>) -> impl IntoResponse {
             None,
         )
         .await
-        .map(|conn| conn.products.iter().map(ProductView::from).collect())
-        .unwrap_or_else(|e| {
-            tracing::error!("Failed to fetch featured products: {e}");
-            Vec::new()
-        });
+        .map_or_else(
+            |e| {
+                tracing::error!("Failed to fetch featured products: {e}");
+                Vec::new()
+            },
+            |conn| conn.products.iter().map(ProductView::from).collect(),
+        );
 
     HomeTemplate { featured_products }
 }

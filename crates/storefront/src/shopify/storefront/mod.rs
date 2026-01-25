@@ -115,10 +115,7 @@ impl StorefrontClient {
             .post(&self.inner.endpoint)
             // Private access tokens use a different header than public tokens
             // See: https://shopify.dev/docs/storefronts/headless/building-with-the-storefront-api/getting-started
-            .header(
-                "Shopify-Storefront-Private-Token",
-                &self.inner.access_token,
-            )
+            .header("Shopify-Storefront-Private-Token", &self.inner.access_token)
             .header("Content-Type", "application/json")
             .json(&request_body)
             .send()
@@ -148,7 +145,10 @@ impl StorefrontClient {
                 "Shopify API returned non-success status"
             );
             return Err(ShopifyError::GraphQL(vec![super::GraphQLError {
-                message: format!("HTTP {status}: {}", response_text.chars().take(200).collect::<String>()),
+                message: format!(
+                    "HTTP {status}: {}",
+                    response_text.chars().take(200).collect::<String>()
+                ),
                 locations: vec![],
                 path: vec![],
             }]));

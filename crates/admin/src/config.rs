@@ -7,7 +7,8 @@
 //! - `ADMIN_BASE_URL` - Public URL for the admin panel
 //! - `ADMIN_SESSION_SECRET` - Session signing secret (min 32 chars, high entropy)
 //! - `SHOPIFY_STORE` - Shopify store domain (e.g., your-store.myshopify.com)
-//! - `SHOPIFY_ADMIN_ACCESS_TOKEN` - Shopify Admin API access token (HIGH PRIVILEGE)
+//! - `SHOPIFY_ADMIN_CLIENT_ID` - Shopify Admin API OAuth client ID (HIGH PRIVILEGE)
+//! - `SHOPIFY_ADMIN_CLIENT_SECRET` - Shopify Admin API OAuth client secret (HIGH PRIVILEGE)
 //! - `CLAUDE_API_KEY` - Anthropic Claude API key
 //! - `SMTP_HOST` - SMTP server hostname
 //! - `SMTP_USERNAME` - SMTP authentication username
@@ -86,15 +87,18 @@ pub struct AdminConfig {
 
 /// Shopify Admin API configuration.
 ///
-/// Implements `Debug` manually to redact the HIGH PRIVILEGE access token.
+/// Implements `Debug` manually to redact the HIGH PRIVILEGE credentials.
+/// Uses OAuth for authentication - requires user to complete OAuth flow.
 #[derive(Clone)]
 pub struct ShopifyAdminConfig {
     /// Shopify store domain (e.g., your-store.myshopify.com)
     pub store: String,
     /// Shopify API version (e.g., 2026-01)
     pub api_version: String,
-    /// Admin API access token (HIGH PRIVILEGE - full store access)
-    pub access_token: SecretString,
+    /// OAuth client ID (HIGH PRIVILEGE - full store access)
+    pub client_id: String,
+    /// OAuth client secret (HIGH PRIVILEGE - full store access)
+    pub client_secret: SecretString,
 }
 
 impl std::fmt::Debug for ShopifyAdminConfig {
@@ -102,7 +106,8 @@ impl std::fmt::Debug for ShopifyAdminConfig {
         f.debug_struct("ShopifyAdminConfig")
             .field("store", &self.store)
             .field("api_version", &self.api_version)
-            .field("access_token", &"[REDACTED]")
+            .field("client_id", &self.client_id)
+            .field("client_secret", &"[REDACTED]")
             .finish()
     }
 }
@@ -216,7 +221,8 @@ impl ShopifyAdminConfig {
         Ok(Self {
             store: get_required_env("SHOPIFY_STORE")?,
             api_version: get_env_or_default("SHOPIFY_API_VERSION", "2026-01"),
-            access_token: get_validated_secret("SHOPIFY_ADMIN_ACCESS_TOKEN")?,
+            client_id: get_required_env("SHOPIFY_ADMIN_CLIENT_ID")?,
+            client_secret: get_validated_secret("SHOPIFY_ADMIN_CLIENT_SECRET")?,
         })
     }
 }
@@ -428,7 +434,8 @@ mod tests {
             shopify: ShopifyAdminConfig {
                 store: "test.myshopify.com".to_string(),
                 api_version: "2026-01".to_string(),
-                access_token: SecretString::from("shpat_test"),
+                client_id: "test_client_id".to_string(),
+                client_secret: SecretString::from("test_client_secret"),
             },
             claude: ClaudeConfig {
                 api_key: SecretString::from("sk-ant-test"),
@@ -459,7 +466,8 @@ mod tests {
         let config = ShopifyAdminConfig {
             store: "test.myshopify.com".to_string(),
             api_version: "2026-01".to_string(),
-            access_token: SecretString::from("shpat_super_secret_admin_token"),
+            client_id: "test_client_id".to_string(),
+            client_secret: SecretString::from("super_secret_client_secret"),
         };
 
         let debug_output = format!("{config:?}");
@@ -467,10 +475,11 @@ mod tests {
         // Public fields should be visible
         assert!(debug_output.contains("test.myshopify.com"));
         assert!(debug_output.contains("2026-01"));
+        assert!(debug_output.contains("test_client_id"));
 
         // Secret fields should be redacted
         assert!(debug_output.contains("[REDACTED]"));
-        assert!(!debug_output.contains("shpat_super_secret_admin_token"));
+        assert!(!debug_output.contains("super_secret_client_secret"));
     }
 
     #[test]

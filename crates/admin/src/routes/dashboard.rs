@@ -35,19 +35,19 @@ impl From<&CurrentAdmin> for AdminUserView {
 /// Dashboard metrics.
 #[derive(Debug, Clone)]
 pub struct DashboardMetrics {
-    pub total_orders: String,
-    pub total_revenue: String,
-    pub total_customers: String,
-    pub total_products: String,
+    pub orders: String,
+    pub revenue: String,
+    pub customers: String,
+    pub products: String,
 }
 
 impl Default for DashboardMetrics {
     fn default() -> Self {
         Self {
-            total_orders: "0".to_string(),
-            total_revenue: "$0.00".to_string(),
-            total_customers: "0".to_string(),
-            total_products: "0".to_string(),
+            orders: "0".to_string(),
+            revenue: "$0.00".to_string(),
+            customers: "0".to_string(),
+            products: "0".to_string(),
         }
     }
 }
@@ -87,11 +87,10 @@ pub struct DashboardTemplate {
 
 /// Format a Shopify Money type as a price string.
 fn format_price(money: &Money) -> String {
-    if let Ok(amount) = money.amount.parse::<f64>() {
-        format!("${amount:.2}")
-    } else {
-        format!("${}", money.amount)
-    }
+    money.amount.parse::<f64>().map_or_else(
+        |_| format!("${}", money.amount),
+        |amount| format!("${amount:.2}"),
+    )
 }
 
 /// Get customer name from an order.
@@ -214,10 +213,10 @@ pub async fn dashboard(
     };
 
     let metrics = DashboardMetrics {
-        total_orders: order_count.to_string(),
-        total_revenue: format!("${total_revenue:.2}"),
-        total_customers: customer_count,
-        total_products: product_count,
+        orders: order_count.to_string(),
+        revenue: format!("${total_revenue:.2}"),
+        customers: customer_count,
+        products: product_count,
     };
 
     // Build activity feed from recent orders

@@ -4,12 +4,12 @@
 //!
 //! ## Tables
 //!
-//! - `admin_users` - Admin authentication (separate from storefront users)
-//! - `admin_sessions` - Admin session storage
-//! - `admin_credentials` - Admin `WebAuthn` passkeys
-//! - `chat_sessions` - Claude AI chat sessions
-//! - `chat_messages` - Chat message history (JSONB content)
-//! - `shopify_tokens` - Encrypted OAuth tokens (if needed)
+//! - `admin_user` - Admin authentication (separate from storefront users)
+//! - `admin_session` - Admin session storage
+//! - `admin_credential` - Admin `WebAuthn` passkeys
+//! - `chat_session` - Claude AI chat sessions
+//! - `chat_message` - Chat message history (JSONB content)
+//! - `shopify_token` - Encrypted OAuth tokens (if needed)
 //! - `settings` - Application settings (JSONB)
 //!
 //! # Migrations
@@ -21,6 +21,7 @@
 
 pub mod admin_users;
 pub mod chat;
+pub mod shopify;
 
 use std::time::Duration;
 
@@ -31,6 +32,7 @@ use thiserror::Error;
 
 pub use admin_users::AdminUserRepository;
 pub use chat::ChatRepository;
+pub use shopify::ShopifyTokenRepository;
 
 /// Errors that can occur during repository operations.
 #[derive(Debug, Error)]

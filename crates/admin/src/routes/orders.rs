@@ -48,11 +48,10 @@ pub struct OrderView {
 
 /// Format a Shopify Money type as a price string.
 fn format_price(money: &Money) -> String {
-    if let Ok(amount) = money.amount.parse::<f64>() {
-        format!("${amount:.2}")
-    } else {
-        format!("${}", money.amount)
-    }
+    money.amount.parse::<f64>().map_or_else(
+        |_| format!("${}", money.amount),
+        |amount| format!("${amount:.2}"),
+    )
 }
 
 /// Get customer name from an order.
@@ -79,22 +78,29 @@ fn get_customer_name(order: &Order) -> String {
 /// Map fulfillment status to display string and CSS class.
 fn fulfillment_status_display(order: &Order) -> (String, String) {
     match order.fulfillment_status {
-        Some(FulfillmentStatus::Fulfilled) => {
-            ("Fulfilled".to_string(), "bg-green-100 text-green-700".to_string())
-        }
-        Some(FulfillmentStatus::PartiallyFulfilled) => {
-            ("Partially Fulfilled".to_string(), "bg-blue-100 text-blue-700".to_string())
-        }
-        Some(FulfillmentStatus::Unfulfilled) | None => {
-            ("Unfulfilled".to_string(), "bg-yellow-100 text-yellow-700".to_string())
-        }
+        Some(FulfillmentStatus::Fulfilled) => (
+            "Fulfilled".to_string(),
+            "bg-green-100 text-green-700".to_string(),
+        ),
+        Some(FulfillmentStatus::PartiallyFulfilled) => (
+            "Partially Fulfilled".to_string(),
+            "bg-blue-100 text-blue-700".to_string(),
+        ),
+        Some(FulfillmentStatus::Unfulfilled) | None => (
+            "Unfulfilled".to_string(),
+            "bg-yellow-100 text-yellow-700".to_string(),
+        ),
         Some(FulfillmentStatus::OnHold) => {
             ("On Hold".to_string(), "bg-red-100 text-red-700".to_string())
         }
-        Some(FulfillmentStatus::InProgress) => {
-            ("In Progress".to_string(), "bg-blue-100 text-blue-700".to_string())
-        }
-        _ => ("Pending".to_string(), "bg-gray-100 text-gray-700".to_string()),
+        Some(FulfillmentStatus::InProgress) => (
+            "In Progress".to_string(),
+            "bg-blue-100 text-blue-700".to_string(),
+        ),
+        _ => (
+            "Pending".to_string(),
+            "bg-gray-100 text-gray-700".to_string(),
+        ),
     }
 }
 

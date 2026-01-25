@@ -129,8 +129,7 @@ fn format_graphql_errors(errors: &[GraphQLError]) -> String {
             }
 
             // Include location if present
-            if !e.locations.is_empty() {
-                let loc = &e.locations[0];
+            if let Some(loc) = e.locations.first() {
                 parts.push(format!("at line {}:{}", loc.line, loc.column));
             }
 
@@ -180,7 +179,10 @@ mod tests {
         // Test with empty messages but with path info
         let errors = vec![GraphQLError {
             message: String::new(),
-            locations: vec![GraphQLErrorLocation { line: 5, column: 10 }],
+            locations: vec![GraphQLErrorLocation {
+                line: 5,
+                column: 10,
+            }],
             path: vec![
                 serde_json::Value::String("products".to_string()),
                 serde_json::Value::Number(0.into()),

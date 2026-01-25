@@ -46,7 +46,7 @@
 mod admin;
 pub mod types;
 
-pub use admin::AdminClient;
+pub use admin::{AdminClient, OAuthToken};
 pub use types::*;
 
 use thiserror::Error;
@@ -81,6 +81,14 @@ pub enum AdminShopifyError {
     /// User error from mutation (e.g., invalid input).
     #[error("User error: {0}")]
     UserError(String),
+
+    /// OAuth error during authentication flow.
+    #[error("OAuth error: {0}")]
+    OAuth(String),
+
+    /// No valid access token available (OAuth flow required).
+    #[error("No access token - OAuth authorization required")]
+    NoAccessToken,
 }
 
 /// A GraphQL error returned by the Shopify Admin API.

@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            DELETE FROM admin.shopify_token\n            WHERE shop = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a35da21c1f9a464d51d6e46bd119edac76834f6cbaf5e70f62135078983d070e"
+}

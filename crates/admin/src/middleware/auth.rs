@@ -138,3 +138,35 @@ pub async fn clear_current_admin(session: &Session) -> Result<(), tower_sessions
         .await?;
     Ok(())
 }
+
+/// Check that the current user is a super admin.
+///
+/// Returns `Ok(())` if the user is authenticated and has the `SuperAdmin` role.
+///
+/// # Errors
+///
+/// Returns `Err(Response)` with a redirect to login if not authenticated,
+/// or a 403 Forbidden response if the user is not a super admin.
+pub async fn require_super_admin<S>(_state: &S, session: &Session) -> Result<(), Response>
+where
+    S: Send + Sync,
+{
+    use crate::models::AdminRole;
+
+    let admin: CurrentAdmin = session
+        .get(session_keys::CURRENT_ADMIN)
+        .await
+        .ok()
+        .flatten()
+        .ok_or_else(|| Redirect::to("/auth/login").into_response())?;
+
+    if admin.role != AdminRole::SuperAdmin {
+        return Err((
+            StatusCode::FORBIDDEN,
+            "Only super admins can access this resource",
+        )
+            .into_response());
+    }
+
+    Ok(())
+}

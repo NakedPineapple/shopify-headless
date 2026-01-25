@@ -11,8 +11,8 @@ use serde::Deserialize;
 use tracing::instrument;
 
 use crate::filters;
-use crate::shopify::types::Collection as ShopifyCollection;
 use crate::shopify::ShopifyError;
+use crate::shopify::types::Collection as ShopifyCollection;
 use crate::state::AppState;
 
 pub use super::products::{ImageView, ProductView};
@@ -74,13 +74,16 @@ pub struct CollectionShowTemplate {
 }
 
 /// Products per page for collection view.
-const PRODUCTS_PER_PAGE: i64 = 12;
+const PRODUCTS_PER_PAGE: usize = 12;
 
 /// Display collection listing page.
 #[instrument(skip(state))]
 pub async fn index(State(state): State<AppState>) -> Response {
     // Fetch collections from Shopify Storefront API
-    let result = state.storefront().get_collections(Some(50), None, None).await;
+    let result = state
+        .storefront()
+        .get_collections(Some(50), None, None)
+        .await;
 
     match result {
         Ok(connection) => {
@@ -112,9 +115,11 @@ pub async fn show(
     let current_page = query.page.unwrap_or(1);
 
     // Fetch collection and products from Shopify Storefront API
+    #[allow(clippy::cast_possible_wrap)]
+    let products_per_page = PRODUCTS_PER_PAGE as i64;
     let result = state
         .storefront()
-        .get_collection_by_handle(&handle, Some(PRODUCTS_PER_PAGE), None)
+        .get_collection_by_handle(&handle, Some(products_per_page), None)
         .await;
 
     match result {
@@ -128,35 +133,37 @@ pub async fn show(
 
             // Note: For proper pagination, we'd need to track page info
             // For now, assume single page of products
-            let has_more = products.len() as i64 >= PRODUCTS_PER_PAGE;
+            let has_more = products.len() >= PRODUCTS_PER_PAGE;
 
             CollectionShowTemplate {
                 collection,
                 products,
                 current_page,
-                total_pages: if has_more { current_page + 1 } else { current_page },
+                total_pages: if has_more {
+                    current_page + 1
+                } else {
+                    current_page
+                },
                 has_more_pages: has_more,
             }
             .into_response()
         }
-        Err(ShopifyError::NotFound(_)) => {
-            (
-                StatusCode::NOT_FOUND,
-                CollectionShowTemplate {
-                    collection: CollectionView {
-                        handle: handle.clone(),
-                        title: "Collection Not Found".to_string(),
-                        description: None,
-                        image: None,
-                    },
-                    products: Vec::new(),
-                    current_page: 1,
-                    total_pages: 1,
-                    has_more_pages: false,
+        Err(ShopifyError::NotFound(_)) => (
+            StatusCode::NOT_FOUND,
+            CollectionShowTemplate {
+                collection: CollectionView {
+                    handle: handle.clone(),
+                    title: "Collection Not Found".to_string(),
+                    description: None,
+                    image: None,
                 },
-            )
-                .into_response()
-        }
+                products: Vec::new(),
+                current_page: 1,
+                total_pages: 1,
+                has_more_pages: false,
+            },
+        )
+            .into_response(),
         Err(e) => {
             tracing::error!("Failed to fetch collection {handle}: {e}");
             (

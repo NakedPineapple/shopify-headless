@@ -46,11 +46,10 @@ pub struct ProductView {
 
 /// Format a Shopify Money type as a price string.
 fn format_price(money: &Money) -> String {
-    if let Ok(amount) = money.amount.parse::<f64>() {
-        format!("${amount:.2}")
-    } else {
-        format!("${}", money.amount)
-    }
+    money.amount.parse::<f64>().map_or_else(
+        |_| format!("${}", money.amount),
+        |amount| format!("${amount:.2}"),
+    )
 }
 
 impl From<&AdminProduct> for ProductView {
@@ -66,8 +65,7 @@ impl From<&AdminProduct> for ProductView {
         let price = product
             .variants
             .first()
-            .map(|v| format_price(&v.price))
-            .unwrap_or_else(|| "$0.00".to_string());
+            .map_or_else(|| "$0.00".to_string(), |v| format_price(&v.price));
 
         Self {
             id: product.id.clone(),

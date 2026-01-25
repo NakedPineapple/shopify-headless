@@ -1,7 +1,7 @@
-//! Shopify Admin API GraphQL client.
+//! Shopify Admin API GraphQL client with OAuth authentication.
 //!
 //! This module provides a type-safe client for interacting with the
-//! Shopify Admin API using GraphQL.
+//! Shopify Admin API using GraphQL. Requires OAuth authentication.
 
 use std::sync::Arc;
 
@@ -9,6 +9,7 @@ use graphql_client::GraphQLQuery;
 use reqwest::header::{CONTENT_TYPE, HeaderMap, HeaderValue};
 use secrecy::ExposeSecret;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
+use tokio::sync::RwLock;
 use tracing::instrument;
 
 use crate::config::ShopifyAdminConfig;
@@ -33,14 +34,27 @@ use queries::{
     InventoryAdjustQuantities, InventorySetQuantities,
 };
 
+/// OAuth token for Admin API access.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OAuthToken {
+    /// The access token for API calls
+    pub access_token: String,
+    /// Granted scopes
+    pub scope: String,
+    /// Unix timestamp when token was obtained
+    pub obtained_at: i64,
+    /// Associated shop domain
+    pub shop: String,
+}
+
 /// Shopify Admin API GraphQL client.
 ///
 /// Provides type-safe access to the Admin API for managing products,
-/// orders, customers, and inventory.
+/// orders, customers, and inventory. Uses OAuth for authentication.
 ///
 /// # Security
 ///
-/// This client uses the Admin API token which has HIGH PRIVILEGE access
+/// This client uses OAuth credentials which have HIGH PRIVILEGE access
 /// to the store. Only use on Tailscale-protected infrastructure.
 #[derive(Clone)]
 pub struct AdminClient {
@@ -49,8 +63,12 @@ pub struct AdminClient {
 
 struct AdminClientInner {
     client: reqwest::Client,
-    endpoint: String,
-    access_token: String,
+    store: String,
+    api_version: String,
+    client_id: String,
+    client_secret: String,
+    /// In-memory token cache (persisted externally via `set_token`/`get_token`)
+    token: RwLock<Option<OAuthToken>>,
 }
 
 /// GraphQL response wrapper.
@@ -75,45 +93,146 @@ struct GraphQLErrorLocationResponse {
     column: i64,
 }
 
+/// OAuth token response from Shopify.
+#[derive(Debug, Deserialize)]
+struct OAuthTokenResponse {
+    access_token: String,
+    scope: String,
+}
+
 impl AdminClient {
     /// Create a new Admin API client.
     ///
     /// # Arguments
     ///
     /// * `config` - Shopify Admin API configuration
-    ///
-    /// # Panics
-    ///
-    /// Panics if the access token contains invalid header characters.
     #[must_use]
     pub fn new(config: &ShopifyAdminConfig) -> Self {
-        let access_token = config.access_token.expose_secret();
-
-        let mut headers = HeaderMap::new();
-        headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
-        headers.insert(
-            "X-Shopify-Access-Token",
-            HeaderValue::from_str(access_token).expect("Invalid access token for header"),
-        );
-
-        let client = reqwest::Client::builder()
-            .default_headers(headers)
-            .build()
-            .expect("Failed to build HTTP client");
-
-        let endpoint = format!(
-            "https://{}/admin/api/{}/graphql.json",
-            config.store, config.api_version
-        );
+        let client = reqwest::Client::new();
 
         Self {
             inner: Arc::new(AdminClientInner {
                 client,
-                endpoint,
-                access_token: access_token.to_string(),
+                store: config.store.clone(),
+                api_version: config.api_version.clone(),
+                client_id: config.client_id.clone(),
+                client_secret: config.client_secret.expose_secret().to_string(),
+                token: RwLock::new(None),
             }),
         }
     }
+
+    /// Get the store domain.
+    #[must_use]
+    pub fn store(&self) -> &str {
+        &self.inner.store
+    }
+
+    /// Get the client ID.
+    #[must_use]
+    pub fn client_id(&self) -> &str {
+        &self.inner.client_id
+    }
+
+    /// Get the client secret (for HMAC verification).
+    #[must_use]
+    pub fn client_secret(&self) -> &str {
+        &self.inner.client_secret
+    }
+
+    // =========================================================================
+    // OAuth Flow
+    // =========================================================================
+
+    /// Generate the OAuth authorization URL.
+    ///
+    /// Redirect the user to this URL to begin the OAuth flow.
+    #[must_use]
+    pub fn authorization_url(&self, redirect_uri: &str, scopes: &[&str], state: &str) -> String {
+        let scope = scopes.join(",");
+        format!(
+            "https://{}/admin/oauth/authorize?client_id={}&scope={}&redirect_uri={}&state={}",
+            self.inner.store,
+            urlencoding::encode(&self.inner.client_id),
+            urlencoding::encode(&scope),
+            urlencoding::encode(redirect_uri),
+            urlencoding::encode(state)
+        )
+    }
+
+    /// Exchange an authorization code for an access token.
+    ///
+    /// Call this in your OAuth callback handler after the user authorizes.
+    ///
+    /// # Errors
+    ///
+    /// Returns `AdminShopifyError::OAuth` if the token exchange fails.
+    /// Returns `AdminShopifyError::Http` if the HTTP request fails.
+    pub async fn exchange_code(&self, code: &str) -> Result<OAuthToken, AdminShopifyError> {
+        let url = format!("https://{}/admin/oauth/access_token", self.inner.store);
+
+        let params = [
+            ("client_id", self.inner.client_id.as_str()),
+            ("client_secret", self.inner.client_secret.as_str()),
+            ("code", code),
+        ];
+
+        let response = self.inner.client.post(&url).form(&params).send().await?;
+
+        if !response.status().is_success() {
+            let text = response.text().await.unwrap_or_default();
+            return Err(AdminShopifyError::OAuth(format!(
+                "Token exchange failed: {text}"
+            )));
+        }
+
+        let token_response: OAuthTokenResponse = response.json().await?;
+
+        let token = OAuthToken {
+            access_token: token_response.access_token,
+            scope: token_response.scope,
+            obtained_at: chrono::Utc::now().timestamp(),
+            shop: self.inner.store.clone(),
+        };
+
+        // Cache the token in memory
+        *self.inner.token.write().await = Some(token.clone());
+
+        Ok(token)
+    }
+
+    /// Set the access token directly (for loading from storage).
+    pub async fn set_token(&self, token: OAuthToken) {
+        *self.inner.token.write().await = Some(token);
+    }
+
+    /// Get the current token (if set).
+    pub async fn get_token(&self) -> Option<OAuthToken> {
+        self.inner.token.read().await.clone()
+    }
+
+    /// Check if we have a valid token.
+    pub async fn has_token(&self) -> bool {
+        self.inner.token.read().await.is_some()
+    }
+
+    /// Clear the cached token.
+    pub async fn clear_token(&self) {
+        *self.inner.token.write().await = None;
+    }
+
+    /// Get the current access token string.
+    async fn get_access_token(&self) -> Result<String, AdminShopifyError> {
+        let token = self.inner.token.read().await;
+        token
+            .as_ref()
+            .map(|t| t.access_token.clone())
+            .ok_or(AdminShopifyError::NoAccessToken)
+    }
+
+    // =========================================================================
+    // GraphQL Execution
+    // =========================================================================
 
     /// Execute a GraphQL query.
     async fn execute<Q: GraphQLQuery>(
@@ -123,12 +242,20 @@ impl AdminClient {
     where
         Q::ResponseData: DeserializeOwned,
     {
+        let access_token = self.get_access_token().await?;
+        let endpoint = format!(
+            "https://{}/admin/api/{}/graphql.json",
+            self.inner.store, self.inner.api_version
+        );
+
         let body = Q::build_query(variables);
 
         let response = self
             .inner
             .client
-            .post(&self.inner.endpoint)
+            .post(&endpoint)
+            .header("X-Shopify-Access-Token", &access_token)
+            .header("Content-Type", "application/json")
             .json(&body)
             .send()
             .await?;

@@ -249,17 +249,26 @@ tasks:
   db:migrate:
     desc: "Run all database migrations"
     cmds:
-      - task: db:migrate:storefront
-      - task: db:migrate:admin
+      # Force rebuild CLI to pick up any new migration files (embedded at compile time)
+      - cargo clean -p naked-pineapple-cli
+      - cargo build -p naked-pineapple-cli
+      - cargo run -p naked-pineapple-cli -- migrate storefront
+      - cargo run -p naked-pineapple-cli -- migrate admin
 
   db:migrate:storefront:
     desc: "Run storefront database migrations"
     cmds:
+      # Force rebuild CLI to pick up any new migration files (embedded at compile time)
+      - cargo clean -p naked-pineapple-cli
+      - cargo build -p naked-pineapple-cli
       - cargo run -p naked-pineapple-cli -- migrate storefront
 
   db:migrate:admin:
     desc: "Run admin database migrations"
     cmds:
+      # Force rebuild CLI to pick up any new migration files (embedded at compile time)
+      - cargo clean -p naked-pineapple-cli
+      - cargo build -p naked-pineapple-cli
       - cargo run -p naked-pineapple-cli -- migrate admin
 
   db:reset:
@@ -500,21 +509,22 @@ tasks:
   # ============================================================================
 
   graphql:update:admin:
-    desc: "Download Shopify Admin API GraphQL schema"
+    desc: "Download Shopify Admin API GraphQL schema (requires OAuth token)"
     cmds:
       - |
         echo "Downloading Shopify Admin API schema..."
+        echo "Note: SHOPIFY_ADMIN_OAUTH_TOKEN must be obtained via OAuth flow first"
         curl -s -X POST "https://${SHOPIFY_STORE}/admin/api/${SHOPIFY_API_VERSION:-2026-01}/graphql.json" \
           -H "Content-Type: application/json" \
-          -H "X-Shopify-Access-Token: ${SHOPIFY_ADMIN_ACCESS_TOKEN}" \
+          -H "X-Shopify-Access-Token: ${SHOPIFY_ADMIN_OAUTH_TOKEN}" \
           -d '{"query":"{ __schema { queryType { name } mutationType { name } subscriptionType { name } types { ...FullType } directives { name description locations args { ...InputValue } } } } fragment FullType on __Type { kind name description fields(includeDeprecated: true) { name description args { ...InputValue } type { ...TypeRef } isDeprecated deprecationReason } inputFields { ...InputValue } interfaces { ...TypeRef } enumValues(includeDeprecated: true) { name description isDeprecated deprecationReason } possibleTypes { ...TypeRef } } fragment InputValue on __InputValue { name description type { ...TypeRef } defaultValue } fragment TypeRef on __Type { kind name ofType { kind name ofType { kind name ofType { kind name ofType { kind name ofType { kind name ofType { kind name ofType { kind name } } } } } } } }"}' \
           | jq '.data' > crates/admin/graphql/admin/schema.json
         echo "Schema saved to crates/admin/graphql/admin/schema.json"
     preconditions:
       - sh: '[ -n "$SHOPIFY_STORE" ]'
         msg: "SHOPIFY_STORE environment variable is required"
-      - sh: '[ -n "$SHOPIFY_ADMIN_ACCESS_TOKEN" ]'
-        msg: "SHOPIFY_ADMIN_ACCESS_TOKEN environment variable is required"
+      - sh: '[ -n "$SHOPIFY_ADMIN_OAUTH_TOKEN" ]'
+        msg: "SHOPIFY_ADMIN_OAUTH_TOKEN is required - obtain via Admin OAuth flow (run admin app and complete authorization)"
 
   graphql:update:storefront:
     desc: "Download Shopify Storefront API GraphQL schema"
