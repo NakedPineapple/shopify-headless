@@ -1,0 +1,202 @@
+# Product queries for Shopify Admin API
+
+# Get a single product by ID
+query GetProduct($id: ID!, $mediaCount: Int = 10, $variantCount: Int = 50) {
+  product(id: $id) {
+    id
+    handle
+    title
+    description
+    descriptionHtml
+    status
+    productType
+    vendor
+    tags
+    totalInventory
+    createdAt
+    updatedAt
+    featuredMedia {
+      __typename
+      id
+      alt
+      preview {
+        image {
+          id
+          url
+          altText
+          width
+          height
+        }
+      }
+    }
+    media(first: $mediaCount) {
+      edges {
+        node {
+          __typename
+          id
+          alt
+          preview {
+            image {
+              id
+              url
+              altText
+              width
+              height
+            }
+          }
+        }
+      }
+    }
+    variants(first: $variantCount) {
+      edges {
+        node {
+          id
+          title
+          sku
+          barcode
+          price
+          compareAtPrice
+          inventoryQuantity
+          inventoryItem {
+            id
+            tracked
+            requiresShipping
+          }
+          inventoryPolicy
+          media(first: 1) {
+            edges {
+              node {
+                __typename
+                id
+                alt
+                preview {
+                  image {
+                    id
+                    url
+                    altText
+                    width
+                    height
+                  }
+                }
+              }
+            }
+          }
+          createdAt
+          updatedAt
+        }
+      }
+    }
+  }
+}
+
+# Get paginated list of products
+query GetProducts(
+  $first: Int = 20
+  $after: String
+  $query: String
+  $sortKey: ProductSortKeys
+  $reverse: Boolean = false
+) {
+  products(
+    first: $first
+    after: $after
+    query: $query
+    sortKey: $sortKey
+    reverse: $reverse
+  ) {
+    edges {
+      cursor
+      node {
+        id
+        handle
+        title
+        description
+        descriptionHtml
+        status
+        productType
+        vendor
+        tags
+        totalInventory
+        createdAt
+        updatedAt
+        featuredMedia {
+          __typename
+          id
+          alt
+          preview {
+            image {
+              id
+              url
+              altText
+              width
+              height
+            }
+          }
+        }
+        media(first: 1) {
+          edges {
+            node {
+              __typename
+              id
+              alt
+              preview {
+                image {
+                  id
+                  url
+                  altText
+                  width
+                  height
+                }
+              }
+            }
+          }
+        }
+        variants(first: 3) {
+          edges {
+            node {
+              id
+              title
+              sku
+              barcode
+              price
+              compareAtPrice
+              inventoryQuantity
+              inventoryItem {
+                id
+                tracked
+                requiresShipping
+              }
+              inventoryPolicy
+              media(first: 1) {
+                edges {
+                  node {
+                    __typename
+                    id
+                    alt
+                    preview {
+                      image {
+                        id
+                        url
+                        altText
+                        width
+                        height
+                      }
+                    }
+                  }
+                }
+              }
+              createdAt
+              updatedAt
+            }
+          }
+        }
+      }
+    }
+    pageInfo {
+      hasNextPage
+      hasPreviousPage
+      startCursor
+      endCursor
+    }
+  }
+}

@@ -1,0 +1,96 @@
+# Inventory queries and mutations for Shopify Admin API
+
+# Get inventory levels at a location
+query GetInventoryLevels(
+  $locationId: ID!
+  $first: Int = 50
+  $after: String
+) {
+  location(id: $locationId) {
+    id
+    name
+    inventoryLevels(first: $first, after: $after) {
+      edges {
+        node {
+          id
+          quantities(names: ["available", "incoming", "on_hand"]) {
+            name
+            quantity
+          }
+          item {
+            id
+          }
+          location {
+            id
+            name
+          }
+          updatedAt
+        }
+      }
+      pageInfo {
+        hasNextPage
+        hasPreviousPage
+        startCursor
+        endCursor
+      }
+    }
+  }
+}
+
+# Adjust inventory quantities (delta adjustment)
+mutation InventoryAdjustQuantities($input: InventoryAdjustQuantitiesInput!) {
+  inventoryAdjustQuantities(input: $input) {
+    inventoryAdjustmentGroup {
+      id
+      createdAt
+      reason
+      referenceDocumentUri
+      changes {
+        name
+        delta
+        quantityAfterChange
+        item {
+          id
+        }
+        location {
+          id
+          name
+        }
+      }
+    }
+    userErrors {
+      field
+      message
+      code
+    }
+  }
+}
+
+# Set quantities (absolute value) - replaces deprecated inventorySetOnHandQuantities
+mutation InventorySetQuantities($input: InventorySetQuantitiesInput!) {
+  inventorySetQuantities(input: $input) {
+    inventoryAdjustmentGroup {
+      id
+      createdAt
+      reason
+      referenceDocumentUri
+      changes {
+        name
+        delta
+        quantityAfterChange
+        item {
+          id
+        }
+        location {
+          id
+          name
+        }
+      }
+    }
+    userErrors {
+      field
+      message
+      code
+    }
+  }
+}

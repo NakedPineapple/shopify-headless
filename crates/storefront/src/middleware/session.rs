@@ -21,6 +21,11 @@ const SESSION_EXPIRY_SECONDS: i64 = 7 * 24 * 60 * 60;
 ///
 /// * `pool` - `PostgreSQL` connection pool
 /// * `config` - Storefront configuration (for session secret)
+///
+/// # Panics
+///
+/// Panics if the schema name or table name is invalid (should never happen
+/// with hardcoded "storefront" and "sessions" values).
 #[must_use]
 pub fn create_session_layer(
     pool: &PgPool,

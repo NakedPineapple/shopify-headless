@@ -18,105 +18,145 @@
 //! - Direct API calls to Shopify (no local database sync)
 //! - Rate limiting handled automatically
 //!
-//! # Future Implementation
+//! # Example
 //!
 //! ```rust,ignore
-//! use graphql_client::{GraphQLQuery, Response};
+//! use naked_pineapple_admin::shopify::AdminClient;
 //!
-//! // Generated from graphql/admin/queries/products.graphql
-//! #[derive(GraphQLQuery)]
-//! #[graphql(
-//!     schema_path = "graphql/admin/schema.json",
-//!     query_path = "graphql/admin/queries/products.graphql",
-//!     response_derives = "Debug, Clone, Serialize"
-//! )]
-//! pub struct GetProducts;
+//! let client = AdminClient::new(&config.shopify);
 //!
-//! pub struct AdminClient {
-//!     client: reqwest::Client,
-//!     store: String,
-//!     api_version: String,
-//!     access_token: String,  // HIGH PRIVILEGE TOKEN
-//! }
+//! // Get products
+//! let products = client.get_products(10, None, None).await?;
 //!
-//! impl AdminClient {
-//!     pub fn new(config: &ShopifyAdminConfig) -> Self {
-//!         Self {
-//!             client: reqwest::Client::new(),
-//!             store: config.store.clone(),
-//!             api_version: config.api_version.clone(),
-//!             access_token: config.access_token.clone(),
-//!         }
-//!     }
+//! // Get a specific order
+//! let order = client.get_order("gid://shopify/Order/123").await?;
 //!
-//!     fn endpoint(&self) -> String {
-//!         format!(
-//!             "https://{}/admin/api/{}/graphql.json",
-//!             self.store, self.api_version
-//!         )
-//!     }
-//!
-//!     /// Get products with pagination.
-//!     pub async fn get_products(&self, first: i64, after: Option<&str>) -> Result<ProductConnection, ShopifyError> {
-//!         let variables = get_products::Variables {
-//!             first,
-//!             after: after.map(String::from),
-//!         };
-//!         let request_body = GetProducts::build_query(variables);
-//!
-//!         let response = self
-//!             .client
-//!             .post(&self.endpoint())
-//!             .header("X-Shopify-Access-Token", &self.access_token)
-//!             .json(&request_body)
-//!             .send()
-//!             .await?
-//!             .json::<Response<get_products::ResponseData>>()
-//!             .await?;
-//!
-//!         Ok(response.data?.products.into())
-//!     }
-//!
-//!     /// Get orders with pagination.
-//!     pub async fn get_orders(&self, first: i64, after: Option<&str>) -> Result<OrderConnection, ShopifyError> { ... }
-//!
-//!     /// Get a single order by ID.
-//!     pub async fn get_order(&self, id: &str) -> Result<Order, ShopifyError> { ... }
-//!
-//!     /// Get customers with pagination.
-//!     pub async fn get_customers(&self, first: i64, after: Option<&str>) -> Result<CustomerConnection, ShopifyError> { ... }
-//!
-//!     /// Get inventory levels for a location.
-//!     pub async fn get_inventory(&self, location_id: &str) -> Result<Vec<InventoryLevel>, ShopifyError> { ... }
-//!
-//!     /// Update inventory quantity.
-//!     pub async fn adjust_inventory(&self, inventory_item_id: &str, location_id: &str, delta: i64) -> Result<InventoryLevel, ShopifyError> { ... }
-//! }
-//!
-//! #[derive(Debug, thiserror::Error)]
-//! pub enum ShopifyError {
-//!     #[error("HTTP error: {0}")]
-//!     Http(#[from] reqwest::Error),
-//!
-//!     #[error("GraphQL error: {0}")]
-//!     GraphQL(String),
-//!
-//!     #[error("Not found")]
-//!     NotFound,
-//!
-//!     #[error("Rate limited, retry after {0} seconds")]
-//!     RateLimited(u64),
-//!
-//!     #[error("Unauthorized")]
-//!     Unauthorized,
-//! }
+//! // Adjust inventory
+//! client.adjust_inventory(
+//!     "gid://shopify/InventoryItem/123",
+//!     "gid://shopify/Location/456",
+//!     -1, // decrease by 1
+//! ).await?;
 //! ```
-//!
-//! # GraphQL Queries to Create
-//!
-//! - `queries/products.graphql` - `GetProducts`, `GetProduct`, `UpdateProduct`
-//! - `queries/orders.graphql` - `GetOrders`, `GetOrder`, `FulfillOrder`
-//! - `queries/customers.graphql` - `GetCustomers`, `GetCustomer`
-//! - `queries/inventory.graphql` - `GetInventoryLevels`, `AdjustInventory`
 
-// TODO: Implement Admin API client
+// Allow dead code during incremental development
+#![allow(dead_code)]
+#![allow(unused_imports)]
+
+mod admin;
+pub mod types;
+
+pub use admin::AdminClient;
+pub use types::*;
+
+use thiserror::Error;
+
+/// Errors that can occur when interacting with Shopify Admin API.
+#[derive(Debug, Error)]
+pub enum AdminShopifyError {
+    /// HTTP request failed.
+    #[error("HTTP error: {0}")]
+    Http(#[from] reqwest::Error),
+
+    /// GraphQL query returned errors.
+    #[error("GraphQL errors: {}", format_graphql_errors(.0))]
+    GraphQL(Vec<GraphQLError>),
+
+    /// JSON parsing failed.
+    #[error("JSON parse error: {0}")]
+    Parse(#[from] serde_json::Error),
+
+    /// Resource not found.
+    #[error("Not found: {0}")]
+    NotFound(String),
+
+    /// Rate limited by Shopify.
+    #[error("Rate limited, retry after {0} seconds")]
+    RateLimited(u64),
+
+    /// Authentication/authorization failed.
+    #[error("Unauthorized: {0}")]
+    Unauthorized(String),
+
+    /// User error from mutation (e.g., invalid input).
+    #[error("User error: {0}")]
+    UserError(String),
+}
+
+/// A GraphQL error returned by the Shopify Admin API.
+#[derive(Debug, Clone)]
+pub struct GraphQLError {
+    /// Error message.
+    pub message: String,
+    /// Source locations in the query.
+    pub locations: Vec<GraphQLErrorLocation>,
+    /// Path to the error in the response.
+    pub path: Vec<serde_json::Value>,
+}
+
+/// Location in a GraphQL query where an error occurred.
+#[derive(Debug, Clone)]
+pub struct GraphQLErrorLocation {
+    /// Line number (1-indexed).
+    pub line: i64,
+    /// Column number (1-indexed).
+    pub column: i64,
+}
+
+fn format_graphql_errors(errors: &[GraphQLError]) -> String {
+    errors
+        .iter()
+        .map(|e| e.message.clone())
+        .collect::<Vec<_>>()
+        .join("; ")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_admin_shopify_error_display() {
+        let err = AdminShopifyError::NotFound("order-123".to_string());
+        assert_eq!(err.to_string(), "Not found: order-123");
+    }
+
+    #[test]
+    fn test_graphql_error_formatting() {
+        let errors = vec![
+            GraphQLError {
+                message: "Field not found".to_string(),
+                locations: vec![],
+                path: vec![],
+            },
+            GraphQLError {
+                message: "Invalid ID".to_string(),
+                locations: vec![],
+                path: vec![],
+            },
+        ];
+        let err = AdminShopifyError::GraphQL(errors);
+        assert_eq!(
+            err.to_string(),
+            "GraphQL errors: Field not found; Invalid ID"
+        );
+    }
+
+    #[test]
+    fn test_rate_limited_error() {
+        let err = AdminShopifyError::RateLimited(60);
+        assert_eq!(err.to_string(), "Rate limited, retry after 60 seconds");
+    }
+
+    #[test]
+    fn test_unauthorized_error() {
+        let err = AdminShopifyError::Unauthorized("Invalid token".to_string());
+        assert_eq!(err.to_string(), "Unauthorized: Invalid token");
+    }
+
+    #[test]
+    fn test_user_error() {
+        let err = AdminShopifyError::UserError("Invalid quantity".to_string());
+        assert_eq!(err.to_string(), "User error: Invalid quantity");
+    }
+}

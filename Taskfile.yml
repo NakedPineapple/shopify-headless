@@ -485,3 +485,41 @@ tasks:
     cmds:
       - cargo audit --deny warnings
       - cargo deny --all-features --exclude-dev check --deny warnings --allow unmatched-organization
+
+  # ============================================================================
+  # GraphQL tasks
+  # ============================================================================
+
+  graphql:update:admin:
+    desc: "Download Shopify Admin API GraphQL schema"
+    cmds:
+      - |
+        echo "Downloading Shopify Admin API schema..."
+        curl -s -X POST "https://${SHOPIFY_STORE}/admin/api/${SHOPIFY_API_VERSION:-2026-01}/graphql.json" \
+          -H "Content-Type: application/json" \
+          -H "X-Shopify-Access-Token: ${SHOPIFY_ADMIN_ACCESS_TOKEN}" \
+          -d '{"query":"{ __schema { queryType { name } mutationType { name } subscriptionType { name } types { ...FullType } directives { name description locations args { ...InputValue } } } } fragment FullType on __Type { kind name description fields(includeDeprecated: true) { name description args { ...InputValue } type { ...TypeRef } isDeprecated deprecationReason } inputFields { ...InputValue } interfaces { ...TypeRef } enumValues(includeDeprecated: true) { name description isDeprecated deprecationReason } possibleTypes { ...TypeRef } } fragment InputValue on __InputValue { name description type { ...TypeRef } defaultValue } fragment TypeRef on __Type { kind name ofType { kind name ofType { kind name ofType { kind name ofType { kind name ofType { kind name ofType { kind name ofType { kind name } } } } } } } }"}' \
+          | jq '.data' > crates/admin/graphql/admin/schema.json
+        echo "Schema saved to crates/admin/graphql/admin/schema.json"
+    preconditions:
+      - sh: '[ -n "$SHOPIFY_STORE" ]'
+        msg: "SHOPIFY_STORE environment variable is required"
+      - sh: '[ -n "$SHOPIFY_ADMIN_ACCESS_TOKEN" ]'
+        msg: "SHOPIFY_ADMIN_ACCESS_TOKEN environment variable is required"
+
+  graphql:update:storefront:
+    desc: "Download Shopify Storefront API GraphQL schema"
+    cmds:
+      - |
+        echo "Downloading Shopify Storefront API schema..."
+        curl -s -X POST "https://${SHOPIFY_STORE}/api/${SHOPIFY_API_VERSION:-2026-01}/graphql.json" \
+          -H "Content-Type: application/json" \
+          -H "Shopify-Storefront-Private-Token: ${SHOPIFY_STOREFRONT_PRIVATE_TOKEN}" \
+          -d '{"query":"{ __schema { queryType { name } mutationType { name } subscriptionType { name } types { ...FullType } directives { name description locations args { ...InputValue } } } } fragment FullType on __Type { kind name description fields(includeDeprecated: true) { name description args { ...InputValue } type { ...TypeRef } isDeprecated deprecationReason } inputFields { ...InputValue } interfaces { ...TypeRef } enumValues(includeDeprecated: true) { name description isDeprecated deprecationReason } possibleTypes { ...TypeRef } } fragment InputValue on __InputValue { name description type { ...TypeRef } defaultValue } fragment TypeRef on __Type { kind name ofType { kind name ofType { kind name ofType { kind name ofType { kind name ofType { kind name ofType { kind name ofType { kind name } } } } } } } }"}' \
+          | jq '.data' > crates/storefront/graphql/storefront/schema.json
+        echo "Schema saved to crates/storefront/graphql/storefront/schema.json"
+    preconditions:
+      - sh: '[ -n "$SHOPIFY_STORE" ]'
+        msg: "SHOPIFY_STORE environment variable is required"
+      - sh: '[ -n "$SHOPIFY_STOREFRONT_PRIVATE_TOKEN" ]'
+        msg: "SHOPIFY_STOREFRONT_PRIVATE_TOKEN environment variable is required"

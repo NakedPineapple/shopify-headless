@@ -1,0 +1,136 @@
+# Customer queries for Shopify Admin API
+
+# Get a single customer by ID
+query GetCustomer($id: ID!, $addressCount: Int = 10) {
+  customer(id: $id) {
+    id
+    defaultEmailAddress {
+      emailAddress
+      marketingState
+      marketingUpdatedAt
+    }
+    defaultPhoneNumber {
+      phoneNumber
+    }
+    firstName
+    lastName
+    displayName
+    state
+    numberOfOrders
+    amountSpent {
+      amount
+      currencyCode
+    }
+    note
+    tags
+    defaultAddress {
+      address1
+      address2
+      city
+      provinceCode
+      countryCodeV2
+      zip
+      firstName
+      lastName
+      company
+      phone
+    }
+    addressesV2(first: $addressCount) {
+      edges {
+        node {
+          address1
+          address2
+          city
+          provinceCode
+          countryCodeV2
+          zip
+          firstName
+          lastName
+          company
+          phone
+        }
+      }
+    }
+    createdAt
+    updatedAt
+  }
+}
+
+# Get paginated list of customers
+query GetCustomers(
+  $first: Int = 20
+  $after: String
+  $query: String
+  $sortKey: CustomerSortKeys
+  $reverse: Boolean = false
+) {
+  customers(
+    first: $first
+    after: $after
+    query: $query
+    sortKey: $sortKey
+    reverse: $reverse
+  ) {
+    edges {
+      cursor
+      node {
+        id
+        defaultEmailAddress {
+          emailAddress
+          marketingState
+          marketingUpdatedAt
+        }
+        defaultPhoneNumber {
+          phoneNumber
+        }
+        firstName
+        lastName
+        displayName
+        state
+        numberOfOrders
+        amountSpent {
+          amount
+          currencyCode
+        }
+        note
+        tags
+        defaultAddress {
+          address1
+          address2
+          city
+          provinceCode
+          countryCodeV2
+          zip
+          firstName
+          lastName
+          company
+          phone
+        }
+        addressesV2(first: 1) {
+          edges {
+            node {
+              address1
+              address2
+              city
+              provinceCode
+              countryCodeV2
+              zip
+              firstName
+              lastName
+              company
+              phone
+            }
+          }
+        }
+        createdAt
+        updatedAt
+      }
+    }
+    pageInfo {
+      hasNextPage
+      hasPreviousPage
+      startCursor
+      endCursor
+    }
+  }
+}
