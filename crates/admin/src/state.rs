@@ -1,63 +1,48 @@
 //! Application state shared across handlers.
-//!
-//! # Future Implementation
-//!
-//! ```rust,ignore
-//! use sqlx::PgPool;
-//! use std::sync::Arc;
-//!
-//! use crate::{
-//!     claude::ClaudeClient,
-//!     config::AdminConfig,
-//!     shopify::AdminClient,
-//! };
-//!
-//! /// Application state shared across all handlers.
-//! #[derive(Clone)]
-//! pub struct AppState {
-//!     inner: Arc<AppStateInner>,
-//! }
-//!
-//! struct AppStateInner {
-//!     config: AdminConfig,
-//!     pool: PgPool,
-//!     shopify_client: AdminClient,
-//!     claude_client: ClaudeClient,
-//! }
-//!
-//! impl AppState {
-//!     pub fn new(
-//!         config: AdminConfig,
-//!         pool: PgPool,
-//!         shopify_client: AdminClient,
-//!         claude_client: ClaudeClient,
-//!     ) -> Self {
-//!         Self {
-//!             inner: Arc::new(AppStateInner {
-//!                 config,
-//!                 pool,
-//!                 shopify_client,
-//!                 claude_client,
-//!             }),
-//!         }
-//!     }
-//!
-//!     pub fn config(&self) -> &AdminConfig {
-//!         &self.inner.config
-//!     }
-//!
-//!     pub fn pool(&self) -> &PgPool {
-//!         &self.inner.pool
-//!     }
-//!
-//!     pub fn shopify(&self) -> &AdminClient {
-//!         &self.inner.shopify_client
-//!     }
-//!
-//!     pub fn claude(&self) -> &ClaudeClient {
-//!         &self.inner.claude_client
-//!     }
-//! }
-//! ```
 
-// TODO: Implement AppState
+use std::sync::Arc;
+
+use sqlx::PgPool;
+
+use crate::config::AdminConfig;
+
+/// Application state shared across all handlers.
+///
+/// This struct is cheaply cloneable via `Arc` and provides access to
+/// shared resources like database connections and configuration.
+#[derive(Clone)]
+pub struct AppState {
+    inner: Arc<AppStateInner>,
+}
+
+struct AppStateInner {
+    config: AdminConfig,
+    pool: PgPool,
+}
+
+impl AppState {
+    /// Create a new application state.
+    ///
+    /// # Arguments
+    ///
+    /// * `config` - Admin configuration
+    /// * `pool` - `PostgreSQL` connection pool
+    #[must_use]
+    pub fn new(config: AdminConfig, pool: PgPool) -> Self {
+        Self {
+            inner: Arc::new(AppStateInner { config, pool }),
+        }
+    }
+
+    /// Get a reference to the admin configuration.
+    #[must_use]
+    pub fn config(&self) -> &AdminConfig {
+        &self.inner.config
+    }
+
+    /// Get a reference to the database connection pool.
+    #[must_use]
+    pub fn pool(&self) -> &PgPool {
+        &self.inner.pool
+    }
+}

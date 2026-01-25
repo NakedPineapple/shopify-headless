@@ -26,8 +26,9 @@
 
 #![cfg_attr(not(test), forbid(unsafe_code))]
 
+use axum::extract::State;
+use axum::http::StatusCode;
 use axum::{Router, routing::get};
-use std::net::SocketAddr;
 
 mod claude;
 mod config;
@@ -40,14 +41,16 @@ mod services;
 mod shopify;
 mod state;
 
+use config::AdminConfig;
+use state::AppState;
+
 #[tokio::main]
 async fn main() {
     // Initialize tracing
     tracing_subscriber::fmt::init();
 
-    // TODO: Load configuration from environment
-    // let config = config::AdminConfig::from_env()
-    //     .expect("Failed to load configuration");
+    // Load configuration from environment
+    let config = AdminConfig::from_env().expect("Failed to load configuration");
 
     // TODO: Initialize Sentry for error tracking
     // let _guard = sentry::init(sentry::ClientOptions {
@@ -56,47 +59,88 @@ async fn main() {
     //     ..Default::default()
     // });
 
-    // TODO: Initialize database connection pool
-    // let pool = sqlx::PgPool::connect(&config.database_url)
-    //     .await
-    //     .expect("Failed to connect to database");
+    // Initialize database connection pool
+    let pool = db::create_pool(&config.database_url)
+        .await
+        .expect("Failed to create database pool");
+    tracing::info!("Database pool created");
 
-    // TODO: Run migrations
-    // sqlx::migrate!("./migrations")
-    //     .run(&pool)
-    //     .await
-    //     .expect("Failed to run migrations");
+    // NOTE: Migrations are NOT run automatically on startup.
+    // Run them explicitly via: cargo run -p naked-pineapple-cli -- migrate admin
 
     // TODO: Initialize clients
     // let shopify_client = shopify::AdminClient::new(&config.shopify);
     // let claude_client = claude::ClaudeClient::new(&config.claude);
 
-    // TODO: Build application state
-    // let state = state::AppState::new(config, pool, shopify_client, claude_client);
+    // Build application state
+    let state = AppState::new(config.clone(), pool);
 
     // Build router
     let app = Router::new()
         .route("/health", get(health))
+        .route("/health/ready", get(readiness))
         // TODO: Add routes
         // .merge(routes::routes())
         // TODO: Add middleware stack
         // .layer(middleware::stack())
-        // .with_state(state)
-        ;
+        .with_state(state);
 
     // Start server
     // NOTE: Binding to 127.0.0.1 - Tailscale handles external access
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3001));
+    let addr = config.socket_addr();
     tracing::info!("admin listening on {}", addr);
 
     let listener = tokio::net::TcpListener::bind(addr)
         .await
         .expect("Failed to bind to address");
 
-    axum::serve(listener, app).await.expect("Server error");
+    axum::serve(listener, app)
+        .with_graceful_shutdown(shutdown_signal())
+        .await
+        .expect("Server error");
 }
 
-/// Health check endpoint.
+/// Liveness health check endpoint.
+///
+/// Returns "ok" if the server is running. Does not check dependencies.
 async fn health() -> &'static str {
     "ok"
+}
+
+/// Readiness health check endpoint.
+///
+/// Verifies database connectivity before returning OK.
+/// Returns 503 Service Unavailable if the database is not reachable.
+async fn readiness(State(state): State<AppState>) -> StatusCode {
+    match sqlx::query("SELECT 1").fetch_one(state.pool()).await {
+        Ok(_) => StatusCode::OK,
+        Err(_) => StatusCode::SERVICE_UNAVAILABLE,
+    }
+}
+
+/// Wait for shutdown signal (Ctrl+C or SIGTERM).
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        tokio::signal::ctrl_c()
+            .await
+            .expect("Failed to install Ctrl+C handler");
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+            .expect("Failed to install signal handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        () = ctrl_c => {},
+        () = terminate => {},
+    }
+
+    tracing::info!("Shutdown signal received, starting graceful shutdown");
 }

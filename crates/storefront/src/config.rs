@@ -148,10 +148,14 @@ impl StorefrontConfig {
         let database_url = get_required_secret("STOREFRONT_DATABASE_URL")?;
         let host = get_env_or_default("STOREFRONT_HOST", "127.0.0.1")
             .parse::<IpAddr>()
-            .map_err(|e| ConfigError::InvalidEnvVar("STOREFRONT_HOST".to_string(), e.to_string()))?;
+            .map_err(|e| {
+                ConfigError::InvalidEnvVar("STOREFRONT_HOST".to_string(), e.to_string())
+            })?;
         let port = get_env_or_default("STOREFRONT_PORT", "3000")
             .parse::<u16>()
-            .map_err(|e| ConfigError::InvalidEnvVar("STOREFRONT_PORT".to_string(), e.to_string()))?;
+            .map_err(|e| {
+                ConfigError::InvalidEnvVar("STOREFRONT_PORT".to_string(), e.to_string())
+            })?;
         let base_url = get_required_env("STOREFRONT_BASE_URL")?;
         let session_secret = get_validated_secret("STOREFRONT_SESSION_SECRET")?;
         validate_session_secret(&session_secret, "STOREFRONT_SESSION_SECRET")?;

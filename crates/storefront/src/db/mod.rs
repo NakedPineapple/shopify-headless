@@ -14,56 +14,6 @@
 //! - `addresses` - User shipping/billing addresses
 //! - `shopify_cart_cache` - Persist Shopify cart IDs across sessions
 //!
-//! # Future Implementation
-//!
-//! ```rust,ignore
-//! pub mod users;
-//! pub mod sessions;
-//! pub mod credentials;
-//! pub mod addresses;
-//! pub mod cart_cache;
-//!
-//! // Example: users.rs
-//! use sqlx::PgPool;
-//! use crate::models::User;
-//!
-//! pub async fn get_user_by_email(
-//!     pool: &PgPool,
-//!     email: &str,
-//! ) -> Result<Option<User>, sqlx::Error> {
-//!     sqlx::query_as!(
-//!         User,
-//!         r#"
-//!         SELECT id, email, password_hash, email_verified, created_at, updated_at
-//!         FROM users
-//!         WHERE email = $1
-//!         "#,
-//!         email
-//!     )
-//!     .fetch_optional(pool)
-//!     .await
-//! }
-//!
-//! pub async fn create_user(
-//!     pool: &PgPool,
-//!     email: &str,
-//!     password_hash: &str,
-//! ) -> Result<User, sqlx::Error> {
-//!     sqlx::query_as!(
-//!         User,
-//!         r#"
-//!         INSERT INTO users (email, password_hash)
-//!         VALUES ($1, $2)
-//!         RETURNING id, email, password_hash, email_verified, created_at, updated_at
-//!         "#,
-//!         email,
-//!         password_hash
-//!     )
-//!     .fetch_one(pool)
-//!     .await
-//! }
-//! ```
-//!
 //! # Migrations
 //!
 //! Migrations are stored in `crates/storefront/migrations/` and run via:
@@ -71,4 +21,26 @@
 //! cargo run -p naked-pineapple-cli -- migrate storefront
 //! ```
 
-// TODO: Implement database operations
+use std::time::Duration;
+
+use secrecy::ExposeSecret;
+use sqlx::PgPool;
+use sqlx::postgres::PgPoolOptions;
+
+/// Create a `PostgreSQL` connection pool with sensible defaults.
+///
+/// # Arguments
+///
+/// * `database_url` - `PostgreSQL` connection string (wrapped in `SecretString`)
+///
+/// # Errors
+///
+/// Returns `sqlx::Error` if the connection cannot be established.
+pub async fn create_pool(database_url: &secrecy::SecretString) -> Result<PgPool, sqlx::Error> {
+    PgPoolOptions::new()
+        .max_connections(10)
+        .min_connections(2)
+        .acquire_timeout(Duration::from_secs(10))
+        .connect(database_url.expose_secret())
+        .await
+}

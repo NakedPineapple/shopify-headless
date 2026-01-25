@@ -78,9 +78,7 @@ pub async fn admin() -> Result<(), MigrationError> {
     let pool = PgPool::connect(&database_url).await?;
 
     tracing::info!("Running admin migrations...");
-    sqlx::migrate!("../admin/migrations")
-        .run(&pool)
-        .await?;
+    sqlx::migrate!("../admin/migrations").run(&pool).await?;
 
     tracing::info!("Admin migrations complete!");
     Ok(())
