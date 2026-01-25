@@ -21,13 +21,17 @@ use naked_pineapple_core::ChatSessionId;
 use crate::claude::ClaudeClient;
 use crate::middleware::RequireAdminAuth;
 use crate::models::chat::{ChatMessage, ChatSession};
+use crate::routes::dashboard::AdminUserView;
 use crate::services::{ChatError, ChatService};
 use crate::state::AppState;
 
 /// Chat page template.
 #[derive(Template)]
 #[template(path = "chat/index.html")]
-struct ChatPageTemplate;
+struct ChatPageTemplate {
+    admin_user: AdminUserView,
+    current_path: String,
+}
 
 /// Build the chat router.
 pub fn router() -> Router<AppState> {
@@ -144,9 +148,13 @@ impl IntoResponse for ChatError {
 /// Render the chat interface page.
 ///
 /// GET /chat
-async fn chat_page(RequireAdminAuth(_admin): RequireAdminAuth) -> impl IntoResponse {
+async fn chat_page(RequireAdminAuth(admin): RequireAdminAuth) -> impl IntoResponse {
+    let template = ChatPageTemplate {
+        admin_user: AdminUserView::from(&admin),
+        current_path: "/chat".to_string(),
+    };
     Html(
-        ChatPageTemplate
+        template
             .render()
             .unwrap_or_else(|_| String::from("Error rendering template")),
     )

@@ -3,6 +3,7 @@
 //! # Route Structure
 //!
 //! ```text
+//! GET  /                        - Dashboard (auth required)
 //! GET  /health                 - Health check
 //!
 //! # Authentication
@@ -25,14 +26,16 @@
 pub mod api;
 pub mod auth;
 pub mod chat;
+pub mod dashboard;
 
-use axum::Router;
+use axum::{Router, routing::get};
 
 use crate::state::AppState;
 
 /// Build the complete router for the admin application.
 pub fn routes() -> Router<AppState> {
     Router::new()
+        .route("/", get(dashboard::dashboard))
         .merge(auth::router())
         .merge(api::router())
         .merge(chat::router())

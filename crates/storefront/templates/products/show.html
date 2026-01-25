@@ -1,0 +1,221 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}{{ product.title }} | Naked Pineapple{% endblock %}
+
+{% block description %}{{ product.description }}{% endblock %}
+
+{% block og_title %}{{ product.title }}{% endblock %}
+{% block og_description %}{{ product.description }}{% endblock %}
+{% block og_type %}product{% endblock %}
+{% block og_image %}{% if let Some(image) = product.featured_image %}{{ image.url }}{% endif %}{% endblock %}
+
+{% block content %}
+<div class="py-8 md:py-12">
+    <div class="page-width">
+        <!-- Breadcrumb -->
+        <nav class="text-sm text-muted-foreground mb-8" aria-label="Breadcrumb">
+            <ol class="flex items-center gap-2 list-none flex-wrap">
+                <li><a href="/" class="hover:text-primary transition-colors">Home</a></li>
+                <li><i class="ph ph-caret-right text-xs"></i></li>
+                <li><a href="/products" class="hover:text-primary transition-colors">Products</a></li>
+                <li><i class="ph ph-caret-right text-xs"></i></li>
+                <li class="text-foreground">{{ product.title }}</li>
+            </ol>
+        </nav>
+
+        <div class="grid lg:grid-cols-2 gap-8 lg:gap-12">
+            <!-- Product Images -->
+            <div class="space-y-4">
+                <!-- Main Image -->
+                <div class="aspect-square rounded-lg overflow-hidden bg-muted">
+                    {% if let Some(image) = product.featured_image %}
+                    <img src="{{ image.url }}"
+                         alt="{{ image.alt }}"
+                         class="w-full h-full object-cover"
+                         id="main-product-image">
+                    {% else %}
+                    <div class="w-full h-full flex items-center justify-center text-muted-foreground">
+                        <i class="ph ph-image text-6xl"></i>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Thumbnail Gallery -->
+                {% if product.images.len() > 1 %}
+                <div class="flex gap-3 overflow-x-auto pb-2">
+                    {% for image in product.images %}
+                    <button type="button"
+                            class="shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 border-transparent hover:border-primary transition-colors focus:border-primary"
+                            onclick="document.getElementById('main-product-image').src = '{{ image.url }}'">
+                        <img src="{{ image.url }}"
+                             alt="{{ image.alt }}"
+                             class="w-full h-full object-cover">
+                    </button>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Product Info -->
+            <div class="space-y-6">
+                <div>
+                    <h1 class="font-display text-3xl md:text-4xl font-semibold text-foreground mb-4">
+                        {{ product.title }}
+                    </h1>
+
+                    <!-- Price -->
+                    <div class="flex items-center gap-3 mb-4">
+                        {% if let Some(compare_price) = product.compare_at_price %}
+                        <span class="text-2xl font-semibold text-primary">{{ product.price }}</span>
+                        <span class="text-lg text-muted-foreground line-through">{{ compare_price }}</span>
+                        <span class="px-2 py-1 text-xs font-semibold bg-primary/10 text-primary rounded">Sale</span>
+                        {% else %}
+                        <span class="text-2xl font-semibold text-foreground">{{ product.price }}</span>
+                        {% endif %}
+                    </div>
+
+                    <!-- Rating placeholder -->
+                    <div class="flex items-center gap-2 text-sm text-muted-foreground">
+                        <div class="flex text-secondary">
+                            <i class="ph-fill ph-star"></i>
+                            <i class="ph-fill ph-star"></i>
+                            <i class="ph-fill ph-star"></i>
+                            <i class="ph-fill ph-star"></i>
+                            <i class="ph-fill ph-star-half"></i>
+                        </div>
+                        <span>4.5 (24 reviews)</span>
+                    </div>
+                </div>
+
+                <!-- Variant Selector -->
+                {% if product.variants.len() > 1 %}
+                <div class="space-y-3">
+                    <label class="font-medium text-foreground">Options</label>
+                    <div class="flex flex-wrap gap-2">
+                        {% for variant in product.variants %}
+                        <button type="button"
+                                class="px-4 py-2 border border-border rounded-lg hover:border-primary transition-colors focus:border-primary {% if loop.first %}border-primary bg-primary/5{% endif %}"
+                                onclick="selectVariant(this, '{{ variant.id }}', '{{ variant.price }}')">
+                            {{ variant.title }}
+                        </button>
+                        {% endfor %}
+                    </div>
+                    <input type="hidden" id="selected-variant" value="{{ product.variants[0].id }}">
+                </div>
+                {% endif %}
+
+                <!-- Quantity Selector -->
+                <div class="space-y-3">
+                    <label class="font-medium text-foreground">Quantity</label>
+                    <div class="quantity-selector inline-flex items-center border border-border rounded-lg">
+                        <button type="button"
+                                class="quantity-btn w-12 h-12 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+                                data-action="decrease">
+                            <i class="ph ph-minus text-lg"></i>
+                        </button>
+                        <input type="number"
+                               class="quantity-input w-16 h-12 text-center text-lg border-0 bg-transparent focus:outline-none"
+                               value="1"
+                               min="1"
+                               max="99"
+                               id="product-quantity">
+                        <button type="button"
+                                class="quantity-btn w-12 h-12 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+                                data-action="increase">
+                            <i class="ph ph-plus text-lg"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Add to Cart -->
+                <div class="space-y-3">
+                    <button type="button"
+                            class="btn btn-primary w-full justify-center text-lg py-4"
+                            hx-post="/cart/add"
+                            hx-vals='js:{
+                                "variant_id": document.getElementById("selected-variant")?.value || "{{ product.variants[0].id }}",
+                                "quantity": parseInt(document.getElementById("product-quantity")?.value || 1)
+                            }'
+                            hx-swap="none"
+                            hx-on::after-request="htmx.trigger(document.body, 'cartUpdated');">
+                        <i class="ph ph-tote mr-2"></i>
+                        Add to Cart
+                    </button>
+
+                    <button type="button" class="btn btn-outline w-full justify-center">
+                        <i class="ph ph-heart mr-2"></i>
+                        Add to Wishlist
+                    </button>
+                </div>
+
+                <!-- Product Description -->
+                <div class="pt-6 border-t border-border">
+                    <details class="group" open>
+                        <summary class="flex items-center justify-between cursor-pointer font-medium text-foreground py-3">
+                            Description
+                            <i class="ph ph-caret-down transition-transform group-open:rotate-180"></i>
+                        </summary>
+                        <div class="prose prose-sm text-muted-foreground pb-4">
+                            {{ product.description|safe }}
+                        </div>
+                    </details>
+
+                    <details class="group border-t border-border">
+                        <summary class="flex items-center justify-between cursor-pointer font-medium text-foreground py-3">
+                            Ingredients
+                            <i class="ph ph-caret-down transition-transform group-open:rotate-180"></i>
+                        </summary>
+                        <div class="prose prose-sm text-muted-foreground pb-4">
+                            {% if let Some(ingredients) = product.ingredients %}
+                            {{ ingredients|safe }}
+                            {% else %}
+                            <p>Pineapple extract, aloe vera, vitamin E, jojoba oil, and other natural botanicals.</p>
+                            {% endif %}
+                        </div>
+                    </details>
+
+                    <details class="group border-t border-border">
+                        <summary class="flex items-center justify-between cursor-pointer font-medium text-foreground py-3">
+                            Shipping & Returns
+                            <i class="ph ph-caret-down transition-transform group-open:rotate-180"></i>
+                        </summary>
+                        <div class="prose prose-sm text-muted-foreground pb-4">
+                            <p>Free shipping on orders over $50. Standard shipping 3-5 business days.</p>
+                            <p>30-day hassle-free returns on all products.</p>
+                        </div>
+                    </details>
+                </div>
+            </div>
+        </div>
+
+        <!-- Related Products -->
+        {% if !related_products.is_empty() %}
+        <section class="mt-16 pt-16 border-t border-border">
+            <h2 class="font-display text-2xl font-semibold text-foreground mb-8">
+                You Might Also Like
+            </h2>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+                {% for product in related_products %}
+                {% include "partials/product_card.html" %}
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+    </div>
+</div>
+
+{% block scripts %}
+<script>
+function selectVariant(button, variantId, price) {
+    // Update hidden input
+    document.getElementById('selected-variant').value = variantId;
+
+    // Update button styles
+    button.closest('.flex').querySelectorAll('button').forEach(function(btn) {
+        btn.classList.remove('border-primary', 'bg-primary/5');
+    });
+    button.classList.add('border-primary', 'bg-primary/5');
+}
+</script>
+{% endblock %}
+{% endblock %}

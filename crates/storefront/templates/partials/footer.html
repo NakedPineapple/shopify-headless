@@ -1,0 +1,180 @@
+{# Footer #}
+<footer class="relative overflow-hidden">
+    <!-- Tagline Banner -->
+    <div class="bg-gradient-to-r from-primary via-terracotta to-honey py-8 md:py-10">
+        <div class="page-width">
+            <p class="font-display text-xl md:text-2xl lg:text-3xl text-primary-foreground text-center font-medium tracking-wide">
+                Glow boldly. Love fiercely. Live radiantly.
+            </p>
+        </div>
+    </div>
+
+    <!-- Main Footer Content -->
+    <div class="bg-muted relative">
+        <div class="page-width py-16 md:py-20">
+            <div class="grid lg:grid-cols-12 gap-12 lg:gap-8">
+                <!-- Left Zone - Brand & Newsletter -->
+                <div class="lg:col-span-5 space-y-8">
+                    <!-- Logo/Brand -->
+                    <div>
+                        <a href="/" class="inline-block group">
+                            <span class="font-display text-2xl md:text-3xl font-medium text-foreground group-hover:text-primary transition-colors">
+                                Naked Pineapple
+                            </span>
+                        </a>
+                        <p class="mt-4 text-muted-foreground leading-relaxed max-w-sm">
+                            Skincare that celebrates your natural beauty. Pineapple-powered formulas crafted with love in the USA.
+                        </p>
+                    </div>
+
+                    <!-- Newsletter -->
+                    <div class="bg-background rounded-2xl p-6 md:p-8 shadow-sm">
+                        <h3 class="font-display text-xl md:text-2xl font-medium mb-2">Stay in the Glow</h3>
+                        <p class="text-sm text-muted-foreground mb-5">
+                            Join our community for exclusive offers, skincare tips, and first access to new products.
+                        </p>
+                        <form action="/newsletter/subscribe" method="post" class="space-y-3"
+                              hx-post="/newsletter/subscribe"
+                              hx-swap="outerHTML">
+                            <div>
+                                <label for="footer-email" class="sr-only">Email address</label>
+                                <input type="email"
+                                       id="footer-email"
+                                       name="email"
+                                       class="input"
+                                       placeholder="Enter your email"
+                                       required
+                                       autocomplete="email">
+                            </div>
+                            <button type="submit" class="btn btn-primary w-full justify-center">
+                                Subscribe
+                                <i class="ph ph-arrow-right ml-2"></i>
+                            </button>
+                        </form>
+                        <p class="text-xs text-muted-foreground mt-4">
+                            By subscribing, you agree to our <a href="/privacy" class="underline hover:text-primary transition-colors">Privacy Policy</a>.
+                        </p>
+                    </div>
+
+                    <!-- Social Icons (Mobile) -->
+                    <div class="lg:hidden">
+                        <p class="text-xs uppercase tracking-[0.2em] text-muted-foreground font-medium mb-4">Follow Us</p>
+                        <div class="flex gap-3">
+                            <a href="https://instagram.com/_nakedpineapple_" class="w-10 h-10 flex items-center justify-center rounded-full bg-background text-foreground hover:bg-primary hover:text-primary-foreground transition-all shadow-sm" aria-label="Instagram" target="_blank" rel="noopener">
+                                <i class="ph ph-instagram-logo text-xl"></i>
+                            </a>
+                            <a href="https://www.tiktok.com/@_nakedpineapple_" class="w-10 h-10 flex items-center justify-center rounded-full bg-background text-foreground hover:bg-primary hover:text-primary-foreground transition-all shadow-sm" aria-label="TikTok" target="_blank" rel="noopener">
+                                <i class="ph ph-tiktok-logo text-xl"></i>
+                            </a>
+                            <a href="https://facebook.com/nakedpineapple" class="w-10 h-10 flex items-center justify-center rounded-full bg-background text-foreground hover:bg-primary hover:text-primary-foreground transition-all shadow-sm" aria-label="Facebook" target="_blank" rel="noopener">
+                                <i class="ph ph-facebook-logo text-xl"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Zone - Link Columns -->
+                <div class="lg:col-span-7">
+                    <div class="grid grid-cols-2 md:grid-cols-3 gap-8 md:gap-6">
+                        <!-- Shop Column -->
+                        <div>
+                            <h4 class="text-xs uppercase tracking-[0.2em] text-muted-foreground font-medium mb-5">Shop</h4>
+                            <ul class="space-y-3 list-none">
+                                <li>
+                                    <a href="/collections/skincare" class="text-foreground hover:text-primary transition-colors">
+                                        All Products
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="/products/starter-kit" class="text-foreground hover:text-primary transition-colors">
+                                        Starter Kit
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="/collections/bundles" class="text-foreground hover:text-primary transition-colors">
+                                        Bundles
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <!-- Company Column -->
+                        <div>
+                            <h4 class="text-xs uppercase tracking-[0.2em] text-muted-foreground font-medium mb-5">Company</h4>
+                            <ul class="space-y-3 list-none">
+                                <li>
+                                    <a href="/about" class="text-foreground hover:text-primary transition-colors">
+                                        Our Story
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="/contact" class="text-foreground hover:text-primary transition-colors">
+                                        Contact
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <!-- Help Column -->
+                        <div class="col-span-2 md:col-span-1">
+                            <h4 class="text-xs uppercase tracking-[0.2em] text-muted-foreground font-medium mb-5">Help</h4>
+                            <ul class="space-y-3 list-none">
+                                <li>
+                                    <a href="/faq" class="text-foreground hover:text-primary transition-colors">
+                                        FAQ
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="/shipping" class="text-foreground hover:text-primary transition-colors">
+                                        Shipping & Returns
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="/terms" class="text-foreground hover:text-primary transition-colors">
+                                        Terms of Service
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="/privacy" class="text-foreground hover:text-primary transition-colors">
+                                        Privacy Policy
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Bar -->
+        <div class="border-t border-primary/10">
+            <div class="page-width py-6">
+                <div class="flex flex-col md:flex-row items-center justify-between gap-6">
+                    <!-- Social Icons (Desktop) -->
+                    <div class="hidden lg:flex items-center gap-3">
+                        <a href="https://instagram.com/_nakedpineapple_" class="w-9 h-9 flex items-center justify-center rounded-full text-muted-foreground hover:bg-background hover:text-primary transition-all" aria-label="Instagram" target="_blank" rel="noopener">
+                            <i class="ph ph-instagram-logo text-lg"></i>
+                        </a>
+                        <a href="https://www.tiktok.com/@_nakedpineapple_" class="w-9 h-9 flex items-center justify-center rounded-full text-muted-foreground hover:bg-background hover:text-primary transition-all" aria-label="TikTok" target="_blank" rel="noopener">
+                            <i class="ph ph-tiktok-logo text-lg"></i>
+                        </a>
+                        <a href="https://facebook.com/nakedpineapple" class="w-9 h-9 flex items-center justify-center rounded-full text-muted-foreground hover:bg-background hover:text-primary transition-all" aria-label="Facebook" target="_blank" rel="noopener">
+                            <i class="ph ph-facebook-logo text-lg"></i>
+                        </a>
+                    </div>
+
+                    <!-- Copyright -->
+                    <p class="text-sm text-muted-foreground order-last md:order-none">
+                        &copy; {{ ""|current_year }} Naked Pineapple. Made with <i class="ph-fill ph-heart text-primary"></i> for your skin.
+                    </p>
+
+                    <!-- Payment Methods placeholder -->
+                    <div class="flex items-center gap-2 text-muted-foreground text-sm">
+                        <i class="ph ph-credit-card text-lg"></i>
+                        <span>Visa, Mastercard, Apple Pay</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</footer>

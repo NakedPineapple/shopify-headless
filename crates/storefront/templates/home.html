@@ -1,0 +1,154 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Naked Pineapple | Natural Pineapple-Powered Skincare{% endblock %}
+
+{% block description %}Discover Naked Pineapple, an authentic skincare brand that empowers confidence with high-quality, natural ingredients like pineapple extract and vegan collagen.{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="relative min-h-[80vh] flex items-center bg-gradient-to-br from-cream via-background to-sand overflow-hidden">
+    <!-- Decorative elements -->
+    <div class="absolute top-20 right-10 w-64 h-64 bg-honey/20 rounded-full blur-3xl animate-float"></div>
+    <div class="absolute bottom-20 left-10 w-48 h-48 bg-primary/10 rounded-full blur-2xl animate-float" style="animation-delay: -2s;"></div>
+
+    <div class="page-width py-20 md:py-32 relative z-10">
+        <div class="max-w-2xl">
+            <span class="inline-block px-4 py-2 bg-primary/10 text-primary rounded-full text-sm font-medium mb-6">
+                Clean, cruelty-free skincare
+            </span>
+            <h1 class="font-display text-4xl md:text-5xl lg:text-6xl font-semibold text-foreground leading-tight mb-6">
+                Glow Naturally with Pineapple Power
+            </h1>
+            <p class="text-lg md:text-xl text-muted-foreground mb-8 leading-relaxed">
+                Transform your skincare routine with our tropical formulas. Packed with pineapple enzymes, vegan collagen, and pure botanical ingredients.
+            </p>
+            <div class="flex flex-wrap gap-4">
+                <a href="/collections/skincare" class="btn btn-primary">
+                    Shop Skincare
+                    <i class="ph ph-arrow-right ml-2"></i>
+                </a>
+                <a href="/products/starter-kit" class="btn btn-outline">
+                    Try the Starter Kit
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Featured Products Section -->
+<section class="py-16 md:py-24 bg-background">
+    <div class="page-width">
+        <div class="text-center mb-12">
+            <h2 class="font-display text-3xl md:text-4xl font-semibold text-foreground mb-4">
+                Best Sellers
+            </h2>
+            <p class="text-muted-foreground max-w-2xl mx-auto">
+                Our most loved products, crafted with pineapple enzymes and natural ingredients.
+            </p>
+        </div>
+
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
+            {% for product in featured_products %}
+            {% include "partials/product_card.html" %}
+            {% endfor %}
+        </div>
+
+        <div class="text-center mt-12">
+            <a href="/collections/skincare" class="btn btn-outline">
+                View All Products
+                <i class="ph ph-arrow-right ml-2"></i>
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- About/Brand Story Section -->
+<section class="py-16 md:py-24 bg-muted">
+    <div class="page-width">
+        <div class="grid md:grid-cols-2 gap-12 items-center">
+            <div class="order-2 md:order-1">
+                <span class="text-primary font-medium text-sm uppercase tracking-wider">Our Story</span>
+                <h2 class="font-display text-3xl md:text-4xl font-semibold text-foreground mt-4 mb-6">
+                    Skincare Inspired by Nature
+                </h2>
+                <p class="text-muted-foreground leading-relaxed mb-6">
+                    Naked Pineapple was born from a simple belief: your skin deserves the purest, most effective ingredients nature has to offer. Our tropical formulas harness the power of pineapple enzymes to gently exfoliate, brighten, and nourish your skin.
+                </p>
+                <p class="text-muted-foreground leading-relaxed mb-8">
+                    Every product is crafted with love, free from harsh chemicals, and never tested on animals. Because beautiful skin shouldn't come at a cost to your health or the planet.
+                </p>
+                <a href="/about" class="btn btn-primary">
+                    Learn More
+                    <i class="ph ph-arrow-right ml-2"></i>
+                </a>
+            </div>
+            <div class="order-1 md:order-2">
+                <div class="aspect-square rounded-2xl bg-gradient-to-br from-honey/30 to-primary/20 flex items-center justify-center">
+                    <i class="ph ph-leaf text-8xl text-accent animate-sway"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Benefits Section -->
+<section class="py-16 md:py-24 bg-background">
+    <div class="page-width">
+        <div class="grid md:grid-cols-3 gap-8">
+            <div class="text-center">
+                <div class="w-16 h-16 mx-auto mb-6 rounded-full bg-primary/10 flex items-center justify-center">
+                    <i class="ph ph-leaf text-3xl text-primary"></i>
+                </div>
+                <h3 class="font-display text-xl font-semibold mb-3">100% Natural</h3>
+                <p class="text-muted-foreground">
+                    Clean formulas with botanical ingredients. No harsh chemicals, ever.
+                </p>
+            </div>
+            <div class="text-center">
+                <div class="w-16 h-16 mx-auto mb-6 rounded-full bg-accent/10 flex items-center justify-center">
+                    <i class="ph ph-paw-print text-3xl text-accent"></i>
+                </div>
+                <h3 class="font-display text-xl font-semibold mb-3">Cruelty-Free</h3>
+                <p class="text-muted-foreground">
+                    Never tested on animals. Certified cruelty-free and vegan-friendly.
+                </p>
+            </div>
+            <div class="text-center">
+                <div class="w-16 h-16 mx-auto mb-6 rounded-full bg-secondary/20 flex items-center justify-center">
+                    <i class="ph ph-recycle text-3xl text-secondary-foreground"></i>
+                </div>
+                <h3 class="font-display text-xl font-semibold mb-3">Eco-Conscious</h3>
+                <p class="text-muted-foreground">
+                    Sustainable packaging and responsibly sourced ingredients.
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Newsletter Section -->
+<section class="py-16 md:py-24 bg-primary text-primary-foreground">
+    <div class="page-width">
+        <div class="max-w-2xl mx-auto text-center">
+            <h2 class="font-display text-3xl md:text-4xl font-semibold mb-4">
+                Join the Glow
+            </h2>
+            <p class="text-primary-foreground/80 mb-8">
+                Subscribe to get exclusive offers, skincare tips, and first access to new products.
+            </p>
+            <form action="/newsletter/subscribe" method="post" class="flex flex-col sm:flex-row gap-4 max-w-md mx-auto"
+                  hx-post="/newsletter/subscribe"
+                  hx-swap="outerHTML">
+                <input type="email"
+                       name="email"
+                       class="flex-1 px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder:text-white/60 focus:outline-none focus:ring-2 focus:ring-white/40"
+                       placeholder="Enter your email"
+                       required>
+                <button type="submit" class="px-6 py-3 bg-white text-primary rounded-lg font-medium hover:bg-white/90 transition-colors">
+                    Subscribe
+                </button>
+            </form>
+        </div>
+    </div>
+</section>
+{% endblock %}

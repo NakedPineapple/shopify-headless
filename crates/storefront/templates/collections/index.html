@@ -1,0 +1,69 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Shop Collections | Naked Pineapple{% endblock %}
+
+{% block description %}Browse our curated skincare collections. Find the perfect routine for your skin type.{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<section class="py-12 md:py-16 bg-muted">
+    <div class="page-width">
+        <nav class="text-sm text-muted-foreground mb-4" aria-label="Breadcrumb">
+            <ol class="flex items-center gap-2 list-none">
+                <li><a href="/" class="hover:text-primary transition-colors">Home</a></li>
+                <li><i class="ph ph-caret-right text-xs"></i></li>
+                <li class="text-foreground">Collections</li>
+            </ol>
+        </nav>
+        <h1 class="font-display text-3xl md:text-4xl font-semibold text-foreground">
+            Collections
+        </h1>
+        <p class="text-muted-foreground mt-2">
+            Curated skincare routines for every skin type
+        </p>
+    </div>
+</section>
+
+<!-- Collections Grid -->
+<section class="py-12 md:py-16">
+    <div class="page-width">
+        {% if collections.is_empty() %}
+        <div class="text-center py-16">
+            <i class="ph ph-folder-open text-6xl text-muted-foreground mb-4"></i>
+            <p class="text-muted-foreground">No collections found.</p>
+        </div>
+        {% else %}
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {% for collection in collections %}
+            <a href="/collections/{{ collection.handle }}" class="group block">
+                <div class="aspect-[4/3] rounded-lg overflow-hidden bg-muted mb-4">
+                    {% if let Some(image) = collection.image %}
+                    <img src="{{ image.url }}"
+                         alt="{{ image.alt }}"
+                         class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                         loading="lazy">
+                    {% else %}
+                    <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-honey/30 to-primary/20">
+                        <i class="ph ph-sparkle text-6xl text-primary/50"></i>
+                    </div>
+                    {% endif %}
+                </div>
+                <h2 class="font-display text-xl font-semibold text-foreground group-hover:text-primary transition-colors">
+                    {{ collection.title }}
+                </h2>
+                {% if let Some(description) = collection.description %}
+                <p class="text-muted-foreground mt-2 line-clamp-2">
+                    {{ description }}
+                </p>
+                {% endif %}
+                <span class="inline-flex items-center gap-1 text-primary mt-3 text-sm font-medium">
+                    Shop Collection
+                    <i class="ph ph-arrow-right transition-transform group-hover:translate-x-1"></i>
+                </span>
+            </a>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

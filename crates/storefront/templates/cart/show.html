@@ -1,0 +1,106 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Your Cart | Naked Pineapple{% endblock %}
+
+{% block content %}
+<div class="py-8 md:py-12">
+    <div class="page-width">
+        <!-- Breadcrumb -->
+        <nav class="text-sm text-muted-foreground mb-8" aria-label="Breadcrumb">
+            <ol class="flex items-center gap-2 list-none">
+                <li><a href="/" class="hover:text-primary transition-colors">Home</a></li>
+                <li><i class="ph ph-caret-right text-xs"></i></li>
+                <li class="text-foreground">Cart</li>
+            </ol>
+        </nav>
+
+        <h1 class="font-display text-3xl md:text-4xl font-semibold text-foreground mb-8">
+            Your Cart
+        </h1>
+
+        <div class="grid lg:grid-cols-3 gap-8 lg:gap-12">
+            <!-- Cart Items -->
+            <div class="lg:col-span-2">
+                {% include "partials/cart_items.html" %}
+            </div>
+
+            <!-- Order Summary (Desktop Sidebar) -->
+            {% if !cart.items.is_empty() %}
+            <div class="lg:col-span-1">
+                <div class="card p-6 sticky top-24">
+                    <h2 class="font-display text-xl font-semibold mb-6">Order Summary</h2>
+
+                    <div class="space-y-4 mb-6">
+                        <div class="flex justify-between text-sm">
+                            <span class="text-muted-foreground">Subtotal</span>
+                            <span class="text-foreground">{{ cart.subtotal }}</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-muted-foreground">Shipping</span>
+                            <span class="text-foreground">Calculated at checkout</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-muted-foreground">Taxes</span>
+                            <span class="text-foreground">Calculated at checkout</span>
+                        </div>
+                    </div>
+
+                    <div class="border-t border-border pt-4 mb-6">
+                        <div class="flex justify-between text-lg font-semibold">
+                            <span>Total</span>
+                            <span>{{ cart.subtotal }}</span>
+                        </div>
+                    </div>
+
+                    <!-- Promo Code -->
+                    <div class="mb-6">
+                        <label for="promo-code" class="text-sm font-medium text-foreground mb-2 block">
+                            Promo Code
+                        </label>
+                        <div class="flex gap-2">
+                            <input type="text"
+                                   id="promo-code"
+                                   class="input flex-1"
+                                   placeholder="Enter code">
+                            <button type="button" class="btn btn-outline">
+                                Apply
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Checkout Button -->
+                    <a href="/checkout" class="btn btn-primary w-full justify-center text-lg py-4">
+                        Proceed to Checkout
+                        <i class="ph ph-arrow-right ml-2"></i>
+                    </a>
+
+                    <!-- Trust badges -->
+                    <div class="mt-6 pt-6 border-t border-border">
+                        <div class="flex items-center justify-center gap-6 text-muted-foreground">
+                            <div class="flex items-center gap-2 text-sm">
+                                <i class="ph ph-lock text-lg"></i>
+                                <span>Secure Checkout</span>
+                            </div>
+                            <div class="flex items-center gap-2 text-sm">
+                                <i class="ph ph-truck text-lg"></i>
+                                <span>Free Shipping $50+</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Continue Shopping -->
+        {% if cart.items.is_empty() %}
+        <div class="mt-8 text-center">
+            <a href="/products" class="btn btn-outline">
+                <i class="ph ph-arrow-left mr-2"></i>
+                Continue Shopping
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

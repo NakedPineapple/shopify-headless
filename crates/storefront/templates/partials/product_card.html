@@ -1,0 +1,46 @@
+{# Product Card - Reusable product display component #}
+{# Expected variables: product (with handle, title, featured_image, price, compare_at_price) #}
+<article class="group relative">
+    <!-- Product Image -->
+    <a href="/products/{{ product.handle }}" class="block aspect-square overflow-hidden rounded-lg bg-muted mb-4">
+        {% if let Some(image) = product.featured_image %}
+        <img src="{{ image.url }}"
+             alt="{{ image.alt }}"
+             class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+             loading="lazy">
+        {% else %}
+        <div class="w-full h-full flex items-center justify-center text-muted-foreground">
+            <i class="ph ph-image text-4xl"></i>
+        </div>
+        {% endif %}
+
+        <!-- Quick View Button -->
+        <button type="button"
+                class="absolute bottom-4 left-1/2 -translate-x-1/2 btn btn-primary opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300"
+                hx-get="/products/{{ product.handle }}/quick-view"
+                hx-target="#quick-view-content"
+                hx-swap="innerHTML"
+                hx-on::after-request="openQuickView()">
+            Quick View
+        </button>
+    </a>
+
+    <!-- Product Info -->
+    <div class="space-y-1">
+        <h3 class="font-medium text-foreground">
+            <a href="/products/{{ product.handle }}" class="hover:text-primary transition-colors">
+                {{ product.title }}
+            </a>
+        </h3>
+
+        <!-- Price -->
+        <div class="flex items-center gap-2">
+            {% if let Some(compare_price) = product.compare_at_price %}
+            <span class="text-primary font-semibold">{{ product.price }}</span>
+            <span class="text-muted-foreground line-through text-sm">{{ compare_price }}</span>
+            {% else %}
+            <span class="text-foreground font-medium">{{ product.price }}</span>
+            {% endif %}
+        </div>
+    </div>
+</article>

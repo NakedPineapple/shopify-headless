@@ -1,0 +1,110 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}{{ collection.title }} | Naked Pineapple{% endblock %}
+
+{% block description %}{% if let Some(desc) = collection.description %}{{ desc }}{% else %}Shop our {{ collection.title }} collection.{% endif %}{% endblock %}
+
+{% block content %}
+<!-- Collection Header -->
+<section class="py-12 md:py-16 bg-muted">
+    <div class="page-width">
+        <nav class="text-sm text-muted-foreground mb-4" aria-label="Breadcrumb">
+            <ol class="flex items-center gap-2 list-none">
+                <li><a href="/" class="hover:text-primary transition-colors">Home</a></li>
+                <li><i class="ph ph-caret-right text-xs"></i></li>
+                <li><a href="/collections" class="hover:text-primary transition-colors">Collections</a></li>
+                <li><i class="ph ph-caret-right text-xs"></i></li>
+                <li class="text-foreground">{{ collection.title }}</li>
+            </ol>
+        </nav>
+
+        <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+            <div>
+                <h1 class="font-display text-3xl md:text-4xl font-semibold text-foreground">
+                    {{ collection.title }}
+                </h1>
+                {% if let Some(description) = collection.description %}
+                <p class="text-muted-foreground mt-2 max-w-2xl">
+                    {{ description }}
+                </p>
+                {% endif %}
+            </div>
+            <p class="text-muted-foreground">
+                {{ products.len() }} products
+            </p>
+        </div>
+    </div>
+</section>
+
+<!-- Collection Hero Image (optional) -->
+{% if let Some(image) = collection.image %}
+<section class="relative h-64 md:h-80 overflow-hidden">
+    <img src="{{ image.url }}"
+         alt="{{ image.alt }}"
+         class="w-full h-full object-cover">
+    <div class="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent"></div>
+</section>
+{% endif %}
+
+<!-- Product Grid -->
+<section class="py-12 md:py-16">
+    <div class="page-width">
+        <!-- Filters -->
+        <div class="flex items-center justify-between mb-8">
+            <div class="flex items-center gap-4">
+                <button class="btn btn-outline text-sm">
+                    <i class="ph ph-funnel mr-2"></i>
+                    Filter
+                </button>
+            </div>
+            <div class="flex items-center gap-2">
+                <label for="sort" class="text-sm text-muted-foreground">Sort by:</label>
+                <select id="sort" name="sort" class="input py-2 px-3 w-auto">
+                    <option value="best-selling">Best Selling</option>
+                    <option value="price-asc">Price: Low to High</option>
+                    <option value="price-desc">Price: High to Low</option>
+                    <option value="newest">Newest</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Products Grid -->
+        {% if products.is_empty() %}
+        <div class="text-center py-16">
+            <i class="ph ph-package text-6xl text-muted-foreground mb-4"></i>
+            <p class="text-muted-foreground mb-6">No products in this collection yet.</p>
+            <a href="/products" class="btn btn-primary">
+                Browse All Products
+            </a>
+        </div>
+        {% else %}
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 md:gap-8">
+            {% for product in products %}
+            {% include "partials/product_card.html" %}
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Pagination -->
+        {% if has_more_pages %}
+        <div class="flex justify-center mt-12">
+            <nav class="flex items-center gap-2" aria-label="Pagination">
+                {% if current_page > 1 %}
+                <a href="?page={{ current_page - 1 }}" class="btn btn-outline">
+                    <i class="ph ph-caret-left"></i>
+                </a>
+                {% endif %}
+                <span class="px-4 py-2 text-sm text-muted-foreground">
+                    Page {{ current_page }} of {{ total_pages }}
+                </span>
+                {% if current_page < total_pages %}
+                <a href="?page={{ current_page + 1 }}" class="btn btn-outline">
+                    <i class="ph ph-caret-right"></i>
+                </a>
+                {% endif %}
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

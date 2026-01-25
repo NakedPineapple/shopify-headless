@@ -1,0 +1,155 @@
+{# Header - Main navigation #}
+<header class="bg-background/95 backdrop-blur-md border-b border-border py-4 sticky top-0 z-[100]">
+    <div class="page-width flex items-center gap-4">
+        <!-- Left: Mobile menu button -->
+        <div class="flex-1 flex items-center gap-4">
+            <!-- Mobile menu button -->
+            <button class="flex md:hidden p-2 text-foreground hover:text-primary transition-colors"
+                    aria-label="Toggle menu"
+                    onclick="openMobileMenu()">
+                <i class="ph ph-list text-2xl"></i>
+            </button>
+
+            <!-- Logo (desktop) -->
+            <a href="/" class="hidden md:flex items-center transition-opacity hover:opacity-80">
+                <span class="font-display text-2xl font-semibold text-foreground">Naked Pineapple</span>
+            </a>
+        </div>
+
+        <!-- Mobile centered logo -->
+        <a href="/" class="md:hidden absolute left-1/2 -translate-x-1/2">
+            <span class="font-display text-xl font-semibold text-foreground">Naked Pineapple</span>
+        </a>
+
+        <!-- Desktop Navigation (center) -->
+        <nav class="hidden md:flex" role="navigation" aria-label="Primary">
+            <ul class="flex list-none gap-8">
+                <!-- Shop Dropdown -->
+                <li class="relative group">
+                    <button class="flex items-center gap-1.5 py-2 font-medium text-foreground hover:text-primary transition-colors">
+                        Shop
+                        <i class="ph ph-caret-down text-sm transition-transform duration-300 group-hover:rotate-180"></i>
+                    </button>
+                    <div class="absolute top-full left-0 pt-2 opacity-0 invisible translate-y-2 transition-all duration-300 z-50 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0">
+                        <ul class="min-w-[200px] bg-background border border-border rounded-lg shadow-lg list-none py-2">
+                            <li>
+                                <a href="/collections/skincare" class="flex items-center py-3 px-5 text-sm hover:bg-muted hover:text-primary transition-all">
+                                    All Skincare
+                                </a>
+                            </li>
+                            <li>
+                                <a href="/products/starter-kit" class="flex items-center py-3 px-5 text-sm hover:bg-muted hover:text-primary transition-all">
+                                    Starter Kit
+                                </a>
+                            </li>
+                            <li>
+                                <a href="/collections/bundles" class="flex items-center py-3 px-5 text-sm hover:bg-muted hover:text-primary transition-all">
+                                    Bundles
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </li>
+
+                <!-- Collections -->
+                <li>
+                    <a href="/collections" class="py-2 font-medium text-foreground hover:text-primary transition-colors">
+                        Collections
+                    </a>
+                </li>
+
+                <!-- About -->
+                <li>
+                    <a href="/about" class="py-2 font-medium text-foreground hover:text-primary transition-colors">
+                        About
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+        <!-- Header Icons -->
+        <div class="flex-1 flex items-center gap-2 justify-end">
+            <!-- Theme Toggle (cycles: system -> light -> dark) -->
+            <button type="button"
+                    onclick="cycleTheme()"
+                    class="theme-toggle flex items-center justify-center w-10 h-10 rounded-full"
+                    data-theme-toggle
+                    aria-label="Toggle theme">
+                <i class="ph ph-monitor text-xl theme-icon-system"></i>
+                <i class="ph ph-sun text-xl theme-icon-sun hidden"></i>
+                <i class="ph ph-moon text-xl theme-icon-moon hidden"></i>
+            </button>
+            <a href="/search" class="flex items-center justify-center w-10 h-10 rounded-full text-foreground hover:text-primary hover:bg-muted transition-all" aria-label="Search">
+                <i class="ph ph-magnifying-glass text-xl"></i>
+            </a>
+            <a href="/account" class="hidden md:flex items-center justify-center w-10 h-10 rounded-full text-foreground hover:text-primary hover:bg-muted transition-all" aria-label="Account">
+                <i class="ph ph-user text-xl"></i>
+            </a>
+            <a href="/cart" class="relative flex items-center justify-center w-10 h-10 rounded-full text-foreground hover:text-primary hover:bg-muted transition-all" aria-label="Cart">
+                <i class="ph ph-tote text-xl"></i>
+                <span class="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-primary text-primary-foreground text-[11px] font-semibold rounded-full flex items-center justify-center empty:hidden"
+                      id="cart-count"
+                      hx-get="/cart/count"
+                      hx-trigger="load, cartUpdated from:body"></span>
+            </a>
+        </div>
+    </div>
+</header>
+
+<!-- Mobile Menu Drawer -->
+<nav class="fixed top-0 left-0 w-full max-w-[320px] h-screen bg-background z-[200] -translate-x-full transition-transform duration-300 ease-out overflow-y-auto [&.is-open]:translate-x-0"
+     id="mobile-menu"
+     aria-label="Mobile navigation"
+     hidden>
+    <div class="flex justify-between items-center p-5 border-b border-border">
+        <span class="font-display text-xl font-medium">Menu</span>
+        <button class="p-2 text-foreground hover:text-primary transition-colors rounded-full hover:bg-muted"
+                aria-label="Close menu"
+                onclick="closeMobileMenu()">
+            <i class="ph ph-x text-2xl"></i>
+        </button>
+    </div>
+    <ul class="list-none">
+        <li class="border-b border-border">
+            <details class="group">
+                <summary class="flex items-center justify-between p-5 font-medium cursor-pointer list-none">
+                    Shop
+                    <i class="ph ph-caret-down transition-transform duration-300 group-open:rotate-180"></i>
+                </summary>
+                <ul class="list-none bg-muted/50 pb-2">
+                    <li><a href="/collections/skincare" class="block py-3 px-5 pl-8 text-muted-foreground hover:text-primary transition-colors">All Skincare</a></li>
+                    <li><a href="/products/starter-kit" class="block py-3 px-5 pl-8 text-muted-foreground hover:text-primary transition-colors">Starter Kit</a></li>
+                    <li><a href="/collections/bundles" class="block py-3 px-5 pl-8 text-muted-foreground hover:text-primary transition-colors">Bundles</a></li>
+                </ul>
+            </details>
+        </li>
+        <li class="border-b border-border">
+            <a href="/collections" class="block p-5 font-medium hover:text-primary transition-colors">Collections</a>
+        </li>
+        <li class="border-b border-border">
+            <a href="/about" class="block p-5 font-medium hover:text-primary transition-colors">About</a>
+        </li>
+        <li class="border-b border-border">
+            <a href="/account" class="block p-5 font-medium hover:text-primary transition-colors">Account</a>
+        </li>
+        <li class="border-b border-border">
+            <button type="button"
+                    onclick="cycleTheme()"
+                    data-theme-toggle
+                    class="flex items-center gap-3 w-full p-5 font-medium hover:text-primary transition-colors text-left">
+                <i class="ph ph-monitor text-xl theme-icon-system"></i>
+                <i class="ph ph-sun text-xl theme-icon-sun hidden"></i>
+                <i class="ph ph-moon text-xl theme-icon-moon hidden"></i>
+                <span class="theme-icon-system">System Theme</span>
+                <span class="theme-icon-sun hidden">Light Mode</span>
+                <span class="theme-icon-moon hidden">Dark Mode</span>
+            </button>
+        </li>
+    </ul>
+</nav>
+
+<!-- Mobile menu overlay -->
+<div class="fixed inset-0 bg-foreground/40 backdrop-blur-sm z-[199] opacity-0 invisible transition-all duration-300"
+     id="mobile-menu-overlay"
+     onclick="closeMobileMenu()"
+     aria-hidden="true"></div>

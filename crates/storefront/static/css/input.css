@@ -1,58 +1,189 @@
-/* Tailwind CSS input file */
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-/*
- * Custom styles for Naked Pineapple storefront.
- *
- * TODO: Add brand-specific styles here:
- * - Custom color variables
- * - Typography styles
- * - Component styles
- * - Animation utilities
- */
+@import "tailwindcss";
+@plugin "@tailwindcss/forms";
+@plugin "@tailwindcss/typography";
 
 @layer base {
-    /* TODO: Add base styles
-    html {
-        font-family: 'Inter', sans-serif;
-    }
+  :root {
+    /* Brand palette (Tropical Luxe) */
+    --coral: oklch(0.58 0.18 25);           /* #d63a2f - warm coral */
+    --coral-foreground: oklch(0.99 0.01 95);
+    --honey: oklch(0.72 0.14 85);           /* #daa520 - golden honey */
+    --honey-foreground: oklch(0.25 0.05 50);
+    --terracotta: oklch(0.52 0.15 30);      /* deep terracotta */
+    --terracotta-foreground: oklch(0.99 0.01 95);
+    --sand: oklch(0.95 0.01 90);            /* #f5f0e8 */
+    --cream: oklch(0.99 0.01 95);           /* #fdfbf7 */
+    --leaf: oklch(0.52 0.12 145);           /* #4a7c59 */
+    --leaf-foreground: oklch(0.99 0.01 95);
 
-    h1, h2, h3, h4, h5, h6 {
-        font-family: 'Playfair Display', serif;
-    }
-    */
+    /* Light mode semantic mappings */
+    --background: var(--cream);
+    --foreground: oklch(0.15 0.02 30);
+    --primary: var(--coral);
+    --primary-foreground: var(--coral-foreground);
+    --secondary: var(--honey);
+    --secondary-foreground: var(--honey-foreground);
+    --muted: var(--sand);
+    --muted-foreground: oklch(0.45 0.02 30);
+    --accent: var(--leaf);
+    --accent-foreground: var(--leaf-foreground);
+    --destructive: oklch(0.53 0.22 27);
+    --destructive-foreground: oklch(0.99 0.01 95);
+
+    /* UI elements - light */
+    --border: oklch(0.88 0.02 90);
+    --input: oklch(0.88 0.02 90);
+    --ring: var(--coral);
+    --radius: 0.5rem;
+
+    /* Card specific */
+    --card: var(--cream);
+    --card-foreground: oklch(0.15 0.02 30);
+  }
+
+  /* Dark mode - warm tropical night palette */
+  .dark {
+    /* Dark base colors - warm charcoal with subtle warmth */
+    --background: oklch(0.14 0.01 30);        /* deep warm charcoal */
+    --foreground: oklch(0.93 0.01 90);        /* warm off-white */
+
+    /* Primary - coral brightened for dark mode */
+    --primary: oklch(0.65 0.18 25);           /* brighter coral */
+    --primary-foreground: oklch(0.12 0.02 30);
+
+    /* Secondary - honey adjusted for dark backgrounds */
+    --secondary: oklch(0.68 0.14 85);         /* golden honey */
+    --secondary-foreground: oklch(0.15 0.02 30);
+
+    /* Muted - warm dark gray */
+    --muted: oklch(0.22 0.01 30);             /* warm dark gray */
+    --muted-foreground: oklch(0.65 0.02 90);  /* warm medium gray */
+
+    /* Accent - leaf green brightened */
+    --accent: oklch(0.58 0.12 145);           /* brighter leaf */
+    --accent-foreground: oklch(0.12 0.02 30);
+
+    /* Destructive */
+    --destructive: oklch(0.60 0.22 27);
+    --destructive-foreground: oklch(0.99 0.01 95);
+
+    /* UI elements - dark */
+    --border: oklch(0.28 0.01 30);            /* subtle warm border */
+    --input: oklch(0.22 0.01 30);
+    --ring: oklch(0.65 0.18 25);
+
+    /* Card - slightly elevated from background */
+    --card: oklch(0.18 0.01 30);
+    --card-foreground: oklch(0.93 0.01 90);
+
+    /* Adjusted brand colors for dark mode visibility */
+    --coral: oklch(0.65 0.18 25);
+    --honey: oklch(0.72 0.14 85);
+    --leaf: oklch(0.58 0.12 145);
+    --sand: oklch(0.22 0.01 30);
+    --cream: oklch(0.14 0.01 30);
+  }
+}
+
+/* Register with Tailwind v4 */
+@theme inline {
+  /* Semantic colors */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+
+  /* Brand colors (direct access) */
+  --color-coral: var(--coral);
+  --color-honey: var(--honey);
+  --color-terracotta: var(--terracotta);
+  --color-sand: var(--sand);
+  --color-cream: var(--cream);
+  --color-leaf: var(--leaf);
+
+  /* Radius tokens */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  /* Font families */
+  --font-display: "Playfair Display", serif;
+  --font-sans: "DM Sans", sans-serif;
 }
 
 @layer components {
-    /* TODO: Add component classes
-    .btn {
-        @apply px-4 py-2 rounded-lg font-medium transition-colors;
-    }
+  /* Buttons use semantic colors */
+  .btn {
+    @apply inline-flex items-center justify-center rounded-lg px-4 py-2
+           font-medium transition-colors focus-visible:outline-none
+           focus-visible:ring-2 focus-visible:ring-ring;
+  }
+  .btn-primary {
+    @apply bg-primary text-primary-foreground hover:bg-primary/90;
+  }
+  .btn-secondary {
+    @apply bg-secondary text-secondary-foreground hover:bg-secondary/90;
+  }
+  .btn-outline {
+    @apply border border-border bg-background hover:bg-muted;
+  }
+  .btn-ghost {
+    @apply hover:bg-muted hover:text-foreground;
+  }
 
-    .btn-primary {
-        @apply bg-black text-white hover:bg-gray-800;
-    }
+  /* Form inputs */
+  .input {
+    @apply w-full rounded-lg border border-input bg-background px-4 py-2
+           focus:outline-none focus:ring-2 focus:ring-ring;
+  }
 
-    .btn-secondary {
-        @apply bg-white text-black border border-black hover:bg-gray-100;
-    }
+  /* Cards - use card color for elevated surfaces */
+  .card {
+    @apply rounded-lg border border-border bg-card text-card-foreground;
+  }
 
-    .input {
-        @apply w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent;
-    }
+  /* Container */
+  .page-width {
+    @apply mx-auto max-w-7xl px-4 sm:px-6 lg:px-8;
+  }
 
-    .card {
-        @apply bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden;
-    }
-    */
+  /* Theme toggle button */
+  .theme-toggle {
+    @apply p-2 rounded-lg text-muted-foreground hover:text-foreground
+           hover:bg-muted transition-colors;
+  }
 }
 
 @layer utilities {
-    /* TODO: Add utility classes
-    .text-balance {
-        text-wrap: balance;
-    }
-    */
+  /* Animation keyframes */
+  @keyframes float-blob {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50% { transform: translateY(-20px) scale(1.05); }
+  }
+  @keyframes sway-leaf {
+    0%, 100% { transform: rotate(-3deg); }
+    50% { transform: rotate(3deg); }
+  }
+  @keyframes marquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+
+  .animate-float { animation: float-blob 6s ease-in-out infinite; }
+  .animate-sway { animation: sway-leaf 4s ease-in-out infinite; }
+  .animate-marquee { animation: marquee 30s linear infinite; }
 }

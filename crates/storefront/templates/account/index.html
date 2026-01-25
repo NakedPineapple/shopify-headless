@@ -1,0 +1,158 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}My Account | Naked Pineapple{% endblock %}
+
+{% block content %}
+<div class="py-8 md:py-12">
+    <div class="page-width">
+        <!-- Breadcrumb -->
+        <nav class="text-sm text-muted-foreground mb-8" aria-label="Breadcrumb">
+            <ol class="flex items-center gap-2 list-none">
+                <li><a href="/" class="hover:text-primary transition-colors">Home</a></li>
+                <li><i class="ph ph-caret-right text-xs"></i></li>
+                <li class="text-foreground">Account</li>
+            </ol>
+        </nav>
+
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+            <div>
+                <h1 class="font-display text-3xl md:text-4xl font-semibold text-foreground">
+                    My Account
+                </h1>
+                <p class="text-muted-foreground mt-2">
+                    Welcome back, {% if let Some(name) = user.name %}{{ name }}{% else %}{{ user.email }}{% endif %}
+                </p>
+            </div>
+            <form action="/auth/logout" method="post">
+                <button type="submit" class="btn btn-outline">
+                    <i class="ph ph-sign-out mr-2"></i>
+                    Sign Out
+                </button>
+            </form>
+        </div>
+
+        <div class="grid md:grid-cols-3 gap-6 md:gap-8">
+            <!-- Account Overview -->
+            <div class="card p-6">
+                <div class="flex items-center gap-4 mb-4">
+                    <div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                        <i class="ph ph-user text-2xl text-primary"></i>
+                    </div>
+                    <div>
+                        <h2 class="font-semibold text-foreground">Profile</h2>
+                        <p class="text-sm text-muted-foreground">Manage your details</p>
+                    </div>
+                </div>
+                <div class="space-y-2 text-sm">
+                    <p><span class="text-muted-foreground">Email:</span> {{ user.email }}</p>
+                    {% if let Some(name) = user.name %}
+                    <p><span class="text-muted-foreground">Name:</span> {{ name }}</p>
+                    {% endif %}
+                </div>
+                <a href="/account/profile" class="btn btn-outline w-full justify-center mt-4">
+                    Edit Profile
+                </a>
+            </div>
+
+            <!-- Order History -->
+            <div class="card p-6">
+                <div class="flex items-center gap-4 mb-4">
+                    <div class="w-12 h-12 rounded-full bg-secondary/20 flex items-center justify-center">
+                        <i class="ph ph-package text-2xl text-secondary-foreground"></i>
+                    </div>
+                    <div>
+                        <h2 class="font-semibold text-foreground">Orders</h2>
+                        <p class="text-sm text-muted-foreground">View order history</p>
+                    </div>
+                </div>
+                {% if !recent_orders.is_empty() %}
+                <div class="space-y-2 text-sm">
+                    {% for order in recent_orders %}
+                    <p class="flex justify-between">
+                        <span class="text-muted-foreground">{{ order.number }}</span>
+                        <span>{{ order.total }}</span>
+                    </p>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-sm text-muted-foreground">No orders yet.</p>
+                {% endif %}
+                <a href="/account/orders" class="btn btn-outline w-full justify-center mt-4">
+                    View All Orders
+                </a>
+            </div>
+
+            <!-- Passkeys -->
+            <div class="card p-6">
+                <div class="flex items-center gap-4 mb-4">
+                    <div class="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center">
+                        <i class="ph ph-key text-2xl text-accent"></i>
+                    </div>
+                    <div>
+                        <h2 class="font-semibold text-foreground">Passkeys</h2>
+                        <p class="text-sm text-muted-foreground">Passwordless login</p>
+                    </div>
+                </div>
+                <p class="text-sm text-muted-foreground mb-4">
+                    {% if passkey_count > 0 %}
+                    {{ passkey_count }} passkey(s) registered
+                    {% else %}
+                    No passkeys registered yet
+                    {% endif %}
+                </p>
+                <a href="/account/passkeys" class="btn btn-outline w-full justify-center">
+                    Manage Passkeys
+                </a>
+            </div>
+        </div>
+
+        <!-- Account Actions -->
+        <div class="mt-8 grid md:grid-cols-2 gap-6">
+            <!-- Addresses -->
+            <div class="card p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-3">
+                        <i class="ph ph-map-pin text-xl text-muted-foreground"></i>
+                        <h3 class="font-semibold text-foreground">Addresses</h3>
+                    </div>
+                    <a href="/account/addresses" class="text-primary text-sm font-medium hover:underline">
+                        Manage
+                    </a>
+                </div>
+                {% if let Some(addr) = default_address %}
+                <address class="text-sm text-muted-foreground not-italic">
+                    {{ addr.name }}<br>
+                    {{ addr.address1 }}<br>
+                    {{ addr.city }}, {{ addr.province }} {{ addr.zip }}
+                </address>
+                {% else %}
+                <p class="text-sm text-muted-foreground">No addresses saved.</p>
+                {% endif %}
+            </div>
+
+            <!-- Subscriptions -->
+            <div class="card p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-3">
+                        <i class="ph ph-repeat text-xl text-muted-foreground"></i>
+                        <h3 class="font-semibold text-foreground">Subscriptions</h3>
+                    </div>
+                    <a href="/account/subscriptions" class="text-primary text-sm font-medium hover:underline">
+                        Manage
+                    </a>
+                </div>
+                {% if subscription_count > 0 %}
+                <p class="text-sm text-muted-foreground">
+                    {{ subscription_count }} active subscription(s)
+                </p>
+                {% else %}
+                <p class="text-sm text-muted-foreground">No active subscriptions.</p>
+                <a href="/products" class="text-primary text-sm font-medium hover:underline mt-2 inline-block">
+                    Subscribe & Save 15%
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

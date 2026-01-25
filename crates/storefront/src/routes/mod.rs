@@ -9,14 +9,15 @@
 //! # Products
 //! GET  /products               - Product listing
 //! GET  /products/:handle       - Product detail
+//! GET  /products/:handle/quick-view - Quick view fragment (HTMX)
 //! GET  /collections            - Collection listing
 //! GET  /collections/:handle    - Collection detail
 //!
 //! # Cart (HTMX fragments)
 //! GET  /cart                   - Cart page
-//! POST /cart/add               - Add to cart (returns fragment)
-//! POST /cart/update            - Update quantity (returns fragment)
-//! POST /cart/remove            - Remove item (returns fragment)
+//! POST /cart/add               - Add to cart (returns empty, triggers cartUpdated)
+//! POST /cart/update            - Update quantity (returns cart_items fragment)
+//! POST /cart/remove            - Remove item (returns cart_items fragment)
 //! GET  /cart/count             - Cart count badge (fragment)
 //!
 //! # Checkout
@@ -40,8 +41,13 @@
 //! GET  /account/passkeys       - Passkey management
 //! ```
 
+pub mod account;
 pub mod api;
 pub mod auth;
+pub mod cart;
+pub mod collections;
+pub mod home;
+pub mod products;
 
 use axum::{
     Router,
@@ -73,9 +79,51 @@ pub fn webauthn_api_routes() -> Router<AppState> {
         )
 }
 
+/// Create the product routes router.
+pub fn product_routes() -> Router<AppState> {
+    Router::new()
+        .route("/", get(products::index))
+        .route("/{handle}", get(products::show))
+        .route("/{handle}/quick-view", get(products::quick_view))
+}
+
+/// Create the collection routes router.
+pub fn collection_routes() -> Router<AppState> {
+    Router::new()
+        .route("/", get(collections::index))
+        .route("/{handle}", get(collections::show))
+}
+
+/// Create the cart routes router.
+pub fn cart_routes() -> Router<AppState> {
+    Router::new()
+        .route("/", get(cart::show))
+        .route("/add", post(cart::add))
+        .route("/update", post(cart::update))
+        .route("/remove", post(cart::remove))
+        .route("/count", get(cart::count))
+}
+
+/// Create the account routes router.
+pub fn account_routes() -> Router<AppState> {
+    Router::new().route("/", get(account::index))
+    // TODO: Add passkey management routes
+    // .route("/passkeys", get(account::passkeys))
+}
+
 /// Create all routes for the storefront.
 pub fn routes() -> Router<AppState> {
     Router::new()
+        // Home page
+        .route("/", get(home::home))
+        // Product routes
+        .nest("/products", product_routes())
+        // Collection routes
+        .nest("/collections", collection_routes())
+        // Cart routes
+        .nest("/cart", cart_routes())
+        // Account routes (TODO: add auth middleware)
+        .nest("/account", account_routes())
         // Auth routes
         .nest("/auth", auth_routes())
         // `WebAuthn` API

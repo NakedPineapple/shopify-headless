@@ -1,0 +1,90 @@
+{# Quick View - Product quick view content for sidebar #}
+{# Expected variables: product (with handle, title, images, price, compare_at_price, description, variants) #}
+<div class="space-y-6">
+    <!-- Product Images -->
+    {% if !product.images.is_empty() %}
+    <div class="aspect-square rounded-lg overflow-hidden bg-muted">
+        <img src="{{ product.images[0].url }}"
+             alt="{{ product.images[0].alt }}"
+             class="w-full h-full object-cover">
+    </div>
+    {% endif %}
+
+    <!-- Product Info -->
+    <div class="space-y-4">
+        <h2 class="font-display text-2xl font-semibold text-foreground">{{ product.title }}</h2>
+
+        <!-- Price -->
+        <div class="flex items-center gap-3">
+            {% if let Some(compare_price) = product.compare_at_price %}
+            <span class="text-2xl font-semibold text-primary">{{ product.price }}</span>
+            <span class="text-lg text-muted-foreground line-through">{{ compare_price }}</span>
+            <span class="px-2 py-1 text-xs font-semibold bg-primary/10 text-primary rounded">Sale</span>
+            {% else %}
+            <span class="text-2xl font-semibold text-foreground">{{ product.price }}</span>
+            {% endif %}
+        </div>
+
+        <!-- Description (truncated) -->
+        {% if !product.description.is_empty() %}
+        <p class="text-muted-foreground line-clamp-3">{{ product.description }}</p>
+        {% endif %}
+
+        <!-- Variant Selector (if applicable) -->
+        {% if product.variants.len() > 1 %}
+        <div class="space-y-2">
+            <label class="text-sm font-medium text-foreground">Options</label>
+            <select name="variant_id" class="input" id="quick-view-variant">
+                {% for variant in product.variants %}
+                <option value="{{ variant.id }}">{{ variant.title }} - {{ variant.price }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
+
+        <!-- Quantity Selector -->
+        <div class="space-y-2">
+            <label class="text-sm font-medium text-foreground">Quantity</label>
+            <div class="quantity-selector inline-flex items-center border border-border rounded-lg">
+                <button type="button"
+                        class="quantity-btn w-10 h-10 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+                        data-action="decrease">
+                    <i class="ph ph-minus"></i>
+                </button>
+                <input type="number"
+                       class="quantity-input w-16 h-10 text-center border-0 bg-transparent focus:outline-none"
+                       value="1"
+                       min="1"
+                       max="99"
+                       id="quick-view-quantity">
+                <button type="button"
+                        class="quantity-btn w-10 h-10 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+                        data-action="increase">
+                    <i class="ph ph-plus"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Add to Cart Button -->
+        <button type="button"
+                class="btn btn-primary w-full justify-center"
+                hx-post="/cart/add"
+                hx-vals='js:{
+                    "variant_id": document.getElementById("quick-view-variant")?.value || "{{ product.variants[0].id }}",
+                    "quantity": parseInt(document.getElementById("quick-view-quantity")?.value || 1)
+                }'
+                hx-swap="none"
+                hx-on::after-request="htmx.trigger(document.body, 'cartUpdated'); closeQuickView();">
+            <i class="ph ph-tote mr-2"></i>
+            Add to Cart
+        </button>
+
+        <!-- View Full Details Link -->
+        <a href="/products/{{ product.handle }}"
+           class="btn btn-outline w-full justify-center"
+           data-close-quick-view>
+            View Full Details
+            <i class="ph ph-arrow-right ml-2"></i>
+        </a>
+    </div>
+</div>
