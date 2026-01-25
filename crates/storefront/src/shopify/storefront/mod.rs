@@ -48,11 +48,16 @@ use conversions::{
     convert_update_user_error, convert_user_error,
 };
 use queries::{
-    AddToCart, CreateCart, GetCart, GetCollectionByHandle, GetCollections, GetProductByHandle,
-    GetProductRecommendations, GetProducts, RemoveFromCart, UpdateCartDiscountCodes,
-    UpdateCartLines, UpdateCartNote, add_to_cart, create_cart, get_cart, get_collection_by_handle,
-    get_collections, get_product_by_handle, get_product_recommendations, get_products,
-    remove_from_cart, update_cart_discount_codes, update_cart_lines, update_cart_note,
+    AddToCart, CreateCart, CustomerAccessTokenCreate, CustomerAccessTokenDelete,
+    CustomerAccessTokenRenew, CustomerActivateByUrl, CustomerCreate, CustomerRecover,
+    CustomerResetByUrl, GetCart, GetCollectionByHandle, GetCollections, GetCustomerByToken,
+    GetProductByHandle, GetProductRecommendations, GetProducts, RemoveFromCart,
+    UpdateCartDiscountCodes, UpdateCartLines, UpdateCartNote, add_to_cart, create_cart,
+    customer_access_token_create, customer_access_token_delete, customer_access_token_renew,
+    customer_activate_by_url, customer_create, customer_recover, customer_reset_by_url, get_cart,
+    get_collection_by_handle, get_collections, get_customer_by_token, get_product_by_handle,
+    get_product_recommendations, get_products, remove_from_cart, update_cart_discount_codes,
+    update_cart_lines, update_cart_note,
 };
 
 // =============================================================================
@@ -797,4 +802,471 @@ impl StorefrontClient {
         self.inner.cache.invalidate_all();
         self.inner.cache.run_pending_tasks().await;
     }
+
+    // =========================================================================
+    // Customer Authentication Methods (Storefront API)
+    // =========================================================================
+
+    /// Create a new customer account.
+    ///
+    /// Shopify will automatically send an activation email to the customer.
+    /// The customer must click the activation link to set their password.
+    ///
+    /// # Arguments
+    ///
+    /// * `email` - Customer's email address
+    /// * `password` - Initial password (customer may change via activation email)
+    /// * `first_name` - Optional first name
+    /// * `last_name` - Optional last name
+    /// * `accepts_marketing` - Whether customer accepts marketing emails
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the customer already exists or validation fails.
+    #[instrument(skip(self, password), fields(email = %email))]
+    pub async fn create_customer(
+        &self,
+        email: &str,
+        password: &str,
+        first_name: Option<&str>,
+        last_name: Option<&str>,
+        accepts_marketing: bool,
+    ) -> Result<StorefrontCustomer, ShopifyError> {
+        let variables = customer_create::Variables {
+            input: customer_create::CustomerCreateInput {
+                email: email.to_string(),
+                password: password.to_string(),
+                first_name: first_name.map(String::from),
+                last_name: last_name.map(String::from),
+                accepts_marketing: Some(accepts_marketing),
+                phone: None,
+            },
+        };
+
+        let data = self.execute::<CustomerCreate>(variables).await?;
+
+        if let Some(result) = data.customer_create {
+            // Check for user errors
+            if !result.customer_user_errors.is_empty() {
+                let errors: Vec<_> = result
+                    .customer_user_errors
+                    .iter()
+                    .map(|e| e.message.as_str())
+                    .collect();
+                return Err(ShopifyError::UserError(errors.join("; ")));
+            }
+
+            if let Some(customer) = result.customer {
+                return Ok(StorefrontCustomer {
+                    id: customer.id,
+                    email: customer.email,
+                    first_name: customer.first_name,
+                    last_name: customer.last_name,
+                });
+            }
+        }
+
+        Err(ShopifyError::GraphQL(vec![super::GraphQLError {
+            message: "Failed to create customer".to_string(),
+            locations: vec![],
+            path: vec![],
+        }]))
+    }
+
+    /// Create an access token for a customer (login).
+    ///
+    /// # Arguments
+    ///
+    /// * `email` - Customer's email address
+    /// * `password` - Customer's password
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the credentials are invalid.
+    #[instrument(skip(self, password), fields(email = %email))]
+    pub async fn create_access_token(
+        &self,
+        email: &str,
+        password: &str,
+    ) -> Result<StorefrontAccessToken, ShopifyError> {
+        let variables = customer_access_token_create::Variables {
+            input: customer_access_token_create::CustomerAccessTokenCreateInput {
+                email: email.to_string(),
+                password: password.to_string(),
+            },
+        };
+
+        let data = self.execute::<CustomerAccessTokenCreate>(variables).await?;
+
+        if let Some(result) = data.customer_access_token_create {
+            // Check for user errors
+            if !result.customer_user_errors.is_empty() {
+                let errors: Vec<_> = result
+                    .customer_user_errors
+                    .iter()
+                    .map(|e| e.message.as_str())
+                    .collect();
+                return Err(ShopifyError::UserError(errors.join("; ")));
+            }
+
+            if let Some(token) = result.customer_access_token {
+                return Ok(StorefrontAccessToken {
+                    access_token: token.access_token,
+                    expires_at: token.expires_at,
+                });
+            }
+        }
+
+        Err(ShopifyError::UserError(
+            "Invalid email or password".to_string(),
+        ))
+    }
+
+    /// Activate a customer account using the activation URL from Shopify's email.
+    ///
+    /// # Arguments
+    ///
+    /// * `activation_url` - The full activation URL from Shopify's email
+    /// * `password` - The password the customer wants to set
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the activation URL is invalid or expired.
+    #[instrument(skip(self, password))]
+    pub async fn activate_customer_by_url(
+        &self,
+        activation_url: &str,
+        password: &str,
+    ) -> Result<(StorefrontCustomer, StorefrontAccessToken), ShopifyError> {
+        let variables = customer_activate_by_url::Variables {
+            activation_url: activation_url.to_string(),
+            password: password.to_string(),
+        };
+
+        let data = self.execute::<CustomerActivateByUrl>(variables).await?;
+
+        if let Some(result) = data.customer_activate_by_url {
+            // Check for user errors
+            if !result.customer_user_errors.is_empty() {
+                let errors: Vec<_> = result
+                    .customer_user_errors
+                    .iter()
+                    .map(|e| e.message.as_str())
+                    .collect();
+                return Err(ShopifyError::UserError(errors.join("; ")));
+            }
+
+            let customer = result.customer.ok_or_else(|| {
+                ShopifyError::GraphQL(vec![super::GraphQLError {
+                    message: "No customer returned from activation".to_string(),
+                    locations: vec![],
+                    path: vec![],
+                }])
+            })?;
+
+            let token = result.customer_access_token.ok_or_else(|| {
+                ShopifyError::GraphQL(vec![super::GraphQLError {
+                    message: "No access token returned from activation".to_string(),
+                    locations: vec![],
+                    path: vec![],
+                }])
+            })?;
+
+            return Ok((
+                StorefrontCustomer {
+                    id: customer.id,
+                    email: customer.email,
+                    first_name: None,
+                    last_name: None,
+                },
+                StorefrontAccessToken {
+                    access_token: token.access_token,
+                    expires_at: token.expires_at,
+                },
+            ));
+        }
+
+        Err(ShopifyError::GraphQL(vec![super::GraphQLError {
+            message: "Failed to activate customer".to_string(),
+            locations: vec![],
+            path: vec![],
+        }]))
+    }
+
+    /// Send a password recovery email to a customer.
+    ///
+    /// Shopify will send the email automatically.
+    ///
+    /// # Arguments
+    ///
+    /// * `email` - Customer's email address
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the email is invalid.
+    #[instrument(skip(self), fields(email = %email))]
+    pub async fn recover_customer(&self, email: &str) -> Result<(), ShopifyError> {
+        let variables = customer_recover::Variables {
+            email: email.to_string(),
+        };
+
+        let data = self.execute::<CustomerRecover>(variables).await?;
+
+        if let Some(result) = data.customer_recover {
+            // Check for user errors
+            if !result.customer_user_errors.is_empty() {
+                let errors: Vec<_> = result
+                    .customer_user_errors
+                    .iter()
+                    .map(|e| e.message.as_str())
+                    .collect();
+                return Err(ShopifyError::UserError(errors.join("; ")));
+            }
+        }
+
+        // Success - email sent (or silently ignored if customer doesn't exist for security)
+        Ok(())
+    }
+
+    /// Reset a customer's password using the reset URL from Shopify's email.
+    ///
+    /// # Arguments
+    ///
+    /// * `reset_url` - The full reset URL from Shopify's email
+    /// * `password` - The new password
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the reset URL is invalid or expired.
+    #[instrument(skip(self, password))]
+    pub async fn reset_customer_by_url(
+        &self,
+        reset_url: &str,
+        password: &str,
+    ) -> Result<(StorefrontCustomer, StorefrontAccessToken), ShopifyError> {
+        let variables = customer_reset_by_url::Variables {
+            reset_url: reset_url.to_string(),
+            password: password.to_string(),
+        };
+
+        let data = self.execute::<CustomerResetByUrl>(variables).await?;
+
+        if let Some(result) = data.customer_reset_by_url {
+            // Check for user errors
+            if !result.customer_user_errors.is_empty() {
+                let errors: Vec<_> = result
+                    .customer_user_errors
+                    .iter()
+                    .map(|e| e.message.as_str())
+                    .collect();
+                return Err(ShopifyError::UserError(errors.join("; ")));
+            }
+
+            let customer = result.customer.ok_or_else(|| {
+                ShopifyError::GraphQL(vec![super::GraphQLError {
+                    message: "No customer returned from password reset".to_string(),
+                    locations: vec![],
+                    path: vec![],
+                }])
+            })?;
+
+            let token = result.customer_access_token.ok_or_else(|| {
+                ShopifyError::GraphQL(vec![super::GraphQLError {
+                    message: "No access token returned from password reset".to_string(),
+                    locations: vec![],
+                    path: vec![],
+                }])
+            })?;
+
+            return Ok((
+                StorefrontCustomer {
+                    id: customer.id,
+                    email: customer.email,
+                    first_name: None,
+                    last_name: None,
+                },
+                StorefrontAccessToken {
+                    access_token: token.access_token,
+                    expires_at: token.expires_at,
+                },
+            ));
+        }
+
+        Err(ShopifyError::GraphQL(vec![super::GraphQLError {
+            message: "Failed to reset password".to_string(),
+            locations: vec![],
+            path: vec![],
+        }]))
+    }
+
+    /// Renew a customer access token before it expires.
+    ///
+    /// # Arguments
+    ///
+    /// * `access_token` - The current access token
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the token is invalid or expired.
+    #[instrument(skip(self, access_token))]
+    pub async fn renew_access_token(
+        &self,
+        access_token: &str,
+    ) -> Result<StorefrontAccessToken, ShopifyError> {
+        let variables = customer_access_token_renew::Variables {
+            customer_access_token: access_token.to_string(),
+        };
+
+        let data = self.execute::<CustomerAccessTokenRenew>(variables).await?;
+
+        if let Some(result) = data.customer_access_token_renew {
+            // Check for user errors
+            if !result.user_errors.is_empty() {
+                let errors: Vec<_> = result
+                    .user_errors
+                    .iter()
+                    .map(|e| e.message.as_str())
+                    .collect();
+                return Err(ShopifyError::UserError(errors.join("; ")));
+            }
+
+            if let Some(token) = result.customer_access_token {
+                return Ok(StorefrontAccessToken {
+                    access_token: token.access_token,
+                    expires_at: token.expires_at,
+                });
+            }
+        }
+
+        Err(ShopifyError::GraphQL(vec![super::GraphQLError {
+            message: "Failed to renew access token".to_string(),
+            locations: vec![],
+            path: vec![],
+        }]))
+    }
+
+    /// Delete a customer access token (logout).
+    ///
+    /// # Arguments
+    ///
+    /// * `access_token` - The access token to delete
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the token is invalid.
+    #[instrument(skip(self, access_token))]
+    pub async fn delete_access_token(&self, access_token: &str) -> Result<(), ShopifyError> {
+        let variables = customer_access_token_delete::Variables {
+            customer_access_token: access_token.to_string(),
+        };
+
+        let data = self.execute::<CustomerAccessTokenDelete>(variables).await?;
+
+        if let Some(result) = data.customer_access_token_delete {
+            // Check for user errors
+            if !result.user_errors.is_empty() {
+                let errors: Vec<_> = result
+                    .user_errors
+                    .iter()
+                    .map(|e| e.message.as_str())
+                    .collect();
+                return Err(ShopifyError::UserError(errors.join("; ")));
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Get customer information using an access token.
+    ///
+    /// # Arguments
+    ///
+    /// * `access_token` - The customer's access token
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the token is invalid or expired.
+    #[instrument(skip(self, access_token))]
+    pub async fn get_customer_by_token(
+        &self,
+        access_token: &str,
+    ) -> Result<StorefrontCustomer, ShopifyError> {
+        // For customer-scoped queries, we need to include the access token in the request
+        // This requires a modified execute method that accepts an access token header
+        let request_body =
+            GetCustomerByToken::build_query(get_customer_by_token::Variables {});
+
+        let response = self
+            .inner
+            .client
+            .post(&self.inner.endpoint)
+            .header("Shopify-Storefront-Private-Token", &self.inner.access_token)
+            .header("X-Shopify-Customer-Access-Token", access_token)
+            .header("Content-Type", "application/json")
+            .json(&request_body)
+            .send()
+            .await?;
+
+        let status = response.status();
+        let response_text = response.text().await?;
+
+        if !status.is_success() {
+            return Err(ShopifyError::GraphQL(vec![super::GraphQLError {
+                message: format!("HTTP {status}"),
+                locations: vec![],
+                path: vec![],
+            }]));
+        }
+
+        let response: graphql_client::Response<get_customer_by_token::ResponseData> =
+            serde_json::from_str(&response_text)?;
+
+        if let Some(data) = response.data {
+            if let Some(customer) = data.customer {
+                return Ok(StorefrontCustomer {
+                    id: customer.id,
+                    email: customer.email,
+                    first_name: customer.first_name,
+                    last_name: customer.last_name,
+                });
+            }
+        }
+
+        Err(ShopifyError::GraphQL(vec![super::GraphQLError {
+            message: "Customer not found or token invalid".to_string(),
+            locations: vec![],
+            path: vec![],
+        }]))
+    }
+}
+
+// =============================================================================
+// Customer Types
+// =============================================================================
+
+/// A customer from the Storefront API.
+///
+/// This is a simplified customer type for authentication purposes.
+/// For full customer data, use the Customer Account API.
+#[derive(Debug, Clone)]
+pub struct StorefrontCustomer {
+    /// Shopify customer ID (e.g., "gid://shopify/Customer/123")
+    pub id: String,
+    /// Customer's email address
+    pub email: Option<String>,
+    /// Customer's first name
+    pub first_name: Option<String>,
+    /// Customer's last name
+    pub last_name: Option<String>,
+}
+
+/// An access token from the Storefront API customer authentication.
+///
+/// This token is used to authenticate customer-scoped requests.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct StorefrontAccessToken {
+    /// The access token string
+    pub access_token: String,
+    /// When the token expires (ISO 8601 format)
+    pub expires_at: String,
 }

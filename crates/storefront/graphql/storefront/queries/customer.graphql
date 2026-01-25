@@ -1,0 +1,124 @@
+# Shopify Storefront API Customer Mutations
+# These mutations handle customer authentication via Storefront API
+# (separate from Customer Account API OAuth)
+
+# Create a new customer
+# Shopify automatically sends an activation email
+mutation customerCreate($input: CustomerCreateInput!) {
+  customerCreate(input: $input) {
+    customer {
+      id
+      email
+      firstName
+      lastName
+    }
+    customerUserErrors {
+      field
+      message
+      code
+    }
+  }
+}
+
+# Create an access token (login)
+mutation customerAccessTokenCreate($input: CustomerAccessTokenCreateInput!) {
+  customerAccessTokenCreate(input: $input) {
+    customerAccessToken {
+      accessToken
+      expiresAt
+    }
+    customerUserErrors {
+      field
+      message
+      code
+    }
+  }
+}
+
+# Activate a customer account using the URL from the activation email
+mutation customerActivateByUrl($activationUrl: URL!, $password: String!) {
+  customerActivateByUrl(activationUrl: $activationUrl, password: $password) {
+    customer {
+      id
+      email
+    }
+    customerAccessToken {
+      accessToken
+      expiresAt
+    }
+    customerUserErrors {
+      field
+      message
+      code
+    }
+  }
+}
+
+# Request a password recovery email
+# Shopify sends the email automatically
+mutation customerRecover($email: String!) {
+  customerRecover(email: $email) {
+    customerUserErrors {
+      field
+      message
+      code
+    }
+  }
+}
+
+# Reset password using the URL from the recovery email
+mutation customerResetByUrl($resetUrl: URL!, $password: String!) {
+  customerResetByUrl(resetUrl: $resetUrl, password: $password) {
+    customer {
+      id
+      email
+    }
+    customerAccessToken {
+      accessToken
+      expiresAt
+    }
+    customerUserErrors {
+      field
+      message
+      code
+    }
+  }
+}
+
+# Renew an access token before it expires
+mutation customerAccessTokenRenew($customerAccessToken: String!) {
+  customerAccessTokenRenew(customerAccessToken: $customerAccessToken) {
+    customerAccessToken {
+      accessToken
+      expiresAt
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
+# Delete an access token (logout)
+mutation customerAccessTokenDelete($customerAccessToken: String!) {
+  customerAccessTokenDelete(customerAccessToken: $customerAccessToken) {
+    deletedAccessToken
+    deletedCustomerAccessTokenId
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
+# Get customer by access token
+query getCustomerByToken {
+  customer {
+    id
+    email
+    firstName
+    lastName
+    phone
+    acceptsMarketing
+  }
+}

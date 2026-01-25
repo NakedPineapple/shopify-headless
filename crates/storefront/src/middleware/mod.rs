@@ -14,7 +14,7 @@ pub mod auth;
 pub mod session;
 pub mod shopify_customer;
 
-pub use auth::{OptionalAuth, RequireAuth, clear_current_user, set_current_user};
+pub use auth::{OptionalAuth, RequireAuth, clear_current_customer, set_current_customer};
 pub use session::create_session_layer;
 pub use shopify_customer::{
     OptionalShopifyCustomer, RequireShopifyCustomer, clear_shopify_customer_token,

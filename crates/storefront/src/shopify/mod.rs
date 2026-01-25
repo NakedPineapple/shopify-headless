@@ -47,7 +47,7 @@ mod storefront;
 pub mod types;
 
 pub use customer::{CustomerAccessToken, CustomerClient};
-pub use storefront::StorefrontClient;
+pub use storefront::{StorefrontAccessToken, StorefrontClient, StorefrontCustomer};
 pub use types::*;
 
 use thiserror::Error;

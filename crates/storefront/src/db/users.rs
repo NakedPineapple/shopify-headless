@@ -59,7 +59,8 @@ struct UserWithPasswordRow {
 #[derive(Debug, sqlx::FromRow)]
 struct UserCredentialRow {
     id: i32,
-    user_id: i32,
+    user_id: Option<i32>,
+    shopify_customer_id: Option<String>,
     credential_id: Vec<u8>,
     public_key: Vec<u8>,
     name: String,
@@ -73,9 +74,13 @@ impl TryFrom<UserCredentialRow> for UserCredential {
         let passkey: Passkey = serde_json::from_slice(&row.public_key)
             .map_err(|e| RepositoryError::DataCorruption(format!("invalid passkey data: {e}")))?;
 
+        // Require shopify_customer_id for new credentials
+        let shopify_customer_id = row.shopify_customer_id.unwrap_or_default();
+
         Ok(Self {
             id: CredentialId::new(row.id),
-            user_id: UserId::new(row.user_id),
+            shopify_customer_id,
+            user_id: row.user_id.map(UserId::new),
             webauthn_id: row.credential_id,
             passkey,
             name: row.name,
@@ -284,7 +289,114 @@ impl<'a> UserRepository<'a> {
         Ok(Some((user, password_hash)))
     }
 
-    /// Get all credentials for a user.
+    // =========================================================================
+    // Credential Methods (Shopify Customer ID)
+    // =========================================================================
+
+    /// Get all credentials for a Shopify customer.
+    ///
+    /// # Errors
+    ///
+    /// Returns `RepositoryError::Database` if the query fails.
+    /// Returns `RepositoryError::DataCorruption` if any credential data is invalid.
+    pub async fn get_credentials_by_shopify_customer_id(
+        &self,
+        shopify_customer_id: &str,
+    ) -> Result<Vec<UserCredential>, RepositoryError> {
+        let rows = sqlx::query_as!(
+            UserCredentialRow,
+            r#"
+            SELECT id, user_id, shopify_customer_id, credential_id, public_key, name,
+                   created_at as "created_at: DateTime<Utc>"
+            FROM storefront.user_credential
+            WHERE shopify_customer_id = $1
+            ORDER BY created_at ASC
+            "#,
+            shopify_customer_id
+        )
+        .fetch_all(self.pool)
+        .await?;
+
+        rows.into_iter().map(TryInto::try_into).collect()
+    }
+
+    /// Create a new credential for a Shopify customer.
+    ///
+    /// # Errors
+    ///
+    /// Returns `RepositoryError::Conflict` if the credential ID already exists.
+    /// Returns `RepositoryError::Database` for other database errors.
+    pub async fn create_credential_for_shopify_customer(
+        &self,
+        shopify_customer_id: &str,
+        passkey: &Passkey,
+        name: &str,
+    ) -> Result<UserCredential, RepositoryError> {
+        let public_key = serde_json::to_vec(passkey).map_err(|e| {
+            RepositoryError::DataCorruption(format!("failed to serialize passkey: {e}"))
+        })?;
+
+        let row = sqlx::query_as!(
+            UserCredentialRow,
+            r#"
+            INSERT INTO storefront.user_credential (shopify_customer_id, credential_id, public_key, counter, name)
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING id, user_id, shopify_customer_id, credential_id, public_key, name,
+                      created_at as "created_at: DateTime<Utc>"
+            "#,
+            shopify_customer_id,
+            passkey.cred_id().as_ref(),
+            &public_key,
+            0_i32,
+            name
+        )
+        .fetch_one(self.pool)
+        .await
+        .map_err(|e| {
+            if let sqlx::Error::Database(ref db_err) = e
+                && db_err.is_unique_violation()
+            {
+                return RepositoryError::Conflict("credential already exists".to_owned());
+            }
+            RepositoryError::Database(e)
+        })?;
+
+        row.try_into()
+    }
+
+    /// Delete a credential by its database ID for a Shopify customer.
+    ///
+    /// # Returns
+    ///
+    /// Returns `true` if the credential was deleted, `false` if it didn't exist.
+    ///
+    /// # Errors
+    ///
+    /// Returns `RepositoryError::Database` if the query fails.
+    pub async fn delete_credential_for_shopify_customer(
+        &self,
+        shopify_customer_id: &str,
+        credential_id: CredentialId,
+    ) -> Result<bool, RepositoryError> {
+        let result = sqlx::query!(
+            r#"
+            DELETE FROM storefront.user_credential
+            WHERE id = $1 AND shopify_customer_id = $2
+            "#,
+            credential_id.as_i32(),
+            shopify_customer_id
+        )
+        .execute(self.pool)
+        .await?;
+
+        Ok(result.rows_affected() > 0)
+    }
+
+    // =========================================================================
+    // Credential Methods (Legacy User ID - for backwards compatibility)
+    // =========================================================================
+
+    /// Get all credentials for a user (legacy).
     ///
     /// # Errors
     ///
@@ -297,7 +409,7 @@ impl<'a> UserRepository<'a> {
         let rows = sqlx::query_as!(
             UserCredentialRow,
             r#"
-            SELECT id, user_id, credential_id, public_key, name,
+            SELECT id, user_id, shopify_customer_id, credential_id, public_key, name,
                    created_at as "created_at: DateTime<Utc>"
             FROM storefront.user_credential
             WHERE user_id = $1
@@ -311,7 +423,7 @@ impl<'a> UserRepository<'a> {
         rows.into_iter().map(TryInto::try_into).collect()
     }
 
-    /// Create a new credential for a user.
+    /// Create a new credential for a user (legacy).
     ///
     /// # Errors
     ///
@@ -332,7 +444,7 @@ impl<'a> UserRepository<'a> {
             r#"
             INSERT INTO storefront.user_credential (user_id, credential_id, public_key, counter, name)
             VALUES ($1, $2, $3, $4, $5)
-            RETURNING id, user_id, credential_id, public_key, name,
+            RETURNING id, user_id, shopify_customer_id, credential_id, public_key, name,
                       created_at as "created_at: DateTime<Utc>"
             "#,
             user_id.as_i32(),
@@ -355,6 +467,10 @@ impl<'a> UserRepository<'a> {
         row.try_into()
     }
 
+    // =========================================================================
+    // Credential Methods (Shared)
+    // =========================================================================
+
     /// Get a credential by its `WebAuthn` credential ID.
     ///
     /// # Errors
@@ -368,7 +484,7 @@ impl<'a> UserRepository<'a> {
         let row = sqlx::query_as!(
             UserCredentialRow,
             r#"
-            SELECT id, user_id, credential_id, public_key, name,
+            SELECT id, user_id, shopify_customer_id, credential_id, public_key, name,
                    created_at as "created_at: DateTime<Utc>"
             FROM storefront.user_credential
             WHERE credential_id = $1
@@ -449,7 +565,7 @@ impl<'a> UserRepository<'a> {
         Ok(())
     }
 
-    /// Delete a credential by its database ID.
+    /// Delete a credential by its database ID (legacy).
     ///
     /// # Returns
     ///

@@ -9,7 +9,8 @@ use naked_pineapple_core::{CredentialId, Email, UserId};
 
 /// A storefront user (domain type).
 ///
-/// Separate from Shopify customers - this is for local authentication only.
+/// This represents a local user record. With Shopify Storefront API authentication,
+/// most user data is stored in Shopify, but we keep this for legacy support.
 #[derive(Debug, Clone)]
 pub struct User {
     /// Unique user ID.
@@ -27,12 +28,17 @@ pub struct User {
 /// A `WebAuthn` credential (domain type).
 ///
 /// Users can have multiple passkeys for different devices.
+/// Credentials are linked to Shopify customers via `shopify_customer_id`.
 #[derive(Debug, Clone)]
 pub struct UserCredential {
     /// Database ID of this credential.
     pub id: CredentialId,
-    /// User who owns this credential.
-    pub user_id: UserId,
+    /// Shopify customer ID (e.g., "gid://shopify/Customer/123").
+    /// This links the credential to a Shopify customer.
+    pub shopify_customer_id: String,
+    /// Legacy local user ID (for backwards compatibility during migration).
+    /// Will be None for new credentials created after migration.
+    pub user_id: Option<UserId>,
     /// `WebAuthn` credential ID (from the authenticator).
     pub webauthn_id: Vec<u8>,
     /// The full passkey data including public key.

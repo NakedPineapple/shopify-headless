@@ -69,10 +69,22 @@ use crate::state::AppState;
 /// Create the auth routes router.
 pub fn auth_routes() -> Router<AppState> {
     Router::new()
+        // Login/Register/Logout
         .route("/login", get(auth::login_page).post(auth::login))
         .route("/register", get(auth::register_page).post(auth::register))
         .route("/logout", post(auth::logout))
-        // Shopify Customer Account OAuth
+        // Account activation (from Shopify email link)
+        .route("/activate", get(auth::activate_page).post(auth::activate))
+        // Password reset
+        .route(
+            "/forgot-password",
+            get(auth::forgot_password_page).post(auth::forgot_password),
+        )
+        .route(
+            "/reset-password",
+            get(auth::reset_password_page).post(auth::reset_password),
+        )
+        // Shopify Customer Account OAuth (alternative login method)
         .route("/shopify/login", get(shopify_auth::login))
         .route("/shopify/callback", get(shopify_auth::callback))
         .route("/shopify/logout", post(shopify_auth::logout))

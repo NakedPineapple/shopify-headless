@@ -118,3 +118,68 @@ pub struct UpdateCartDiscountCodes;
     response_derives = "Debug, Clone"
 )]
 pub struct UpdateCartNote;
+
+// Customer mutations (Storefront API authentication)
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/storefront/schema.json",
+    query_path = "graphql/storefront/queries/customer.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct CustomerCreate;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/storefront/schema.json",
+    query_path = "graphql/storefront/queries/customer.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct CustomerAccessTokenCreate;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/storefront/schema.json",
+    query_path = "graphql/storefront/queries/customer.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct CustomerActivateByUrl;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/storefront/schema.json",
+    query_path = "graphql/storefront/queries/customer.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct CustomerRecover;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/storefront/schema.json",
+    query_path = "graphql/storefront/queries/customer.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct CustomerResetByUrl;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/storefront/schema.json",
+    query_path = "graphql/storefront/queries/customer.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct CustomerAccessTokenRenew;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/storefront/schema.json",
+    query_path = "graphql/storefront/queries/customer.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct CustomerAccessTokenDelete;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/storefront/schema.json",
+    query_path = "graphql/storefront/queries/customer.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct GetCustomerByToken;
