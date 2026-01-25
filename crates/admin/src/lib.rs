@@ -13,6 +13,9 @@
 //! Only deploy on Tailscale-protected infrastructure with MDM verification.
 
 #![cfg_attr(not(test), forbid(unsafe_code))]
+// Allow dead code during incremental development - many features are not yet wired up
+#![allow(dead_code)]
+#![allow(unused_imports)]
 
 pub mod claude;
 pub mod config;

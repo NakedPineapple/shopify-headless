@@ -1,0 +1,171 @@
+# Collection queries for Shopify Storefront API
+
+# Fragment for money fields (reused from products)
+fragment CollectionMoneyFields on MoneyV2 {
+  amount
+  currencyCode
+}
+
+# Fragment for image fields (reused from products)
+fragment CollectionImageFields on Image {
+  id
+  url
+  altText
+  width
+  height
+}
+
+# Fragment for SEO fields
+fragment CollectionSeoFields on SEO {
+  title
+  description
+}
+
+# Fragment for basic product in collection
+fragment CollectionProductFields on Product {
+  id
+  handle
+  title
+  description
+  availableForSale
+  productType
+  vendor
+  tags
+  priceRange {
+    minVariantPrice {
+      ...CollectionMoneyFields
+    }
+    maxVariantPrice {
+      ...CollectionMoneyFields
+    }
+  }
+  compareAtPriceRange {
+    minVariantPrice {
+      ...CollectionMoneyFields
+    }
+    maxVariantPrice {
+      ...CollectionMoneyFields
+    }
+  }
+  featuredImage {
+    ...CollectionImageFields
+  }
+  variants(first: 1) {
+    edges {
+      node {
+        id
+        availableForSale
+        price {
+          ...CollectionMoneyFields
+        }
+        compareAtPrice {
+          ...CollectionMoneyFields
+        }
+      }
+    }
+  }
+}
+
+# Fragment for collection fields
+fragment CollectionFields on Collection {
+  id
+  handle
+  title
+  description
+  descriptionHtml
+  updatedAt
+  onlineStoreUrl
+  seo {
+    ...CollectionSeoFields
+  }
+  image {
+    ...CollectionImageFields
+  }
+}
+
+# Get a single collection by handle with products
+query GetCollectionByHandle(
+  $handle: String!
+  $productCount: Int = 20
+  $after: String
+  $sortKey: ProductCollectionSortKeys
+  $reverse: Boolean = false
+  $filters: [ProductFilter!]
+) {
+  collection(handle: $handle) {
+    ...CollectionFields
+    products(
+      first: $productCount
+      after: $after
+      sortKey: $sortKey
+      reverse: $reverse
+      filters: $filters
+    ) {
+      edges {
+        cursor
+        node {
+          ...CollectionProductFields
+        }
+      }
+      pageInfo {
+        hasNextPage
+        hasPreviousPage
+        startCursor
+        endCursor
+      }
+      filters {
+        id
+        label
+        type
+        values {
+          id
+          label
+          count
+          input
+        }
+      }
+    }
+  }
+}
+
+# Get paginated list of collections
+query GetCollections(
+  $first: Int = 20
+  $after: String
+  $sortKey: CollectionSortKeys
+  $reverse: Boolean = false
+  $query: String
+) {
+  collections(
+    first: $first
+    after: $after
+    sortKey: $sortKey
+    reverse: $reverse
+    query: $query
+  ) {
+    edges {
+      cursor
+      node {
+        ...CollectionFields
+        products(first: 4) {
+          edges {
+            node {
+              id
+              handle
+              title
+              featuredImage {
+                ...CollectionImageFields
+              }
+            }
+          }
+        }
+      }
+    }
+    pageInfo {
+      hasNextPage
+      hasPreviousPage
+      startCursor
+      endCursor
+    }
+  }
+}

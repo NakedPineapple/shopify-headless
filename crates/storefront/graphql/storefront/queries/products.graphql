@@ -1,0 +1,181 @@
+# Product queries for Shopify Storefront API
+
+# Fragment for money fields
+fragment MoneyFields on MoneyV2 {
+  amount
+  currencyCode
+}
+
+# Fragment for image fields
+fragment ImageFields on Image {
+  id
+  url
+  altText
+  width
+  height
+}
+
+# Fragment for SEO fields
+fragment SeoFields on SEO {
+  title
+  description
+}
+
+# Fragment for product variant fields
+fragment ProductVariantFields on ProductVariant {
+  id
+  title
+  availableForSale
+  quantityAvailable
+  sku
+  barcode
+  price {
+    ...MoneyFields
+  }
+  compareAtPrice {
+    ...MoneyFields
+  }
+  selectedOptions {
+    name
+    value
+  }
+  image {
+    ...ImageFields
+  }
+}
+
+# Fragment for core product fields
+fragment ProductFields on Product {
+  id
+  handle
+  title
+  description
+  descriptionHtml
+  availableForSale
+  productType
+  vendor
+  tags
+  createdAt
+  updatedAt
+  onlineStoreUrl
+  seo {
+    ...SeoFields
+  }
+  priceRange {
+    minVariantPrice {
+      ...MoneyFields
+    }
+    maxVariantPrice {
+      ...MoneyFields
+    }
+  }
+  compareAtPriceRange {
+    minVariantPrice {
+      ...MoneyFields
+    }
+    maxVariantPrice {
+      ...MoneyFields
+    }
+  }
+  featuredImage {
+    ...ImageFields
+  }
+  options {
+    id
+    name
+    optionValues {
+      id
+      name
+    }
+  }
+}
+
+# Get a single product by handle
+query GetProductByHandle(
+  $handle: String!
+  $imageCount: Int = 10
+  $variantCount: Int = 50
+) {
+  product(handle: $handle) {
+    ...ProductFields
+    images(first: $imageCount) {
+      edges {
+        node {
+          ...ImageFields
+        }
+      }
+    }
+    variants(first: $variantCount) {
+      edges {
+        node {
+          ...ProductVariantFields
+        }
+      }
+    }
+  }
+}
+
+# Get paginated list of products
+query GetProducts(
+  $first: Int = 20
+  $after: String
+  $sortKey: ProductSortKeys
+  $reverse: Boolean = false
+  $query: String
+) {
+  products(
+    first: $first
+    after: $after
+    sortKey: $sortKey
+    reverse: $reverse
+    query: $query
+  ) {
+    edges {
+      cursor
+      node {
+        ...ProductFields
+        images(first: 1) {
+          edges {
+            node {
+              ...ImageFields
+            }
+          }
+        }
+        variants(first: 1) {
+          edges {
+            node {
+              ...ProductVariantFields
+            }
+          }
+        }
+      }
+    }
+    pageInfo {
+      hasNextPage
+      hasPreviousPage
+      startCursor
+      endCursor
+    }
+  }
+}
+
+# Get product recommendations
+query GetProductRecommendations($productId: ID!, $intent: ProductRecommendationIntent) {
+  productRecommendations(productId: $productId, intent: $intent) {
+    ...ProductFields
+    images(first: 1) {
+      edges {
+        node {
+          ...ImageFields
+        }
+      }
+    }
+    variants(first: 1) {
+      edges {
+        node {
+          ...ProductVariantFields
+        }
+      }
+    }
+  }
+}

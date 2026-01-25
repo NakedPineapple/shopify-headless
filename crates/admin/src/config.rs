@@ -3,7 +3,7 @@
 //! # Environment Variables
 //!
 //! ## Required
-//! - `ADMIN_DATABASE_URL` - PostgreSQL connection string
+//! - `ADMIN_DATABASE_URL` - `PostgreSQL` connection string
 //! - `ADMIN_BASE_URL` - Public URL for the admin panel
 //! - `ADMIN_SESSION_SECRET` - Session signing secret (min 32 chars, high entropy)
 //! - `SHOPIFY_STORE` - Shopify store domain (e.g., your-store.myshopify.com)
@@ -64,7 +64,7 @@ pub enum ConfigError {
 /// Admin application configuration.
 #[derive(Debug, Clone)]
 pub struct AdminConfig {
-    /// PostgreSQL database connection URL (contains password)
+    /// `PostgreSQL` database connection URL (contains password)
     pub database_url: SecretString,
     /// IP address to bind the server to
     pub host: IpAddr,
@@ -200,7 +200,7 @@ impl AdminConfig {
 
     /// Returns the socket address for binding the server.
     #[must_use]
-    pub fn socket_addr(&self) -> SocketAddr {
+    pub const fn socket_addr(&self) -> SocketAddr {
         SocketAddr::new(self.host, self.port)
     }
 }
@@ -292,9 +292,11 @@ fn shannon_entropy(s: &str) -> f64 {
         *freq.entry(c).or_insert(0) += 1;
     }
 
+    #[allow(clippy::cast_precision_loss)] // String length will never exceed f64 precision
     let len = s.len() as f64;
     freq.values()
         .map(|&count| {
+            #[allow(clippy::cast_precision_loss)] // Character count will never exceed f64 precision
             let p = count as f64 / len;
             -p * p.log2()
         })
@@ -337,6 +339,7 @@ fn get_validated_secret(key: &str) -> Result<SecretString, ConfigError> {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 

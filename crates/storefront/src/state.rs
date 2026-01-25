@@ -5,6 +5,7 @@ use std::sync::Arc;
 use sqlx::PgPool;
 
 use crate::config::StorefrontConfig;
+use crate::shopify::StorefrontClient;
 
 /// Application state shared across all handlers.
 ///
@@ -18,6 +19,7 @@ pub struct AppState {
 struct AppStateInner {
     config: StorefrontConfig,
     pool: PgPool,
+    storefront: StorefrontClient,
 }
 
 impl AppState {
@@ -29,8 +31,13 @@ impl AppState {
     /// * `pool` - `PostgreSQL` connection pool
     #[must_use]
     pub fn new(config: StorefrontConfig, pool: PgPool) -> Self {
+        let storefront = StorefrontClient::new(&config.shopify);
         Self {
-            inner: Arc::new(AppStateInner { config, pool }),
+            inner: Arc::new(AppStateInner {
+                config,
+                pool,
+                storefront,
+            }),
         }
     }
 
@@ -44,5 +51,11 @@ impl AppState {
     #[must_use]
     pub fn pool(&self) -> &PgPool {
         &self.inner.pool
+    }
+
+    /// Get a reference to the Shopify Storefront API client.
+    #[must_use]
+    pub fn storefront(&self) -> &StorefrontClient {
+        &self.inner.storefront
     }
 }

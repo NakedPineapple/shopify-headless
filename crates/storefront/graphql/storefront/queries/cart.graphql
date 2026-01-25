@@ -1,0 +1,266 @@
+# Cart queries and mutations for Shopify Storefront API
+
+# Fragment for money fields
+fragment CartMoneyFields on MoneyV2 {
+  amount
+  currencyCode
+}
+
+# Fragment for image fields
+fragment CartImageFields on Image {
+  id
+  url
+  altText
+  width
+  height
+}
+
+# Fragment for cart line merchandise
+fragment CartMerchandiseFields on ProductVariant {
+  id
+  title
+  sku
+  availableForSale
+  requiresShipping
+  price {
+    ...CartMoneyFields
+  }
+  compareAtPrice {
+    ...CartMoneyFields
+  }
+  selectedOptions {
+    name
+    value
+  }
+  image {
+    ...CartImageFields
+  }
+  product {
+    id
+    handle
+    title
+    vendor
+    featuredImage {
+      ...CartImageFields
+    }
+  }
+}
+
+# Fragment for cart line cost
+fragment CartLineCostFields on CartLineCost {
+  amountPerQuantity {
+    ...CartMoneyFields
+  }
+  compareAtAmountPerQuantity {
+    ...CartMoneyFields
+  }
+  subtotalAmount {
+    ...CartMoneyFields
+  }
+  totalAmount {
+    ...CartMoneyFields
+  }
+}
+
+# Fragment for cart line
+fragment CartLineFields on CartLine {
+  id
+  quantity
+  attributes {
+    key
+    value
+  }
+  cost {
+    ...CartLineCostFields
+  }
+  merchandise {
+    __typename
+    ... on ProductVariant {
+      ...CartMerchandiseFields
+    }
+  }
+  discountAllocations {
+    __typename
+    discountedAmount {
+      ...CartMoneyFields
+    }
+  }
+}
+
+# Fragment for cart cost
+fragment CartCostFields on CartCost {
+  subtotalAmount {
+    ...CartMoneyFields
+  }
+  totalAmount {
+    ...CartMoneyFields
+  }
+  totalTaxAmount {
+    ...CartMoneyFields
+  }
+  totalDutyAmount {
+    ...CartMoneyFields
+  }
+}
+
+# Fragment for buyer identity
+fragment CartBuyerIdentityFields on CartBuyerIdentity {
+  email
+  phone
+  countryCode
+  customer {
+    id
+    email
+    firstName
+    lastName
+  }
+}
+
+# Fragment for cart discount codes
+fragment CartDiscountCodeFields on CartDiscountCode {
+  code
+  applicable
+}
+
+# Fragment for all cart fields
+fragment CartFields on Cart {
+  id
+  checkoutUrl
+  createdAt
+  updatedAt
+  note
+  totalQuantity
+  attributes {
+    key
+    value
+  }
+  buyerIdentity {
+    ...CartBuyerIdentityFields
+  }
+  cost {
+    ...CartCostFields
+  }
+  discountCodes {
+    ...CartDiscountCodeFields
+  }
+  lines(first: 100) {
+    edges {
+      node {
+        __typename
+        ... on CartLine {
+          ...CartLineFields
+        }
+      }
+    }
+  }
+}
+
+# Fragment for cart user errors
+fragment CartUserErrorFields on CartUserError {
+  code
+  field
+  message
+}
+
+# Create a new cart
+mutation CreateCart($input: CartInput!) {
+  cartCreate(input: $input) {
+    cart {
+      ...CartFields
+    }
+    userErrors {
+      ...CartUserErrorFields
+    }
+  }
+}
+
+# Get an existing cart
+query GetCart($cartId: ID!) {
+  cart(id: $cartId) {
+    ...CartFields
+  }
+}
+
+# Add lines to cart
+mutation AddToCart($cartId: ID!, $lines: [CartLineInput!]!) {
+  cartLinesAdd(cartId: $cartId, lines: $lines) {
+    cart {
+      ...CartFields
+    }
+    userErrors {
+      ...CartUserErrorFields
+    }
+  }
+}
+
+# Update cart lines (change quantity, attributes)
+mutation UpdateCartLines($cartId: ID!, $lines: [CartLineUpdateInput!]!) {
+  cartLinesUpdate(cartId: $cartId, lines: $lines) {
+    cart {
+      ...CartFields
+    }
+    userErrors {
+      ...CartUserErrorFields
+    }
+  }
+}
+
+# Remove lines from cart
+mutation RemoveFromCart($cartId: ID!, $lineIds: [ID!]!) {
+  cartLinesRemove(cartId: $cartId, lineIds: $lineIds) {
+    cart {
+      ...CartFields
+    }
+    userErrors {
+      ...CartUserErrorFields
+    }
+  }
+}
+
+# Update cart discount codes
+mutation UpdateCartDiscountCodes($cartId: ID!, $discountCodes: [String!]!) {
+  cartDiscountCodesUpdate(cartId: $cartId, discountCodes: $discountCodes) {
+    cart {
+      ...CartFields
+    }
+    userErrors {
+      ...CartUserErrorFields
+    }
+  }
+}
+
+# Update cart buyer identity
+mutation UpdateCartBuyerIdentity($cartId: ID!, $buyerIdentity: CartBuyerIdentityInput!) {
+  cartBuyerIdentityUpdate(cartId: $cartId, buyerIdentity: $buyerIdentity) {
+    cart {
+      ...CartFields
+    }
+    userErrors {
+      ...CartUserErrorFields
+    }
+  }
+}
+
+# Update cart attributes
+mutation UpdateCartAttributes($cartId: ID!, $attributes: [AttributeInput!]!) {
+  cartAttributesUpdate(cartId: $cartId, attributes: $attributes) {
+    cart {
+      ...CartFields
+    }
+    userErrors {
+      ...CartUserErrorFields
+    }
+  }
+}
+
+# Update cart note
+mutation UpdateCartNote($cartId: ID!, $note: String!) {
+  cartNoteUpdate(cartId: $cartId, note: $note) {
+    cart {
+      ...CartFields
+    }
+    userErrors {
+      ...CartUserErrorFields
+    }
+  }
+}

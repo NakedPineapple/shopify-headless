@@ -3,7 +3,7 @@
 //! # Environment Variables
 //!
 //! ## Required
-//! - `STOREFRONT_DATABASE_URL` - PostgreSQL connection string
+//! - `STOREFRONT_DATABASE_URL` - `PostgreSQL` connection string
 //! - `STOREFRONT_BASE_URL` - Public URL for the storefront
 //! - `STOREFRONT_SESSION_SECRET` - Session signing secret (min 32 chars, high entropy)
 //! - `SHOPIFY_STORE` - Shopify store domain (e.g., your-store.myshopify.com)
@@ -18,7 +18,7 @@
 //! - `SHOPIFY_API_VERSION` - API version (default: 2026-01)
 //! - `GA4_MEASUREMENT_ID` - Google Analytics 4 measurement ID
 //! - `META_PIXEL_ID` - Meta (Facebook) pixel ID
-//! - `TIKTOK_PIXEL_ID` - TikTok pixel ID
+//! - `TIKTOK_PIXEL_ID` - `TikTok` pixel ID
 //! - `PINTEREST_TAG_ID` - Pinterest tag ID
 //! - `GOOGLE_ADS_ID` - Google Ads conversion ID
 //! - `GOOGLE_ADS_CONVERSION_LABEL` - Google Ads conversion label
@@ -65,7 +65,7 @@ pub enum ConfigError {
 /// Storefront application configuration.
 #[derive(Debug, Clone)]
 pub struct StorefrontConfig {
-    /// PostgreSQL database connection URL (contains password)
+    /// `PostgreSQL` database connection URL (contains password)
     pub database_url: SecretString,
     /// IP address to bind the server to
     pub host: IpAddr,
@@ -122,7 +122,7 @@ pub struct AnalyticsConfig {
     pub ga4_measurement_id: Option<String>,
     /// Meta (Facebook) pixel ID
     pub meta_pixel_id: Option<String>,
-    /// TikTok pixel ID
+    /// `TikTok` pixel ID
     pub tiktok_pixel_id: Option<String>,
     /// Pinterest tag ID
     pub pinterest_tag_id: Option<String>,
@@ -178,7 +178,7 @@ impl StorefrontConfig {
 
     /// Returns the socket address for binding the server.
     #[must_use]
-    pub fn socket_addr(&self) -> SocketAddr {
+    pub const fn socket_addr(&self) -> SocketAddr {
         SocketAddr::new(self.host, self.port)
     }
 }
@@ -261,9 +261,11 @@ fn shannon_entropy(s: &str) -> f64 {
         *freq.entry(c).or_insert(0) += 1;
     }
 
+    #[allow(clippy::cast_precision_loss)] // String length will never exceed f64 precision
     let len = s.len() as f64;
     freq.values()
         .map(|&count| {
+            #[allow(clippy::cast_precision_loss)] // Character count will never exceed f64 precision
             let p = count as f64 / len;
             -p * p.log2()
         })
@@ -306,6 +308,7 @@ fn get_validated_secret(key: &str) -> Result<SecretString, ConfigError> {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 

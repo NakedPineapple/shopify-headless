@@ -22,6 +22,9 @@
 //! - Admin `PostgreSQL` database (`np_admin`)
 
 #![cfg_attr(not(test), forbid(unsafe_code))]
+// Allow dead code during incremental development - many features are not yet wired up
+#![allow(dead_code)]
+#![allow(unused_imports)]
 
 use axum::extract::State;
 use axum::http::StatusCode;
