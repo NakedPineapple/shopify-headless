@@ -7,26 +7,20 @@ on:
     branches: [main]
   workflow_dispatch:
     inputs:
-      environment:
-        description: 'Target environment'
-        required: true
-        default: 'staging'
-        type: choice
-        options: [staging, production]
       target:
         description: 'Deploy target'
         required: true
         default: 'all'
         type: choice
         options: [all, storefront, admin]
-      promote:
-        description: 'Promote staging image to production (skips build)'
+      promote_to_production:
+        description: 'Promote current staging to production'
         required: false
         default: false
         type: boolean
 
 concurrency:
-  group: deploy-${{ github.ref }}-${{ inputs.environment || 'staging' }}
+  group: deploy-${{ github.ref }}
   cancel-in-progress: false
 
 env:
@@ -34,6 +28,9 @@ env:
   REGISTRY: registry.fly.io
 
 jobs:
+  # ============================================================================
+  # Stage 1: Pre-flight checks
+  # ============================================================================
   check:
     name: Pre-flight Checks
     runs-on: ubuntu-latest
@@ -52,19 +49,14 @@ jobs:
         env:
           SQLX_OFFLINE: true
 
-  # Build Docker images on GitHub with layer caching
+  # ============================================================================
+  # Stage 2: Build Docker images (skipped if promoting)
+  # ============================================================================
   build:
     name: Build Images
     needs: check
     runs-on: ubuntu-latest
-    if: |
-      !inputs.promote &&
-      ((github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-       (github.event_name == 'pull_request') ||
-       (github.event_name == 'workflow_dispatch'))
-    outputs:
-      storefront_image: ${{ steps.storefront-meta.outputs.tags }}
-      admin_image: ${{ steps.admin-meta.outputs.tags }}
+    if: ${{ !inputs.promote_to_production }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -80,36 +72,7 @@ jobs:
           username: x
           password: ${{ secrets.FLY_API_TOKEN }}
 
-      # Determine environment and app names
-      - name: Set environment variables
-        id: env
-        run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            ENV="${{ inputs.environment }}"
-          else
-            ENV="staging"
-          fi
-          echo "environment=$ENV" >> $GITHUB_OUTPUT
-
-          if [[ "$ENV" == "production" ]]; then
-            echo "storefront_app=nakedpineapple-storefront" >> $GITHUB_OUTPUT
-            echo "admin_app=nakedpineapple-admin" >> $GITHUB_OUTPUT
-          else
-            echo "storefront_app=nakedpineapple-storefront-staging" >> $GITHUB_OUTPUT
-            echo "admin_app=nakedpineapple-admin-staging" >> $GITHUB_OUTPUT
-          fi
-
       # Build and push storefront
-      - name: Storefront image metadata
-        id: storefront-meta
-        if: inputs.target != 'admin'
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ steps.env.outputs.storefront_app }}
-          tags: |
-            type=sha,prefix=
-            type=raw,value=latest
-
       - name: Build and push storefront
         if: inputs.target != 'admin'
         uses: docker/build-push-action@v6
@@ -117,21 +80,13 @@ jobs:
           context: .
           file: docker/Dockerfile.storefront
           push: true
-          tags: ${{ steps.storefront-meta.outputs.tags }}
+          tags: |
+            ${{ env.REGISTRY }}/nakedpineapple-storefront-staging:${{ github.sha }}
+            ${{ env.REGISTRY }}/nakedpineapple-storefront-staging:latest
           cache-from: type=gha,scope=storefront
           cache-to: type=gha,mode=max,scope=storefront
 
       # Build and push admin
-      - name: Admin image metadata
-        id: admin-meta
-        if: inputs.target != 'storefront'
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ steps.env.outputs.admin_app }}
-          tags: |
-            type=sha,prefix=
-            type=raw,value=latest
-
       - name: Build and push admin
         if: inputs.target != 'storefront'
         uses: docker/build-push-action@v6
@@ -139,19 +94,19 @@ jobs:
           context: .
           file: docker/Dockerfile.admin
           push: true
-          tags: ${{ steps.admin-meta.outputs.tags }}
+          tags: |
+            ${{ env.REGISTRY }}/nakedpineapple-admin-staging:${{ github.sha }}
+            ${{ env.REGISTRY }}/nakedpineapple-admin-staging:latest
           cache-from: type=gha,scope=admin
           cache-to: type=gha,mode=max,scope=admin
 
-  # Deploy to staging
+  # ============================================================================
+  # Stage 3: Deploy to staging
+  # ============================================================================
   deploy-staging:
     name: Deploy to Staging
     needs: build
     runs-on: ubuntu-latest
-    if: |
-      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-      (github.event_name == 'pull_request') ||
-      (github.event_name == 'workflow_dispatch' && inputs.environment == 'staging' && !inputs.promote)
     environment: staging
     steps:
       - uses: superfly/flyctl-actions/setup-flyctl@master
@@ -164,30 +119,14 @@ jobs:
         if: inputs.target != 'storefront'
         run: flyctl deploy --image ${{ env.REGISTRY }}/nakedpineapple-admin-staging:${{ github.sha }} -a nakedpineapple-admin-staging
 
-  # Deploy to production (manual trigger only)
-  deploy-production:
-    name: Deploy to Production
-    needs: build
-    runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' && inputs.environment == 'production' && !inputs.promote
-    environment: production
-    steps:
-      - uses: superfly/flyctl-actions/setup-flyctl@master
-
-      - name: Deploy storefront to production
-        if: inputs.target != 'admin'
-        run: flyctl deploy --image ${{ env.REGISTRY }}/nakedpineapple-storefront:${{ github.sha }} -a nakedpineapple-storefront
-
-      - name: Deploy admin to production
-        if: inputs.target != 'storefront'
-        run: flyctl deploy --image ${{ env.REGISTRY }}/nakedpineapple-admin:${{ github.sha }} -a nakedpineapple-admin
-
-  # Promote staging image to production (no rebuild)
+  # ============================================================================
+  # Stage 4: Promote to production (manual trigger only)
+  # ============================================================================
   promote-to-production:
-    name: Promote Staging to Production
+    name: Promote to Production
     needs: check
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' && inputs.promote
+    if: ${{ inputs.promote_to_production }}
     environment: production
     steps:
       - uses: superfly/flyctl-actions/setup-flyctl@master
@@ -198,6 +137,7 @@ jobs:
         run: |
           IMAGE=$(flyctl status -a nakedpineapple-storefront-staging --json | jq -r '.Machines[0].config.image')
           echo "image=$IMAGE" >> $GITHUB_OUTPUT
+          echo "Promoting storefront image: $IMAGE"
 
       - name: Get staging admin image
         id: staging-admin
@@ -205,11 +145,12 @@ jobs:
         run: |
           IMAGE=$(flyctl status -a nakedpineapple-admin-staging --json | jq -r '.Machines[0].config.image')
           echo "image=$IMAGE" >> $GITHUB_OUTPUT
+          echo "Promoting admin image: $IMAGE"
 
-      - name: Promote storefront to production
+      - name: Deploy storefront to production
         if: inputs.target != 'admin'
         run: flyctl deploy --image ${{ steps.staging-storefront.outputs.image }} -a nakedpineapple-storefront
 
-      - name: Promote admin to production
+      - name: Deploy admin to production
         if: inputs.target != 'storefront'
         run: flyctl deploy --image ${{ steps.staging-admin.outputs.image }} -a nakedpineapple-admin
