@@ -1,4 +1,23 @@
-# Stage 1: Build environment
+# Stage 1: Image Optimization (Node.js)
+# Generates responsive images (AVIF, WebP, JPEG) with content-based hashes
+FROM node:25.4.0-alpine3.22 AS image-optimizer
+
+WORKDIR /app
+
+# Copy package files and install dependencies
+COPY scripts/image-optimizer/package.json scripts/image-optimizer/package-lock.json scripts/image-optimizer/
+RUN cd scripts/image-optimizer && npm ci
+
+# Copy optimizer script and source files needed for discovery
+COPY scripts/image-optimizer/optimize-images.mjs scripts/image-optimizer/
+COPY crates/storefront/templates crates/storefront/templates/
+COPY crates/storefront/src crates/storefront/src/
+COPY crates/storefront/static/images/original crates/storefront/static/images/original/
+
+# Discover used images and generate optimized variants
+RUN node scripts/image-optimizer/optimize-images.mjs
+
+# Stage 2: Rust Build environment
 FROM rust:1.93.0-trixie AS builder
 
 RUN apt-get update && apt-get install -y pkg-config libssl-dev && rm -rf /var/lib/apt/lists/*
@@ -33,6 +52,10 @@ RUN cargo build --release -p naked-pineapple-storefront -p naked-pineapple-cli
 # Copy actual source
 COPY . .
 
+# Copy optimized images from image-optimizer stage
+# (must come after COPY . . to not be overwritten)
+COPY --from=image-optimizer /app/crates/storefront/static/images/derived /app/crates/storefront/static/images/derived
+
 # Build Tailwind CSS
 RUN tailwindcss -i ./crates/storefront/static/css/input.css \
     -o ./crates/storefront/static/css/main.css --minify
@@ -41,18 +64,26 @@ RUN tailwindcss -i ./crates/storefront/static/css/input.css \
 RUN touch crates/storefront/src/main.rs crates/cli/src/main.rs \
     && cargo build --release -p naked-pineapple-storefront -p naked-pineapple-cli
 
-# Stage 2: Runtime
+# Stage 3: Runtime
 FROM debian:trixie-slim AS runtime
 
 RUN apt-get update && apt-get install -y ca-certificates libssl3 && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
+# Copy binaries
 COPY --from=builder /app/target/release/naked-pineapple-storefront /app/server
 COPY --from=builder /app/target/release/np-cli /app/np-cli
-COPY --from=builder /app/crates/storefront/static /app/crates/storefront/static
+
+# Copy templates and content
 COPY --from=builder /app/crates/storefront/templates /app/crates/storefront/templates
 COPY --from=builder /app/crates/storefront/content /app/crates/storefront/content
+
+# Copy static assets - only derived images (not original) to save space
+COPY --from=builder /app/crates/storefront/static/css /app/crates/storefront/static/css
+COPY --from=builder /app/crates/storefront/static/js /app/crates/storefront/static/js
+COPY --from=builder /app/crates/storefront/static/vendor /app/crates/storefront/static/vendor
+COPY --from=builder /app/crates/storefront/static/images/derived /app/crates/storefront/static/images/derived
 
 EXPOSE 8080
 CMD ["/app/server"]

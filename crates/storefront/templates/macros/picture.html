@@ -1,0 +1,62 @@
+{#
+  Responsive Picture Macro
+
+  Generates <picture> elements with AVIF, WebP, and JPEG srcsets for responsive images.
+  Uses content-based hashing for immutable CDN caching.
+
+  Parameters:
+    - path: Original image path, e.g., "/static/images/original/lifestyle/photo.jpg"
+    - alt: Alt text for accessibility (required)
+    - sizes: Responsive sizes attribute, e.g., "(max-width: 768px) 100vw, 50vw"
+    - class: Optional CSS classes for the <img> element
+    - loading: "lazy" (default) or "eager" for above-fold images
+
+  Usage:
+    {% import "macros/picture.html" as img %}
+    {{ img::picture(path="/static/images/original/lifestyle/DSC_1068.jpg", alt="Lifestyle photo", sizes="100vw") }}
+    {{ img::picture(path="/static/images/original/hero/hero.jpg", alt="Hero", sizes="100vw", class="w-full", loading="eager") }}
+
+  Output filenames use content hashes for cache busting:
+    /static/images/derived/lifestyle/DSC_1068.a1b2c3d4-320.avif
+#}
+
+{% macro picture(path, alt, sizes, class="", loading="lazy") %}
+{# Extract the base path: remove /static/images/original/ prefix and file extension #}
+{% let base = path.trim_start_matches("/static/images/original/").trim_end_matches(".jpg").trim_end_matches(".jpeg").trim_end_matches(".png").trim_end_matches(".JPG").trim_end_matches(".JPEG").trim_end_matches(".PNG") %}
+{# Get the content hash for this image #}
+{% let hash = base|image_hash %}
+<picture>
+  <source type="image/avif"
+    srcset="/static/images/derived/{{ base }}.{{ hash }}-320.avif 320w, /static/images/derived/{{ base }}.{{ hash }}-640.avif 640w, /static/images/derived/{{ base }}.{{ hash }}-1024.avif 1024w, /static/images/derived/{{ base }}.{{ hash }}-1600.avif 1600w, /static/images/derived/{{ base }}.{{ hash }}-2400.avif 2400w"
+    sizes="{{ sizes }}">
+  <source type="image/webp"
+    srcset="/static/images/derived/{{ base }}.{{ hash }}-320.webp 320w, /static/images/derived/{{ base }}.{{ hash }}-640.webp 640w, /static/images/derived/{{ base }}.{{ hash }}-1024.webp 1024w, /static/images/derived/{{ base }}.{{ hash }}-1600.webp 1600w, /static/images/derived/{{ base }}.{{ hash }}-2400.webp 2400w"
+    sizes="{{ sizes }}">
+  <img
+    src="/static/images/derived/{{ base }}.{{ hash }}-1024.jpg"
+    srcset="/static/images/derived/{{ base }}.{{ hash }}-320.jpg 320w, /static/images/derived/{{ base }}.{{ hash }}-640.jpg 640w, /static/images/derived/{{ base }}.{{ hash }}-1024.jpg 1024w, /static/images/derived/{{ base }}.{{ hash }}-1600.jpg 1600w, /static/images/derived/{{ base }}.{{ hash }}-2400.jpg 2400w"
+    sizes="{{ sizes }}"
+    {% if !class.is_empty() %}class="{{ class }}"{% endif %}
+    loading="{{ loading }}"
+    decoding="async"
+    alt="{{ alt }}">
+</picture>
+{% endmacro %}
+
+{#
+  SVG Image Macro
+
+  For SVG images that don't need responsive variants - served from derived directory.
+  Uses content-based hashing for immutable CDN caching.
+
+  Parameters:
+    - path: Original SVG path, e.g., "/static/images/original/branding/logo.svg"
+    - alt: Alt text for accessibility
+    - class: Optional CSS classes
+#}
+{% macro svg(path, alt, class="") %}
+{# Extract base path and get hash #}
+{% let base = path.trim_start_matches("/static/images/original/").trim_end_matches(".svg") %}
+{% let hash = base|image_hash %}
+<img src="/static/images/derived/{{ base }}.{{ hash }}.svg" alt="{{ alt }}" {% if !class.is_empty() %}class="{{ class }}"{% endif %} decoding="async">
+{% endmacro %}

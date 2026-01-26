@@ -1,0 +1,13 @@
+{
+  "name": "naked-pineapple-image-optimizer",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "optimize": "node optimize-images.mjs"
+  },
+  "dependencies": {
+    "fast-glob": "^3.3.3",
+    "sharp": "^0.33.5"
+  }
+}

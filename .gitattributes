@@ -3,8 +3,7 @@
 *.png filter=lfs diff=lfs merge=lfs -text
 *.gif filter=lfs diff=lfs merge=lfs -text
 *.webp filter=lfs diff=lfs merge=lfs -text
+*.avif filter=lfs diff=lfs merge=lfs -text
 *.heic filter=lfs diff=lfs merge=lfs -text
-*.af filter=lfs diff=lfs merge=lfs -text
-crates/**/graphql/**/schema.json filter=lfs diff=lfs merge=lfs
 crates/**/graphql/**/schema.json filter=lfs diff=lfs merge=lfs -text
 *.json !text !filter !merge !diff

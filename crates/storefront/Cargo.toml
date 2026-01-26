@@ -85,3 +85,6 @@ urlencoding = "2.1"
 
 # Search
 tantivy = "0.25"
+
+[build-dependencies]
+sha2 = "0.10"

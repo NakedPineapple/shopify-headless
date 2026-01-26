@@ -30,14 +30,18 @@ use std::path::Path;
 
 use axum::extract::State;
 use axum::http::StatusCode;
+use axum::http::header::{CACHE_CONTROL, HeaderValue};
 use axum::{Router, routing::get};
+use tower::ServiceBuilder;
 use tower_http::services::ServeDir;
+use tower_http::set_header::SetResponseHeaderLayer;
 
 mod config;
 mod content;
 mod db;
 mod error;
 mod filters;
+mod image_manifest;
 mod middleware;
 mod models;
 mod routes;
@@ -128,12 +132,79 @@ async fn main() {
     // Create session layer
     let session_layer = middleware::create_session_layer(state.pool(), state.config());
 
-    // Build router
+    // Cache control headers for static assets
+    // Optimized images - immutable (filenames include size suffix, content never changes)
+    let cache_immutable = HeaderValue::from_static("public, max-age=31536000, immutable");
+    // Vendor libraries - long cache (versioned, rarely change)
+    let cache_long = HeaderValue::from_static("public, max-age=2592000");
+    // CSS/JS - short cache (may change between deploys)
+    let cache_short = HeaderValue::from_static("public, max-age=86400, must-revalidate");
+
+    // Build router with cache-controlled static file serving
     let app = Router::new()
         .route("/health", get(health))
         .route("/health/ready", get(readiness))
         .merge(routes::routes())
-        .nest_service("/static", ServeDir::new("crates/storefront/static"))
+        // Optimized images - immutable (1 year cache)
+        .nest_service(
+            "/static/images/derived",
+            ServiceBuilder::new()
+                .layer(SetResponseHeaderLayer::if_not_present(
+                    CACHE_CONTROL,
+                    cache_immutable.clone(),
+                ))
+                .service(ServeDir::new("crates/storefront/static/images/derived")),
+        )
+        // Original images fallback (for development) - short cache
+        .nest_service(
+            "/static/images/original",
+            ServiceBuilder::new()
+                .layer(SetResponseHeaderLayer::if_not_present(
+                    CACHE_CONTROL,
+                    cache_short.clone(),
+                ))
+                .service(ServeDir::new("crates/storefront/static/images/original")),
+        )
+        // Vendor libraries (htmx, swiper, fonts) - long cache
+        .nest_service(
+            "/static/vendor",
+            ServiceBuilder::new()
+                .layer(SetResponseHeaderLayer::if_not_present(
+                    CACHE_CONTROL,
+                    cache_long.clone(),
+                ))
+                .service(ServeDir::new("crates/storefront/static/vendor")),
+        )
+        // CSS - short cache with revalidation
+        .nest_service(
+            "/static/css",
+            ServiceBuilder::new()
+                .layer(SetResponseHeaderLayer::if_not_present(
+                    CACHE_CONTROL,
+                    cache_short.clone(),
+                ))
+                .service(ServeDir::new("crates/storefront/static/css")),
+        )
+        // JS - short cache with revalidation
+        .nest_service(
+            "/static/js",
+            ServiceBuilder::new()
+                .layer(SetResponseHeaderLayer::if_not_present(
+                    CACHE_CONTROL,
+                    cache_short.clone(),
+                ))
+                .service(ServeDir::new("crates/storefront/static/js")),
+        )
+        // Fallback for any other static files
+        .nest_service(
+            "/static",
+            ServiceBuilder::new()
+                .layer(SetResponseHeaderLayer::if_not_present(
+                    CACHE_CONTROL,
+                    cache_short,
+                ))
+                .service(ServeDir::new("crates/storefront/static")),
+        )
         .layer(session_layer)
         .with_state(state)
         // Sentry layers (outermost for full request coverage)

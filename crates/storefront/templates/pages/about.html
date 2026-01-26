@@ -1,4 +1,5 @@
 {% extends "layouts/base.html" %}
+{% import "macros/picture.html" as img %}
 
 {% block title %}About Us - Naked Pineapple{% endblock %}
 
@@ -8,10 +9,7 @@
 {# Hero Section #}
 <section class="relative min-h-[70vh] flex items-center overflow-hidden">
     <div class="absolute inset-0">
-        <img src="/static/images/lifestyle/NP_Shoot_-_Jan_2025101.jpg"
-             alt="Naked Pineapple Story"
-             class="w-full h-full object-cover"
-             loading="eager">
+        {{ img::picture(path="/static/images/original/lifestyle/NP_Shoot_-_Jan_2025101.jpg", alt="Naked Pineapple Story", sizes="100vw", class="w-full h-full object-cover", loading="eager") }}
         <div class="absolute inset-0 bg-gradient-to-r from-foreground/80 via-foreground/50 to-transparent"></div>
     </div>
 
@@ -36,9 +34,7 @@
         <div class="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
             <div class="relative">
                 <div class="aspect-[4/5] rounded-3xl overflow-hidden shadow-2xl">
-                    <img src="/static/images/lifestyle/DSC_2634.jpg"
-                         alt="Our mission"
-                         class="w-full h-full object-cover">
+                    {{ img::picture(path="/static/images/original/lifestyle/DSC_2634.jpg", alt="Our mission", sizes="(max-width: 1024px) 100vw, 40vw", class="w-full h-full object-cover") }}
                 </div>
                 <div class="absolute -bottom-6 -right-6 w-32 h-32 bg-secondary/20 rounded-full blur-2xl"></div>
             </div>
@@ -147,9 +143,7 @@
 
             <div class="relative order-1 lg:order-2">
                 <div class="aspect-square rounded-3xl overflow-hidden shadow-2xl">
-                    <img src="/static/images/products/pineapple-enzyme-cleanser/NP_-_Photoshoot_268.jpg"
-                         alt="Pineapple enzyme skincare"
-                         class="w-full h-full object-cover">
+                    {{ img::picture(path="/static/images/original/products/pineapple-enzyme-cleanser/NP_-_Photoshoot_268.jpg", alt="Pineapple enzyme skincare", sizes="(max-width: 1024px) 100vw, 40vw", class="w-full h-full object-cover") }}
                 </div>
                 <div class="absolute -top-4 -left-4 w-24 h-24 bg-secondary/20 rounded-full blur-xl"></div>
             </div>

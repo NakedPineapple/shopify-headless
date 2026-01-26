@@ -1,4 +1,5 @@
 {% extends "layouts/base.html" %}
+{% import "macros/picture.html" as img %}
 
 {% block title %}Subscriptions - Naked Pineapple{% endblock %}
 
@@ -150,9 +151,7 @@
         <div class="grid md:grid-cols-3 gap-8">
             <div class="group bg-card rounded-3xl overflow-hidden border border-border hover:shadow-xl transition-all duration-300">
                 <div class="aspect-square overflow-hidden">
-                    <img src="/static/images/products/pineapple-enzyme-cleanser/NP_-_Photoshoot_268.jpg"
-                         alt="Pineapple Enzyme Cleanser"
-                         class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                    {{ img::picture(path="/static/images/original/products/pineapple-enzyme-cleanser/NP_-_Photoshoot_268.jpg", alt="Pineapple Enzyme Cleanser", sizes="(max-width: 768px) 100vw, 33vw", class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500") }}
                 </div>
                 <div class="p-6">
                     <h3 class="font-display text-lg text-foreground mb-2">Pineapple Enzyme Cleanser</h3>
@@ -165,9 +164,7 @@
 
             <div class="group bg-card rounded-3xl overflow-hidden border border-border hover:shadow-xl transition-all duration-300">
                 <div class="aspect-square overflow-hidden">
-                    <img src="/static/images/products/bright-tight-super-serum/NP_-_Photoshoot_278.jpg"
-                         alt="Bright & Tight Super Serum"
-                         class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                    {{ img::picture(path="/static/images/original/products/bright-tight-super-serum/NP_-_Photoshoot_278.jpg", alt="Bright & Tight Super Serum", sizes="(max-width: 768px) 100vw, 33vw", class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500") }}
                 </div>
                 <div class="p-6">
                     <h3 class="font-display text-lg text-foreground mb-2">Bright & Tight Super Serum</h3>
@@ -180,9 +177,7 @@
 
             <div class="group bg-card rounded-3xl overflow-hidden border border-border hover:shadow-xl transition-all duration-300">
                 <div class="aspect-square overflow-hidden">
-                    <img src="/static/images/products/skin-tight-exotic-cream/NP_-_Photoshoot_280.jpg"
-                         alt="Skin Tight Exotic Cream"
-                         class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                    {{ img::picture(path="/static/images/original/products/skin-tight-exotic-cream/NP_-_Photoshoot_280.jpg", alt="Skin Tight Exotic Cream", sizes="(max-width: 768px) 100vw, 33vw", class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500") }}
                 </div>
                 <div class="p-6">
                     <h3 class="font-display text-lg text-foreground mb-2">Skin Tight Exotic Cream</h3>

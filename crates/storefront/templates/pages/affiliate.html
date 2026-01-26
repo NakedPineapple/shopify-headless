@@ -1,4 +1,5 @@
 {% extends "layouts/base.html" %}
+{% import "macros/picture.html" as img %}
 
 {% block title %}Affiliate Program - Naked Pineapple{% endblock %}
 
@@ -43,9 +44,7 @@
         <div class="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
             <div class="relative">
                 <div class="aspect-[4/5] rounded-3xl overflow-hidden shadow-2xl">
-                    <img src="/static/images/lifestyle/NP_Shoot_-_Jan_2025101.jpg"
-                         alt="Naked Pineapple affiliate"
-                         class="w-full h-full object-cover">
+                    {{ img::picture(path="/static/images/original/lifestyle/NP_Shoot_-_Jan_2025101.jpg", alt="Naked Pineapple affiliate", sizes="(max-width: 1024px) 100vw, 40vw", class="w-full h-full object-cover") }}
                 </div>
                 <div class="absolute -bottom-6 -right-6 md:bottom-8 md:-right-8 bg-primary text-primary-foreground px-6 py-4 rounded-2xl shadow-xl">
                     <p class="text-3xl md:text-4xl font-display font-bold">20%</p>
@@ -97,9 +96,7 @@
             <div class="bg-card rounded-[2rem] overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-500 border border-border">
                 <div class="grid lg:grid-cols-2">
                     <div class="relative aspect-[4/3] lg:aspect-auto lg:min-h-[500px] overflow-hidden">
-                        <img src="/static/images/lifestyle/NP_-_Photoshoot_186.jpg"
-                             alt="LTK Creator Platform"
-                             class="absolute inset-0 w-full h-full object-cover">
+                        {{ img::picture(path="/static/images/original/lifestyle/NP_-_Photoshoot_186.jpg", alt="LTK Creator Platform", sizes="(max-width: 1024px) 100vw, 50vw", class="absolute inset-0 w-full h-full object-cover") }}
                     </div>
 
                     <div class="p-8 md:p-12 lg:p-14 flex flex-col justify-center">
@@ -168,9 +165,7 @@
                     </div>
 
                     <div class="relative aspect-[4/3] lg:aspect-auto lg:min-h-[500px] overflow-hidden order-1 lg:order-2">
-                        <img src="/static/images/lifestyle/DSC_2634.jpg"
-                             alt="Shopify Collabs Platform"
-                             class="absolute inset-0 w-full h-full object-cover">
+                        {{ img::picture(path="/static/images/original/lifestyle/DSC_2634.jpg", alt="Shopify Collabs Platform", sizes="(max-width: 1024px) 100vw, 50vw", class="absolute inset-0 w-full h-full object-cover") }}
                     </div>
                 </div>
             </div>
@@ -179,9 +174,7 @@
             <div class="bg-card rounded-[2rem] overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-500 border border-border">
                 <div class="grid lg:grid-cols-2">
                     <div class="relative aspect-[4/3] lg:aspect-auto lg:min-h-[500px] overflow-hidden">
-                        <img src="/static/images/lifestyle/DSC_6128.jpg"
-                             alt="VideoShops Platform"
-                             class="absolute inset-0 w-full h-full object-cover">
+                        {{ img::picture(path="/static/images/original/lifestyle/DSC_6128.jpg", alt="VideoShops Platform", sizes="(max-width: 1024px) 100vw, 50vw", class="absolute inset-0 w-full h-full object-cover") }}
                         <div class="absolute bottom-6 left-6 bg-primary text-primary-foreground px-4 py-2 rounded-lg shadow-lg">
                             <p class="text-sm font-semibold">Same-Day Payouts!</p>
                         </div>

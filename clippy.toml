@@ -1,1 +1,4 @@
 doc-valid-idents = ["MacBook", "TikTok", ".."]
+
+# Increase stack size threshold for large Askama templates with responsive images
+stack-size-threshold = 600000

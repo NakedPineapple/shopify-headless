@@ -13,6 +13,7 @@ pub mod content;
 pub mod db;
 pub mod error;
 pub mod filters;
+pub mod image_manifest;
 pub mod middleware;
 pub mod models;
 pub mod routes;

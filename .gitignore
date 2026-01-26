@@ -67,9 +67,13 @@ Desktop.ini
 # Compiled CSS
 crates/storefront/static/css/output.css
 
-# Node modules (for Tailwind)
+# Derived assets (generated at build time with content hashes)
+# crates/storefront/static/images/derived/  # Committed for local dev; excluded via .dockerignore
+crates/storefront/static/css/derived/
+
+# Node modules (for Tailwind and image optimization)
 node_modules/
-package-lock.json
+scripts/node_modules/
 
 # =============================================================================
 # Database

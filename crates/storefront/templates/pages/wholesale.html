@@ -1,4 +1,5 @@
 {% extends "layouts/base.html" %}
+{% import "macros/picture.html" as img %}
 
 {% block title %}Wholesale - Naked Pineapple{% endblock %}
 
@@ -8,10 +9,7 @@
 {# Hero Section #}
 <section class="relative min-h-[70vh] md:min-h-[80vh] flex items-center overflow-hidden">
     <div class="absolute inset-0">
-        <img src="/static/images/products/naked-pineapple-vip-bundle/DSC_7695.jpg"
-             alt="Naked Pineapple Wholesale"
-             class="w-full h-full object-cover"
-             loading="eager">
+        {{ img::picture(path="/static/images/original/products/naked-pineapple-vip-bundle/DSC_7695.jpg", alt="Naked Pineapple Wholesale", sizes="100vw", class="w-full h-full object-cover", loading="eager") }}
         <div class="absolute inset-0 bg-gradient-to-r from-foreground/90 via-foreground/70 to-foreground/40"></div>
     </div>
 
@@ -115,30 +113,18 @@
             <div class="grid grid-cols-2 gap-4">
                 <div class="space-y-4">
                     <div class="aspect-[3/4] rounded-2xl overflow-hidden shadow-lg">
-                        <img src="/static/images/products/bright-tight-super-serum/NP_-_Photoshoot_278.jpg"
-                             alt="Bright & Tight Super Serum"
-                             class="w-full h-full object-cover"
-                             loading="lazy">
+                        {{ img::picture(path="/static/images/original/products/bright-tight-super-serum/NP_-_Photoshoot_278.jpg", alt="Bright & Tight Super Serum", sizes="(max-width: 1024px) 50vw, 20vw", class="w-full h-full object-cover") }}
                     </div>
                     <div class="aspect-square rounded-2xl overflow-hidden shadow-lg">
-                        <img src="/static/images/products/pineapple-enzyme-cleanser/NP_-_Photoshoot_268.jpg"
-                             alt="Pineapple Enzyme Cleanser"
-                             class="w-full h-full object-cover"
-                             loading="lazy">
+                        {{ img::picture(path="/static/images/original/products/pineapple-enzyme-cleanser/NP_-_Photoshoot_268.jpg", alt="Pineapple Enzyme Cleanser", sizes="(max-width: 1024px) 50vw, 20vw", class="w-full h-full object-cover") }}
                     </div>
                 </div>
                 <div class="space-y-4 pt-8">
                     <div class="aspect-square rounded-2xl overflow-hidden shadow-lg">
-                        <img src="/static/images/products/skin-tight-exotic-cream/NP_-_Photoshoot_280.jpg"
-                             alt="Exotic Nourishing Cream"
-                             class="w-full h-full object-cover"
-                             loading="lazy">
+                        {{ img::picture(path="/static/images/original/products/skin-tight-exotic-cream/NP_-_Photoshoot_280.jpg", alt="Exotic Nourishing Cream", sizes="(max-width: 1024px) 50vw, 20vw", class="w-full h-full object-cover") }}
                     </div>
                     <div class="aspect-[3/4] rounded-2xl overflow-hidden shadow-lg">
-                        <img src="/static/images/products/pineapple-facial-oil/NP_-_Photoshoot_238.jpg"
-                             alt="Facial Repair Oil"
-                             class="w-full h-full object-cover"
-                             loading="lazy">
+                        {{ img::picture(path="/static/images/original/products/pineapple-facial-oil/NP_-_Photoshoot_238.jpg", alt="Facial Repair Oil", sizes="(max-width: 1024px) 50vw, 20vw", class="w-full h-full object-cover") }}
                     </div>
                 </div>
             </div>

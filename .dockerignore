@@ -26,3 +26,11 @@ LICENSE*
 # Local development
 docker-compose/
 ~/.cargo/
+
+# Generated assets (rebuilt during Docker build)
+crates/storefront/static/images/derived/
+crates/storefront/static/css/derived/
+
+# Node modules (reinstalled in Docker)
+node_modules/
+scripts/image-optimizer/node_modules/

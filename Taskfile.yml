@@ -378,6 +378,22 @@ tasks:
       - tailwindcss -i ./crates/admin/static/css/input.css -o ./crates/admin/static/css/main.css --minify
 
   # ============================================================================
+  # Image optimization tasks
+  # ============================================================================
+
+  images:optimize:
+    desc: "Optimize images and generate responsive variants (AVIF, WebP, JPEG)"
+    dir: scripts/image-optimizer
+    cmds:
+      - npm install --silent
+      - node optimize-images.mjs
+
+  images:clean:
+    desc: "Remove generated image variants"
+    cmds:
+      - rm -rf crates/storefront/static/images/derived
+
+  # ============================================================================
   # Changelog tasks
   # ============================================================================
 
