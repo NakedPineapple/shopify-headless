@@ -41,17 +41,26 @@ mod filters;
 mod middleware;
 mod models;
 mod routes;
+mod search;
 mod services;
 mod shopify;
 mod state;
 
 use config::StorefrontConfig;
 use state::AppState;
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
 async fn main() {
-    // Initialize tracing
-    tracing_subscriber::fmt::init();
+    // Initialize tracing with EnvFilter
+    // Defaults to info level for our crate if RUST_LOG is not set
+    let env_filter = tracing_subscriber::EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| "naked_pineapple_storefront=info,tower_http=debug".into());
+
+    tracing_subscriber::registry()
+        .with(env_filter)
+        .with(tracing_subscriber::fmt::layer())
+        .init();
 
     // Load configuration from environment
     let config = StorefrontConfig::from_env().expect("Failed to load configuration");
@@ -81,6 +90,10 @@ async fn main() {
     let content_dir = Path::new("crates/storefront/content");
     let state = AppState::new(config.clone(), pool, content_dir)
         .expect("Failed to initialize application state");
+
+    // Start building search index in background
+    state.start_search_indexing();
+    tracing::info!("Search index build started (async)");
 
     // Create session layer
     let session_layer = middleware::create_session_layer(state.pool(), state.config());

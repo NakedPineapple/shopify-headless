@@ -1,0 +1,283 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Wholesale - Naked Pineapple{% endblock %}
+
+{% block description %}Partner with Naked Pineapple through Faire. Get 50% off your first order, free shipping for a year, and free returns. Bring authentic skincare to your customers.{% endblock %}
+
+{% block content %}
+{# Hero Section #}
+<section class="relative min-h-[70vh] md:min-h-[80vh] flex items-center overflow-hidden">
+    <div class="absolute inset-0">
+        <img src="/static/images/products/naked-pineapple-vip-bundle/DSC_7695.jpg"
+             alt="Naked Pineapple Wholesale"
+             class="w-full h-full object-cover"
+             loading="eager">
+        <div class="absolute inset-0 bg-gradient-to-r from-foreground/90 via-foreground/70 to-foreground/40"></div>
+    </div>
+
+    <div class="absolute inset-0 overflow-hidden pointer-events-none">
+        <div class="absolute top-20 right-[10%] w-64 h-64 rounded-full bg-secondary/10 blur-3xl"></div>
+        <div class="absolute bottom-20 left-[10%] w-48 h-48 rounded-full bg-primary/10 blur-3xl"></div>
+    </div>
+
+    <div class="relative z-10 page-width py-20">
+        <div class="max-w-2xl">
+            <div class="inline-flex items-center gap-3 px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 mb-8">
+                <span class="text-white/90 text-sm font-medium">Naked Pineapple</span>
+                <span class="text-white/50">&times;</span>
+                <span class="text-secondary font-semibold">FAIRE</span>
+            </div>
+
+            <h1 class="font-display text-4xl md:text-5xl lg:text-6xl font-medium text-white mb-6 leading-[1.1]">
+                Try Our Products in Your Store, <span class="text-secondary">Risk Free</span>
+            </h1>
+
+            <p class="text-lg md:text-xl text-white/80 mb-10 max-w-lg">
+                Partner with Naked Pineapple and bring authentic, pineapple-powered skincare to your customers through Faire.
+            </p>
+
+            <a href="https://www.faire.com/brand/b_ze668aqkee"
+               target="_blank"
+               rel="noopener"
+               class="btn btn-large bg-secondary text-secondary-foreground shadow-xl hover:shadow-2xl hover:scale-105 transition-all duration-300">
+                Start Buying Wholesale
+                <i class="ph ph-arrow-right"></i>
+            </a>
+        </div>
+    </div>
+</section>
+
+{# Benefits Section #}
+<section class="py-20 md:py-28 bg-background relative overflow-hidden">
+    <div class="page-width relative">
+        <div class="text-center max-w-2xl mx-auto mb-16">
+            <span class="text-primary font-medium tracking-widest text-sm uppercase mb-4 block">Exclusive Faire Benefits</span>
+            <h2 class="font-display text-3xl md:text-4xl lg:text-5xl text-foreground mb-4">
+                Why Partner With Us?
+            </h2>
+            <p class="text-muted-foreground text-lg">
+                New to Faire? Enjoy these exclusive benefits when you order Naked Pineapple products.
+            </p>
+        </div>
+
+        <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
+            <div class="group bg-card rounded-3xl p-8 shadow-sm border border-border hover:shadow-xl hover:border-secondary/30 transition-all duration-300 text-center">
+                <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-secondary/20 to-secondary/10 flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
+                    <span class="font-display text-3xl font-bold text-secondary">50%</span>
+                </div>
+                <h3 class="font-display text-xl text-foreground mb-3">Off Your First Order</h3>
+                <p class="text-muted-foreground text-sm leading-relaxed">
+                    Save up to $150 on your first wholesale order through Faire.*
+                </p>
+            </div>
+
+            <div class="group bg-card rounded-3xl p-8 shadow-sm border border-border hover:shadow-xl hover:border-primary/30 transition-all duration-300 text-center">
+                <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
+                    <i class="ph ph-package text-4xl text-primary"></i>
+                </div>
+                <h3 class="font-display text-xl text-foreground mb-3">1 Year Free Shipping</h3>
+                <p class="text-muted-foreground text-sm leading-relaxed">
+                    Enjoy free shipping on all orders from us for an entire year.*
+                </p>
+            </div>
+
+            <div class="group bg-card rounded-3xl p-8 shadow-sm border border-border hover:shadow-xl hover:border-terracotta/30 transition-all duration-300 text-center">
+                <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-terracotta/20 to-terracotta/10 flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
+                    <i class="ph ph-credit-card text-4xl text-terracotta"></i>
+                </div>
+                <h3 class="font-display text-xl text-foreground mb-3">60-Day Payment Terms</h3>
+                <p class="text-muted-foreground text-sm leading-relaxed">
+                    Flexible payment terms available for eligible retailers.
+                </p>
+            </div>
+
+            <div class="group bg-card rounded-3xl p-8 shadow-sm border border-border hover:shadow-xl hover:border-secondary/30 transition-all duration-300 text-center">
+                <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-sand to-cream flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
+                    <i class="ph ph-arrow-counter-clockwise text-4xl text-foreground"></i>
+                </div>
+                <h3 class="font-display text-xl text-foreground mb-3">Free Returns</h3>
+                <p class="text-muted-foreground text-sm leading-relaxed">
+                    Try risk-free with free returns on your first order.
+                </p>
+            </div>
+        </div>
+
+        <p class="text-center text-muted-foreground text-sm mt-10">
+            *Available for retailers who are new to Faire
+        </p>
+    </div>
+</section>
+
+{# Why Carry Section #}
+<section class="py-20 md:py-28 bg-muted/30">
+    <div class="page-width">
+        <div class="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+            <div class="grid grid-cols-2 gap-4">
+                <div class="space-y-4">
+                    <div class="aspect-[3/4] rounded-2xl overflow-hidden shadow-lg">
+                        <img src="/static/images/products/bright-tight-super-serum/NP_-_Photoshoot_278.jpg"
+                             alt="Bright & Tight Super Serum"
+                             class="w-full h-full object-cover"
+                             loading="lazy">
+                    </div>
+                    <div class="aspect-square rounded-2xl overflow-hidden shadow-lg">
+                        <img src="/static/images/products/pineapple-enzyme-cleanser/NP_-_Photoshoot_268.jpg"
+                             alt="Pineapple Enzyme Cleanser"
+                             class="w-full h-full object-cover"
+                             loading="lazy">
+                    </div>
+                </div>
+                <div class="space-y-4 pt-8">
+                    <div class="aspect-square rounded-2xl overflow-hidden shadow-lg">
+                        <img src="/static/images/products/skin-tight-exotic-cream/NP_-_Photoshoot_280.jpg"
+                             alt="Exotic Nourishing Cream"
+                             class="w-full h-full object-cover"
+                             loading="lazy">
+                    </div>
+                    <div class="aspect-[3/4] rounded-2xl overflow-hidden shadow-lg">
+                        <img src="/static/images/products/pineapple-facial-oil/NP_-_Photoshoot_238.jpg"
+                             alt="Facial Repair Oil"
+                             class="w-full h-full object-cover"
+                             loading="lazy">
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <span class="text-primary font-medium tracking-widest text-sm uppercase mb-4 block">Why Naked Pineapple?</span>
+                <h2 class="font-display text-3xl md:text-4xl lg:text-5xl text-foreground mb-6 leading-tight">
+                    Products Your Customers Will Love
+                </h2>
+                <div class="space-y-5 text-muted-foreground text-lg leading-relaxed mb-8">
+                    <p>
+                        Naked Pineapple skincare is built on authenticity, clean ingredients, and the power of pineapple enzymes. Our products resonate with customers who value self-care and natural beauty.
+                    </p>
+                </div>
+
+                <ul class="space-y-4 mb-10">
+                    <li class="flex items-start gap-4">
+                        <span class="flex-shrink-0 w-6 h-6 rounded-full bg-secondary/20 flex items-center justify-center mt-1">
+                            <i class="ph ph-check text-sm text-secondary"></i>
+                        </span>
+                        <span class="text-foreground"><strong>Clean, effective formulas</strong> powered by natural pineapple enzymes</span>
+                    </li>
+                    <li class="flex items-start gap-4">
+                        <span class="flex-shrink-0 w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center mt-1">
+                            <i class="ph ph-check text-sm text-primary"></i>
+                        </span>
+                        <span class="text-foreground"><strong>Beautiful, Instagram-worthy packaging</strong> that stands out on shelves</span>
+                    </li>
+                    <li class="flex items-start gap-4">
+                        <span class="flex-shrink-0 w-6 h-6 rounded-full bg-terracotta/20 flex items-center justify-center mt-1">
+                            <i class="ph ph-check text-sm text-terracotta"></i>
+                        </span>
+                        <span class="text-foreground"><strong>Strong brand story</strong> that connects with customers emotionally</span>
+                    </li>
+                    <li class="flex items-start gap-4">
+                        <span class="flex-shrink-0 w-6 h-6 rounded-full bg-muted flex items-center justify-center mt-1">
+                            <i class="ph ph-check text-sm text-foreground"></i>
+                        </span>
+                        <span class="text-foreground"><strong>Growing social media presence</strong> driving customer awareness</span>
+                    </li>
+                </ul>
+
+                <a href="https://www.faire.com/brand/b_ze668aqkee"
+                   target="_blank"
+                   rel="noopener"
+                   class="btn btn-primary">
+                    View Our Catalog
+                    <i class="ph ph-arrow-square-out"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+{# How It Works Section #}
+<section class="py-20 md:py-28 bg-foreground text-background relative overflow-hidden">
+    <div class="absolute inset-0 opacity-5" style="background-image: radial-gradient(circle at 2px 2px, currentColor 1px, transparent 0); background-size: 40px 40px;"></div>
+
+    <div class="page-width relative">
+        <div class="text-center max-w-2xl mx-auto mb-16">
+            <span class="text-secondary font-medium tracking-widest text-sm uppercase mb-4 block">Getting Started</span>
+            <h2 class="font-display text-3xl md:text-4xl lg:text-5xl text-white mb-4">
+                How It Works
+            </h2>
+            <p class="text-white/70 text-lg">
+                Start selling Naked Pineapple in your store in three easy steps.
+            </p>
+        </div>
+
+        <div class="grid md:grid-cols-3 gap-8 lg:gap-12">
+            <div class="text-center">
+                <div class="w-16 h-16 rounded-full bg-secondary/20 flex items-center justify-center mx-auto mb-6">
+                    <span class="font-display text-2xl font-bold text-secondary">1</span>
+                </div>
+                <h3 class="font-display text-xl text-white mb-3">Create a Faire Account</h3>
+                <p class="text-white/60 leading-relaxed">
+                    Sign up for free on Faire if you haven't already. It only takes a few minutes.
+                </p>
+            </div>
+
+            <div class="text-center">
+                <div class="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-6">
+                    <span class="font-display text-2xl font-bold text-primary">2</span>
+                </div>
+                <h3 class="font-display text-xl text-white mb-3">Browse Our Products</h3>
+                <p class="text-white/60 leading-relaxed">
+                    Explore our skincare collection and add your favorites to cart.
+                </p>
+            </div>
+
+            <div class="text-center">
+                <div class="w-16 h-16 rounded-full bg-terracotta/20 flex items-center justify-center mx-auto mb-6">
+                    <span class="font-display text-2xl font-bold text-terracotta">3</span>
+                </div>
+                <h3 class="font-display text-xl text-white mb-3">Place Your Order</h3>
+                <p class="text-white/60 leading-relaxed">
+                    Complete your purchase and enjoy the exclusive new retailer benefits.
+                </p>
+            </div>
+        </div>
+
+        <div class="text-center mt-12">
+            <a href="https://www.faire.com/brand/b_ze668aqkee"
+               target="_blank"
+               rel="noopener"
+               class="btn btn-large bg-secondary text-secondary-foreground shadow-2xl hover:shadow-xl hover:scale-105 transition-all duration-300">
+                Start Buying Wholesale
+                <i class="ph ph-arrow-right"></i>
+            </a>
+        </div>
+    </div>
+</section>
+
+{# Contact Section #}
+<section class="py-20 md:py-28 bg-gradient-to-br from-sand/50 via-cream to-secondary/10">
+    <div class="page-width">
+        <div class="max-w-3xl mx-auto text-center">
+            <span class="text-primary font-medium tracking-widest text-sm uppercase mb-4 block">Questions?</span>
+            <h2 class="font-display text-3xl md:text-4xl text-foreground mb-6">
+                We're Here to Help
+            </h2>
+            <p class="text-muted-foreground text-lg mb-10">
+                Have questions about wholesale ordering, minimums, or anything else? Our team is happy to assist.
+            </p>
+
+            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                <a href="mailto:wholesale@nakedpineapple.com" class="inline-flex items-center justify-center gap-2 px-6 py-3 bg-card text-foreground font-medium rounded-full shadow-sm border border-border hover:border-primary hover:shadow-md transition-all">
+                    <i class="ph ph-envelope text-primary"></i>
+                    wholesale@nakedpineapple.com
+                </a>
+                <a href="https://www.faire.com/brand/b_ze668aqkee"
+                   target="_blank"
+                   rel="noopener"
+                   class="btn btn-primary">
+                    Visit Us on Faire
+                    <i class="ph ph-arrow-square-out"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

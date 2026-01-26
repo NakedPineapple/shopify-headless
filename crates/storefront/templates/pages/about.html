@@ -1,0 +1,179 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}About Us - Naked Pineapple{% endblock %}
+
+{% block description %}Discover the story behind Naked Pineapple. Clean, effective skincare powered by pineapple enzymes, built on self-love and confidence.{% endblock %}
+
+{% block content %}
+{# Hero Section #}
+<section class="relative min-h-[70vh] flex items-center overflow-hidden">
+    <div class="absolute inset-0">
+        <img src="/static/images/lifestyle/NP_Shoot_-_Jan_2025101.jpg"
+             alt="Naked Pineapple Story"
+             class="w-full h-full object-cover"
+             loading="eager">
+        <div class="absolute inset-0 bg-gradient-to-r from-foreground/80 via-foreground/50 to-transparent"></div>
+    </div>
+
+    <div class="relative z-10 page-width py-20">
+        <div class="max-w-2xl">
+            <p class="inline-block px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm text-white text-sm font-medium tracking-wide mb-6">
+                Our Story
+            </p>
+            <h1 class="font-display text-5xl md:text-6xl lg:text-7xl font-medium text-white mb-6 leading-[1.1]">
+                About Naked Pineapple
+            </h1>
+            <p class="text-xl text-white/80 max-w-lg">
+                Clean, effective skincare powered by the natural magic of pineapple enzymes.
+            </p>
+        </div>
+    </div>
+</section>
+
+{# Mission Section #}
+<section class="py-20 md:py-28 bg-background">
+    <div class="page-width">
+        <div class="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+            <div class="relative">
+                <div class="aspect-[4/5] rounded-3xl overflow-hidden shadow-2xl">
+                    <img src="/static/images/lifestyle/DSC_2634.jpg"
+                         alt="Our mission"
+                         class="w-full h-full object-cover">
+                </div>
+                <div class="absolute -bottom-6 -right-6 w-32 h-32 bg-secondary/20 rounded-full blur-2xl"></div>
+            </div>
+
+            <div>
+                <span class="text-primary font-medium tracking-wider text-sm uppercase mb-4 block">Our Mission</span>
+                <h2 class="font-display text-3xl md:text-4xl lg:text-5xl text-foreground mb-6 leading-tight">
+                    Empowering Confidence Through Self-Care
+                </h2>
+                <div class="space-y-5 text-muted-foreground text-lg leading-relaxed">
+                    <p>
+                        At Naked Pineapple, we believe that true beauty comes from within. Our mission is to empower individuals to feel radiant, confident, and authentically themselves.
+                    </p>
+                    <p>
+                        We harness the natural power of <strong class="text-foreground">pineapple enzymes</strong> to create skincare that's effective, clean, and kind to your skin. Every product is crafted with intention, using ingredients that nourish both your skin and your spirit.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+{# Values Section #}
+<section class="py-20 md:py-28 bg-muted/30">
+    <div class="page-width">
+        <div class="text-center max-w-2xl mx-auto mb-16">
+            <span class="text-primary font-medium tracking-wider text-sm uppercase mb-4 block">What We Stand For</span>
+            <h2 class="font-display text-3xl md:text-4xl lg:text-5xl text-foreground mb-4">
+                Our Core Values
+            </h2>
+        </div>
+
+        <div class="grid md:grid-cols-3 gap-8">
+            <div class="bg-card rounded-3xl p-8 border border-border hover:shadow-xl transition-all duration-300">
+                <div class="w-14 h-14 rounded-2xl bg-secondary/20 flex items-center justify-center mb-6">
+                    <i class="ph ph-leaf text-2xl text-secondary"></i>
+                </div>
+                <h3 class="font-display text-xl text-foreground mb-3">Clean Ingredients</h3>
+                <p class="text-muted-foreground leading-relaxed">
+                    We use only the finest natural ingredients, free from harmful chemicals. What goes on your skin matters.
+                </p>
+            </div>
+
+            <div class="bg-card rounded-3xl p-8 border border-border hover:shadow-xl transition-all duration-300">
+                <div class="w-14 h-14 rounded-2xl bg-primary/20 flex items-center justify-center mb-6">
+                    <i class="ph ph-heart text-2xl text-primary"></i>
+                </div>
+                <h3 class="font-display text-xl text-foreground mb-3">Self-Love First</h3>
+                <p class="text-muted-foreground leading-relaxed">
+                    Skincare is self-care. We encourage you to embrace who you are and celebrate your unique beauty.
+                </p>
+            </div>
+
+            <div class="bg-card rounded-3xl p-8 border border-border hover:shadow-xl transition-all duration-300">
+                <div class="w-14 h-14 rounded-2xl bg-terracotta/20 flex items-center justify-center mb-6">
+                    <i class="ph ph-users-three text-2xl text-terracotta"></i>
+                </div>
+                <h3 class="font-display text-xl text-foreground mb-3">Community Driven</h3>
+                <p class="text-muted-foreground leading-relaxed">
+                    We're building a family of confident individuals who support and uplift each other every day.
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+
+{# Pineapple Power Section #}
+<section class="py-20 md:py-28 bg-background">
+    <div class="page-width">
+        <div class="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+            <div class="order-2 lg:order-1">
+                <span class="text-secondary font-medium tracking-wider text-sm uppercase mb-4 block">The Secret Ingredient</span>
+                <h2 class="font-display text-3xl md:text-4xl lg:text-5xl text-foreground mb-6 leading-tight">
+                    The Power of Pineapple
+                </h2>
+                <div class="space-y-5 text-muted-foreground text-lg leading-relaxed mb-8">
+                    <p>
+                        Pineapple isn't just delicious—it's a skincare powerhouse. Rich in <strong class="text-foreground">bromelain enzymes</strong>, vitamins, and antioxidants, pineapple naturally exfoliates, brightens, and rejuvenates your skin.
+                    </p>
+                    <p>
+                        We've harnessed this tropical treasure to create products that deliver real results without harsh chemicals or synthetic additives.
+                    </p>
+                </div>
+
+                <ul class="space-y-4">
+                    <li class="flex items-start gap-4">
+                        <span class="flex-shrink-0 w-6 h-6 rounded-full bg-secondary/20 flex items-center justify-center mt-1">
+                            <i class="ph ph-check text-sm text-secondary"></i>
+                        </span>
+                        <span class="text-foreground"><strong>Natural Exfoliation</strong> — Gently removes dead skin cells</span>
+                    </li>
+                    <li class="flex items-start gap-4">
+                        <span class="flex-shrink-0 w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center mt-1">
+                            <i class="ph ph-check text-sm text-primary"></i>
+                        </span>
+                        <span class="text-foreground"><strong>Brightening Effects</strong> — Reveals a radiant complexion</span>
+                    </li>
+                    <li class="flex items-start gap-4">
+                        <span class="flex-shrink-0 w-6 h-6 rounded-full bg-terracotta/20 flex items-center justify-center mt-1">
+                            <i class="ph ph-check text-sm text-terracotta"></i>
+                        </span>
+                        <span class="text-foreground"><strong>Anti-Inflammatory</strong> — Soothes and calms irritation</span>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="relative order-1 lg:order-2">
+                <div class="aspect-square rounded-3xl overflow-hidden shadow-2xl">
+                    <img src="/static/images/products/pineapple-enzyme-cleanser/NP_-_Photoshoot_268.jpg"
+                         alt="Pineapple enzyme skincare"
+                         class="w-full h-full object-cover">
+                </div>
+                <div class="absolute -top-4 -left-4 w-24 h-24 bg-secondary/20 rounded-full blur-xl"></div>
+            </div>
+        </div>
+    </div>
+</section>
+
+{# CTA Section #}
+<section class="py-20 md:py-28 bg-gradient-to-r from-primary via-terracotta to-secondary">
+    <div class="page-width text-center">
+        <h2 class="font-display text-4xl md:text-5xl font-medium text-white mb-6 max-w-2xl mx-auto">
+            Ready to Start Your Glow Journey?
+        </h2>
+        <p class="text-white/90 text-lg mb-10 max-w-xl mx-auto">
+            Join the Naked Pineapple family and discover skincare that celebrates you.
+        </p>
+        <div class="flex flex-wrap justify-center gap-4">
+            <a href="/collections/frontpage" class="btn btn-large bg-white text-foreground hover:bg-white/90 shadow-xl">
+                Shop Now
+            </a>
+            <a href="/pages/model-program" class="btn btn-large bg-white/20 text-white border border-white/30 hover:bg-white/30">
+                Join Our Programs
+            </a>
+        </div>
+    </div>
+</section>
+{% endblock %}

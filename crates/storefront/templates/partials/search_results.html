@@ -1,0 +1,124 @@
+{# Search results fragment for HTMX #}
+{% if !is_ready %}
+{# Index still building #}
+<div class="text-center text-muted-foreground py-8">
+    <i class="ph ph-circle-notch text-4xl mb-3 block animate-spin"></i>
+    <p>Building search index...</p>
+</div>
+{% elif results.query.is_empty() %}
+{# Empty query - show prompt #}
+<div class="text-center text-muted-foreground py-8">
+    <i class="ph ph-magnifying-glass text-4xl mb-3 block opacity-50"></i>
+    <p>Start typing to search</p>
+</div>
+{% elif results.is_empty() %}
+{# No results #}
+<div class="text-center text-muted-foreground py-8">
+    <i class="ph ph-magnifying-glass text-4xl mb-3 block opacity-50"></i>
+    <p>No results found for "{{ results.query }}"</p>
+</div>
+{% else %}
+{# Results found #}
+<div class="space-y-6">
+    {# Products #}
+    {% if !results.products.is_empty() %}
+    <div>
+        <h4 class="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Products</h4>
+        <ul class="space-y-3">
+            {% for product in results.products %}
+            <li>
+                <a href="/products/{{ product.handle }}"
+                   class="flex items-center gap-3 p-2 -mx-2 rounded-lg hover:bg-muted transition-colors"
+                   onclick="closeSearchDrawer()">
+                    {% if let Some(img) = product.image_url %}
+                    <div class="w-14 h-14 rounded-lg bg-muted overflow-hidden flex-shrink-0">
+                        <img src="{{ img }}&width=100"
+                             alt="{{ product.title }}"
+                             class="w-full h-full object-cover"
+                             loading="lazy">
+                    </div>
+                    {% else %}
+                    <div class="w-14 h-14 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                        <i class="ph ph-image text-2xl text-muted-foreground"></i>
+                    </div>
+                    {% endif %}
+                    <div class="flex-1 min-w-0">
+                        <p class="font-medium text-foreground truncate">{{ product.title }}</p>
+                        {% if let Some(price) = product.price %}
+                        <p class="text-sm text-muted-foreground">{{ price }}</p>
+                        {% endif %}
+                    </div>
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    {# Collections #}
+    {% if !results.collections.is_empty() %}
+    <div>
+        <h4 class="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Collections</h4>
+        <ul class="space-y-2">
+            {% for collection in results.collections %}
+            <li>
+                <a href="/collections/{{ collection.handle }}"
+                   class="flex items-center gap-3 p-2 -mx-2 rounded-lg hover:bg-muted transition-colors"
+                   onclick="closeSearchDrawer()">
+                    {% if let Some(img) = collection.image_url %}
+                    <div class="w-10 h-10 rounded-lg bg-muted overflow-hidden flex-shrink-0">
+                        <img src="{{ img }}&width=80"
+                             alt="{{ collection.title }}"
+                             class="w-full h-full object-cover"
+                             loading="lazy">
+                    </div>
+                    {% else %}
+                    <div class="w-10 h-10 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                        <i class="ph ph-squares-four text-xl text-muted-foreground"></i>
+                    </div>
+                    {% endif %}
+                    <span class="font-medium text-foreground">{{ collection.title }}</span>
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    {# Pages & Articles #}
+    {% if !results.pages.is_empty() || !results.articles.is_empty() %}
+    <div>
+        <h4 class="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Pages</h4>
+        <ul class="flex flex-wrap gap-x-4 gap-y-2">
+            {% for page in results.pages %}
+            <li>
+                <a href="/{{ page.handle }}"
+                   class="text-foreground hover:text-primary transition-colors underline-offset-4 hover:underline"
+                   onclick="closeSearchDrawer()">
+                    {{ page.title }}
+                </a>
+            </li>
+            {% endfor %}
+            {% for article in results.articles %}
+            <li>
+                <a href="/blog/{{ article.handle }}"
+                   class="text-foreground hover:text-primary transition-colors underline-offset-4 hover:underline"
+                   onclick="closeSearchDrawer()">
+                    {{ article.title }}
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    {# See all results #}
+    <div class="pt-2 border-t border-border">
+        <button type="submit"
+                class="flex items-center justify-center gap-2 w-full py-2 text-foreground hover:text-primary font-medium transition-colors">
+            See all results for "{{ results.query }}"
+            <i class="ph ph-arrow-right"></i>
+        </button>
+    </div>
+</div>
+{% endif %}

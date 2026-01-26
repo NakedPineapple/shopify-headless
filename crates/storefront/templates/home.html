@@ -1,154 +1,1062 @@
 {% extends "layouts/base.html" %}
 
-{% block title %}Naked Pineapple | Natural Pineapple-Powered Skincare{% endblock %}
+{% block title %}Naked Pineapple - Natural Skincare{% endblock %}
 
 {% block description %}Discover Naked Pineapple, an authentic skincare brand that empowers confidence with high-quality, natural ingredients like pineapple extract and vegan collagen.{% endblock %}
 
 {% block content %}
-<!-- Hero Section -->
-<section class="relative min-h-[80vh] flex items-center bg-gradient-to-br from-cream via-background to-sand overflow-hidden">
-    <!-- Decorative elements -->
-    <div class="absolute top-20 right-10 w-64 h-64 bg-honey/20 rounded-full blur-3xl animate-float"></div>
-    <div class="absolute bottom-20 left-10 w-48 h-48 bg-primary/10 rounded-full blur-2xl animate-float" style="animation-delay: -2s;"></div>
+{# Hero Section #}
+{% include "partials/hero_section.html" %}
 
-    <div class="page-width py-20 md:py-32 relative z-10">
-        <div class="max-w-2xl">
-            <span class="inline-block px-4 py-2 bg-primary/10 text-primary rounded-full text-sm font-medium mb-6">
-                Clean, cruelty-free skincare
-            </span>
-            <h1 class="font-display text-4xl md:text-5xl lg:text-6xl font-semibold text-foreground leading-tight mb-6">
-                Glow Naturally with Pineapple Power
-            </h1>
-            <p class="text-lg md:text-xl text-muted-foreground mb-8 leading-relaxed">
-                Transform your skincare routine with our tropical formulas. Packed with pineapple enzymes, vegan collagen, and pure botanical ingredients.
-            </p>
-            <div class="flex flex-wrap gap-4">
-                <a href="/collections/skincare" class="btn btn-primary">
-                    Shop Skincare
-                    <i class="ph ph-arrow-right ml-2"></i>
-                </a>
-                <a href="/products/starter-kit" class="btn btn-outline">
-                    Try the Starter Kit
-                </a>
+{# Product Grid - Tabbed by Collection #}
+<section class="py-20 md:py-28 bg-background">
+    <div class="page-width">
+        {# Section Header with Tabs #}
+        <div class="flex flex-col items-center mb-12 md:mb-16">
+            <p class="text-xs uppercase tracking-[0.2em] text-primary font-medium mb-3">Shop Our Collections</p>
+            <h2 class="font-display text-3xl md:text-4xl lg:text-5xl font-medium text-foreground mb-8">Discover Your Glow</h2>
+
+            {# Tab Navigation #}
+            <div class="tabs inline-flex bg-sand rounded-full p-1.5" data-selected="0" role="tablist">
+                <button class="tab-btn px-8 py-3 rounded-full text-sm font-medium transition-all duration-300 text-muted-foreground hover:text-foreground data-[active=true]:bg-card data-[active=true]:text-card-foreground data-[active=true]:shadow-md"
+                        data-index="0" data-active="true" role="tab" aria-selected="true">
+                    Skincare
+                </button>
+                <button class="tab-btn px-8 py-3 rounded-full text-sm font-medium transition-all duration-300 text-muted-foreground hover:text-foreground data-[active=true]:bg-card data-[active=true]:text-card-foreground data-[active=true]:shadow-md"
+                        data-index="1" data-active="false" role="tab" aria-selected="false">
+                    Merch
+                </button>
             </div>
         </div>
-    </div>
-</section>
 
-<!-- Featured Products Section -->
-<section class="py-16 md:py-24 bg-background">
-    <div class="page-width">
-        <div class="text-center mb-12">
-            <h2 class="font-display text-3xl md:text-4xl font-semibold text-foreground mb-4">
-                Best Sellers
-            </h2>
-            <p class="text-muted-foreground max-w-2xl mx-auto">
-                Our most loved products, crafted with pineapple enzymes and natural ingredients.
-            </p>
+        {# Tab Panels #}
+        <div class="tab-panels relative">
+            {# Skincare Panel #}
+            <div class="tab-panel transition-all duration-300 ease-out" data-index="0" data-active="true" role="tabpanel">
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 lg:gap-8">
+                    {% for product in skincare_products %}
+                    <article class="group">
+                        {# Image Container with Hover Swap #}
+                        <div class="relative aspect-square mb-4 rounded-2xl overflow-hidden bg-cream">
+                            <a href="/products/{{ product.handle }}" class="block absolute inset-0">
+                                {% if let Some(img) = product.featured_image %}
+                                <img src="{{ img.url }}"
+                                     alt="{{ img.alt }}"
+                                     class="absolute inset-0 w-full h-full object-cover transition-opacity duration-500 group-hover:opacity-0"
+                                     loading="lazy">
+                                {% endif %}
+                                {% if let Some(hover) = product.hover_image %}
+                                <img src="{{ hover.url }}"
+                                     alt="{{ hover.alt }}"
+                                     class="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+                                     loading="lazy">
+                                {% endif %}
+                            </a>
+                            {# Quick View Button #}
+                            <button type="button"
+                                    class="quick-view-btn absolute top-3 right-3 z-10 w-9 h-9 flex items-center justify-center bg-card/90 backdrop-blur-sm rounded-full shadow-sm opacity-0 transition-all duration-300 group-hover:opacity-100 hover:bg-card hover:shadow-md"
+                                    hx-get="/products/{{ product.handle }}/quick-view"
+                                    hx-target="#quick-view-content"
+                                    hx-swap="innerHTML"
+                                    hx-on::after-request="openQuickView()"
+                                    aria-label="Quick view {{ product.title }}">
+                                <svg class="w-4 h-4 text-foreground" viewBox="0 0 20 20" fill="none">
+                                    <circle cx="9" cy="9" r="6" stroke="currentColor" stroke-width="1.5"/>
+                                    <path d="M13.5 13.5L17 17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                                </svg>
+                            </button>
+                            {# Quick Add Overlay #}
+                            <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-text/40 to-transparent pt-12 pb-4 px-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex justify-center">
+                                <button type="button"
+                                        class="btn btn-primary text-sm transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300"
+                                        hx-post="/cart/add"
+                                        hx-vals='{"handle": "{{ product.handle }}", "quantity": 1}'
+                                        hx-swap="none"
+                                        hx-on::after-request="htmx.trigger(document.body, 'cartUpdated');">
+                                    Add to Cart
+                                </button>
+                            </div>
+                        </div>
+                        {# Product Info #}
+                        <a href="/products/{{ product.handle }}" class="block text-center">
+                            <h3 class="font-medium text-foreground text-sm md:text-base mb-1 uppercase group-hover:text-primary transition-colors">
+                                {{ product.title }}
+                            </h3>
+                            <p class="text-muted-foreground font-medium">{{ product.price }}</p>
+                        </a>
+                    </article>
+                    {% endfor %}
+                </div>
+            </div>
+
+            {# Merch Panel #}
+            <div class="tab-panel transition-all duration-300 ease-out opacity-0 translate-y-8 absolute inset-x-0 pointer-events-none" data-index="1" data-active="false" role="tabpanel">
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 lg:gap-8">
+                    {% for product in merch_products %}
+                    <article class="group">
+                        {# Image Container with Hover Swap #}
+                        <div class="relative aspect-square mb-4 rounded-2xl overflow-hidden bg-cream">
+                            <a href="/products/{{ product.handle }}" class="block absolute inset-0">
+                                {% if let Some(img) = product.featured_image %}
+                                <img src="{{ img.url }}"
+                                     alt="{{ img.alt }}"
+                                     class="absolute inset-0 w-full h-full object-cover transition-opacity duration-500 group-hover:opacity-0"
+                                     loading="lazy">
+                                {% endif %}
+                                {% if let Some(hover) = product.hover_image %}
+                                <img src="{{ hover.url }}"
+                                     alt="{{ hover.alt }}"
+                                     class="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+                                     loading="lazy">
+                                {% endif %}
+                            </a>
+                            {# Quick View Button #}
+                            <button type="button"
+                                    class="quick-view-btn absolute top-3 right-3 z-10 w-9 h-9 flex items-center justify-center bg-card/90 backdrop-blur-sm rounded-full shadow-sm opacity-0 transition-all duration-300 group-hover:opacity-100 hover:bg-card hover:shadow-md"
+                                    hx-get="/products/{{ product.handle }}/quick-view"
+                                    hx-target="#quick-view-content"
+                                    hx-swap="innerHTML"
+                                    hx-on::after-request="openQuickView()"
+                                    aria-label="Quick view {{ product.title }}">
+                                <svg class="w-4 h-4 text-foreground" viewBox="0 0 20 20" fill="none">
+                                    <circle cx="9" cy="9" r="6" stroke="currentColor" stroke-width="1.5"/>
+                                    <path d="M13.5 13.5L17 17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                                </svg>
+                            </button>
+                            {# Quick Add Overlay #}
+                            <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-text/40 to-transparent pt-12 pb-4 px-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex justify-center">
+                                <button type="button"
+                                        class="btn btn-primary text-sm transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300"
+                                        hx-post="/cart/add"
+                                        hx-vals='{"handle": "{{ product.handle }}", "quantity": 1}'
+                                        hx-swap="none"
+                                        hx-on::after-request="htmx.trigger(document.body, 'cartUpdated');">
+                                    Add to Cart
+                                </button>
+                            </div>
+                        </div>
+                        {# Product Info #}
+                        <a href="/products/{{ product.handle }}" class="block text-center">
+                            <h3 class="font-medium text-foreground text-sm md:text-base mb-1 uppercase group-hover:text-primary transition-colors">
+                                {{ product.title }}
+                            </h3>
+                            <p class="text-muted-foreground font-medium">{{ product.price }}</p>
+                        </a>
+                    </article>
+                    {% endfor %}
+                </div>
+            </div>
         </div>
 
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
-            {% for product in featured_products %}
-            {% include "partials/product_card.html" %}
-            {% endfor %}
-        </div>
-
+        {# View All Link #}
         <div class="text-center mt-12">
-            <a href="/collections/skincare" class="btn btn-outline">
+            <a href="/collections/frontpage" class="btn btn-outline">
                 View All Products
-                <i class="ph ph-arrow-right ml-2"></i>
+                <svg class="w-4 h-4" viewBox="0 0 20 20" fill="none">
+                    <path d="M7.5 3.75L13.75 10L7.5 16.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
             </a>
         </div>
     </div>
 </section>
 
-<!-- About/Brand Story Section -->
-<section class="py-16 md:py-24 bg-muted">
-    <div class="page-width">
-        <div class="grid md:grid-cols-2 gap-12 items-center">
-            <div class="order-2 md:order-1">
-                <span class="text-primary font-medium text-sm uppercase tracking-wider">Our Story</span>
-                <h2 class="font-display text-3xl md:text-4xl font-semibold text-foreground mt-4 mb-6">
-                    Skincare Inspired by Nature
-                </h2>
-                <p class="text-muted-foreground leading-relaxed mb-6">
-                    Naked Pineapple was born from a simple belief: your skin deserves the purest, most effective ingredients nature has to offer. Our tropical formulas harness the power of pineapple enzymes to gently exfoliate, brighten, and nourish your skin.
-                </p>
-                <p class="text-muted-foreground leading-relaxed mb-8">
-                    Every product is crafted with love, free from harsh chemicals, and never tested on animals. Because beautiful skin shouldn't come at a cost to your health or the planet.
-                </p>
-                <a href="/about" class="btn btn-primary">
-                    Learn More
-                    <i class="ph ph-arrow-right ml-2"></i>
-                </a>
-            </div>
-            <div class="order-1 md:order-2">
-                <div class="aspect-square rounded-2xl bg-gradient-to-br from-honey/30 to-primary/20 flex items-center justify-center">
-                    <i class="ph ph-leaf text-8xl text-accent animate-sway"></i>
-                </div>
-            </div>
+{# Instagram Feed #}
+<section class="py-16 md:py-20 bg-cream">
+    <div class="page-width text-center">
+        <p class="text-xs uppercase tracking-[0.2em] text-primary font-medium mb-2">Join Our Community</p>
+        <h2 class="font-display text-2xl md:text-3xl font-medium text-foreground mb-8">
+            Follow Us <a href="https://instagram.com/_nakedpineapple_" class="text-primary hover:text-primary-dark transition-colors" target="_blank" rel="noopener">@_nakedpineapple_</a>
+        </h2>
+        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2" id="insta-feed">
+            {# Instagram feed loaded via JS widget #}
         </div>
     </div>
 </section>
 
-<!-- Benefits Section -->
-<section class="py-16 md:py-24 bg-background">
-    <div class="page-width">
-        <div class="grid md:grid-cols-3 gap-8">
-            <div class="text-center">
-                <div class="w-16 h-16 mx-auto mb-6 rounded-full bg-primary/10 flex items-center justify-center">
-                    <i class="ph ph-leaf text-3xl text-primary"></i>
-                </div>
-                <h3 class="font-display text-xl font-semibold mb-3">100% Natural</h3>
-                <p class="text-muted-foreground">
-                    Clean formulas with botanical ingredients. No harsh chemicals, ever.
-                </p>
-            </div>
-            <div class="text-center">
-                <div class="w-16 h-16 mx-auto mb-6 rounded-full bg-accent/10 flex items-center justify-center">
-                    <i class="ph ph-paw-print text-3xl text-accent"></i>
-                </div>
-                <h3 class="font-display text-xl font-semibold mb-3">Cruelty-Free</h3>
-                <p class="text-muted-foreground">
-                    Never tested on animals. Certified cruelty-free and vegan-friendly.
-                </p>
-            </div>
-            <div class="text-center">
-                <div class="w-16 h-16 mx-auto mb-6 rounded-full bg-secondary/20 flex items-center justify-center">
-                    <i class="ph ph-recycle text-3xl text-secondary-foreground"></i>
-                </div>
-                <h3 class="font-display text-xl font-semibold mb-3">Eco-Conscious</h3>
-                <p class="text-muted-foreground">
-                    Sustainable packaging and responsibly sourced ingredients.
-                </p>
-            </div>
-        </div>
-    </div>
-</section>
+{# Meet Kristi - About Section #}
+<section class="py-24 md:py-32 lg:py-40 bg-background overflow-hidden relative">
+    {# Decorative background pattern - subtle pineapple diamond geometry #}
+    <div class="absolute inset-0 opacity-[0.03] pointer-events-none"
+         style="background-image: url('data:image/svg+xml,<svg width=\"80\" height=\"80\" viewBox=\"0 0 80 80\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M40 0L80 40L40 80L0 40Z\" fill=\"none\" stroke=\"%23d63a2f\" stroke-width=\"1\"/></svg>'); background-size: 80px 80px;"></div>
 
-<!-- Newsletter Section -->
-<section class="py-16 md:py-24 bg-primary text-primary-foreground">
-    <div class="page-width">
-        <div class="max-w-2xl mx-auto text-center">
-            <h2 class="font-display text-3xl md:text-4xl font-semibold mb-4">
-                Join the Glow
+    <div class="page-width relative">
+        {# Top section: Large editorial-style headline with floating image #}
+        <div class="relative mb-16 md:mb-24">
+            {# Floating accent image - positioned top right on desktop #}
+            <div class="hidden xl:block absolute -top-12 right-12 w-36 aspect-[4/5] rounded-2xl overflow-hidden shadow-lg z-10 rotate-3 hover:rotate-0 transition-transform duration-700">
+                <img src="/static/images/products/naked-pineapple-vip-bundle/NP_-_Photoshoot_2148.jpg"
+                     alt="Kristi working with Naked Pineapple products"
+                     class="w-full h-full object-cover"
+                     loading="lazy">
+            </div>
+
+            <p class="text-xs uppercase tracking-[0.25em] text-primary font-medium mb-4 md:mb-6">The Heart Behind Naked Pineapple</p>
+            <h2 class="font-display text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-medium text-foreground leading-[1.1] max-w-4xl">
+                Meet <span class="text-gradient">Kristi</span>
             </h2>
-            <p class="text-primary-foreground/80 mb-8">
-                Subscribe to get exclusive offers, skincare tips, and first access to new products.
-            </p>
-            <form action="/newsletter/subscribe" method="post" class="flex flex-col sm:flex-row gap-4 max-w-md mx-auto"
-                  hx-post="/newsletter/subscribe"
-                  hx-swap="outerHTML">
-                <input type="email"
-                       name="email"
-                       class="flex-1 px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder:text-white/60 focus:outline-none focus:ring-2 focus:ring-white/40"
-                       placeholder="Enter your email"
-                       required>
-                <button type="submit" class="px-6 py-3 bg-white text-primary rounded-lg font-medium hover:bg-white/90 transition-colors">
-                    Subscribe
-                </button>
-            </form>
+        </div>
+
+        {# Main content grid: Asymmetric editorial layout #}
+        <div class="grid lg:grid-cols-12 gap-8 lg:gap-12 items-start">
+
+            {# Left column: Primary image with layered effect #}
+            <div class="lg:col-span-5 relative">
+                {# Main portrait #}
+                <div class="relative z-10">
+                    <div class="aspect-[4/5] rounded-3xl overflow-hidden shadow-xl">
+                        <img src="/static/images/lifestyle/DSC_1068.jpg"
+                             alt="Kristi Fry, founder of Naked Pineapple"
+                             class="w-full h-full object-cover transition-transform duration-700 hover:scale-105"
+                             loading="lazy">
+                    </div>
+                    {# Experience badge overlay #}
+                    <div class="absolute -bottom-4 -right-4 md:-bottom-6 md:-right-6 bg-primary text-white px-5 py-3 md:px-6 md:py-4 rounded-2xl shadow-lg">
+                        <span class="block text-2xl md:text-3xl font-display font-medium">20+</span>
+                        <span class="text-xs uppercase tracking-wider opacity-90">Years Experience</span>
+                    </div>
+                </div>
+
+                {# Decorative organic shapes #}
+                <div class="absolute -top-8 -left-8 w-40 h-40 bg-gradient-to-br from-honey/30 to-honey/10 rounded-full blur-2xl -z-10"></div>
+                <div class="absolute -bottom-12 -right-12 w-56 h-56 bg-gradient-to-tr from-sand to-cream rounded-full -z-10"></div>
+
+                {# Secondary stacked image - visible on larger screens #}
+                <div class="hidden md:block absolute -bottom-16 -left-8 lg:-left-12 w-32 lg:w-40 aspect-square rounded-2xl overflow-hidden shadow-md z-20 border-4 border-warm-white -rotate-6 hover:rotate-0 transition-transform duration-500">
+                    <img src="/static/images/about/DSC_5841_7937b270-76ec-46ca-94be-0d898b03767f.jpg"
+                         alt="Kristi with family"
+                         class="w-full h-full object-cover object-[30%_50%] scale-125"
+                         loading="lazy">
+                </div>
+            </div>
+
+            {# Right column: Story content with pull quote #}
+            <div class="lg:col-span-7 lg:pl-8 xl:pl-12">
+                {# Pull quote - distinctive design element #}
+                <blockquote class="relative mb-10 md:mb-12 pl-6 md:pl-8 border-l-4 border-primary/30">
+                    <p class="font-display text-xl md:text-2xl lg:text-3xl text-foreground leading-snug italic">
+                        "True beauty radiates from within, and skincare is a powerful tool to nurture self-love."
+                    </p>
+                    <cite class="block mt-4 text-sm text-muted-foreground not-italic">— Kristi Fry, Founder</cite>
+                </blockquote>
+
+                {# Main story text #}
+                <div class="space-y-6 text-muted-foreground leading-relaxed">
+                    <p class="text-lg md:text-xl text-foreground font-medium">
+                        Naked Pineapple was born from the vision and passion of Kristi Fry, a licensed aesthetician with over 20 years of experience in the skincare industry.
+                    </p>
+                    <p>
+                        With her deep knowledge and hands-on expertise, Kristi played a vital role in the formulation of each Naked Pineapple product, ensuring they deliver real results while honoring all skin types.
+                    </p>
+                    <p>
+                        Kristi's mission goes beyond skincare—she's driven to empower and uplift everyone she meets. Her genuine warmth and dedication to building confidence shine through in everything Naked Pineapple stands for.
+                    </p>
+                </div>
+
+                {# Highlighted values with icons #}
+                <div class="grid grid-cols-3 gap-4 md:gap-6 mt-10 md:mt-12 pt-8 border-t border-border-light">
+                    <div class="text-center">
+                        <div class="w-12 h-12 mx-auto mb-3 rounded-full bg-sand flex items-center justify-center">
+                            <svg class="w-6 h-6 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                            </svg>
+                        </div>
+                        <span class="text-xs uppercase tracking-wider text-muted-foreground font-medium">Self-Love</span>
+                    </div>
+                    <div class="text-center">
+                        <div class="w-12 h-12 mx-auto mb-3 rounded-full bg-sand flex items-center justify-center">
+                            <svg class="w-6 h-6 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
+                            </svg>
+                        </div>
+                        <span class="text-xs uppercase tracking-wider text-muted-foreground font-medium">Confidence</span>
+                    </div>
+                    <div class="text-center">
+                        <div class="w-12 h-12 mx-auto mb-3 rounded-full bg-sand flex items-center justify-center">
+                            <svg class="w-6 h-6 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                                <circle cx="9" cy="7" r="4"/>
+                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                            </svg>
+                        </div>
+                        <span class="text-xs uppercase tracking-wider text-muted-foreground font-medium">Empowerment</span>
+                    </div>
+                </div>
+
+                {# CTA with signature-style tagline #}
+                <div class="mt-10 md:mt-12 flex flex-col sm:flex-row items-start sm:items-center gap-6">
+                    <a href="/pages/about" class="btn btn-primary btn-large group">
+                        The Naked Truth
+                        <svg class="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" viewBox="0 0 20 20" fill="none">
+                            <path d="M7.5 3.75L13.75 10L7.5 16.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </a>
+                    <p class="font-display text-muted-foreground italic text-sm">
+                        "Everyone deserves to feel radiant in their own skin."
+                    </p>
+                </div>
+            </div>
         </div>
     </div>
 </section>
+
+{# Tagline Banner #}
+<section class="py-16 md:py-24 bg-gradient-to-r from-primary via-terracotta to-honey relative overflow-hidden">
+    {# Decorative pattern overlay #}
+    <div class="absolute inset-0 opacity-10" style="background-image: url('data:image/svg+xml,<svg width=\"60\" height=\"60\" viewBox=\"0 0 60 60\" xmlns=\"http://www.w3.org/2000/svg\"><circle cx=\"30\" cy=\"30\" r=\"2\" fill=\"white\"/></svg>');"></div>
+    <div class="page-width relative">
+        <h2 class="font-display text-4xl md:text-5xl lg:text-6xl font-medium text-white text-center leading-tight">
+            Radiant Skin, Adventurous Spirit
+        </h2>
+    </div>
+</section>
+
+{# Model Program - Stacked Polaroids Gallery #}
+<section class="py-24 md:py-32 bg-cream overflow-hidden relative">
+    {# Subtle paper texture background #}
+    <div class="absolute inset-0 opacity-50 pointer-events-none"
+         style="background-image: url('data:image/svg+xml,<svg viewBox=\"0 0 200 200\" xmlns=\"http://www.w3.org/2000/svg\"><filter id=\"noise\"><feTurbulence type=\"fractalNoise\" baseFrequency=\"0.85\" numOctaves=\"4\" stitchTiles=\"stitch\"/><feColorMatrix type=\"saturate\" values=\"0\"/></filter><rect width=\"100%\" height=\"100%\" filter=\"url(%23noise)\" opacity=\"0.08\"/></svg>');"></div>
+
+    <div class="page-width relative">
+        {# Section header #}
+        <div class="text-center mb-8 md:mb-12">
+            <p class="text-xs uppercase tracking-[0.25em] text-primary font-medium mb-3">Be Part of Our Story</p>
+            <h2 class="font-display text-3xl md:text-4xl lg:text-5xl font-medium text-foreground">Model Program</h2>
+        </div>
+
+        {# Polaroid collage container #}
+        <div class="relative h-[420px] md:h-[480px] lg:h-[520px] max-w-5xl mx-auto">
+
+            {# Polaroid 1 - Left #}
+            <div class="polaroid absolute left-[0%] md:left-[3%] top-[5%] w-28 md:w-36 lg:w-40 -rotate-6 hover:rotate-0 hover:scale-105 hover:z-50 transition-all duration-500 cursor-pointer z-10">
+                <div class="bg-card p-1.5 pb-8 md:p-2 md:pb-10 shadow-xl rounded-sm">
+                    <div class="aspect-[4/5] overflow-hidden">
+                        <img src="/static/images/model-program/Model_Program_Feb_2025_160.jpg"
+                             alt="Model Program"
+                             class="w-full h-full object-cover"
+                             loading="lazy">
+                    </div>
+                </div>
+            </div>
+
+            {# Polaroid 2 - Top center-left #}
+            <div class="polaroid absolute left-[21%] md:left-[21%] top-[0%] w-26 md:w-32 lg:w-36 rotate-8 hover:rotate-0 hover:scale-105 hover:z-50 transition-all duration-500 cursor-pointer z-15">
+                <div class="bg-card p-1.5 pb-8 md:p-2 md:pb-10 shadow-xl rounded-sm">
+                    <div class="aspect-[4/5] overflow-hidden">
+                        <img src="/static/images/products/pineapple-enzyme-cleanser/Model_Program_March_2025_38.jpg"
+                             alt="Model Program"
+                             class="w-full h-full object-cover"
+                             loading="lazy">
+                    </div>
+                </div>
+            </div>
+
+            {# Polaroid 3 - Top center #}
+            <div class="polaroid hidden md:block absolute left-[35%] top-[3%] w-28 md:w-34 lg:w-40 -rotate-3 hover:rotate-0 hover:scale-105 hover:z-50 transition-all duration-500 cursor-pointer z-20">
+                <div class="bg-card p-1.5 pb-8 md:p-2 md:pb-10 shadow-xl rounded-sm">
+                    <div class="aspect-[4/5] overflow-hidden">
+                        <img src="/static/images/model-program/Model_Program_March_2025_7.jpg"
+                             alt="Model Program"
+                             class="w-full h-full object-cover"
+                             loading="lazy">
+                    </div>
+                </div>
+            </div>
+
+            {# Polaroid 4 - Top center-right #}
+            <div class="polaroid absolute left-[56%] md:left-[54%] top-[0%] w-26 md:w-32 lg:w-36 rotate-10 hover:rotate-0 hover:scale-105 hover:z-50 transition-all duration-500 cursor-pointer z-12">
+                <div class="bg-card p-1.5 pb-8 md:p-2 md:pb-10 shadow-xl rounded-sm">
+                    <div class="aspect-[4/5] overflow-hidden">
+                        <img src="/static/images/products/pineapple-facial-oil/Model_Program_March_2025_19.jpg"
+                             alt="Model Program"
+                             class="w-full h-full object-cover"
+                             loading="lazy">
+                    </div>
+                </div>
+            </div>
+
+            {# Polaroid 5 - Top right #}
+            <div class="polaroid absolute right-[9%] md:right-[12%] top-[5%] w-28 md:w-36 lg:w-40 -rotate-8 hover:rotate-0 hover:scale-105 hover:z-50 transition-all duration-500 cursor-pointer z-18">
+                <div class="bg-card p-1.5 pb-8 md:p-2 md:pb-10 shadow-xl rounded-sm">
+                    <div class="aspect-[4/5] overflow-hidden">
+                        <img src="/static/images/products/naked-pineapple-vip-bundle/Model_Program_March_2025_39.jpg"
+                             alt="Model Program"
+                             class="w-full h-full object-cover"
+                             loading="lazy">
+                    </div>
+                </div>
+            </div>
+
+            {# Polaroid 6 - Middle left #}
+            <div class="polaroid absolute left-[13%] md:left-[18%] top-[38%] w-26 md:w-32 lg:w-36 rotate-4 hover:rotate-0 hover:scale-105 hover:z-50 transition-all duration-500 cursor-pointer z-22">
+                <div class="bg-card p-1.5 pb-8 md:p-2 md:pb-10 shadow-xl rounded-sm">
+                    <div class="aspect-[4/5] overflow-hidden">
+                        <img src="/static/images/model-program/Model_Program_Feb_2025_22.jpg"
+                             alt="Model Program"
+                             class="w-full h-full object-cover"
+                             loading="lazy">
+                    </div>
+                </div>
+            </div>
+
+            {# Polaroid 7 - Center focal point (larger) #}
+            <div class="polaroid absolute left-[35%] md:left-[39%] top-[25%] w-32 md:w-40 lg:w-48 -rotate-2 hover:rotate-0 hover:scale-105 hover:z-50 transition-all duration-500 cursor-pointer z-25">
+                <div class="bg-card p-1.5 pb-8 md:p-2 md:pb-10 shadow-xl rounded-sm">
+                    <div class="aspect-[4/5] overflow-hidden">
+                        <img src="/static/images/products/glow-up-bronzing-facial-oil/Model_Program_March_2025_53.jpg"
+                             alt="Model Program"
+                             class="w-full h-full object-cover"
+                             loading="lazy">
+                    </div>
+                </div>
+            </div>
+
+            {# Polaroid 8 - Middle right #}
+            <div class="polaroid hidden md:block absolute left-[61%] md:left-[59%] top-[32%] w-28 md:w-34 lg:w-38 rotate-6 hover:rotate-0 hover:scale-105 hover:z-50 transition-all duration-500 cursor-pointer z-20">
+                <div class="bg-card p-1.5 pb-8 md:p-2 md:pb-10 shadow-xl rounded-sm">
+                    <div class="aspect-[4/5] overflow-hidden">
+                        <img src="/static/images/products/skin-tight-exotic-cream/Model_Program_March_2025_44.jpg"
+                             alt="Model Program"
+                             class="w-full h-full object-cover"
+                             loading="lazy">
+                    </div>
+                </div>
+            </div>
+
+            {# Polaroid 9 - Bottom left #}
+            <div class="polaroid absolute left-[0%] md:left-[5%] bottom-[0%] w-28 md:w-34 lg:w-38 -rotate-10 hover:rotate-0 hover:scale-105 hover:z-50 transition-all duration-500 cursor-pointer z-18">
+                <div class="bg-card p-1.5 pb-8 md:p-2 md:pb-10 shadow-xl rounded-sm">
+                    <div class="aspect-[4/5] overflow-hidden">
+                        <img src="/static/images/model-program/Model_Program_March_2025_41.jpg"
+                             alt="Model Program"
+                             class="w-full h-full object-cover"
+                             loading="lazy">
+                    </div>
+                </div>
+            </div>
+
+            {# Polaroid 10 - Bottom center-left #}
+            <div class="polaroid absolute left-[28%] md:left-[28%] bottom-[2%] w-26 md:w-32 lg:w-36 rotate-5 hover:rotate-0 hover:scale-105 hover:z-50 transition-all duration-500 cursor-pointer z-15">
+                <div class="bg-card p-1.5 pb-8 md:p-2 md:pb-10 shadow-xl rounded-sm">
+                    <div class="aspect-[4/5] overflow-hidden">
+                        <img src="/static/images/products/pineapple-enzyme-cleanser/Model_Program_March_2025_16.jpg"
+                             alt="Model Program"
+                             class="w-full h-full object-cover"
+                             loading="lazy">
+                    </div>
+                </div>
+            </div>
+
+            {# Polaroid 11 - Bottom center-right #}
+            <div class="polaroid hidden md:block absolute left-[53%] bottom-[0%] w-28 md:w-34 lg:w-38 -rotate-7 hover:rotate-0 hover:scale-105 hover:z-50 transition-all duration-500 cursor-pointer z-22">
+                <div class="bg-card p-1.5 pb-8 md:p-2 md:pb-10 shadow-xl rounded-sm">
+                    <div class="aspect-[4/5] overflow-hidden">
+                        <img src="/static/images/products/naked-pineapple-vip-bundle/Model_Program_Feb_2025_7.jpg"
+                             alt="Model Program"
+                             class="w-full h-full object-cover"
+                             loading="lazy">
+                    </div>
+                </div>
+            </div>
+
+            {# Polaroid 12 - Bottom right #}
+            <div class="polaroid absolute left-[75%] md:left-[73%] bottom-[5%] w-26 md:w-32 lg:w-36 rotate-9 hover:rotate-0 hover:scale-105 hover:z-50 transition-all duration-500 cursor-pointer z-16">
+                <div class="bg-card p-1.5 pb-8 md:p-2 md:pb-10 shadow-xl rounded-sm">
+                    <div class="aspect-[4/5] overflow-hidden">
+                        <img src="/static/images/model-program/Model_Program_Feb_2025_65.jpg"
+                             alt="Model Program"
+                             class="w-full h-full object-cover"
+                             loading="lazy">
+                    </div>
+                </div>
+            </div>
+
+            {# Polaroid 13 - Far right middle #}
+            <div class="polaroid hidden lg:block absolute right-[0%] bottom-[30%] w-32 lg:w-36 -rotate-4 hover:rotate-0 hover:scale-105 hover:z-50 transition-all duration-500 cursor-pointer z-12">
+                <div class="bg-card p-1.5 pb-8 md:p-2 md:pb-10 shadow-xl rounded-sm">
+                    <div class="aspect-[4/5] overflow-hidden">
+                        <img src="/static/images/products/starter-kit/Model_Program_March_2025_14_536fbe04-c22c-496b-837e-4f1ed60c0717.jpg"
+                             alt="Model Program"
+                             class="w-full h-full object-cover"
+                             loading="lazy">
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        {# CTA Button #}
+        <div class="text-center mt-12 md:mt-16 relative z-30">
+            <a href="/pages/model-program" class="btn btn-primary btn-large group">
+                Join the Program
+                <svg class="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" viewBox="0 0 20 20" fill="none">
+                    <path d="M7.5 3.75L13.75 10L7.5 16.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </a>
+        </div>
+    </div>
+</section>
+
+{# Collections - Mobile Stacked / Desktop Asymmetric Diagonal #}
+
+{# Mobile Layout (stacked with diagonal transition) #}
+<section class="md:hidden">
+    {# Skincare Collection - Top #}
+    <a href="/collections/frontpage" class="group relative block h-[350px] overflow-hidden">
+        <div class="absolute inset-0">
+            <img src="/static/images/products/naked-pineapple-vip-bundle/DSC_7695.jpg"
+                 alt="Skincare Collection"
+                 class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                 loading="lazy">
+        </div>
+        <div class="absolute inset-0 bg-gradient-to-t from-text/80 via-text/30 to-transparent"></div>
+        <div class="absolute inset-0 flex flex-col justify-end p-6 pb-12">
+            <p class="text-xs uppercase tracking-[0.25em] text-white/70 font-medium mb-2">Nourish Your Glow</p>
+            <h3 class="font-display text-2xl font-medium text-white mb-3">Skincare Collection</h3>
+            <div class="flex items-center gap-2 text-white font-medium text-sm">
+                <span class="border-b border-white/50 group-hover:border-white transition-colors">Shop Skincare</span>
+                <svg class="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" viewBox="0 0 20 20" fill="none">
+                    <path d="M7.5 3.75L13.75 10L7.5 16.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </div>
+        </div>
+    </a>
+
+    {# Merch Collection - Bottom #}
+    <a href="/collections/merch" class="group relative block h-[300px] overflow-hidden">
+        <div class="absolute inset-0">
+            <img src="/static/images/merch/hoodie/DSC_5849.jpg"
+                 alt="Merch Collection"
+                 class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                 loading="lazy">
+        </div>
+        <div class="absolute inset-0 bg-gradient-to-t from-text/80 via-text/30 to-transparent"></div>
+        <div class="absolute inset-0 flex flex-col justify-end p-6">
+            <p class="text-xs uppercase tracking-[0.25em] text-white/70 font-medium mb-2">Wear the Vibe</p>
+            <h3 class="font-display text-2xl font-medium text-white mb-3">Merch</h3>
+            <div class="flex items-center gap-2 text-white font-medium text-sm">
+                <span class="border-b border-white/50 group-hover:border-white transition-colors">Shop Merch</span>
+                <svg class="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" viewBox="0 0 20 20" fill="none">
+                    <path d="M7.5 3.75L13.75 10L7.5 16.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </div>
+        </div>
+    </a>
+</section>
+
+{# Desktop Layout (asymmetric diagonal split) #}
+<section class="hidden md:block relative h-[600px] lg:h-[700px] overflow-hidden">
+    {# Skincare Collection - Left/Primary (65%) #}
+    <a href="/collections/frontpage"
+       class="group absolute inset-0 w-[68%] lg:w-[65%]"
+       style="clip-path: polygon(0 0, 100% 0, 85% 100%, 0 100%);">
+        <div class="absolute inset-0">
+            <img src="/static/images/products/naked-pineapple-vip-bundle/DSC_7695.jpg"
+                 alt="Skincare Collection"
+                 class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                 loading="lazy">
+        </div>
+        <div class="absolute inset-0 bg-gradient-to-r from-text/70 via-text/40 to-transparent"></div>
+        <div class="absolute inset-0 flex flex-col justify-center p-12 lg:p-16 max-w-lg">
+            <p class="text-xs uppercase tracking-[0.25em] text-white/70 font-medium mb-3">Nourish Your Glow</p>
+            <h3 class="font-display text-4xl lg:text-5xl font-medium text-white mb-4 leading-tight">
+                Skincare Collection
+            </h3>
+            <p class="text-white/80 text-base mb-6 leading-relaxed">
+                Pineapple-powered formulas designed to enhance your natural radiance.
+            </p>
+            <div class="flex items-center gap-2 text-white font-medium">
+                <span class="border-b border-white/50 group-hover:border-white transition-colors">Shop Skincare</span>
+                <svg class="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" viewBox="0 0 20 20" fill="none">
+                    <path d="M7.5 3.75L13.75 10L7.5 16.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </div>
+        </div>
+    </a>
+
+    {# Merch Collection - Right/Accent (35%) #}
+    <a href="/collections/merch"
+       class="group absolute inset-0 left-auto w-[42%] lg:w-[40%]"
+       style="clip-path: polygon(25% 0, 100% 0, 100% 100%, 0 100%);">
+        <div class="absolute inset-0">
+            <img src="/static/images/merch/hoodie/DSC_5849.jpg"
+                 alt="Merch Collection"
+                 class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                 loading="lazy">
+        </div>
+        <div class="absolute inset-0 bg-gradient-to-l from-text/70 via-text/40 to-transparent"></div>
+        <div class="absolute inset-0 flex flex-col justify-center items-end text-right p-12 lg:p-16">
+            <div class="max-w-xs">
+                <p class="text-xs uppercase tracking-[0.25em] text-white/70 font-medium mb-3">Wear the Vibe</p>
+                <h3 class="font-display text-3xl lg:text-4xl font-medium text-white mb-4 leading-tight">
+                    Merch
+                </h3>
+                <div class="flex items-center justify-end gap-2 text-white font-medium">
+                    <span class="border-b border-white/50 group-hover:border-white transition-colors">Shop Merch</span>
+                    <svg class="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" viewBox="0 0 20 20" fill="none">
+                        <path d="M7.5 3.75L13.75 10L7.5 16.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </a>
+
+    {# Diagonal line accent #}
+    <div class="absolute inset-0 pointer-events-none"
+         style="clip-path: polygon(54% 0, 56% 0, 41% 100%, 39% 100%); background: linear-gradient(to bottom, rgba(255,255,255,0.1), rgba(255,255,255,0.3), rgba(255,255,255,0.1));"></div>
+</section>
+
+{# Beauty Rooted in Self-Love - Three Column Feature #}
+<section class="py-16 md:py-24 bg-cream overflow-hidden">
+    {# Section Header #}
+    <div class="page-width">
+        <div class="text-center max-w-2xl mx-auto mb-10 md:mb-14">
+            <h2 class="font-display text-3xl md:text-4xl lg:text-5xl font-medium text-foreground mb-4">Beauty Rooted in Self-Love</h2>
+            <p class="text-muted-foreground leading-relaxed">
+                Skincare that celebrates your natural beauty and empowers you to glow from the inside out.
+            </p>
+        </div>
+    </div>
+
+    {# Mobile: Horizontal Scroll Carousel #}
+    <div class="md:hidden">
+        <div class="flex gap-4 overflow-x-auto snap-x snap-mandatory px-6 pb-4 scrollbar-hide"
+             style="-webkit-overflow-scrolling: touch;">
+            {# Philosophy Card #}
+            <div class="flex-shrink-0 w-[280px] snap-center">
+                <div class="bg-card rounded-2xl overflow-hidden shadow-lg">
+                    <div class="aspect-[3/4] overflow-hidden">
+                        <img src="/static/images/lifestyle/DSC_2634.jpg"
+                             alt="Our Philosophy"
+                             class="w-full h-full object-cover"
+                             loading="lazy">
+                    </div>
+                    <div class="p-5">
+                        <h3 class="font-display text-lg font-medium text-foreground mb-2">Our Philosophy</h3>
+                        <p class="text-muted-foreground text-sm leading-relaxed">
+                            True beauty starts with self-love. Our products nurture your skin while embracing your uniqueness.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            {# Tropical Blend Card #}
+            <div class="flex-shrink-0 w-[280px] snap-center">
+                <div class="bg-card rounded-2xl overflow-hidden shadow-lg">
+                    <div class="aspect-[3/4] overflow-hidden">
+                        <img src="/static/images/products/pineapple-facial-oil/DSC_7750.jpg"
+                             alt="A Tropical Blend for Everyone"
+                             class="w-full h-full object-cover"
+                             loading="lazy">
+                    </div>
+                    <div class="p-5">
+                        <h3 class="font-display text-lg font-medium text-foreground mb-2">A Tropical Blend for Everyone</h3>
+                        <p class="text-muted-foreground text-sm leading-relaxed">
+                            A tropical vacation for your skin—exfoliation, hydration, and nourishment in perfect balance.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            {# Wear Your Crown Card #}
+            <div class="flex-shrink-0 w-[280px] snap-center">
+                <div class="bg-card rounded-2xl overflow-hidden shadow-lg">
+                    <div class="aspect-[3/4] overflow-hidden">
+                        <img src="/static/images/lifestyle/DSC_6128.jpg"
+                             alt="Wear Your Crown"
+                             class="w-full h-full object-cover"
+                             loading="lazy">
+                    </div>
+                    <div class="p-5">
+                        <h3 class="font-display text-lg font-medium text-foreground mb-2">Wear Your Crown</h3>
+                        <p class="text-muted-foreground text-sm leading-relaxed">
+                            Your glow is a journey. Radiate with confidence, stand tall, and always wear your crown.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {# Scroll indicator dots #}
+        <div class="flex justify-center gap-2 mt-4">
+            <span class="w-2 h-2 rounded-full bg-primary/60"></span>
+            <span class="w-2 h-2 rounded-full bg-text/20"></span>
+            <span class="w-2 h-2 rounded-full bg-text/20"></span>
+        </div>
+    </div>
+
+    {# Desktop: Overlapping Cards #}
+    <div class="hidden md:block page-width">
+        <div class="relative flex justify-center items-center">
+            {# Philosophy Card - Left, rotated slightly #}
+            <div class="relative z-10 w-[320px] lg:w-[340px] -mr-8 transform -rotate-3 transition-all duration-500 hover:rotate-0 hover:z-30 hover:-translate-y-2">
+                <div class="bg-card rounded-2xl overflow-hidden shadow-xl hover:shadow-2xl transition-shadow duration-500">
+                    <div class="aspect-[3/4] overflow-hidden">
+                        <img src="/static/images/lifestyle/DSC_2634.jpg"
+                             alt="Our Philosophy"
+                             class="w-full h-full object-cover transition-transform duration-700 hover:scale-105"
+                             loading="lazy">
+                    </div>
+                    <div class="p-6">
+                        <h3 class="font-display text-xl font-medium text-foreground mb-2">Our Philosophy</h3>
+                        <p class="text-muted-foreground text-sm leading-relaxed">
+                            True beauty starts with self-love. Our products nurture your skin while embracing your uniqueness.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            {# Tropical Blend Card - Center, elevated #}
+            <div class="relative z-20 w-[320px] lg:w-[360px] -mt-4 transform transition-all duration-500 hover:-translate-y-3">
+                <div class="bg-card rounded-2xl overflow-hidden shadow-2xl hover:shadow-3xl transition-shadow duration-500">
+                    <div class="aspect-[3/4] overflow-hidden">
+                        <img src="/static/images/products/pineapple-facial-oil/DSC_7750.jpg"
+                             alt="A Tropical Blend for Everyone"
+                             class="w-full h-full object-cover transition-transform duration-700 hover:scale-105"
+                             loading="lazy">
+                    </div>
+                    <div class="p-6">
+                        <h3 class="font-display text-xl font-medium text-foreground mb-2">A Tropical Blend for Everyone</h3>
+                        <p class="text-muted-foreground text-sm leading-relaxed">
+                            A tropical vacation for your skin—exfoliation, hydration, and nourishment in perfect balance.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            {# Wear Your Crown Card - Right, rotated opposite #}
+            <div class="relative z-10 w-[320px] lg:w-[340px] -ml-8 transform rotate-3 transition-all duration-500 hover:rotate-0 hover:z-30 hover:-translate-y-2">
+                <div class="bg-card rounded-2xl overflow-hidden shadow-xl hover:shadow-2xl transition-shadow duration-500">
+                    <div class="aspect-[3/4] overflow-hidden">
+                        <img src="/static/images/lifestyle/DSC_6128.jpg"
+                             alt="Wear Your Crown"
+                             class="w-full h-full object-cover transition-transform duration-700 hover:scale-105"
+                             loading="lazy">
+                    </div>
+                    <div class="p-6">
+                        <h3 class="font-display text-xl font-medium text-foreground mb-2">Wear Your Crown</h3>
+                        <p class="text-muted-foreground text-sm leading-relaxed">
+                            Your glow is a journey. Radiate with confidence, stand tall, and always wear your crown.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+{# Product/Lifestyle Images - Bento Grid (Desktop Only) #}
+<section class="hidden md:block py-8">
+    <div class="grid grid-cols-6 grid-rows-3 gap-2 lg:gap-3 h-[600px] lg:h-[700px] px-4 lg:px-8">
+        {# A: Large feature - spans 2 cols, 2 rows #}
+        <div class="col-span-2 row-span-2 overflow-hidden rounded-xl">
+            <img src="/static/images/lifestyle/NP_Shoot_-_Jan_202579.jpg"
+                 alt="Naked Pineapple Lifestyle"
+                 class="w-full h-full object-cover object-[center_15%] hover:scale-105 transition-transform duration-700"
+                 loading="lazy">
+        </div>
+        {# B: Wide - Row 1, Cols 3-4 #}
+        <div class="col-span-2 overflow-hidden rounded-xl">
+            <img src="/static/images/merch/other/DSC_6659.jpg"
+                 alt="Lifestyle"
+                 class="w-full h-full object-cover hover:scale-105 transition-transform duration-700"
+                 loading="lazy">
+        </div>
+        {# C: Row 1, Col 5 #}
+        <div class="overflow-hidden rounded-xl">
+            <img src="/static/images/lifestyle/374FA1B1-5C0E-442A-83E5-892DB550D7F5.jpg"
+                 alt="Naked Pineapple Lifestyle"
+                 class="w-full h-full object-cover object-[center_25%] hover:scale-105 transition-transform duration-700"
+                 loading="lazy">
+        </div>
+        {# D: Portrait - spans 2 rows, Col 6 #}
+        <div class="row-span-2 overflow-hidden rounded-xl">
+            <img src="/static/images/lifestyle/NP_-_Photoshoot_1156.jpg"
+                 alt="Naked Pineapple Lifestyle"
+                 class="w-full h-full object-cover hover:scale-105 transition-transform duration-700"
+                 loading="lazy">
+        </div>
+        {# E: Wide - Row 2, Cols 3-4 #}
+        <div class="col-span-2 overflow-hidden rounded-xl">
+            <img src="/static/images/lifestyle/BBFEF851-7EC3-4A07-A1ED-EF9A15CEA821.jpg"
+                 alt="Naked Pineapple Lifestyle"
+                 class="w-full h-full object-cover hover:scale-105 transition-transform duration-700"
+                 loading="lazy">
+        </div>
+        {# F: Row 2, Col 5 #}
+        <div class="overflow-hidden rounded-xl">
+            <img src="/static/images/merch/other/NP_Shoot_-_Jan_2025133.jpg"
+                 alt="Naked Pineapple"
+                 class="w-full h-full object-cover object-[center_40%] hover:scale-105 transition-transform duration-700"
+                 loading="lazy">
+        </div>
+        {# G: Row 3, Col 1 #}
+        <div class="overflow-hidden rounded-xl">
+            <img src="/static/images/lifestyle/DSC_1594.jpg"
+                 alt="Naked Pineapple Lifestyle"
+                 class="w-full h-full object-cover object-[center_25%] hover:scale-105 transition-transform duration-700"
+                 loading="lazy">
+        </div>
+        {# H: Row 3, Col 2 #}
+        <div class="overflow-hidden rounded-xl">
+            <img src="/static/images/merch/other/NP_Shoot_-_Jan_202547.jpg"
+                 alt="Naked Pineapple"
+                 class="w-full h-full object-cover object-[25%_100%] scale-125 hover:scale-130 transition-transform duration-700"
+                 loading="lazy">
+        </div>
+        {# I: Wide - Row 3, Cols 3-4 #}
+        <div class="col-span-2 overflow-hidden rounded-xl">
+            <img src="/static/images/merch/display/Merch_Photos.png"
+                 alt="Naked Pineapple Merch"
+                 class="w-full h-full object-cover hover:scale-105 transition-transform duration-700"
+                 loading="lazy">
+        </div>
+        {# J: Row 3, Col 5 #}
+        <div class="overflow-hidden rounded-xl">
+            <img src="/static/images/merch/other/10_18172443-bd3f-416a-b2fa-6726ca776c28.png"
+                 alt="Naked Pineapple Products"
+                 class="w-full h-full object-cover object-[center_30%] hover:scale-105 transition-transform duration-700"
+                 loading="lazy">
+        </div>
+        {# K: Row 3, Col 6 #}
+        <div class="overflow-hidden rounded-xl">
+            <img src="/static/images/lifestyle/NP_Shoot_-_Jan_2025101.jpg"
+                 alt="Naked Pineapple Lifestyle"
+                 class="w-full h-full object-cover object-[center_30%] hover:scale-105 transition-transform duration-700"
+                 loading="lazy">
+        </div>
+    </div>
+</section>
+
+{# Before & After - Results Showcase #}
+<section class="py-20 md:py-28 bg-background">
+    <div class="page-width">
+        <div class="text-center mb-12">
+            <p class="text-xs uppercase tracking-[0.2em] text-primary font-medium mb-3">Real Results</p>
+            <h2 class="font-display text-3xl md:text-4xl lg:text-5xl font-medium text-foreground">Before & After</h2>
+        </div>
+
+        {# Mobile: Tap to Toggle #}
+        <div class="md:hidden max-w-sm mx-auto mb-10">
+            <div class="relative aspect-[3/4] rounded-2xl overflow-hidden cursor-pointer" id="toggle-container">
+                {# Before Image #}
+                <img src="/static/images/testimonials/Maddie_-_Before_NP2.jpg"
+                     alt="Before using Naked Pineapple"
+                     class="absolute inset-0 w-full h-full object-cover transition-opacity duration-500"
+                     id="toggle-before"
+                     loading="lazy">
+                {# After Image #}
+                <img src="/static/images/testimonials/Maddie_-_After_NP.jpg"
+                     alt="After using Naked Pineapple"
+                     class="absolute inset-0 w-full h-full object-cover transition-opacity duration-500 opacity-0"
+                     id="toggle-after"
+                     loading="lazy">
+                {# Label #}
+                <span class="absolute top-4 left-4 px-4 py-2 bg-text/80 text-white text-sm font-medium rounded-full transition-all duration-500" id="toggle-label">Before</span>
+                {# Tap hint #}
+                <div class="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-card/90 text-foreground text-xs font-medium rounded-full flex items-center gap-2">
+                    <i class="ph ph-hand-tap text-base"></i>
+                    Tap to compare
+                </div>
+            </div>
+        </div>
+
+        {# Desktop: Slider Compare #}
+        <div class="hidden md:block max-w-5xl mx-auto mb-10">
+            <div class="relative aspect-[4/3] rounded-2xl overflow-hidden select-none" id="compare-slider">
+                {# After Image (Background) #}
+                <img src="/static/images/testimonials/Maddie_-_After_NP.jpg"
+                     alt="After using Naked Pineapple"
+                     class="absolute inset-0 w-full h-full object-cover object-left"
+                     loading="lazy">
+
+                {# After Label (Clipped from left) #}
+                <div class="absolute inset-0 overflow-hidden pointer-events-none" id="after-label-container" style="clip-path: inset(0 0 0 50%);">
+                    <span class="absolute top-4 right-4 px-4 py-2 bg-primary text-white text-sm font-medium rounded-full">After</span>
+                </div>
+
+                {# Before Image (Clipped Overlay) #}
+                <div class="absolute inset-0 overflow-hidden" id="before-container" style="clip-path: inset(0 50% 0 0);">
+                    <img src="/static/images/testimonials/Maddie_-_Before_NP2.jpg"
+                         alt="Before using Naked Pineapple"
+                         class="absolute inset-0 w-full h-full object-cover object-right"
+                         loading="lazy">
+                    <span class="absolute top-4 left-4 px-4 py-2 bg-text/80 text-white text-sm font-medium rounded-full">Before</span>
+                </div>
+
+                {# Slider Handle #}
+                <div class="absolute top-0 bottom-0 w-1 bg-card shadow-lg cursor-ew-resize z-20" id="slider-handle" style="left: 50%;">
+                    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 bg-card rounded-full shadow-lg flex items-center justify-center">
+                        <svg class="w-5 h-5 text-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M8 5l-5 7 5 7M16 5l5 7-5 7" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center max-w-xl mx-auto">
+            <h3 class="font-display text-2xl font-medium text-foreground mb-4">Meet Maddie!</h3>
+            <p class="text-muted-foreground leading-relaxed">
+                After using the Naked Pineapple Skincare System for just 30 days, her results speak for themselves. Once struggling with stubborn acne, Maddie's skin is now visibly clearer, smoother, and glowing with confidence.
+            </p>
+        </div>
+    </div>
+</section>
+
+{# Affiliate Program CTA #}
+<section class="py-20 md:py-28 bg-sand overflow-hidden">
+    <div class="page-width">
+        {# Header #}
+        <div class="text-center max-w-3xl mx-auto mb-12 md:mb-16">
+            <p class="text-xs uppercase tracking-[0.2em] text-primary font-medium mb-3">Empower Others While Growing With Us</p>
+            <h2 class="font-display text-3xl md:text-4xl lg:text-5xl font-medium text-foreground mb-6">Affiliate Program</h2>
+            <p class="text-muted-foreground leading-relaxed">
+                Join the Naked Pineapple Affiliate Program and be part of a movement that celebrates authentic beauty and self-love. As an affiliate, you'll share our high-quality skincare and merch with your audience while earning 20% commission on every sale. Whether you're a skincare enthusiast, influencer, or someone who simply loves Naked Pineapple, this is your chance to shine and help others glow too.
+            </p>
+        </div>
+
+        {# Program Options #}
+        <div class="max-w-4xl mx-auto space-y-6">
+            {# Shopify Collabs #}
+            <div class="bg-card rounded-2xl p-6 md:p-8 flex flex-col md:flex-row gap-6 items-start shadow-sm">
+                <div class="flex-shrink-0 w-14 h-14 bg-primary/10 rounded-xl flex items-center justify-center">
+                    <i class="ph ph-storefront text-2xl text-primary"></i>
+                </div>
+                <div class="flex-1">
+                    <h3 class="font-display text-xl md:text-2xl font-medium text-foreground mb-2">Shopify Collabs</h3>
+                    <p class="text-muted-foreground leading-relaxed">
+                        Seamlessly partner with Naked Pineapple, promote products authentically, and track your earnings with ease—commissions paid every 30 days!
+                    </p>
+                </div>
+            </div>
+
+            {# Videoshops #}
+            <div class="bg-card rounded-2xl p-6 md:p-8 flex flex-col md:flex-row gap-6 items-start shadow-sm">
+                <div class="flex-shrink-0 w-14 h-14 bg-honey/20 rounded-xl flex items-center justify-center">
+                    <i class="ph ph-video-camera text-2xl text-honey"></i>
+                </div>
+                <div class="flex-1">
+                    <h3 class="font-display text-xl md:text-2xl font-medium text-foreground mb-2">Videoshops</h3>
+                    <p class="text-muted-foreground leading-relaxed">
+                        Customize your shop, share your favorite Naked Pineapple products, and earn 20% commission with same-day payouts via Venmo.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        {# Bottom CTA #}
+        <div class="text-center mt-12">
+            <p class="text-muted-foreground mb-4">Together, we're building a community rooted in empowerment, positivity, and radiant confidence.</p>
+            <a href="/pages/collabs" class="btn btn-primary">
+                Apply
+                <i class="ph ph-arrow-right"></i>
+            </a>
+        </div>
+    </div>
+</section>
+
+{# Reviews/Testimonials - Infinite Scroll #}
+{% if !featured_reviews.is_empty() %}
+<section class="py-20 md:py-28 bg-cream overflow-hidden">
+    <div class="page-width">
+        <div class="text-center mb-12 md:mb-16">
+            <p class="text-xs uppercase tracking-[0.2em] text-primary font-medium mb-3">Customer Love</p>
+            <h2 class="font-display text-3xl md:text-4xl lg:text-5xl font-medium text-foreground">Reviews</h2>
+        </div>
+    </div>
+
+    {# Infinite Scroll Container #}
+    <div class="relative">
+        {# Fade edges #}
+        <div class="absolute left-0 top-0 bottom-0 w-16 md:w-32 bg-gradient-to-r from-cream to-transparent z-10 pointer-events-none"></div>
+        <div class="absolute right-0 top-0 bottom-0 w-16 md:w-32 bg-gradient-to-l from-cream to-transparent z-10 pointer-events-none"></div>
+
+        {# Scrolling track - reviews duplicated for seamless loop #}
+        <div class="flex gap-6 animate-marquee hover:[animation-play-state:paused]">
+            {# First set of reviews #}
+            {% for review in featured_reviews %}
+            <div class="flex-shrink-0 w-[320px] md:w-[380px] bg-card rounded-2xl p-6 shadow-sm flex flex-col">
+                {# Star Rating #}
+                <div class="flex items-center gap-1 mb-4 text-honey">
+                    {% for _ in 0..review.rating %}
+                    <i class="ph-fill ph-star text-base"></i>
+                    {% endfor %}
+                    {% for _ in review.rating..5 %}
+                    <i class="ph ph-star text-base"></i>
+                    {% endfor %}
+                </div>
+                {# Review Content - grows to push footer down #}
+                <p class="text-muted-foreground text-sm leading-relaxed flex-1">
+                    "{{ review.content }}"
+                </p>
+                {# Reviewer & Product Info - anchored to bottom #}
+                <div class="border-t border-border-light pt-4 mt-6">
+                    <p class="font-medium text-foreground">{{ review.reviewer_name }}</p>
+                    <a href="/products/{{ review.product_handle }}" class="flex items-center gap-3 mt-2 group">
+                        {% if let Some(image_url) = review.product_image_url %}
+                        <div class="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-sand">
+                            <img src="{{ image_url }}"
+                                 alt="{{ review.product_title }}"
+                                 class="w-full h-full object-cover"
+                                 loading="lazy">
+                        </div>
+                        {% endif %}
+                        <span class="text-xs text-muted-foreground group-hover:text-primary transition-colors">{{ review.product_title }}</span>
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+
+            {# Duplicate set for seamless loop #}
+            {% for review in featured_reviews %}
+            <div class="flex-shrink-0 w-[320px] md:w-[380px] bg-card rounded-2xl p-6 shadow-sm flex flex-col">
+                {# Star Rating #}
+                <div class="flex items-center gap-1 mb-4 text-honey">
+                    {% for _ in 0..review.rating %}
+                    <i class="ph-fill ph-star text-base"></i>
+                    {% endfor %}
+                    {% for _ in review.rating..5 %}
+                    <i class="ph ph-star text-base"></i>
+                    {% endfor %}
+                </div>
+                {# Review Content - grows to push footer down #}
+                <p class="text-muted-foreground text-sm leading-relaxed flex-1">
+                    "{{ review.content }}"
+                </p>
+                {# Reviewer & Product Info - anchored to bottom #}
+                <div class="border-t border-border-light pt-4 mt-6">
+                    <p class="font-medium text-foreground">{{ review.reviewer_name }}</p>
+                    <a href="/products/{{ review.product_handle }}" class="flex items-center gap-3 mt-2 group">
+                        {% if let Some(image_url) = review.product_image_url %}
+                        <div class="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-sand">
+                            <img src="{{ image_url }}"
+                                 alt="{{ review.product_title }}"
+                                 class="w-full h-full object-cover"
+                                 loading="lazy">
+                        </div>
+                        {% endif %}
+                        <span class="text-xs text-muted-foreground group-hover:text-primary transition-colors">{{ review.product_title }}</span>
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<style>
+@keyframes marquee {
+    0% {
+        transform: translateX(0);
+    }
+    100% {
+        transform: translateX(-50%);
+    }
+}
+
+.animate-marquee {
+    animation: marquee 40s linear infinite;
+}
+</style>
+{% endif %}
 {% endblock %}

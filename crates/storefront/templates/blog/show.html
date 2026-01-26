@@ -80,23 +80,23 @@
                     </div>
                     {% endif %}
 
-                    <h1 class="font-display text-3xl md:text-4xl lg:text-5xl font-medium text-text mb-6 leading-tight animate-fade-up animation-delay-100">
+                    <h1 class="font-display text-3xl md:text-4xl lg:text-5xl font-medium text-foreground mb-6 leading-tight animate-fade-up animation-delay-100">
                         {{ post.title }}
                     </h1>
 
-                    <div class="flex flex-wrap items-center justify-center gap-4 text-text-muted text-sm animate-fade-up animation-delay-200">
+                    <div class="flex flex-wrap items-center justify-center gap-4 text-muted-foreground text-sm animate-fade-up animation-delay-200">
                         {% if let Some(author) = post.author.as_ref() %}
                         <span class="flex items-center gap-2">
                             <i class="ph ph-user"></i>
                             {{ author }}
                         </span>
-                        <span class="text-text-muted/40">|</span>
+                        <span class="text-muted-foreground/40">|</span>
                         {% endif %}
                         <span class="flex items-center gap-2">
                             <i class="ph ph-calendar-blank"></i>
                             {{ post.published_at.format("%B %d, %Y") }}
                         </span>
-                        <span class="text-text-muted/40">|</span>
+                        <span class="text-muted-foreground/40">|</span>
                         <span class="flex items-center gap-2">
                             <i class="ph ph-clock"></i>
                             {{ post.reading_time_minutes }} min read
@@ -109,7 +109,7 @@
     </header>
 
     {# Article Content #}
-    <div class="py-12 md:py-16 bg-warm-white">
+    <div class="py-12 md:py-16 bg-background">
         <div class="page-width">
             <div class="grid lg:grid-cols-[1fr_280px] gap-12 lg:gap-16">
                 {# Main Content #}
@@ -134,7 +134,7 @@
                             {% if !post.tags.is_empty() %}
                             <div class="flex flex-wrap gap-2">
                                 {% for tag in post.tags.iter() %}
-                                <span class="px-3 py-1.5 bg-sand text-text-muted text-sm font-medium rounded-full">
+                                <span class="px-3 py-1.5 bg-sand text-muted-foreground text-sm font-medium rounded-full">
                                     {{ tag }}
                                 </span>
                                 {% endfor %}
@@ -143,23 +143,23 @@
 
                             {# Share buttons #}
                             <div class="flex items-center gap-3">
-                                <span class="text-sm text-text-muted">Share:</span>
+                                <span class="text-sm text-muted-foreground">Share:</span>
                                 <a href="https://twitter.com/intent/tweet?text={{ post.title }}&url="
                                    target="_blank"
                                    rel="noopener"
-                                   class="w-9 h-9 flex items-center justify-center rounded-full bg-sand text-text hover:bg-primary hover:text-white transition-all"
+                                   class="w-9 h-9 flex items-center justify-center rounded-full bg-sand text-foreground hover:bg-primary hover:text-white transition-all"
                                    aria-label="Share on Twitter">
                                     <i class="ph ph-twitter-logo"></i>
                                 </a>
                                 <a href="https://www.facebook.com/sharer/sharer.php?u="
                                    target="_blank"
                                    rel="noopener"
-                                   class="w-9 h-9 flex items-center justify-center rounded-full bg-sand text-text hover:bg-primary hover:text-white transition-all"
+                                   class="w-9 h-9 flex items-center justify-center rounded-full bg-sand text-foreground hover:bg-primary hover:text-white transition-all"
                                    aria-label="Share on Facebook">
                                     <i class="ph ph-facebook-logo"></i>
                                 </a>
                                 <button onclick="navigator.clipboard.writeText(window.location.href)"
-                                        class="w-9 h-9 flex items-center justify-center rounded-full bg-sand text-text hover:bg-primary hover:text-white transition-all"
+                                        class="w-9 h-9 flex items-center justify-center rounded-full bg-sand text-foreground hover:bg-primary hover:text-white transition-all"
                                         aria-label="Copy link">
                                     <i class="ph ph-link"></i>
                                 </button>
@@ -173,14 +173,14 @@
                     <div class="sticky top-8 space-y-8">
                         {# Author card (if author exists) #}
                         {% if let Some(author) = post.author.as_ref() %}
-                        <div class="bg-white rounded-2xl p-6 shadow-sm border border-border-light">
+                        <div class="bg-card rounded-2xl p-6 shadow-sm border border-border-light">
                             <div class="flex items-center gap-4 mb-4">
                                 <div class="w-14 h-14 rounded-full bg-gradient-to-br from-primary to-honey flex items-center justify-center text-white font-display text-xl">
                                     {{ author.chars().next().unwrap_or('N') }}
                                 </div>
                                 <div>
-                                    <p class="font-medium text-text">{{ author }}</p>
-                                    <p class="text-sm text-text-muted">Author</p>
+                                    <p class="font-medium text-foreground">{{ author }}</p>
+                                    <p class="text-sm text-muted-foreground">Author</p>
                                 </div>
                             </div>
                         </div>
@@ -188,8 +188,8 @@
 
                         {# Recent Posts #}
                         {% if !recent_posts.is_empty() %}
-                        <div class="bg-white rounded-2xl p-6 shadow-sm border border-border-light">
-                            <h3 class="font-display text-lg text-text mb-4">More to Read</h3>
+                        <div class="bg-card rounded-2xl p-6 shadow-sm border border-border-light">
+                            <h3 class="font-display text-lg text-foreground mb-4">More to Read</h3>
                             <div class="space-y-4">
                                 {% for recent in recent_posts.iter() %}
                                 <a href="/blog/{{ recent.slug }}" class="group block">
@@ -207,10 +207,10 @@
                                             {% endif %}
                                         </div>
                                         <div class="flex-1 min-w-0">
-                                            <h4 class="text-sm font-medium text-text group-hover:text-primary transition-colors line-clamp-2 leading-snug">
+                                            <h4 class="text-sm font-medium text-foreground group-hover:text-primary transition-colors line-clamp-2 leading-snug">
                                                 {{ recent.title }}
                                             </h4>
-                                            <p class="text-xs text-text-muted mt-1">
+                                            <p class="text-xs text-muted-foreground mt-1">
                                                 {{ recent.published_at.format("%b %d, %Y") }}
                                             </p>
                                         </div>
@@ -249,11 +249,11 @@
 {% if !recent_posts.is_empty() %}
 <section class="py-12 md:py-16 bg-sand/30 lg:hidden">
     <div class="page-width">
-        <h2 class="font-display text-2xl text-text mb-8 text-center">More to Read</h2>
+        <h2 class="font-display text-2xl text-foreground mb-8 text-center">More to Read</h2>
         <div class="grid sm:grid-cols-2 gap-6">
             {% for recent in recent_posts.iter() %}
             <a href="/blog/{{ recent.slug }}" class="group">
-                <article class="bg-white rounded-xl shadow-sm border border-border-light overflow-hidden hover:shadow-md transition-all">
+                <article class="bg-card rounded-xl shadow-sm border border-border-light overflow-hidden hover:shadow-md transition-all">
                     <div class="aspect-[16/9] overflow-hidden">
                         {% if let Some(image) = recent.featured_image.as_ref() %}
                         <img src="{{ image }}"
@@ -267,10 +267,10 @@
                         {% endif %}
                     </div>
                     <div class="p-5">
-                        <h3 class="font-display text-lg text-text group-hover:text-primary transition-colors line-clamp-2">
+                        <h3 class="font-display text-lg text-foreground group-hover:text-primary transition-colors line-clamp-2">
                             {{ recent.title }}
                         </h3>
-                        <p class="text-sm text-text-muted mt-2">
+                        <p class="text-sm text-muted-foreground mt-2">
                             {{ recent.published_at.format("%B %d, %Y") }}
                         </p>
                     </div>

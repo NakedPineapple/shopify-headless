@@ -4,17 +4,21 @@
 
 @layer base {
   :root {
+    /* Layout dimensions */
+    --announcement-height: 2.75rem;
+    --header-height: 7rem;
+
     /* Brand palette (Tropical Luxe) */
-    --coral: oklch(0.58 0.18 25);           /* #d63a2f - warm coral */
-    --coral-foreground: oklch(0.99 0.01 95);
-    --honey: oklch(0.72 0.14 85);           /* #daa520 - golden honey */
-    --honey-foreground: oklch(0.25 0.05 50);
-    --terracotta: oklch(0.52 0.15 30);      /* deep terracotta */
-    --terracotta-foreground: oklch(0.99 0.01 95);
-    --sand: oklch(0.95 0.01 90);            /* #f5f0e8 */
-    --cream: oklch(0.99 0.01 95);           /* #fdfbf7 */
-    --leaf: oklch(0.52 0.12 145);           /* #4a7c59 */
-    --leaf-foreground: oklch(0.99 0.01 95);
+    --coral: oklch(0.5826 0.1946 28.66);           /* #d63a2f - warm coral */
+    --coral-foreground: oklch(0.9923 0.0062 75.41); /* #fffcf8 */
+    --honey: oklch(0.7764 0.1255 71.46);           /* #e8a854 - golden honey */
+    --honey-foreground: oklch(0.2042 0.0076 48.33);
+    --terracotta: oklch(0.6409 0.1074 37.49);       /* #c4745c - peachy terracotta */
+    --terracotta-foreground: oklch(0.9923 0.0062 75.41);
+    --sand: oklch(0.9449 0.0183 70.24);            /* #f5ebe0 */
+    --cream: oklch(0.9885 0.0057 84.57);           /* #fdfbf7 */
+    --leaf: oklch(0.5406 0.0773 152.71);           /* #4a7c59 */
+    --leaf-foreground: oklch(0.9923 0.0062 75.41);
 
     /* Light mode semantic mappings */
     --background: var(--cream);
@@ -41,47 +45,102 @@
     --card-foreground: oklch(0.15 0.02 30);
   }
 
-  /* Dark mode - warm tropical night palette */
-  .dark {
-    /* Dark base colors - warm charcoal with subtle warmth */
-    --background: oklch(0.14 0.01 30);        /* deep warm charcoal */
-    --foreground: oklch(0.93 0.01 90);        /* warm off-white */
+}
 
-    /* Primary - coral brightened for dark mode */
-    --primary: oklch(0.65 0.18 25);           /* brighter coral */
-    --primary-foreground: oklch(0.12 0.02 30);
+/* Dark mode - automatic OS detection via prefers-color-scheme
+   "Tropical Dusk" - warm, inviting palette like golden hour on the beach */
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Base: warm brown like sun-baked wood, not dark at all */
+    --background: oklch(0.32 0.035 50);       /* warm teak brown */
+    --foreground: oklch(0.94 0.02 80);        /* warm cream text */
 
-    /* Secondary - honey adjusted for dark backgrounds */
-    --secondary: oklch(0.68 0.14 85);         /* golden honey */
-    --secondary-foreground: oklch(0.15 0.02 30);
+    /* Primary - coral stays vibrant */
+    --primary: oklch(0.65 0.16 30);           /* rich coral */
+    --primary-foreground: oklch(0.95 0.01 80);
 
-    /* Muted - warm dark gray */
-    --muted: oklch(0.22 0.01 30);             /* warm dark gray */
-    --muted-foreground: oklch(0.65 0.02 90);  /* warm medium gray */
+    /* Secondary - golden honey glow */
+    --secondary: oklch(0.76 0.12 72);         /* sunset honey */
+    --secondary-foreground: oklch(0.25 0.03 50);
 
-    /* Accent - leaf green brightened */
-    --accent: oklch(0.58 0.12 145);           /* brighter leaf */
-    --accent-foreground: oklch(0.12 0.02 30);
+    /* Muted - warm tan surfaces */
+    --muted: oklch(0.38 0.03 55);             /* warm driftwood */
+    --muted-foreground: oklch(0.75 0.025 70); /* soft sand text */
+
+    /* Accent - tropical leaf green */
+    --accent: oklch(0.60 0.10 150);           /* palm frond green */
+    --accent-foreground: oklch(0.95 0.01 80);
 
     /* Destructive */
-    --destructive: oklch(0.60 0.22 27);
+    --destructive: oklch(0.60 0.18 28);
+    --destructive-foreground: oklch(0.95 0.01 80);
+
+    /* UI elements - warm caramel tones */
+    --border: oklch(0.45 0.04 55);            /* caramel border */
+    --input: oklch(0.36 0.03 52);             /* warm input fields */
+    --ring: oklch(0.65 0.16 30);              /* coral focus ring */
+
+    /* Card - slightly elevated warm surface */
+    --card: oklch(0.36 0.035 52);             /* lifted teak */
+    --card-foreground: oklch(0.94 0.02 80);
+
+    /* Brand colors for dark mode */
+    --coral: oklch(0.65 0.16 30);
+    --honey: oklch(0.76 0.12 72);
+    --terracotta: oklch(0.60 0.10 42);
+    --leaf: oklch(0.60 0.10 150);
+    --sand: oklch(0.38 0.03 55);
+    --cream: oklch(0.32 0.035 50);
+  }
+}
+
+/* Manual override: force dark mode regardless of OS setting */
+@layer base {
+  :root.dark {
+    --background: oklch(0.32 0.035 50);
+    --foreground: oklch(0.94 0.02 80);
+    --primary: oklch(0.65 0.16 30);
+    --primary-foreground: oklch(0.95 0.01 80);
+    --secondary: oklch(0.76 0.12 72);
+    --secondary-foreground: oklch(0.25 0.03 50);
+    --muted: oklch(0.38 0.03 55);
+    --muted-foreground: oklch(0.75 0.025 70);
+    --accent: oklch(0.60 0.10 150);
+    --accent-foreground: oklch(0.95 0.01 80);
+    --destructive: oklch(0.60 0.18 28);
+    --destructive-foreground: oklch(0.95 0.01 80);
+    --border: oklch(0.45 0.04 55);
+    --input: oklch(0.36 0.03 52);
+    --ring: oklch(0.65 0.16 30);
+    --card: oklch(0.36 0.035 52);
+    --card-foreground: oklch(0.94 0.02 80);
+    --coral: oklch(0.65 0.16 30);
+    --honey: oklch(0.76 0.12 72);
+    --terracotta: oklch(0.60 0.10 42);
+    --leaf: oklch(0.60 0.10 150);
+    --sand: oklch(0.38 0.03 55);
+    --cream: oklch(0.32 0.035 50);
+  }
+
+  /* Manual override: force light mode regardless of OS setting */
+  :root.light {
+    --background: var(--cream);
+    --foreground: oklch(0.15 0.02 30);
+    --primary: var(--coral);
+    --primary-foreground: oklch(0.9923 0.0062 75.41);
+    --secondary: var(--honey);
+    --secondary-foreground: oklch(0.2042 0.0076 48.33);
+    --muted: var(--sand);
+    --muted-foreground: oklch(0.45 0.02 30);
+    --accent: var(--leaf);
+    --accent-foreground: oklch(0.9923 0.0062 75.41);
+    --destructive: oklch(0.53 0.22 27);
     --destructive-foreground: oklch(0.99 0.01 95);
-
-    /* UI elements - dark */
-    --border: oklch(0.28 0.01 30);            /* subtle warm border */
-    --input: oklch(0.22 0.01 30);
-    --ring: oklch(0.65 0.18 25);
-
-    /* Card - slightly elevated from background */
-    --card: oklch(0.18 0.01 30);
-    --card-foreground: oklch(0.93 0.01 90);
-
-    /* Adjusted brand colors for dark mode visibility */
-    --coral: oklch(0.65 0.18 25);
-    --honey: oklch(0.72 0.14 85);
-    --leaf: oklch(0.58 0.12 145);
-    --sand: oklch(0.22 0.01 30);
-    --cream: oklch(0.14 0.01 30);
+    --border: oklch(0.88 0.02 90);
+    --input: oklch(0.88 0.02 90);
+    --ring: var(--coral);
+    --card: var(--cream);
+    --card-foreground: oklch(0.15 0.02 30);
   }
 }
 
@@ -123,26 +182,70 @@
   /* Font families */
   --font-display: "Playfair Display", serif;
   --font-sans: "DM Sans", sans-serif;
+
+  /* POC compatibility aliases (map to semantic tokens for dark mode support) */
+  --color-warm-white: var(--background);
+  --color-text: var(--foreground);
+  --color-text-light: var(--muted-foreground);
+  --color-text-muted: var(--muted-foreground);
+  --color-border-light: var(--border);
+
+  /* Easing functions */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-back: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* Layout tokens */
+  --width-page: 80rem;
+  --width-narrow: 45rem;
+
+  /* Shadow scale */
+  --shadow-sm: 0 1px 2px oklch(0.15 0.02 30 / 0.04), 0 1px 3px oklch(0.15 0.02 30 / 0.06);
+  --shadow-md: 0 4px 6px oklch(0.15 0.02 30 / 0.04), 0 2px 4px oklch(0.15 0.02 30 / 0.06);
+  --shadow-lg: 0 10px 25px oklch(0.15 0.02 30 / 0.08), 0 4px 10px oklch(0.15 0.02 30 / 0.04);
 }
 
 @layer components {
-  /* Buttons use semantic colors */
+  /* Buttons - POC-style rounded with hover effects */
   .btn {
-    @apply inline-flex items-center justify-center rounded-lg px-4 py-2
-           font-medium transition-colors focus-visible:outline-none
-           focus-visible:ring-2 focus-visible:ring-ring;
+    @apply inline-flex items-center justify-center gap-2;
+    @apply px-7 py-3.5 rounded-full;
+    @apply text-[0.9375rem] font-medium;
+    @apply cursor-pointer select-none;
+    @apply transition-all duration-300;
+    transition-timing-function: var(--ease-out-expo);
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring;
+  }
+  .btn:active {
+    transform: scale(0.98);
   }
   .btn-primary {
-    @apply bg-primary text-primary-foreground hover:bg-primary/90;
+    @apply bg-primary text-primary-foreground;
+    box-shadow: 0 4px 14px oklch(0.58 0.18 25 / 0.25);
+  }
+  .btn-primary:hover {
+    box-shadow: 0 6px 20px oklch(0.58 0.18 25 / 0.35);
+    transform: translateY(-2px);
   }
   .btn-secondary {
-    @apply bg-secondary text-secondary-foreground hover:bg-secondary/90;
+    @apply bg-foreground text-background;
+  }
+  .btn-secondary:hover {
+    transform: translateY(-2px);
   }
   .btn-outline {
-    @apply border border-border bg-background hover:bg-muted;
+    @apply bg-transparent border-2 border-border text-foreground;
+  }
+  .btn-outline:hover {
+    @apply border-foreground bg-foreground text-background;
   }
   .btn-ghost {
     @apply hover:bg-muted hover:text-foreground;
+  }
+  .btn-large {
+    @apply px-10 py-4 text-base;
+  }
+  .btn-sm {
+    @apply px-4 py-2 text-sm;
   }
 
   /* Form inputs */
@@ -169,21 +272,184 @@
 }
 
 @layer utilities {
-  /* Animation keyframes */
+  /* ─────────────────────────────────────────────────────────────────────────
+     Animation Keyframes
+     ───────────────────────────────────────────────────────────────────────── */
+
+  /* Core animations */
   @keyframes float-blob {
-    0%, 100% { transform: translateY(0) scale(1); }
-    50% { transform: translateY(-20px) scale(1.05); }
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    50% { transform: translate(30px, -30px) scale(1.05); }
   }
   @keyframes sway-leaf {
-    0%, 100% { transform: rotate(-3deg); }
-    50% { transform: rotate(3deg); }
+    0%, 100% { transform: rotate(var(--rotate-from, 25deg)) translateX(0); }
+    50% { transform: rotate(var(--rotate-to, 30deg)) translateX(10px); }
   }
   @keyframes marquee {
     from { transform: translateX(0); }
     to { transform: translateX(-50%); }
   }
 
+  /* Entrance animations */
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes slide-up {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Hero Ken Burns effect */
+  @keyframes hero-zoom-out {
+    from { transform: scale(1.25); }
+    to { transform: scale(1); }
+  }
+
+  /* Announcement bar scroll */
+  @keyframes scroll-announcement {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-33.33%); }
+  }
+
+  /* Form validation */
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+    20%, 40%, 60%, 80% { transform: translateX(4px); }
+  }
+
+  /* Auth/Account page animations */
+  @keyframes auth-fade-up {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes account-pulse-glow {
+    0%, 100% { box-shadow: 0 0 0 0 oklch(0.52 0.12 145 / 0.3); }
+    50% { box-shadow: 0 0 0 8px oklch(0.52 0.12 145 / 0); }
+  }
+
+  /* Animation utility classes */
   .animate-float { animation: float-blob 6s ease-in-out infinite; }
   .animate-sway { animation: sway-leaf 4s ease-in-out infinite; }
   .animate-marquee { animation: marquee 30s linear infinite; }
+  .animate-fade-in { animation: fade-in 0.5s var(--ease-out-expo) forwards; }
+  .animate-slide-up { animation: slide-up 0.6s var(--ease-out-expo) forwards; }
+  .animate-hero-zoom { animation: hero-zoom-out 3.5s ease-out forwards; }
+  .animate-scroll { animation: scroll-announcement 25s linear infinite; }
+  .animate-shake { animation: shake 0.5s ease-in-out; }
+
+  /* ─────────────────────────────────────────────────────────────────────────
+     Text Utilities
+     ───────────────────────────────────────────────────────────────────────── */
+
+  .text-gradient {
+    background: linear-gradient(135deg, var(--primary), var(--terracotta));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* ─────────────────────────────────────────────────────────────────────────
+     Accessibility
+     ───────────────────────────────────────────────────────────────────────── */
+
+  .visually-hidden {
+    @apply absolute w-px h-px p-0 -m-px overflow-hidden whitespace-nowrap border-0;
+    clip: rect(0, 0, 0, 0);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HERO CAROUSEL — Swiper customizations
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Ken Burns effect on active slide */
+.hero-carousel .swiper-slide-active img,
+.hero-carousel .swiper-slide-duplicate-active img {
+  animation: hero-zoom-out 3.5s ease-out forwards;
+}
+
+.hero-carousel .swiper-slide:not(.swiper-slide-active) img {
+  transform: scale(1.25);
+}
+
+/* Adjacent slides styling - dimmed */
+.hero-carousel .swiper-slide {
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+.hero-carousel .swiper-slide:not(.swiper-slide-active) {
+  opacity: 0.4;
+}
+
+.hero-carousel .swiper-slide:not(.swiper-slide-active)::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+}
+
+/* Pagination - Animated Progress Bar Bullets */
+.hero-carousel .swiper-pagination {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+}
+
+.hero-carousel .swiper-pagination-bullet {
+  width: 48px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.3);
+  opacity: 1;
+  border-radius: 2px;
+  position: relative;
+  overflow: hidden;
+  transition: background 0.3s ease;
+}
+
+.hero-carousel .swiper-pagination-bullet::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 0;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 2px;
+}
+
+.hero-carousel .swiper-pagination-bullet-active::before {
+  animation: progress-fill var(--autoplay-duration, 5000ms) linear forwards;
+}
+
+@keyframes progress-fill {
+  from { width: 0; }
+  to { width: 100%; }
+}
+
+/* Reset animation when bullet becomes inactive */
+.hero-carousel .swiper-pagination-bullet:not(.swiper-pagination-bullet-active)::before {
+  width: 0;
+  animation: none;
+}
+
+/* Navigation Arrows */
+.hero-carousel .swiper-button-prev,
+.hero-carousel .swiper-button-next {
+  color: rgba(255, 255, 255, 0.7);
+  transition: color 0.3s ease, transform 0.3s ease;
+}
+
+.hero-carousel .swiper-button-prev:hover,
+.hero-carousel .swiper-button-next:hover {
+  color: rgba(255, 255, 255, 1);
+  transform: scale(1.1);
+}
+
+.hero-carousel .swiper-button-prev::after,
+.hero-carousel .swiper-button-next::after {
+  font-size: 24px;
+  font-weight: 600;
 }

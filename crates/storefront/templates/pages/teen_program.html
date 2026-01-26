@@ -1,0 +1,285 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Teen Program - Naked Pineapple{% endblock %}
+
+{% block description %}Empowering the next generation through self-care. Join the Naked Pineapple Teen Program and discover your inner strength.{% endblock %}
+
+{% block content %}
+{# Hero Section #}
+<section class="relative min-h-[90vh] flex items-center overflow-hidden">
+    <div class="absolute inset-0">
+        <img src="/static/images/products/naked-pineapple-vip-bundle/NP_-_Photoshoot_2128.jpg"
+             alt="Teen Program"
+             class="w-full h-full object-cover"
+             loading="eager">
+        <div class="absolute inset-0 bg-gradient-to-r from-foreground/80 via-foreground/50 to-transparent"></div>
+    </div>
+
+    <div class="absolute inset-0 overflow-hidden pointer-events-none">
+        <div class="absolute top-20 right-[10%] w-40 h-40 rounded-full border-4 border-secondary/30 animate-float"></div>
+        <div class="absolute bottom-32 right-[20%] w-24 h-24 rounded-full bg-primary/20 blur-xl"></div>
+    </div>
+
+    <div class="relative z-10 page-width py-20">
+        <div class="max-w-2xl">
+            <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 mb-6">
+                <span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
+                <span class="text-white/90 text-sm font-medium">Ages 13-19</span>
+            </div>
+
+            <h1 class="font-display text-5xl md:text-6xl lg:text-7xl font-medium text-white mb-6 leading-[1.1]">
+                Teen Program
+            </h1>
+
+            <p class="text-xl md:text-2xl text-white/80 mb-4">
+                Empowering the Next Generation
+            </p>
+
+            <p class="text-lg text-white/70 mb-10 max-w-lg">
+                Discover your inner strength through self-care, build confidence, and become part of a supportive community that celebrates who you are.
+            </p>
+
+            <div class="flex flex-wrap gap-4">
+                <a href="https://docs.google.com/forms/d/e/1FAIpQLSeZE9oiWZ45SCsTjWULNk08GXR942i00tHr9vDnih5WJIJ_aw/viewform"
+                   target="_blank"
+                   rel="noopener"
+                   class="btn btn-large bg-primary text-primary-foreground shadow-xl hover:shadow-2xl hover:scale-105 transition-all duration-300">
+                    Get Involved
+                    <i class="ph ph-arrow-right"></i>
+                </a>
+                <a href="#about" class="btn btn-large bg-white/10 backdrop-blur-sm text-white border border-white/20 hover:bg-white/20">
+                    Learn More
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+{# About Section #}
+<section id="about" class="py-20 md:py-28 bg-background">
+    <div class="page-width">
+        <div class="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+            <div class="relative">
+                <div class="aspect-[4/5] rounded-3xl overflow-hidden shadow-2xl">
+                    <img src="/static/images/products/pineapple-enzyme-cleanser/NP_-_Photoshoot_268.jpg"
+                         alt="Teen empowerment through self-care"
+                         class="w-full h-full object-cover">
+                </div>
+                <div class="absolute -bottom-6 -left-6 w-32 h-32 bg-secondary/20 rounded-full blur-2xl"></div>
+            </div>
+
+            <div>
+                <span class="text-primary font-medium tracking-wider text-sm uppercase mb-4 block">Discover Your Inner Strength</span>
+                <h2 class="font-display text-3xl md:text-4xl lg:text-5xl text-foreground mb-6 leading-tight">
+                    Teen Empowerment Through Self-Care
+                </h2>
+                <div class="space-y-5 text-muted-foreground text-lg leading-relaxed mb-8">
+                    <p>
+                        The Naked Pineapple Teen Program is designed to empower young individuals by teaching them the importance of self-care and inner confidence.
+                    </p>
+                    <p>
+                        Through our specialized workshops and engaging video content, participants learn valuable life skills and self-care practices that foster a strong sense of self-worth.
+                    </p>
+                </div>
+
+                <ul class="space-y-4 mb-8">
+                    <li class="flex items-start gap-4">
+                        <span class="flex-shrink-0 w-10 h-10 rounded-xl bg-secondary/20 flex items-center justify-center">
+                            <i class="ph ph-plus text-lg text-secondary"></i>
+                        </span>
+                        <div>
+                            <p class="font-medium text-foreground">Interactive Workshops</p>
+                            <p class="text-muted-foreground text-sm">Learn various aspects of self-care in engaging sessions</p>
+                        </div>
+                    </li>
+                    <li class="flex items-start gap-4">
+                        <span class="flex-shrink-0 w-10 h-10 rounded-xl bg-terracotta/20 flex items-center justify-center">
+                            <i class="ph ph-video text-lg text-terracotta"></i>
+                        </span>
+                        <div>
+                            <p class="font-medium text-foreground">Video Tutorials</p>
+                            <p class="text-muted-foreground text-sm">Daily self-care routines you can follow at home</p>
+                        </div>
+                    </li>
+                    <li class="flex items-start gap-4">
+                        <span class="flex-shrink-0 w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
+                            <i class="ph ph-star text-lg text-primary"></i>
+                        </span>
+                        <div>
+                            <p class="font-medium text-foreground">Expert Guidance</p>
+                            <p class="text-muted-foreground text-sm">Build a positive self-image and boost confidence</p>
+                        </div>
+                    </li>
+                </ul>
+
+                <a href="https://docs.google.com/forms/d/e/1FAIpQLSeZE9oiWZ45SCsTjWULNk08GXR942i00tHr9vDnih5WJIJ_aw/viewform"
+                   target="_blank"
+                   rel="noopener"
+                   class="btn btn-secondary">
+                    Feel Empowered
+                    <i class="ph ph-arrow-right"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+{# 30-Day Challenges #}
+<section class="py-20 md:py-28 bg-gradient-to-br from-secondary/10 via-muted/50 to-terracotta/10">
+    <div class="page-width">
+        <div class="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+            <div class="order-2 lg:order-1">
+                <span class="text-terracotta font-medium tracking-wider text-sm uppercase mb-4 block">Transform Your Habits</span>
+                <h2 class="font-display text-3xl md:text-4xl lg:text-5xl text-foreground mb-6 leading-tight">
+                    Join Our 30-Day Challenges!
+                </h2>
+                <p class="text-xl text-muted-foreground mb-6">
+                    Transform Your Habits, Transform Your Life
+                </p>
+                <p class="text-muted-foreground leading-relaxed mb-8">
+                    Dive into one of our 30-day challenges designed to cultivate healthy skincare habits and enhance self-esteem. Each challenge is a step towards not only better skin but also a more confident and empowered you.
+                </p>
+
+                <div class="grid sm:grid-cols-2 gap-4 mb-8">
+                    <div class="bg-card rounded-2xl p-5 shadow-sm border border-border">
+                        <div class="w-10 h-10 rounded-xl bg-secondary/20 flex items-center justify-center mb-3">
+                            <i class="ph ph-sun text-lg text-secondary"></i>
+                        </div>
+                        <h4 class="font-medium text-foreground mb-1">Daily Prompts</h4>
+                        <p class="text-sm text-muted-foreground">Activities that promote wellness and self-care</p>
+                    </div>
+                    <div class="bg-card rounded-2xl p-5 shadow-sm border border-border">
+                        <div class="w-10 h-10 rounded-xl bg-terracotta/20 flex items-center justify-center mb-3">
+                            <i class="ph ph-users text-lg text-terracotta"></i>
+                        </div>
+                        <h4 class="font-medium text-foreground mb-1">Community Support</h4>
+                        <p class="text-sm text-muted-foreground">Encouragement through our online platform</p>
+                    </div>
+                </div>
+
+                <a href="https://docs.google.com/forms/d/e/1FAIpQLSeZE9oiWZ45SCsTjWULNk08GXR942i00tHr9vDnih5WJIJ_aw/viewform"
+                   target="_blank"
+                   rel="noopener"
+                   class="btn bg-terracotta text-white">
+                    Accept the Challenge!
+                    <i class="ph ph-arrow-right"></i>
+                </a>
+            </div>
+
+            <div class="relative order-1 lg:order-2">
+                <div class="aspect-square rounded-3xl overflow-hidden shadow-2xl">
+                    <img src="/static/images/events/launch-party/Launch_Party_-_NP498.jpg"
+                         alt="30-day challenges"
+                         class="w-full h-full object-cover">
+                </div>
+                <div class="absolute -bottom-4 -left-4 md:bottom-8 md:-left-8 bg-card px-6 py-4 rounded-2xl shadow-xl border border-border">
+                    <p class="text-4xl font-display font-bold text-terracotta">30</p>
+                    <p class="text-sm text-muted-foreground">Day Challenge</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+{# Opportunities Section #}
+<section class="py-20 md:py-28 bg-background">
+    <div class="page-width">
+        <div class="text-center max-w-3xl mx-auto mb-16">
+            <span class="text-primary font-medium tracking-wider text-sm uppercase mb-4 block">From Learning to Leading</span>
+            <h2 class="font-display text-3xl md:text-4xl lg:text-5xl text-foreground mb-6">
+                Community & Modeling Opportunities
+            </h2>
+            <p class="text-muted-foreground text-lg">
+                The Teen Program isn't just about learning; it's about leading. Showcase your journey and inspire others with your transformation.
+            </p>
+        </div>
+
+        <div class="grid md:grid-cols-3 gap-6 lg:gap-8">
+            <div class="group bg-card rounded-3xl overflow-hidden border border-border hover:border-primary/30 hover:shadow-xl transition-all duration-300">
+                <div class="aspect-[4/3] overflow-hidden">
+                    <img src="/static/images/products/pineapple-enzyme-cleanser/NP_-_Photoshoot_262.jpg"
+                         alt="Be Featured"
+                         class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                </div>
+                <div class="p-6">
+                    <div class="w-12 h-12 rounded-xl bg-secondary/20 flex items-center justify-center mb-4">
+                        <i class="ph ph-image text-2xl text-secondary"></i>
+                    </div>
+                    <h3 class="font-display text-xl text-foreground mb-2">Be Featured</h3>
+                    <p class="text-muted-foreground text-sm">
+                        Model for Naked Pineapple's promotional campaigns and build your portfolio.
+                    </p>
+                </div>
+            </div>
+
+            <div class="group bg-card rounded-3xl overflow-hidden border border-border hover:border-primary/30 hover:shadow-xl transition-all duration-300">
+                <div class="aspect-[4/3] overflow-hidden">
+                    <img src="/static/images/merch/dad-hat/042F576F-1C53-4B61-9B30-10D53B5EBE79.jpg"
+                         alt="Share Your Journey"
+                         class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                </div>
+                <div class="p-6">
+                    <div class="w-12 h-12 rounded-xl bg-terracotta/20 flex items-center justify-center mb-4">
+                        <i class="ph ph-share-network text-2xl text-terracotta"></i>
+                    </div>
+                    <h3 class="font-display text-xl text-foreground mb-2">Share Your Story</h3>
+                    <p class="text-muted-foreground text-sm">
+                        Inspire others by sharing your personal skincare journey and results.
+                    </p>
+                </div>
+            </div>
+
+            <div class="group bg-card rounded-3xl overflow-hidden border border-border hover:border-primary/30 hover:shadow-xl transition-all duration-300">
+                <div class="aspect-[4/3] overflow-hidden">
+                    <img src="/static/images/events/launch-party/IMG_4106_d384f118-38d8-46a4-b92a-9174ba3d357f.jpg"
+                         alt="Build Connections"
+                         class="w-full h-full object-cover object-[center_15%] group-hover:scale-105 transition-transform duration-500">
+                </div>
+                <div class="p-6">
+                    <div class="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center mb-4">
+                        <i class="ph ph-users-three text-2xl text-primary"></i>
+                    </div>
+                    <h3 class="font-display text-xl text-foreground mb-2">Build Connections</h3>
+                    <p class="text-muted-foreground text-sm">
+                        Engage with peers and build lasting friendships in a supportive environment.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center mt-12">
+            <a href="https://docs.google.com/forms/d/e/1FAIpQLSeZE9oiWZ45SCsTjWULNk08GXR942i00tHr9vDnih5WJIJ_aw/viewform"
+               target="_blank"
+               rel="noopener"
+               class="btn btn-large btn-primary">
+                Join the Naked Pineapple Family
+                <i class="ph ph-arrow-right"></i>
+            </a>
+        </div>
+    </div>
+</section>
+
+{# CTA Section #}
+<section class="py-20 md:py-28 bg-gradient-to-r from-primary via-terracotta to-secondary relative overflow-hidden">
+    <div class="absolute inset-0 overflow-hidden pointer-events-none">
+        <div class="absolute top-10 left-[10%] w-32 h-32 rounded-full border-2 border-white/20"></div>
+        <div class="absolute bottom-10 right-[10%] w-48 h-48 rounded-full border-2 border-white/10"></div>
+    </div>
+
+    <div class="page-width relative text-center">
+        <h2 class="font-display text-4xl md:text-5xl lg:text-6xl font-medium text-white mb-6 max-w-3xl mx-auto leading-tight">
+            Ready to Discover Your Inner Glow?
+        </h2>
+        <p class="text-white/90 text-lg md:text-xl mb-10 max-w-xl mx-auto">
+            Join the Naked Pineapple Teen Program and start your journey to confidence, self-care, and community.
+        </p>
+        <a href="https://docs.google.com/forms/d/e/1FAIpQLSeZE9oiWZ45SCsTjWULNk08GXR942i00tHr9vDnih5WJIJ_aw/viewform"
+           target="_blank"
+           rel="noopener"
+           class="btn btn-large bg-white text-foreground shadow-2xl hover:shadow-xl hover:scale-105 transition-all duration-300">
+            Get Involved Today
+            <i class="ph ph-arrow-right"></i>
+        </a>
+    </div>
+</section>
+{% endblock %}

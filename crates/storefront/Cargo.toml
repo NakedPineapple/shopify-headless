@@ -82,3 +82,6 @@ secrecy = { workspace = true }
 
 # URL encoding
 urlencoding = "2.1"
+
+# Search
+tantivy = "0.25"

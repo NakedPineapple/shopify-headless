@@ -9,6 +9,7 @@ use webauthn_rs::prelude::*;
 
 use crate::config::StorefrontConfig;
 use crate::content::{ContentError, ContentStore};
+use crate::search::SearchIndex;
 use crate::shopify::{CustomerClient, StorefrontClient};
 
 /// Error creating application state.
@@ -40,6 +41,7 @@ struct AppStateInner {
     customer: CustomerClient,
     webauthn: Webauthn,
     content: ContentStore,
+    search: SearchIndex,
 }
 
 impl AppState {
@@ -63,6 +65,7 @@ impl AppState {
         let customer = CustomerClient::new(&config.shopify);
         let webauthn = create_webauthn(&config)?;
         let content = ContentStore::load(content_dir)?;
+        let search = SearchIndex::new();
 
         Ok(Self {
             inner: Arc::new(AppStateInner {
@@ -72,6 +75,7 @@ impl AppState {
                 customer,
                 webauthn,
                 content,
+                search,
             }),
         })
     }
@@ -110,6 +114,25 @@ impl AppState {
     #[must_use]
     pub fn content(&self) -> &ContentStore {
         &self.inner.content
+    }
+
+    /// Get a reference to the search index.
+    #[must_use]
+    pub fn search(&self) -> &SearchIndex {
+        &self.inner.search
+    }
+
+    /// Start building the search index asynchronously.
+    ///
+    /// This spawns a background task that fetches products/collections from Shopify
+    /// and indexes them along with local content. Until complete, search returns
+    /// empty results.
+    pub fn start_search_indexing(&self) {
+        crate::search::build_index_async(
+            self.inner.search.clone(),
+            self.inner.storefront.clone(),
+            self.inner.content.clone(),
+        );
     }
 }
 

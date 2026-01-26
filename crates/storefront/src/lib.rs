@@ -16,6 +16,7 @@ pub mod filters;
 pub mod middleware;
 pub mod models;
 pub mod routes;
+pub mod search;
 pub mod services;
 pub mod shopify;
 pub mod state;

@@ -9,9 +9,9 @@
     <div class="page-width">
         <div class="max-w-3xl mx-auto">
             <header class="text-center mb-12">
-                <h1 class="font-display text-4xl md:text-5xl font-medium text-text mb-4">{{ title }}</h1>
+                <h1 class="font-display text-4xl md:text-5xl font-medium text-foreground mb-4">{{ title }}</h1>
                 {% if let Some(date) = updated_at %}
-                <p class="text-text-muted">Last updated: {{ date.format("%B %d, %Y") }}</p>
+                <p class="text-muted-foreground">Last updated: {{ date.format("%B %d, %Y") }}</p>
                 {% endif %}
             </header>
 

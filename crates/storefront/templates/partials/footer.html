@@ -1,21 +1,28 @@
-{# Footer #}
+{# Footer - Warm Send-Off Design #}
 <footer class="relative overflow-hidden">
-    <!-- Tagline Banner -->
-    <div class="bg-gradient-to-r from-primary via-terracotta to-honey py-8 md:py-10">
-        <div class="page-width">
+    {# Tagline Banner - Transition from content #}
+    <div class="bg-gradient-to-r from-primary via-terracotta to-honey py-8 md:py-10 relative overflow-hidden">
+        {# Decorative dots pattern #}
+        <div class="absolute inset-0 opacity-10" style="background-image: url('data:image/svg+xml,<svg width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" xmlns=\"http://www.w3.org/2000/svg\"><circle cx=\"10\" cy=\"10\" r=\"1.5\" fill=\"white\"/></svg>'); background-size: 20px 20px;"></div>
+        <div class="page-width relative">
             <p class="font-display text-xl md:text-2xl lg:text-3xl text-primary-foreground text-center font-medium tracking-wide">
                 Glow boldly. Love fiercely. Live radiantly.
             </p>
         </div>
     </div>
 
-    <!-- Main Footer Content -->
+    {# Main Footer Content #}
     <div class="bg-muted relative">
-        <div class="page-width py-16 md:py-20">
+        {# Subtle pineapple diamond pattern #}
+        <div class="absolute inset-0 opacity-[0.03] pointer-events-none"
+             style="background-image: url('data:image/svg+xml,<svg width=\"60\" height=\"60\" viewBox=\"0 0 60 60\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M30 0L60 30L30 60L0 30Z\" fill=\"none\" stroke=\"%23d63a2f\" stroke-width=\"1\"/></svg>'); background-size: 60px 60px;"></div>
+
+        <div class="page-width py-16 md:py-20 relative">
             <div class="grid lg:grid-cols-12 gap-12 lg:gap-8">
-                <!-- Left Zone - Brand & Newsletter -->
+
+                {# Left Zone - Brand & Newsletter #}
                 <div class="lg:col-span-5 space-y-8">
-                    <!-- Logo/Brand -->
+                    {# Logo/Brand #}
                     <div>
                         <a href="/" class="inline-block group">
                             <span class="font-display text-2xl md:text-3xl font-medium text-foreground group-hover:text-primary transition-colors">
@@ -27,16 +34,16 @@
                         </p>
                     </div>
 
-                    <!-- Newsletter -->
+                    {# Newsletter - Styled as invitation #}
                     <div class="bg-background rounded-2xl p-6 md:p-8 shadow-sm">
-                        <h3 class="font-display text-xl md:text-2xl font-medium mb-2">Stay in the Glow</h3>
+                        <h3 class="font-display text-xl md:text-2xl font-medium text-foreground mb-2">Stay in the Glow</h3>
                         <p class="text-sm text-muted-foreground mb-5">
                             Join our community for exclusive offers, skincare tips, and first access to new products.
                         </p>
                         <form action="/newsletter/subscribe" method="post" class="space-y-3"
                               hx-post="/newsletter/subscribe"
                               hx-swap="outerHTML">
-                            <div>
+                            <div class="relative">
                                 <label for="footer-email" class="sr-only">Email address</label>
                                 <input type="email"
                                        id="footer-email"
@@ -46,9 +53,10 @@
                                        required
                                        autocomplete="email">
                             </div>
-                            <button type="submit" class="btn btn-primary w-full justify-center">
+                            <button type="submit"
+                                    class="w-full btn btn-primary justify-center group">
                                 Subscribe
-                                <i class="ph ph-arrow-right ml-2"></i>
+                                <i class="ph ph-arrow-right text-lg transition-transform group-hover:translate-x-1"></i>
                             </button>
                         </form>
                         <p class="text-xs text-muted-foreground mt-4">
@@ -56,7 +64,7 @@
                         </p>
                     </div>
 
-                    <!-- Social Icons (Mobile) -->
+                    {# Social Icons - Mobile: shown here, Desktop: in bottom bar #}
                     <div class="lg:hidden">
                         <p class="text-xs uppercase tracking-[0.2em] text-muted-foreground font-medium mb-4">Follow Us</p>
                         <div class="flex gap-3">
@@ -66,91 +74,140 @@
                             <a href="https://www.tiktok.com/@_nakedpineapple_" class="w-10 h-10 flex items-center justify-center rounded-full bg-background text-foreground hover:bg-primary hover:text-primary-foreground transition-all shadow-sm" aria-label="TikTok" target="_blank" rel="noopener">
                                 <i class="ph ph-tiktok-logo text-xl"></i>
                             </a>
-                            <a href="https://facebook.com/nakedpineapple" class="w-10 h-10 flex items-center justify-center rounded-full bg-background text-foreground hover:bg-primary hover:text-primary-foreground transition-all shadow-sm" aria-label="Facebook" target="_blank" rel="noopener">
+                            <a href="https://www.facebook.com/people/Naked-Pineapple/61567739640422/" class="w-10 h-10 flex items-center justify-center rounded-full bg-background text-foreground hover:bg-primary hover:text-primary-foreground transition-all shadow-sm" aria-label="Facebook" target="_blank" rel="noopener">
                                 <i class="ph ph-facebook-logo text-xl"></i>
+                            </a>
+                            <a href="https://youtube.com/playlist?list=PLUo-lssPL36urXtA211K4B2YqV2EO994C" class="w-10 h-10 flex items-center justify-center rounded-full bg-background text-foreground hover:bg-primary hover:text-primary-foreground transition-all shadow-sm" aria-label="YouTube" target="_blank" rel="noopener">
+                                <i class="ph ph-youtube-logo text-xl"></i>
                             </a>
                         </div>
                     </div>
                 </div>
 
-                <!-- Right Zone - Link Columns -->
+                {# Right Zone - Link Columns #}
                 <div class="lg:col-span-7">
                     <div class="grid grid-cols-2 md:grid-cols-3 gap-8 md:gap-6">
-                        <!-- Shop Column -->
+                        {# Shop Column #}
                         <div>
                             <h4 class="text-xs uppercase tracking-[0.2em] text-muted-foreground font-medium mb-5">Shop</h4>
                             <ul class="space-y-3 list-none">
                                 <li>
-                                    <a href="/collections/skincare" class="text-foreground hover:text-primary transition-colors">
+                                    <a href="/collections/frontpage" class="text-foreground hover:text-primary transition-colors inline-flex items-center gap-1 group">
                                         All Products
+                                        <i class="ph ph-arrow-right text-sm opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all"></i>
                                     </a>
                                 </li>
                                 <li>
-                                    <a href="/products/starter-kit" class="text-foreground hover:text-primary transition-colors">
+                                    <a href="/products/starter-kit" class="text-foreground hover:text-primary transition-colors inline-flex items-center gap-1 group">
                                         Starter Kit
+                                        <i class="ph ph-arrow-right text-sm opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all"></i>
                                     </a>
                                 </li>
                                 <li>
-                                    <a href="/collections/bundles" class="text-foreground hover:text-primary transition-colors">
-                                        Bundles
+                                    <a href="/products/vip-bundle" class="text-foreground hover:text-primary transition-colors inline-flex items-center gap-1 group">
+                                        VIP Bundle
+                                        <i class="ph ph-arrow-right text-sm opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all"></i>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="/collections/merch" class="text-foreground hover:text-primary transition-colors inline-flex items-center gap-1 group">
+                                        Merch
+                                        <i class="ph ph-arrow-right text-sm opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all"></i>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="/pages/subscriptions" class="text-foreground hover:text-primary transition-colors inline-flex items-center gap-1 group">
+                                        Subscriptions
+                                        <i class="ph ph-arrow-right text-sm opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all"></i>
                                     </a>
                                 </li>
                             </ul>
                         </div>
 
-                        <!-- Company Column -->
+                        {# Company Column #}
                         <div>
                             <h4 class="text-xs uppercase tracking-[0.2em] text-muted-foreground font-medium mb-5">Company</h4>
                             <ul class="space-y-3 list-none">
                                 <li>
-                                    <a href="/about" class="text-foreground hover:text-primary transition-colors">
+                                    <a href="/pages/about" class="text-foreground hover:text-primary transition-colors inline-flex items-center gap-1 group">
                                         Our Story
+                                        <i class="ph ph-arrow-right text-sm opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all"></i>
                                     </a>
                                 </li>
                                 <li>
-                                    <a href="/contact" class="text-foreground hover:text-primary transition-colors">
+                                    <a href="/pages/model-program" class="text-foreground hover:text-primary transition-colors inline-flex items-center gap-1 group">
+                                        Model Program
+                                        <i class="ph ph-arrow-right text-sm opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all"></i>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="/pages/affiliate-program" class="text-foreground hover:text-primary transition-colors inline-flex items-center gap-1 group">
+                                        Affiliates
+                                        <i class="ph ph-arrow-right text-sm opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all"></i>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="/blog" class="text-foreground hover:text-primary transition-colors inline-flex items-center gap-1 group">
+                                        Blog
+                                        <i class="ph ph-arrow-right text-sm opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all"></i>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="/pages/contact" class="text-foreground hover:text-primary transition-colors inline-flex items-center gap-1 group">
                                         Contact
+                                        <i class="ph ph-arrow-right text-sm opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all"></i>
                                     </a>
                                 </li>
                             </ul>
                         </div>
 
-                        <!-- Help Column -->
+                        {# Help Column #}
                         <div class="col-span-2 md:col-span-1">
                             <h4 class="text-xs uppercase tracking-[0.2em] text-muted-foreground font-medium mb-5">Help</h4>
                             <ul class="space-y-3 list-none">
                                 <li>
-                                    <a href="/faq" class="text-foreground hover:text-primary transition-colors">
+                                    <a href="/faq" class="text-foreground hover:text-primary transition-colors inline-flex items-center gap-1 group">
                                         FAQ
+                                        <i class="ph ph-arrow-right text-sm opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all"></i>
                                     </a>
                                 </li>
                                 <li>
-                                    <a href="/shipping" class="text-foreground hover:text-primary transition-colors">
+                                    <a href="/shipping" class="text-foreground hover:text-primary transition-colors inline-flex items-center gap-1 group">
                                         Shipping & Returns
+                                        <i class="ph ph-arrow-right text-sm opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all"></i>
                                     </a>
                                 </li>
                                 <li>
-                                    <a href="/terms" class="text-foreground hover:text-primary transition-colors">
+                                    <a href="/terms" class="text-foreground hover:text-primary transition-colors inline-flex items-center gap-1 group">
                                         Terms of Service
+                                        <i class="ph ph-arrow-right text-sm opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all"></i>
                                     </a>
                                 </li>
                                 <li>
-                                    <a href="/privacy" class="text-foreground hover:text-primary transition-colors">
+                                    <a href="/privacy" class="text-foreground hover:text-primary transition-colors inline-flex items-center gap-1 group">
                                         Privacy Policy
+                                        <i class="ph ph-arrow-right text-sm opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all"></i>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="/accessibility" class="text-foreground hover:text-primary transition-colors inline-flex items-center gap-1 group">
+                                        Accessibility
+                                        <i class="ph ph-arrow-right text-sm opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all"></i>
                                     </a>
                                 </li>
                             </ul>
                         </div>
                     </div>
                 </div>
+
             </div>
         </div>
 
-        <!-- Bottom Bar -->
+        {# Bottom Bar #}
         <div class="border-t border-primary/10">
             <div class="page-width py-6">
                 <div class="flex flex-col md:flex-row items-center justify-between gap-6">
-                    <!-- Social Icons (Desktop) -->
+                    {# Social Icons - Desktop only #}
                     <div class="hidden lg:flex items-center gap-3">
                         <a href="https://instagram.com/_nakedpineapple_" class="w-9 h-9 flex items-center justify-center rounded-full text-muted-foreground hover:bg-background hover:text-primary transition-all" aria-label="Instagram" target="_blank" rel="noopener">
                             <i class="ph ph-instagram-logo text-lg"></i>
@@ -158,23 +215,33 @@
                         <a href="https://www.tiktok.com/@_nakedpineapple_" class="w-9 h-9 flex items-center justify-center rounded-full text-muted-foreground hover:bg-background hover:text-primary transition-all" aria-label="TikTok" target="_blank" rel="noopener">
                             <i class="ph ph-tiktok-logo text-lg"></i>
                         </a>
-                        <a href="https://facebook.com/nakedpineapple" class="w-9 h-9 flex items-center justify-center rounded-full text-muted-foreground hover:bg-background hover:text-primary transition-all" aria-label="Facebook" target="_blank" rel="noopener">
+                        <a href="https://www.facebook.com/people/Naked-Pineapple/61567739640422/" class="w-9 h-9 flex items-center justify-center rounded-full text-muted-foreground hover:bg-background hover:text-primary transition-all" aria-label="Facebook" target="_blank" rel="noopener">
                             <i class="ph ph-facebook-logo text-lg"></i>
+                        </a>
+                        <a href="https://youtube.com/playlist?list=PLUo-lssPL36urXtA211K4B2YqV2EO994C" class="w-9 h-9 flex items-center justify-center rounded-full text-muted-foreground hover:bg-background hover:text-primary transition-all" aria-label="YouTube" target="_blank" rel="noopener">
+                            <i class="ph ph-youtube-logo text-lg"></i>
                         </a>
                     </div>
 
-                    <!-- Copyright -->
+                    {# Copyright #}
                     <p class="text-sm text-muted-foreground order-last md:order-none">
                         &copy; {{ ""|current_year }} Naked Pineapple. Made with <i class="ph-fill ph-heart text-primary"></i> for your skin.
                     </p>
 
-                    <!-- Payment Methods placeholder -->
-                    <div class="flex items-center gap-2 text-muted-foreground text-sm">
-                        <i class="ph ph-credit-card text-lg"></i>
-                        <span>Visa, Mastercard, Apple Pay</span>
+                    {# Payment Methods #}
+                    <div class="flex items-center gap-2">
+                        <span class="sr-only">Payment methods</span>
+                        <img src="/static/images/payment/visa.svg" alt="Visa" width="38" height="24" class="h-6 w-auto opacity-60 hover:opacity-100 transition-opacity">
+                        <img src="/static/images/payment/mastercard.svg" alt="Mastercard" width="38" height="24" class="h-6 w-auto opacity-60 hover:opacity-100 transition-opacity">
+                        <img src="/static/images/payment/amex.svg" alt="American Express" width="38" height="24" class="h-6 w-auto opacity-60 hover:opacity-100 transition-opacity">
+                        <img src="/static/images/payment/apple-pay.svg" alt="Apple Pay" width="38" height="24" class="h-6 w-auto opacity-60 hover:opacity-100 transition-opacity">
+                        <img src="/static/images/payment/google-pay.svg" alt="Google Pay" width="38" height="24" class="h-6 w-auto opacity-60 hover:opacity-100 transition-opacity">
+                        <img src="/static/images/payment/shop-pay.svg" alt="Shop Pay" width="38" height="24" class="h-6 w-auto opacity-60 hover:opacity-100 transition-opacity">
                     </div>
                 </div>
             </div>
         </div>
+
+        {% include "partials/powered_by_pistachio.html" %}
     </div>
 </footer>

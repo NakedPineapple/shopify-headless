@@ -27,12 +27,15 @@
     <!-- Fonts: Playfair Display (headlines) + DM Sans (body) -->
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet">
 
-    <!-- Phosphor Icons (regular + fill weights) -->
-    <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
-    <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
+    <!-- HTMX -->
+    <script src="/static/vendor/htmx.min.js"></script>
+
+    <!-- Phosphor Icons -->
+    <link rel="stylesheet" href="/static/vendor/phosphor-icons.css">
 
     <!-- CSS -->
     <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="/static/vendor/swiper-bundle.min.css">
 
     <!-- Meta tags -->
     {% block meta %}
@@ -103,8 +106,8 @@
     <!-- Newsletter Popup Container -->
     <div id="newsletter-popup"></div>
 
-    <!-- HTMX -->
-    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+    <!-- Swiper.js (local vendor) -->
+    <script src="/static/vendor/swiper-bundle.min.js"></script>
 
     <!-- Base Scripts -->
     <script>
@@ -158,12 +161,18 @@
             if (e.key === 'Escape') {
                 window.closeQuickView();
                 window.closeMobileMenu();
+                window.closeSearchDrawer();
             }
         });
 
-        // Clean up on HTMX navigation
-        document.body.addEventListener('htmx:beforeSwap', function() {
+        // Clean up on HTMX navigation (but not for search results within the drawer)
+        document.body.addEventListener('htmx:beforeSwap', function(e) {
+            var target = e.detail.target;
+            var isSearchResults = target && target.id === 'search-results';
             window.closeQuickView();
+            if (!isSearchResults) {
+                window.closeSearchDrawer();
+            }
         });
 
         // Mobile menu functionality
@@ -194,6 +203,64 @@
                 menu.hidden = true;
             }, 300);
         };
+
+        // Search drawer functionality
+        window.openSearchDrawer = function() {
+            var drawer = document.getElementById('search-drawer');
+            var overlay = document.getElementById('search-drawer-overlay');
+            var input = document.getElementById('search-input');
+            if (!drawer || !overlay) return;
+
+            drawer.hidden = false;
+            overlay.classList.remove('opacity-0', 'invisible');
+            overlay.classList.add('opacity-100', 'visible');
+            setTimeout(function() {
+                drawer.classList.add('is-open');
+                if (input) input.focus();
+            }, 10);
+            document.body.style.overflow = 'hidden';
+        };
+
+        window.closeSearchDrawer = function() {
+            var drawer = document.getElementById('search-drawer');
+            var overlay = document.getElementById('search-drawer-overlay');
+            if (!drawer || !overlay) return;
+
+            drawer.classList.remove('is-open');
+            overlay.classList.add('opacity-0', 'invisible');
+            overlay.classList.remove('opacity-100', 'visible');
+            document.body.style.overflow = '';
+            setTimeout(function() {
+                drawer.hidden = true;
+            }, 300);
+        };
+
+        // Search input clear button visibility
+        document.addEventListener('input', function(e) {
+            if (e.target.id === 'search-input') {
+                var clearBtn = document.getElementById('search-clear');
+                if (clearBtn) {
+                    clearBtn.classList.toggle('hidden', !e.target.value);
+                }
+            }
+        });
+
+        // Handle search form reset
+        document.addEventListener('click', function(e) {
+            if (e.target.id === 'search-clear' || e.target.closest('#search-clear')) {
+                var input = document.getElementById('search-input');
+                var results = document.getElementById('search-results');
+                if (input) {
+                    input.value = '';
+                    input.focus();
+                }
+                if (results) {
+                    results.innerHTML = '<div class="text-center text-muted-foreground py-8"><i class="ph ph-magnifying-glass text-4xl mb-3 block opacity-50"></i><p>Start typing to search</p></div>';
+                }
+                var clearBtn = document.getElementById('search-clear');
+                if (clearBtn) clearBtn.classList.add('hidden');
+            }
+        });
 
         // Quantity selector functionality
         document.addEventListener('click', function(e) {
@@ -292,17 +359,61 @@
 
         // Page component initialization
         window.initPageComponents = function() {
-            // Initialize tabs (only if not already initialized)
+            // Initialize hero carousel (Swiper)
+            document.querySelectorAll('.hero-carousel:not([data-initialized])').forEach(function(heroCarousel) {
+                if (window._heroSwiper) {
+                    window._heroSwiper.destroy(true, true);
+                }
+
+                var autoplayDelay = parseInt(heroCarousel.dataset.autoplay) || 5000;
+                heroCarousel.style.setProperty('--autoplay-duration', autoplayDelay + 'ms');
+
+                window._heroSwiper = new Swiper(heroCarousel, {
+                    loop: true,
+                    speed: 800,
+                    centeredSlides: true,
+                    slidesPerView: 1.15,
+                    spaceBetween: 20,
+                    autoplay: {
+                        delay: autoplayDelay,
+                        disableOnInteraction: false,
+                    },
+                    pagination: {
+                        el: '.swiper-pagination',
+                        clickable: true,
+                    },
+                    navigation: {
+                        nextEl: '.swiper-button-next',
+                        prevEl: '.swiper-button-prev',
+                    },
+                    breakpoints: {
+                        0: { slidesPerView: 1.08, spaceBetween: 12 },
+                        768: { slidesPerView: 1.12, spaceBetween: 16 },
+                        1024: { slidesPerView: 1.18, spaceBetween: 24 },
+                    },
+                });
+                heroCarousel.dataset.initialized = 'true';
+            });
+
+            // Initialize tabs with slide + fade animation (only if not already initialized)
             document.querySelectorAll('.tabs:not([data-initialized])').forEach(function(tabContainer) {
                 var buttons = tabContainer.querySelectorAll('.tab-btn');
                 var section = tabContainer.closest('section');
                 if (!section) return;
                 var panels = section.querySelectorAll('.tab-panel');
+                var isAnimating = false;
 
                 buttons.forEach(function(button) {
                     button.addEventListener('click', function() {
                         var index = button.dataset.index;
+                        var currentPanel = section.querySelector('.tab-panel[data-active="true"]');
+                        var nextPanel = section.querySelector('.tab-panel[data-index="' + index + '"]');
 
+                        // Skip if already on this tab or animating
+                        if (!nextPanel || currentPanel === nextPanel || isAnimating) return;
+                        isAnimating = true;
+
+                        // Update button states
                         buttons.forEach(function(btn) {
                             btn.dataset.active = 'false';
                             btn.setAttribute('aria-selected', 'false');
@@ -310,17 +421,101 @@
                         button.dataset.active = 'true';
                         button.setAttribute('aria-selected', 'true');
 
-                        panels.forEach(function(panel) {
-                            if (panel.dataset.index === index) {
-                                panel.classList.remove('hidden');
-                            } else {
-                                panel.classList.add('hidden');
-                            }
-                        });
+                        // Animate out current panel
+                        currentPanel.classList.add('opacity-0', 'translate-y-8');
+                        currentPanel.dataset.active = 'false';
+
+                        // After transition, swap positions and animate in
+                        setTimeout(function() {
+                            // Move current panel out of flow
+                            currentPanel.classList.add('absolute', 'inset-x-0', 'pointer-events-none');
+
+                            // Prepare next panel (still invisible but in flow)
+                            nextPanel.classList.remove('absolute', 'inset-x-0', 'pointer-events-none');
+                            nextPanel.dataset.active = 'true';
+
+                            // Force reflow, then animate in
+                            nextPanel.offsetHeight;
+                            nextPanel.classList.remove('opacity-0', 'translate-y-8');
+
+                            // Animation complete
+                            setTimeout(function() {
+                                isAnimating = false;
+                            }, 300);
+                        }, 300);
                     });
                 });
                 tabContainer.dataset.initialized = 'true';
             });
+
+            // Initialize Before/After comparison slider
+            var compareSlider = document.getElementById('compare-slider');
+            if (compareSlider && !compareSlider.dataset.initialized) {
+                var handle = document.getElementById('slider-handle');
+                var beforeContainer = document.getElementById('before-container');
+                var afterLabelContainer = document.getElementById('after-label-container');
+
+                if (handle && beforeContainer && afterLabelContainer) {
+                    var isDragging = false;
+
+                    var updateSlider = function(x) {
+                        var rect = compareSlider.getBoundingClientRect();
+                        var percentage = ((x - rect.left) / rect.width) * 100;
+                        percentage = Math.max(10, Math.min(90, percentage));
+                        handle.style.left = percentage + '%';
+                        beforeContainer.style.clipPath = 'inset(0 ' + (100 - percentage) + '% 0 0)';
+                        afterLabelContainer.style.clipPath = 'inset(0 0 0 ' + percentage + '%)';
+                    };
+
+                    handle.addEventListener('mousedown', function() { isDragging = true; });
+                    document.addEventListener('mouseup', function() { isDragging = false; });
+                    document.addEventListener('mousemove', function(e) {
+                        if (!isDragging) return;
+                        e.preventDefault();
+                        updateSlider(e.clientX);
+                    });
+                    compareSlider.addEventListener('click', function(e) { updateSlider(e.clientX); });
+
+                    // Touch events
+                    handle.addEventListener('touchstart', function() { isDragging = true; }, { passive: true });
+                    document.addEventListener('touchend', function() { isDragging = false; });
+                    document.addEventListener('touchmove', function(e) {
+                        if (!isDragging) return;
+                        updateSlider(e.touches[0].clientX);
+                    }, { passive: true });
+
+                    compareSlider.dataset.initialized = 'true';
+                }
+            }
+
+            // Initialize Before/After mobile tap toggle
+            var toggleContainer = document.getElementById('toggle-container');
+            if (toggleContainer && !toggleContainer.dataset.initialized) {
+                var toggleBefore = document.getElementById('toggle-before');
+                var toggleAfter = document.getElementById('toggle-after');
+                var toggleLabel = document.getElementById('toggle-label');
+
+                if (toggleBefore && toggleAfter && toggleLabel) {
+                    var showingAfter = false;
+                    toggleContainer.addEventListener('click', function() {
+                        showingAfter = !showingAfter;
+                        if (showingAfter) {
+                            toggleBefore.classList.add('opacity-0');
+                            toggleAfter.classList.remove('opacity-0');
+                            toggleLabel.textContent = 'After';
+                            toggleLabel.classList.remove('bg-text/80');
+                            toggleLabel.classList.add('bg-primary');
+                        } else {
+                            toggleBefore.classList.remove('opacity-0');
+                            toggleAfter.classList.add('opacity-0');
+                            toggleLabel.textContent = 'Before';
+                            toggleLabel.classList.remove('bg-primary');
+                            toggleLabel.classList.add('bg-text/80');
+                        }
+                    });
+                    toggleContainer.dataset.initialized = 'true';
+                }
+            }
         };
 
         // Run on initial page load

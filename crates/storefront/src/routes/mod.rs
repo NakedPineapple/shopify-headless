@@ -57,6 +57,7 @@ pub mod collections;
 pub mod home;
 pub mod pages;
 pub mod products;
+pub mod search;
 pub mod shopify_auth;
 
 use axum::{
@@ -168,6 +169,8 @@ pub fn routes() -> Router<AppState> {
         .nest("/cart", cart_routes())
         // Checkout redirect
         .route("/checkout", get(cart::checkout))
+        // Search routes
+        .nest("/search", search::router())
         // Account routes (TODO: add auth middleware)
         .nest("/account", account_routes())
         // Auth routes

@@ -23,11 +23,11 @@
                 The Naked Pineapple Blog
             </span>
 
-            <h1 class="font-display text-4xl md:text-5xl lg:text-6xl font-medium text-text mb-6 leading-[1.1] animate-fade-up">
+            <h1 class="font-display text-4xl md:text-5xl lg:text-6xl font-medium text-foreground mb-6 leading-[1.1] animate-fade-up">
                 Glow From <span class="text-primary">Within</span>
             </h1>
 
-            <p class="text-lg md:text-xl text-text-muted max-w-2xl mx-auto animate-fade-up animation-delay-100">
+            <p class="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto animate-fade-up animation-delay-100">
                 Skincare wisdom, self-care rituals, and stories of radiance. Your guide to confident, glowing skin.
             </p>
         </div>
@@ -35,16 +35,16 @@
 </section>
 
 {# Blog Posts Grid #}
-<section class="py-16 md:py-24 bg-warm-white">
+<section class="py-16 md:py-24 bg-background">
     <div class="page-width">
         {% if posts.is_empty() %}
         {# Empty state #}
         <div class="max-w-md mx-auto text-center py-16">
             <div class="w-20 h-20 rounded-full bg-sand flex items-center justify-center mx-auto mb-6">
-                <i class="ph ph-pencil-simple text-3xl text-text-muted"></i>
+                <i class="ph ph-pencil-simple text-3xl text-muted-foreground"></i>
             </div>
-            <h2 class="font-display text-2xl text-text mb-4">Coming Soon</h2>
-            <p class="text-text-muted">
+            <h2 class="font-display text-2xl text-foreground mb-4">Coming Soon</h2>
+            <p class="text-muted-foreground">
                 We're working on some amazing content for you. Check back soon for skincare tips, self-care rituals, and more!
             </p>
         </div>
@@ -53,7 +53,7 @@
         {% if let Some(featured) = posts.first() %}
         <div class="mb-16">
             <a href="/blog/{{ featured.slug }}" class="group block">
-                <article class="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center bg-white rounded-3xl shadow-sm border border-border-light overflow-hidden hover:shadow-xl hover:border-primary/20 transition-all duration-300">
+                <article class="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center bg-card rounded-3xl shadow-sm border border-border-light overflow-hidden hover:shadow-xl hover:border-primary/20 transition-all duration-300">
                     {# Featured Image #}
                     <div class="relative aspect-[4/3] lg:aspect-auto lg:h-full overflow-hidden">
                         {% if let Some(image) = featured.featured_image.as_ref() %}
@@ -79,20 +79,20 @@
                         {% if !featured.tags.is_empty() %}
                         <div class="flex flex-wrap gap-2 mb-4">
                             {% for tag in featured.tags.iter().take(3) %}
-                            <span class="px-2 py-1 bg-sand text-text-muted text-xs font-medium rounded-full">{{ tag }}</span>
+                            <span class="px-2 py-1 bg-sand text-muted-foreground text-xs font-medium rounded-full">{{ tag }}</span>
                             {% endfor %}
                         </div>
                         {% endif %}
 
-                        <h2 class="font-display text-2xl md:text-3xl lg:text-4xl text-text mb-4 group-hover:text-primary transition-colors leading-tight">
+                        <h2 class="font-display text-2xl md:text-3xl lg:text-4xl text-foreground mb-4 group-hover:text-primary transition-colors leading-tight">
                             {{ featured.title }}
                         </h2>
 
                         {% if let Some(desc) = featured.description.as_ref() %}
-                        <p class="text-text-muted text-lg mb-6 line-clamp-3">{{ desc }}</p>
+                        <p class="text-muted-foreground text-lg mb-6 line-clamp-3">{{ desc }}</p>
                         {% endif %}
 
-                        <div class="flex items-center gap-4 text-sm text-text-muted">
+                        <div class="flex items-center gap-4 text-sm text-muted-foreground">
                             <span class="flex items-center gap-1.5">
                                 <i class="ph ph-calendar-blank"></i>
                                 {{ featured.published_at.format("%B %d, %Y") }}
@@ -113,7 +113,7 @@
         <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             {% for post in posts.iter().skip(1) %}
             <a href="/blog/{{ post.slug }}" class="group">
-                <article class="bg-white rounded-2xl shadow-sm border border-border-light overflow-hidden hover:shadow-lg hover:border-primary/20 transition-all duration-300 h-full flex flex-col">
+                <article class="bg-card rounded-2xl shadow-sm border border-border-light overflow-hidden hover:shadow-lg hover:border-primary/20 transition-all duration-300 h-full flex flex-col">
                     {# Image #}
                     <div class="relative aspect-[16/10] overflow-hidden">
                         {% if let Some(image) = post.featured_image.as_ref() %}
@@ -134,20 +134,20 @@
                         {% if !post.tags.is_empty() %}
                         <div class="flex flex-wrap gap-1.5 mb-3">
                             {% for tag in post.tags.iter().take(2) %}
-                            <span class="px-2 py-0.5 bg-sand text-text-muted text-xs font-medium rounded-full">{{ tag }}</span>
+                            <span class="px-2 py-0.5 bg-sand text-muted-foreground text-xs font-medium rounded-full">{{ tag }}</span>
                             {% endfor %}
                         </div>
                         {% endif %}
 
-                        <h3 class="font-display text-xl text-text mb-3 group-hover:text-primary transition-colors leading-snug line-clamp-2">
+                        <h3 class="font-display text-xl text-foreground mb-3 group-hover:text-primary transition-colors leading-snug line-clamp-2">
                             {{ post.title }}
                         </h3>
 
                         {% if let Some(desc) = post.description.as_ref() %}
-                        <p class="text-text-muted text-sm mb-4 line-clamp-2 flex-grow">{{ desc }}</p>
+                        <p class="text-muted-foreground text-sm mb-4 line-clamp-2 flex-grow">{{ desc }}</p>
                         {% endif %}
 
-                        <div class="flex items-center justify-between text-xs text-text-muted mt-auto pt-4 border-t border-border-light">
+                        <div class="flex items-center justify-between text-xs text-muted-foreground mt-auto pt-4 border-t border-border-light">
                             <span class="flex items-center gap-1.5">
                                 <i class="ph ph-calendar-blank"></i>
                                 {{ post.published_at.format("%b %d, %Y") }}

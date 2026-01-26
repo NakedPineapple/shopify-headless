@@ -9,7 +9,7 @@
     <h1 class="text-3xl font-bold text-center mb-8">Login</h1>
 
     {% if success.is_some() %}
-    <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-6">
+    <div class="bg-accent/10 border border-accent text-accent px-4 py-3 rounded mb-6">
         {% match success.as_deref() %}
             {% when Some with ("activated") %}
                 Your account has been activated! You can now log in.
@@ -22,7 +22,7 @@
     {% endif %}
 
     {% if error.is_some() %}
-    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
+    <div class="bg-destructive/10 border border-destructive text-destructive px-4 py-3 rounded mb-6">
         {% match error.as_deref() %}
             {% when Some with ("credentials") %}
                 Invalid email or password. If you haven't activated your account yet, please check your email.
@@ -41,26 +41,26 @@
     <!-- Password Login Form -->
     <form method="POST" action="/auth/login" class="space-y-4 mb-8">
         <div>
-            <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <label for="email" class="block text-sm font-medium text-foreground mb-1">Email</label>
             <input
                 type="email"
                 name="email"
                 id="email"
                 required
                 autocomplete="email"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-coral-500 focus:border-transparent"
+                class="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-coral-500 focus:border-transparent"
                 placeholder="you@example.com"
             >
         </div>
         <div>
-            <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+            <label for="password" class="block text-sm font-medium text-foreground mb-1">Password</label>
             <input
                 type="password"
                 name="password"
                 id="password"
                 required
                 autocomplete="current-password"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-coral-500 focus:border-transparent"
+                class="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-coral-500 focus:border-transparent"
                 placeholder="Your password"
             >
         </div>
@@ -80,24 +80,24 @@
 
     <div class="relative my-8">
         <div class="absolute inset-0 flex items-center">
-            <div class="w-full border-t border-gray-300"></div>
+            <div class="w-full border-t border-border"></div>
         </div>
         <div class="relative flex justify-center text-sm">
-            <span class="px-2 bg-white text-gray-500">Or continue with</span>
+            <span class="px-2 bg-card text-muted-foreground">Or continue with</span>
         </div>
     </div>
 
     <!-- Passkey Login Form -->
     <form id="passkey-form" class="space-y-4">
         <div>
-            <label for="passkey-email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <label for="passkey-email" class="block text-sm font-medium text-foreground mb-1">Email</label>
             <input
                 type="email"
                 name="email"
                 id="passkey-email"
                 required
                 autocomplete="email webauthn"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-coral-500 focus:border-transparent"
+                class="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-coral-500 focus:border-transparent"
                 placeholder="you@example.com"
             >
         </div>
@@ -105,17 +105,17 @@
             type="button"
             onclick="handlePasskeyLogin()"
             id="passkey-button"
-            class="w-full bg-gray-800 text-white py-2 px-4 rounded-md hover:bg-gray-900 transition-colors font-medium flex items-center justify-center gap-2"
+            class="w-full bg-foreground text-background py-2 px-4 rounded-md hover:bg-foreground/90 transition-colors font-medium flex items-center justify-center gap-2"
         >
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0 1.104-.896 2-2 2s-2-.896-2-2 .896-2 2-2 2 .896 2 2zm0 0c0 1.104.896 2 2 2s2-.896 2-2-.896-2-2-2-2 .896-2 2zm-6 9v-1a4 4 0 014-4h4a4 4 0 014 4v1"></path>
             </svg>
             Login with Passkey
         </button>
-        <p id="passkey-error" class="text-red-600 text-sm hidden"></p>
+        <p id="passkey-error" class="text-destructive text-sm hidden"></p>
     </form>
 
-    <p class="text-center mt-8 text-gray-600">
+    <p class="text-center mt-8 text-muted-foreground">
         Don't have an account?
         <a href="/auth/register" class="text-coral-600 hover:text-coral-700 font-medium">Register</a>
     </p>

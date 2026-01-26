@@ -1,0 +1,341 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}{% if !query.is_empty() %}Search: {{ query }}{% else %}Search{% endif %} - Naked Pineapple{% endblock %}
+
+{% block content %}
+<div class="page-width py-8 md:py-12">
+    {# Header #}
+    <div class="text-center mb-8">
+        <h1 class="font-display text-3xl md:text-4xl font-medium mb-6">Search results</h1>
+
+        {# Search Input #}
+        <form action="/search" method="get" class="max-w-xl mx-auto">
+            <div class="relative">
+                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
+                    <i class="ph ph-magnifying-glass text-xl"></i>
+                </span>
+                <input type="search"
+                       name="q"
+                       value="{{ query }}"
+                       class="w-full pl-12 pr-4 py-3 bg-muted border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                       placeholder="Search products..."
+                       autocomplete="off">
+                {% if !query.is_empty() %}
+                <button type="button"
+                        onclick="this.closest('form').querySelector('input').value=''; this.closest('form').submit();"
+                        class="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors text-sm">
+                    Clear
+                </button>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    {% if !is_ready %}
+    {# Index building #}
+    <div class="text-center py-16">
+        <i class="ph ph-circle-notch text-5xl text-muted-foreground animate-spin mb-4 block"></i>
+        <p class="text-muted-foreground">Building search index...</p>
+        <p class="text-sm text-muted-foreground mt-2">Please refresh the page in a moment.</p>
+    </div>
+    {% else %}
+
+    <div class="flex gap-8">
+        {# Filters Sidebar (Desktop) #}
+        <aside class="hidden xl:block w-64 flex-shrink-0">
+            <form action="/search" method="get" id="filter-form-desktop">
+                <input type="hidden" name="q" value="{{ query }}">
+                <input type="hidden" name="sort_by" value="{{ sort_by }}">
+
+                {# Availability Filter #}
+                <details class="border-b border-border pb-4 mb-4" open>
+                    <summary class="flex items-center justify-between cursor-pointer py-2 font-semibold">
+                        Availability
+                        <i class="ph ph-caret-down text-sm transition-transform"></i>
+                    </summary>
+                    <div class="pt-3 space-y-3">
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox"
+                                   name="filter.v.availability"
+                                   value="1"
+                                   {% match filter_availability %}{% when Some(v) %}{% if v == "1" %}checked{% endif %}{% when None %}{% endmatch %}
+                                   onchange="this.form.submit()"
+                                   class="w-4 h-4 rounded border-border text-primary focus:ring-primary/20">
+                            <span class="flex items-center gap-2">
+                                In stock
+                                <span class="text-sm text-muted-foreground">({{ results.in_stock_count }})</span>
+                            </span>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer {% if results.out_of_stock_count == 0 %}opacity-50{% endif %}">
+                            <input type="checkbox"
+                                   name="filter.v.availability"
+                                   value="0"
+                                   {% match filter_availability %}{% when Some(v) %}{% if v == "0" %}checked{% endif %}{% when None %}{% endmatch %}
+                                   {% if results.out_of_stock_count == 0 %}disabled{% endif %}
+                                   onchange="this.form.submit()"
+                                   class="w-4 h-4 rounded border-border text-primary focus:ring-primary/20">
+                            <span class="flex items-center gap-2">
+                                Out of stock
+                                <span class="text-sm text-muted-foreground">({{ results.out_of_stock_count }})</span>
+                            </span>
+                        </label>
+                    </div>
+                </details>
+
+                {# Price Filter #}
+                <details class="border-b border-border pb-4 mb-4" open>
+                    <summary class="flex items-center justify-between cursor-pointer py-2 font-semibold">
+                        Price
+                        <i class="ph ph-caret-down text-sm transition-transform"></i>
+                    </summary>
+                    <div class="pt-3">
+                        <div class="flex items-center gap-4">
+                            <div class="flex-1">
+                                <label class="sr-only" for="price-min-desktop">Min price</label>
+                                <div class="relative">
+                                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                                    <input type="number"
+                                           id="price-min-desktop"
+                                           name="filter.v.price.gte"
+                                           value="{% if let Some(p) = filter_price_gte %}{{ p / 100 }}{% endif %}"
+                                           placeholder="{{ results.min_price_cents / 100 }}"
+                                           min="0"
+                                           step="1"
+                                           class="w-full pl-7 pr-2 py-2 bg-muted border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20">
+                                </div>
+                            </div>
+                            <span class="text-muted-foreground">to</span>
+                            <div class="flex-1">
+                                <label class="sr-only" for="price-max-desktop">Max price</label>
+                                <div class="relative">
+                                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                                    <input type="number"
+                                           id="price-max-desktop"
+                                           name="filter.v.price.lte"
+                                           value="{% if let Some(p) = filter_price_lte %}{{ p / 100 }}{% endif %}"
+                                           placeholder="{{ results.max_price_cents / 100 }}"
+                                           min="0"
+                                           step="1"
+                                           class="w-full pl-7 pr-2 py-2 bg-muted border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20">
+                                </div>
+                            </div>
+                        </div>
+                        <button type="submit" class="mt-3 w-full py-2 text-sm font-medium text-primary hover:text-primary/80 transition-colors">
+                            Apply price filter
+                        </button>
+                    </div>
+                </details>
+
+                {# Clear Filters #}
+                {% if filter_availability.is_some() || filter_price_gte.is_some() || filter_price_lte.is_some() %}
+                <a href="/search?q={{ query }}&sort_by={{ sort_by }}"
+                   class="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                    <i class="ph ph-x"></i>
+                    Clear all filters
+                </a>
+                {% endif %}
+            </form>
+        </aside>
+
+        {# Main Content #}
+        <div class="flex-1">
+            {# Toolbar #}
+            <div class="flex items-center justify-between mb-6 pb-4 border-b border-border">
+                {# Mobile Filter Button #}
+                <button type="button"
+                        onclick="openFilterDrawer()"
+                        class="xl:hidden flex items-center gap-2 px-4 py-2 border border-border rounded-lg hover:bg-muted transition-colors">
+                    <i class="ph ph-funnel text-lg"></i>
+                    <span>Filter</span>
+                </button>
+
+                {# Result Count #}
+                <p class="hidden md:block text-muted-foreground">
+                    {{ results.total_count }} result{% if results.total_count != 1 %}s{% endif %}
+                </p>
+
+                {# Sort Dropdown #}
+                <div class="flex items-center gap-3">
+                    <label for="sort-select" class="hidden md:block text-sm font-medium">Sort by:</label>
+                    <select id="sort-select"
+                            onchange="updateSort(this.value)"
+                            class="px-3 py-2 bg-muted border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20">
+                        <option value="relevance" {% if sort_by == "relevance" %}selected{% endif %}>Relevance</option>
+                        <option value="price-ascending" {% if sort_by == "price-ascending" %}selected{% endif %}>Price, low to high</option>
+                        <option value="price-descending" {% if sort_by == "price-descending" %}selected{% endif %}>Price, high to low</option>
+                    </select>
+                </div>
+            </div>
+
+            {# Active Filters #}
+            {% if filter_availability.is_some() || filter_price_gte.is_some() || filter_price_lte.is_some() %}
+            <div class="flex flex-wrap gap-2 mb-6">
+                {% if let Some(avail) = filter_availability %}
+                <a href="/search?q={{ query }}&sort_by={{ sort_by }}{% if let Some(p) = filter_price_gte %}&filter.v.price.gte={{ p / 100 }}{% endif %}{% if let Some(p) = filter_price_lte %}&filter.v.price.lte={{ p / 100 }}{% endif %}"
+                   class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-muted rounded-full text-sm hover:bg-muted/80 transition-colors">
+                    {% if avail == "1" %}In stock{% else %}Out of stock{% endif %}
+                    <i class="ph ph-x text-xs"></i>
+                </a>
+                {% endif %}
+                {% if filter_price_gte.is_some() || filter_price_lte.is_some() %}
+                <a href="/search?q={{ query }}&sort_by={{ sort_by }}{% if let Some(a) = filter_availability %}&filter.v.availability={{ a }}{% endif %}"
+                   class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-muted rounded-full text-sm hover:bg-muted/80 transition-colors">
+                    ${% if let Some(p) = filter_price_gte %}{{ p / 100 }}{% else %}0{% endif %} - ${% if let Some(p) = filter_price_lte %}{{ p / 100 }}{% else %}{{ results.max_price_cents / 100 }}{% endif %}
+                    <i class="ph ph-x text-xs"></i>
+                </a>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            {# Results Grid #}
+            {% if results.products.is_empty() %}
+            <div class="text-center py-16">
+                <i class="ph ph-magnifying-glass text-5xl text-muted-foreground mb-4 block opacity-50"></i>
+                {% if query.is_empty() %}
+                <p class="text-lg text-muted-foreground">Enter a search term to find products</p>
+                {% else %}
+                <p class="text-lg text-muted-foreground">No results found for "{{ query }}"</p>
+                <p class="text-sm text-muted-foreground mt-2">Try adjusting your search or filters</p>
+                {% endif %}
+            </div>
+            {% else %}
+            <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+                {% for product in results.products %}
+                <a href="/products/{{ product.handle }}" class="group">
+                    <div class="aspect-square bg-muted rounded-xl overflow-hidden mb-3">
+                        {% if let Some(img) = product.image_url %}
+                        <img src="{{ img }}&width=400"
+                             alt="{{ product.title }}"
+                             class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                             loading="lazy">
+                        {% else %}
+                        <div class="w-full h-full flex items-center justify-center">
+                            <i class="ph ph-image text-4xl text-muted-foreground"></i>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <h3 class="font-medium text-foreground group-hover:text-primary transition-colors line-clamp-2">
+                        {{ product.title }}
+                    </h3>
+                    {% if let Some(price) = product.price %}
+                    <p class="text-sm text-muted-foreground mt-1">{{ price }}</p>
+                    {% endif %}
+                    {% if !product.available %}
+                    <p class="text-sm text-destructive mt-1">Sold out</p>
+                    {% endif %}
+                </a>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+{# Mobile Filter Drawer #}
+<div class="fixed inset-0 z-[200] xl:hidden hidden" id="filter-drawer">
+    <div class="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onclick="closeFilterDrawer()"></div>
+    <div class="absolute left-0 top-0 h-full w-full max-w-sm bg-background shadow-xl transform -translate-x-full transition-transform duration-300" id="filter-drawer-panel">
+        <div class="flex items-center justify-between p-5 border-b border-border">
+            <h2 class="font-display text-xl font-medium">Filter</h2>
+            <button type="button" onclick="closeFilterDrawer()" class="p-2 hover:bg-muted rounded-full transition-colors">
+                <i class="ph ph-x text-2xl"></i>
+            </button>
+        </div>
+        <div class="p-5 overflow-y-auto h-[calc(100%-140px)]">
+            <form action="/search" method="get" id="filter-form-mobile">
+                <input type="hidden" name="q" value="{{ query }}">
+                <input type="hidden" name="sort_by" value="{{ sort_by }}">
+
+                {# Sort (Mobile) #}
+                <div class="mb-6">
+                    <label class="block font-semibold mb-3">Sort by</label>
+                    <select name="sort_by"
+                            class="w-full px-3 py-2 bg-muted border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20">
+                        <option value="relevance" {% if sort_by == "relevance" %}selected{% endif %}>Relevance</option>
+                        <option value="price-ascending" {% if sort_by == "price-ascending" %}selected{% endif %}>Price, low to high</option>
+                        <option value="price-descending" {% if sort_by == "price-descending" %}selected{% endif %}>Price, high to low</option>
+                    </select>
+                </div>
+
+                {# Availability Filter (Mobile) #}
+                <div class="mb-6">
+                    <p class="font-semibold mb-3">Availability</p>
+                    <div class="space-y-3">
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox"
+                                   name="filter.v.availability"
+                                   value="1"
+                                   {% match filter_availability %}{% when Some(v) %}{% if v == "1" %}checked{% endif %}{% when None %}{% endmatch %}
+                                   class="w-4 h-4 rounded border-border text-primary focus:ring-primary/20">
+                            <span class="flex items-center gap-2">
+                                In stock
+                                <span class="text-sm text-muted-foreground">({{ results.in_stock_count }})</span>
+                            </span>
+                        </label>
+                    </div>
+                </div>
+
+                {# Price Filter (Mobile) #}
+                <div class="mb-6">
+                    <p class="font-semibold mb-3">Price</p>
+                    <div class="flex items-center gap-4">
+                        <div class="flex-1 relative">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                            <input type="number"
+                                   name="filter.v.price.gte"
+                                   value="{% if let Some(p) = filter_price_gte %}{{ p / 100 }}{% endif %}"
+                                   placeholder="{{ results.min_price_cents / 100 }}"
+                                   min="0"
+                                   class="w-full pl-7 pr-2 py-2 bg-muted border border-border rounded-lg text-sm">
+                        </div>
+                        <span class="text-muted-foreground">to</span>
+                        <div class="flex-1 relative">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                            <input type="number"
+                                   name="filter.v.price.lte"
+                                   value="{% if let Some(p) = filter_price_lte %}{{ p / 100 }}{% endif %}"
+                                   placeholder="{{ results.max_price_cents / 100 }}"
+                                   min="0"
+                                   class="w-full pl-7 pr-2 py-2 bg-muted border border-border rounded-lg text-sm">
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="absolute bottom-0 left-0 right-0 p-5 border-t border-border bg-background">
+            <button type="submit" form="filter-form-mobile" class="w-full py-3 bg-primary text-primary-foreground font-medium rounded-xl hover:bg-primary/90 transition-colors">
+                Apply filters
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+function updateSort(value) {
+    const url = new URL(window.location);
+    url.searchParams.set('sort_by', value);
+    window.location = url;
+}
+
+function openFilterDrawer() {
+    const drawer = document.getElementById('filter-drawer');
+    const panel = document.getElementById('filter-drawer-panel');
+    drawer.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    setTimeout(() => {
+        panel.classList.remove('-translate-x-full');
+    }, 10);
+}
+
+function closeFilterDrawer() {
+    const drawer = document.getElementById('filter-drawer');
+    const panel = document.getElementById('filter-drawer-panel');
+    panel.classList.add('-translate-x-full');
+    document.body.style.overflow = '';
+    setTimeout(() => {
+        drawer.classList.add('hidden');
+    }, 300);
+}
+</script>
+{% endblock %}

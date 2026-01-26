@@ -52,6 +52,7 @@ mod state;
 use config::AdminConfig;
 use middleware::create_session_layer;
 use state::AppState;
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
 async fn main() {
@@ -60,8 +61,15 @@ async fn main() {
         .install_default()
         .expect("Failed to install rustls crypto provider");
 
-    // Initialize tracing
-    tracing_subscriber::fmt::init();
+    // Initialize tracing with EnvFilter
+    // Defaults to info level for our crate if RUST_LOG is not set
+    let env_filter = tracing_subscriber::EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| "naked_pineapple_admin=info,tower_http=debug".into());
+
+    tracing_subscriber::registry()
+        .with(env_filter)
+        .with(tracing_subscriber::fmt::layer())
+        .init();
 
     // Load configuration from environment
     let config = AdminConfig::from_env().expect("Failed to load configuration");

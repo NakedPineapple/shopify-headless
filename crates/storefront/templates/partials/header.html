@@ -1,24 +1,28 @@
 {# Header - Main navigation #}
-<header class="bg-background/95 backdrop-blur-md border-b border-border py-4 sticky top-0 z-[100]">
+<header class="bg-background/95 backdrop-blur-md border-b border-border py-5 sticky top-0 z-[100] transition-shadow duration-300" data-sticky-header>
     <div class="page-width flex items-center gap-4">
-        <!-- Left: Mobile menu button -->
+        <!-- Left: Mobile menu button / Desktop logo -->
         <div class="flex-1 flex items-center gap-4">
             <!-- Mobile menu button -->
             <button class="flex md:hidden p-2 text-foreground hover:text-primary transition-colors"
                     aria-label="Toggle menu"
+                    aria-expanded="false"
+                    aria-controls="mobile-menu"
                     onclick="openMobileMenu()">
                 <i class="ph ph-list text-2xl"></i>
             </button>
 
-            <!-- Logo (desktop) -->
-            <a href="/" class="hidden md:flex items-center transition-opacity hover:opacity-80">
-                <span class="font-display text-2xl font-semibold text-foreground">Naked Pineapple</span>
+            <!-- Logo (left on desktop, centered on mobile via absolute positioning) -->
+            <a href="/" class="hidden md:flex items-center transition-opacity hover:opacity-80" aria-label="Naked Pineapple Home">
+                <span class="h-24 w-[260px] bg-foreground"
+                      style="mask-image: url('/static/images/branding/Logo_Horizontal.svg'); mask-size: contain; mask-repeat: no-repeat; mask-position: left center; -webkit-mask-image: url('/static/images/branding/Logo_Horizontal.svg'); -webkit-mask-size: contain; -webkit-mask-repeat: no-repeat; -webkit-mask-position: left center;"></span>
             </a>
         </div>
 
         <!-- Mobile centered logo -->
-        <a href="/" class="md:hidden absolute left-1/2 -translate-x-1/2">
-            <span class="font-display text-xl font-semibold text-foreground">Naked Pineapple</span>
+        <a href="/" class="md:hidden absolute left-1/2 -translate-x-1/2 flex items-center transition-opacity hover:opacity-80" aria-label="Naked Pineapple Home">
+            <span class="h-16 w-[175px] bg-foreground"
+                  style="mask-image: url('/static/images/branding/Logo_Horizontal.svg'); mask-size: contain; mask-repeat: no-repeat; mask-position: center; -webkit-mask-image: url('/static/images/branding/Logo_Horizontal.svg'); -webkit-mask-size: contain; -webkit-mask-repeat: no-repeat; -webkit-mask-position: center;"></span>
         </a>
 
         <!-- Desktop Navigation (center) -->
@@ -26,41 +30,82 @@
             <ul class="flex list-none gap-8">
                 <!-- Shop Dropdown -->
                 <li class="relative group">
-                    <button class="flex items-center gap-1.5 py-2 font-medium text-foreground hover:text-primary transition-colors">
+                    <button class="flex items-center gap-1.5 py-2 font-medium text-[0.9375rem] text-foreground hover:text-primary transition-colors"
+                            aria-expanded="false"
+                            aria-controls="dropdown-shop">
                         Shop
-                        <i class="ph ph-caret-down text-sm transition-transform duration-300 group-hover:rotate-180"></i>
+                        <i class="ph ph-caret-down text-xs transition-transform duration-300 group-hover:rotate-180"></i>
                     </button>
-                    <div class="absolute top-full left-0 pt-2 opacity-0 invisible translate-y-2 transition-all duration-300 z-50 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0">
-                        <ul class="min-w-[200px] bg-background border border-border rounded-lg shadow-lg list-none py-2">
+                    <div class="absolute top-full left-0 pt-2 opacity-0 invisible translate-y-2 transition-all duration-300 z-50 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0"
+                         id="dropdown-shop">
+                        <ul class="min-w-[220px] bg-background border border-border rounded-xl shadow-lg list-none py-2">
                             <li>
-                                <a href="/collections/skincare" class="flex items-center py-3 px-5 text-sm hover:bg-muted hover:text-primary transition-all">
-                                    All Skincare
+                                <a href="/collections/frontpage" class="flex items-center py-3 px-5 text-sm text-foreground hover:bg-muted hover:text-primary hover:pl-6 transition-all">
+                                    Skincare
                                 </a>
                             </li>
                             <li>
-                                <a href="/products/starter-kit" class="flex items-center py-3 px-5 text-sm hover:bg-muted hover:text-primary transition-all">
-                                    Starter Kit
+                                <a href="/pages/wholesale" class="flex items-center py-3 px-5 text-sm text-foreground hover:bg-muted hover:text-primary hover:pl-6 transition-all">
+                                    Wholesale
+                                </a>
+                            </li>
+                            <li class="relative group/sub">
+                                <a href="/collections/merch" class="flex items-center justify-between py-3 px-5 text-sm text-foreground hover:bg-muted hover:text-primary transition-all">
+                                    Merch
+                                    <i class="ph ph-caret-down text-xs -rotate-90"></i>
+                                </a>
+                                <ul class="absolute left-full top-0 ml-1 min-w-[180px] bg-background border border-border rounded-xl shadow-lg list-none py-2 opacity-0 invisible translate-x-2 transition-all duration-300 group-hover/sub:opacity-100 group-hover/sub:visible group-hover/sub:translate-x-0">
+                                    <li><a href="/collections/merch" class="block py-2.5 px-5 text-sm text-foreground hover:bg-muted hover:text-primary transition-all">All Merch</a></li>
+                                    <li><a href="/products/hoodie" class="block py-2.5 px-5 text-sm text-foreground hover:bg-muted hover:text-primary transition-all">Hoodies</a></li>
+                                    <li><a href="/products/crew-neck" class="block py-2.5 px-5 text-sm text-foreground hover:bg-muted hover:text-primary transition-all">Sweaters</a></li>
+                                    <li><a href="/products/dad-hat" class="block py-2.5 px-5 text-sm text-foreground hover:bg-muted hover:text-primary transition-all">Dad Hats</a></li>
+                                    <li><a href="/products/tote-bag" class="block py-2.5 px-5 text-sm text-foreground hover:bg-muted hover:text-primary transition-all">Bags</a></li>
+                                </ul>
+                            </li>
+                        </ul>
+                    </div>
+                </li>
+
+                <!-- Subscriptions -->
+                <li class="relative">
+                    <a href="/pages/subscriptions" class="flex items-center py-2 font-medium text-[0.9375rem] text-foreground hover:text-primary transition-colors">
+                        Subscriptions
+                    </a>
+                </li>
+
+                <!-- Programs Dropdown -->
+                <li class="relative group">
+                    <button class="flex items-center gap-1.5 py-2 font-medium text-[0.9375rem] text-foreground hover:text-primary transition-colors"
+                            aria-expanded="false"
+                            aria-controls="dropdown-programs">
+                        Programs
+                        <i class="ph ph-caret-down text-xs transition-transform duration-300 group-hover:rotate-180"></i>
+                    </button>
+                    <div class="absolute top-full left-0 pt-2 opacity-0 invisible translate-y-2 transition-all duration-300 z-50 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0"
+                         id="dropdown-programs">
+                        <ul class="min-w-[220px] bg-background border border-border rounded-xl shadow-lg list-none py-2">
+                            <li>
+                                <a href="/pages/model-program" class="flex items-center py-3 px-5 text-sm text-foreground hover:bg-muted hover:text-primary hover:pl-6 transition-all">
+                                    Model Program
                                 </a>
                             </li>
                             <li>
-                                <a href="/collections/bundles" class="flex items-center py-3 px-5 text-sm hover:bg-muted hover:text-primary transition-all">
-                                    Bundles
+                                <a href="/pages/affiliate-program" class="flex items-center py-3 px-5 text-sm text-foreground hover:bg-muted hover:text-primary hover:pl-6 transition-all">
+                                    Affiliate Program
+                                </a>
+                            </li>
+                            <li>
+                                <a href="/pages/teen-program" class="flex items-center py-3 px-5 text-sm text-foreground hover:bg-muted hover:text-primary hover:pl-6 transition-all">
+                                    Teen Program
                                 </a>
                             </li>
                         </ul>
                     </div>
                 </li>
 
-                <!-- Collections -->
-                <li>
-                    <a href="/collections" class="py-2 font-medium text-foreground hover:text-primary transition-colors">
-                        Collections
-                    </a>
-                </li>
-
                 <!-- About -->
-                <li>
-                    <a href="/about" class="py-2 font-medium text-foreground hover:text-primary transition-colors">
+                <li class="relative">
+                    <a href="/pages/about" class="flex items-center py-2 font-medium text-[0.9375rem] text-foreground hover:text-primary transition-colors">
                         About
                     </a>
                 </li>
@@ -69,28 +114,23 @@
 
         <!-- Header Icons -->
         <div class="flex-1 flex items-center gap-2 justify-end">
-            <!-- Theme Toggle (cycles: system -> light -> dark) -->
             <button type="button"
-                    onclick="cycleTheme()"
-                    class="theme-toggle flex items-center justify-center w-10 h-10 rounded-full"
-                    data-theme-toggle
-                    aria-label="Toggle theme">
-                <i class="ph ph-monitor text-xl theme-icon-system"></i>
-                <i class="ph ph-sun text-xl theme-icon-sun hidden"></i>
-                <i class="ph ph-moon text-xl theme-icon-moon hidden"></i>
-            </button>
-            <a href="/search" class="flex items-center justify-center w-10 h-10 rounded-full text-foreground hover:text-primary hover:bg-muted transition-all" aria-label="Search">
+                    onclick="openSearchDrawer()"
+                    class="flex items-center justify-center w-10 h-10 rounded-full text-foreground hover:text-primary hover:bg-muted transition-all"
+                    aria-label="Search"
+                    aria-controls="search-drawer">
                 <i class="ph ph-magnifying-glass text-xl"></i>
-            </a>
-            <a href="/account" class="hidden md:flex items-center justify-center w-10 h-10 rounded-full text-foreground hover:text-primary hover:bg-muted transition-all" aria-label="Account">
+            </button>
+            <a href="/auth/login" class="hidden md:flex items-center justify-center w-10 h-10 rounded-full text-foreground hover:text-primary hover:bg-muted transition-all" aria-label="Account">
                 <i class="ph ph-user text-xl"></i>
             </a>
             <a href="/cart" class="relative flex items-center justify-center w-10 h-10 rounded-full text-foreground hover:text-primary hover:bg-muted transition-all" aria-label="Cart">
                 <i class="ph ph-tote text-xl"></i>
-                <span class="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-primary text-primary-foreground text-[11px] font-semibold rounded-full flex items-center justify-center empty:hidden"
+                <span class="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-primary text-primary-foreground text-[11px] font-semibold rounded-full items-center justify-center hidden"
                       id="cart-count"
                       hx-get="/cart/count"
-                      hx-trigger="load, cartUpdated from:body"></span>
+                      hx-trigger="load, cartUpdated from:body"
+                      hx-on::after-swap="this.classList.toggle('hidden', !this.textContent.trim()); this.classList.toggle('flex', !!this.textContent.trim())"></span>
             </a>
         </div>
     </div>
@@ -117,33 +157,47 @@
                     <i class="ph ph-caret-down transition-transform duration-300 group-open:rotate-180"></i>
                 </summary>
                 <ul class="list-none bg-muted/50 pb-2">
-                    <li><a href="/collections/skincare" class="block py-3 px-5 pl-8 text-muted-foreground hover:text-primary transition-colors">All Skincare</a></li>
-                    <li><a href="/products/starter-kit" class="block py-3 px-5 pl-8 text-muted-foreground hover:text-primary transition-colors">Starter Kit</a></li>
-                    <li><a href="/collections/bundles" class="block py-3 px-5 pl-8 text-muted-foreground hover:text-primary transition-colors">Bundles</a></li>
+                    <li><a href="/collections/frontpage" class="block py-3 px-5 pl-8 text-muted-foreground hover:text-primary transition-colors">Skincare</a></li>
+                    <li><a href="/pages/wholesale" class="block py-3 px-5 pl-8 text-muted-foreground hover:text-primary transition-colors">Wholesale</a></li>
+                    <li>
+                        <details class="group/sub">
+                            <summary class="flex items-center justify-between py-3 px-5 pl-8 text-muted-foreground hover:text-primary cursor-pointer list-none">
+                                Merch
+                                <i class="ph ph-caret-down text-sm transition-transform duration-300 group-open/sub:rotate-180"></i>
+                            </summary>
+                            <ul class="list-none bg-muted/30 pb-1">
+                                <li><a href="/collections/merch" class="block py-2.5 px-5 pl-12 text-muted-foreground hover:text-primary transition-colors">All Merch</a></li>
+                                <li><a href="/products/hoodie" class="block py-2.5 px-5 pl-12 text-muted-foreground hover:text-primary transition-colors">Hoodies</a></li>
+                                <li><a href="/products/crew-neck" class="block py-2.5 px-5 pl-12 text-muted-foreground hover:text-primary transition-colors">Sweaters</a></li>
+                                <li><a href="/products/dad-hat" class="block py-2.5 px-5 pl-12 text-muted-foreground hover:text-primary transition-colors">Dad Hats</a></li>
+                                <li><a href="/products/tote-bag" class="block py-2.5 px-5 pl-12 text-muted-foreground hover:text-primary transition-colors">Bags</a></li>
+                            </ul>
+                        </details>
+                    </li>
                 </ul>
             </details>
         </li>
         <li class="border-b border-border">
-            <a href="/collections" class="block p-5 font-medium hover:text-primary transition-colors">Collections</a>
+            <a href="/pages/subscriptions" class="block p-5 font-medium hover:text-primary transition-colors">Subscriptions</a>
         </li>
         <li class="border-b border-border">
-            <a href="/about" class="block p-5 font-medium hover:text-primary transition-colors">About</a>
+            <details class="group">
+                <summary class="flex items-center justify-between p-5 font-medium cursor-pointer list-none">
+                    Programs
+                    <i class="ph ph-caret-down transition-transform duration-300 group-open:rotate-180"></i>
+                </summary>
+                <ul class="list-none bg-muted/50 pb-2">
+                    <li><a href="/pages/model-program" class="block py-3 px-5 pl-8 text-muted-foreground hover:text-primary transition-colors">Model Program</a></li>
+                    <li><a href="/pages/affiliate-program" class="block py-3 px-5 pl-8 text-muted-foreground hover:text-primary transition-colors">Affiliate Program</a></li>
+                    <li><a href="/pages/teen-program" class="block py-3 px-5 pl-8 text-muted-foreground hover:text-primary transition-colors">Teen Program</a></li>
+                </ul>
+            </details>
         </li>
         <li class="border-b border-border">
-            <a href="/account" class="block p-5 font-medium hover:text-primary transition-colors">Account</a>
+            <a href="/pages/about" class="block p-5 font-medium hover:text-primary transition-colors">About</a>
         </li>
         <li class="border-b border-border">
-            <button type="button"
-                    onclick="cycleTheme()"
-                    data-theme-toggle
-                    class="flex items-center gap-3 w-full p-5 font-medium hover:text-primary transition-colors text-left">
-                <i class="ph ph-monitor text-xl theme-icon-system"></i>
-                <i class="ph ph-sun text-xl theme-icon-sun hidden"></i>
-                <i class="ph ph-moon text-xl theme-icon-moon hidden"></i>
-                <span class="theme-icon-system">System Theme</span>
-                <span class="theme-icon-sun hidden">Light Mode</span>
-                <span class="theme-icon-moon hidden">Dark Mode</span>
-            </button>
+            <a href="/auth/login" class="block p-5 font-medium hover:text-primary transition-colors">Account</a>
         </li>
     </ul>
 </nav>
@@ -152,4 +206,70 @@
 <div class="fixed inset-0 bg-foreground/40 backdrop-blur-sm z-[199] opacity-0 invisible transition-all duration-300"
      id="mobile-menu-overlay"
      onclick="closeMobileMenu()"
+     aria-hidden="true"></div>
+
+<!-- Search Drawer (right side) -->
+<div class="fixed top-0 right-0 w-full max-w-md h-screen bg-background z-[200] translate-x-full transition-transform duration-300 ease-out overflow-hidden flex flex-col [&.is-open]:translate-x-0"
+     id="search-drawer"
+     aria-label="Search"
+     hidden>
+    <!-- Header -->
+    <div class="flex justify-between items-center p-5 border-b border-border">
+        <h2 class="font-display text-xl font-medium">Search</h2>
+        <button type="button"
+                class="p-2 text-foreground hover:text-primary transition-colors rounded-full hover:bg-muted"
+                aria-label="Close search"
+                onclick="closeSearchDrawer()">
+            <i class="ph ph-x text-2xl"></i>
+        </button>
+    </div>
+
+    <!-- Search Form -->
+    <div class="flex-1 overflow-y-auto p-5">
+        <form action="/search" method="get" role="search" class="flex flex-col h-full">
+            <!-- Search Input -->
+            <div class="relative">
+                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
+                    <i class="ph ph-magnifying-glass text-xl"></i>
+                </span>
+                <input type="search"
+                       name="q"
+                       id="search-input"
+                       class="w-full pl-12 pr-20 py-3 bg-muted border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                       placeholder="Search products..."
+                       autocomplete="off"
+                       autocorrect="off"
+                       autocapitalize="none"
+                       spellcheck="false"
+                       hx-get="/search/suggest"
+                       hx-trigger="input changed delay:300ms, search"
+                       hx-target="#search-results"
+                       hx-indicator="#search-spinner">
+                <button type="reset"
+                        class="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors text-sm hidden"
+                        id="search-clear"
+                        aria-label="Clear search">
+                    Clear
+                </button>
+                <div id="search-spinner" class="htmx-indicator absolute right-4 top-1/2 -translate-y-1/2">
+                    <i class="ph ph-circle-notch text-xl text-muted-foreground animate-spin"></i>
+                </div>
+            </div>
+
+            <!-- Search Results -->
+            <div id="search-results" class="mt-6 flex-1">
+                <!-- Results loaded via HTMX -->
+                <div class="text-center text-muted-foreground py-8">
+                    <i class="ph ph-magnifying-glass text-4xl mb-3 block opacity-50"></i>
+                    <p>Start typing to search</p>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Search drawer overlay -->
+<div class="fixed inset-0 bg-foreground/40 backdrop-blur-sm z-[199] opacity-0 invisible transition-all duration-300"
+     id="search-drawer-overlay"
+     onclick="closeSearchDrawer()"
      aria-hidden="true"></div>

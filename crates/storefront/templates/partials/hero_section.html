@@ -1,0 +1,350 @@
+{# Hero Section — Sun-Drenched Editorial
+   Expects `hero` variable with:
+   - layout: HeroLayout enum (Carousel, SplitLeft, SplitRight, Centered, FullBleed)
+   - slides: Vec<HeroSlide> with eyebrow, title, subtitle, button_text, button_url, image_url, image_alt
+   - autoplay_ms: Option<u32> for carousel autoplay timing
+#}
+
+{% if hero.layout == crate::routes::home::HeroLayout::Carousel %}
+{# ═══════════════════════════════════════════════════════════════════════════
+   CAROUSEL LAYOUT — Multiple slides with Swiper
+   ═══════════════════════════════════════════════════════════════════════════ #}
+<section class="relative min-h-[calc(100svh-var(--header-height)-var(--announcement-height))] bg-text">
+    <div class="swiper hero-carousel h-[calc(100svh-var(--header-height)-var(--announcement-height))]" {% if let Some(ms) = hero.autoplay_ms %}data-autoplay="{{ ms }}"{% endif %}>
+        <div class="swiper-wrapper">
+            {% for slide in &hero.slides %}
+            <div class="swiper-slide relative overflow-hidden rounded-lg md:rounded-2xl" {% if slide.zoom_from.is_some() || slide.zoom_to.is_some() || slide.pan_from.is_some() || slide.pan_to.is_some() %}style="{% if let Some(zf) = slide.zoom_from %}--zoom-from: {{ zf }};{% endif %}{% if let Some(zt) = slide.zoom_to %}--zoom-to: {{ zt }};{% endif %}{% if let Some(pf) = slide.pan_from %}--pan-from: {{ pf }};{% endif %}{% if let Some(pt) = slide.pan_to %}--pan-to: {{ pt }};{% endif %}"{% endif %}>
+                {# Background Image #}
+                <div class="absolute inset-0 overflow-hidden">
+                    <div class="w-full h-full{% if slide.zoom_from.is_some() || slide.zoom_to.is_some() %} custom-zoom{% endif %}">
+                        <img src="{{ slide.image_url }}"
+                             alt="{{ slide.image_alt }}"
+                             class="w-full h-full object-cover will-change-transform{% if slide.pan_from.is_some() || slide.pan_to.is_some() %} custom-pan{% endif %}"
+                             {% if loop.first %}loading="eager"{% else %}loading="lazy"{% endif %}>
+                    </div>
+                    {# Warm gradient overlay #}
+                    <div class="absolute inset-0 bg-gradient-to-b from-text/40 via-text/20 to-text/60"></div>
+                    <div class="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-honey/10 mix-blend-overlay"></div>
+                </div>
+
+                {# Content — Position varies by slide #}
+                {% match slide.button_position %}
+                {% when crate::routes::home::ButtonPosition::BottomLeft %}
+                {# Bottom-left positioned content #}
+                <div class="absolute inset-0 z-10 flex items-end">
+                    <div class="page-width py-16 md:py-20 w-full">
+                        <div class="text-left">
+                            {% if let Some(eyebrow) = slide.eyebrow %}
+                            <p class="text-xs uppercase tracking-[0.25em] text-warm-white/80 font-medium mb-4">{{ eyebrow }}</p>
+                            {% endif %}
+                            {% if let Some(title) = slide.title %}
+                            <h2 class="font-display text-3xl md:text-4xl lg:text-5xl font-medium leading-[1.1] tracking-tight text-warm-white mb-4">{{ title }}</h2>
+                            {% endif %}
+                            {% if let Some(subtitle) = slide.subtitle %}
+                            <p class="text-base md:text-lg text-warm-white/90 leading-relaxed mb-6 max-w-md">{{ subtitle }}</p>
+                            {% endif %}
+                            {% if let Some(text) = slide.button_text %}
+                            {% if let Some(url) = slide.button_url %}
+                                <a href="{{ url }}" class="btn btn-primary btn-large group">
+                                    {{ text }}
+                                    <svg class="w-5 h-5 transition-transform duration-300 group-hover:translate-x-1" viewBox="0 0 20 20" fill="none">
+                                        <path d="M7.5 3.75L13.75 10L7.5 16.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                </a>
+                            {% endif %}
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% when crate::routes::home::ButtonPosition::BottomRight %}
+                {# Bottom-right positioned content #}
+                <div class="absolute inset-0 z-10 flex items-end">
+                    <div class="page-width py-16 md:py-20 w-full">
+                        <div class="text-right ml-auto">
+                            {% if let Some(eyebrow) = slide.eyebrow %}
+                            <p class="text-xs uppercase tracking-[0.25em] text-warm-white/80 font-medium mb-4">{{ eyebrow }}</p>
+                            {% endif %}
+                            {% if let Some(title) = slide.title %}
+                            <h2 class="font-display text-3xl md:text-4xl lg:text-5xl font-medium leading-[1.1] tracking-tight text-warm-white mb-4">{{ title }}</h2>
+                            {% endif %}
+                            {% if let Some(subtitle) = slide.subtitle %}
+                            <p class="text-base md:text-lg text-warm-white/90 leading-relaxed mb-6 max-w-md ml-auto">{{ subtitle }}</p>
+                            {% endif %}
+                            {% if let Some(text) = slide.button_text %}
+                            {% if let Some(url) = slide.button_url %}
+                                <a href="{{ url }}" class="btn btn-primary btn-large group">
+                                    {{ text }}
+                                    <svg class="w-5 h-5 transition-transform duration-300 group-hover:translate-x-1" viewBox="0 0 20 20" fill="none">
+                                        <path d="M7.5 3.75L13.75 10L7.5 16.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                </a>
+                            {% endif %}
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% when crate::routes::home::ButtonPosition::Center %}
+                {# Centered content (default) #}
+                <div class="relative z-10 h-full flex items-center justify-center">
+                    <div class="page-width py-24 md:py-32">
+                        <div class="max-w-3xl mx-auto text-center">
+                            {% if let Some(eyebrow) = slide.eyebrow %}
+                            <p class="text-xs uppercase tracking-[0.25em] text-warm-white/80 font-medium mb-6">{{ eyebrow }}</p>
+                            {% endif %}
+                            {% if let Some(title) = slide.title %}
+                            <h2 class="font-display text-4xl md:text-5xl lg:text-6xl font-medium leading-[1.1] tracking-tight text-warm-white mb-6">{{ title }}</h2>
+                            {% endif %}
+                            {% if let Some(subtitle) = slide.subtitle %}
+                            <p class="text-lg md:text-xl text-warm-white/90 leading-relaxed mb-10 max-w-xl mx-auto">{{ subtitle }}</p>
+                            {% endif %}
+                            {% if let Some(text) = slide.button_text %}
+                            {% if let Some(url) = slide.button_url %}
+                                <div>
+                                    <a href="{{ url }}" class="btn btn-primary btn-large group">
+                                        {{ text }}
+                                        <svg class="w-5 h-5 transition-transform duration-300 group-hover:translate-x-1" viewBox="0 0 20 20" fill="none">
+                                            <path d="M7.5 3.75L13.75 10L7.5 16.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                        </svg>
+                                    </a>
+                                </div>
+                            {% endif %}
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% when crate::routes::home::ButtonPosition::BottomCenter %}
+                {# Bottom-center positioned content #}
+                <div class="absolute inset-0 z-10 flex items-end justify-center">
+                    <div class="page-width py-16 md:py-20 w-full">
+                        <div class="text-center max-w-2xl mx-auto">
+                            {% if let Some(eyebrow) = slide.eyebrow %}
+                            <p class="text-xs uppercase tracking-[0.25em] text-warm-white/80 font-medium mb-4">{{ eyebrow }}</p>
+                            {% endif %}
+                            {% if let Some(title) = slide.title %}
+                            <h2 class="font-display text-3xl md:text-4xl lg:text-5xl font-medium leading-[1.1] tracking-tight text-warm-white mb-4">{{ title }}</h2>
+                            {% endif %}
+                            {% if let Some(subtitle) = slide.subtitle %}
+                            <p class="text-base md:text-lg text-warm-white/90 leading-relaxed mb-6 max-w-xl mx-auto">{{ subtitle }}</p>
+                            {% endif %}
+                            {% if let Some(text) = slide.button_text %}
+                            {% if let Some(url) = slide.button_url %}
+                                <a href="{{ url }}" class="btn btn-primary btn-large group">
+                                    {{ text }}
+                                    <svg class="w-5 h-5 transition-transform duration-300 group-hover:translate-x-1" viewBox="0 0 20 20" fill="none">
+                                        <path d="M7.5 3.75L13.75 10L7.5 16.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                </a>
+                            {% endif %}
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endmatch %}
+            </div>
+            {% endfor %}
+        </div>
+
+        {# Navigation — Hidden on mobile, visible on larger screens #}
+        <button class="swiper-button-prev hidden md:flex !w-12 !h-12 !left-8 lg:!left-12" aria-label="Previous slide"></button>
+        <button class="swiper-button-next hidden md:flex !w-12 !h-12 !right-8 lg:!right-12" aria-label="Next slide"></button>
+
+        {# Pagination — Progress bar bullets #}
+        <div class="swiper-pagination !bottom-6 md:!bottom-10"></div>
+    </div>
+</section>
+
+{% else %}
+{# ═══════════════════════════════════════════════════════════════════════════
+   SINGLE SLIDE LAYOUTS
+   ═══════════════════════════════════════════════════════════════════════════ #}
+{% if let Some(slide) = hero.slides.first() %}
+<section class="relative min-h-[100svh] flex items-center overflow-hidden bg-cream">
+
+    {% if hero.layout == crate::routes::home::HeroLayout::SplitLeft || hero.layout == crate::routes::home::HeroLayout::SplitRight %}
+    {# ─────────────────────────────────────────────────────────────────────────
+       SPLIT LAYOUT — Image on one side, content on other
+       ───────────────────────────────────────────────────────────────────────── #}
+    <div class="w-full grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] min-h-[100svh] {% if hero.layout == crate::routes::home::HeroLayout::SplitRight %}lg:grid-cols-[0.9fr_1.1fr]{% endif %}">
+
+        {# Image Panel #}
+        <div class="relative h-[50vh] lg:h-auto {% if hero.layout == crate::routes::home::HeroLayout::SplitRight %}lg:order-2{% endif %}">
+            <div class="absolute inset-0">
+                <img src="{{ slide.image_url }}"
+                     alt="{{ slide.image_alt }}"
+                     class="w-full h-full object-cover"
+                     loading="eager">
+                {# Warm gradient overlay #}
+                <div class="absolute inset-0 bg-gradient-to-br from-primary/20 via-honey/10 to-transparent mix-blend-multiply"></div>
+                <div class="absolute inset-0 bg-gradient-to-t from-text/30 via-transparent to-transparent lg:hidden"></div>
+            </div>
+
+            {# Decorative organic shape #}
+            <div class="hidden lg:block absolute -right-24 top-1/2 -translate-y-1/2 w-48 h-48 bg-honey/20 rounded-full blur-3xl {% if hero.layout == crate::routes::home::HeroLayout::SplitRight %}-left-24 -right-auto{% endif %}"></div>
+        </div>
+
+        {# Content Panel #}
+        <div class="relative flex items-center {% if hero.layout == crate::routes::home::HeroLayout::SplitRight %}lg:order-1{% endif %}">
+            {# Background texture #}
+            <div class="absolute inset-0 bg-cream"></div>
+
+            <div class="relative z-10 w-full px-6 py-16 md:px-12 lg:px-16 xl:px-24">
+                <div class="max-w-xl {% if hero.layout == crate::routes::home::HeroLayout::SplitRight %}ml-auto{% endif %}">
+                    {# Eyebrow #}
+                    {% if let Some(eyebrow) = slide.eyebrow %}
+                    <p class="text-xs uppercase tracking-[0.2em] text-primary font-medium mb-4 animate-fade-in" style="animation-delay: 100ms; opacity: 0;">
+                        {{ eyebrow }}
+                    </p>
+                    {% endif %}
+
+                    {# Headline #}
+                    {% if let Some(title) = slide.title %}
+                    <h1 class="font-display text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-medium leading-[1.1] tracking-tight text-foreground mb-6 animate-slide-up" style="animation-delay: 200ms; opacity: 0;">
+                        {{ title }}
+                    </h1>
+                    {% endif %}
+
+                    {# Subtitle #}
+                    {% if let Some(subtitle) = slide.subtitle %}
+                    <p class="text-lg md:text-xl text-muted-foreground leading-relaxed mb-10 max-w-md animate-slide-up" style="animation-delay: 400ms; opacity: 0;">
+                        {{ subtitle }}
+                    </p>
+                    {% endif %}
+
+                    {# CTA Button #}
+                    {% match (slide.button_text.as_ref(), slide.button_url.as_ref()) %}
+                        {% when (Some(text), Some(url)) %}
+                        <div class="animate-slide-up" style="animation-delay: 600ms; opacity: 0;">
+                            <a href="{{ url }}" class="btn btn-primary btn-large group">
+                                {{ text }}
+                                <svg class="w-5 h-5 transition-transform duration-300 group-hover:translate-x-1" viewBox="0 0 20 20" fill="none">
+                                    <path d="M7.5 3.75L13.75 10L7.5 16.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </a>
+                        </div>
+                        {% when _ %}
+                    {% endmatch %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% else if hero.layout == crate::routes::home::HeroLayout::Centered %}
+    {# ─────────────────────────────────────────────────────────────────────────
+       CENTERED LAYOUT — Full background with centered content
+       ───────────────────────────────────────────────────────────────────────── #}
+    <div class="absolute inset-0">
+        <img src="{{ slide.image_url }}"
+             alt="{{ slide.image_alt }}"
+             class="w-full h-full object-cover"
+             loading="eager">
+        {# Warm gradient overlay #}
+        <div class="absolute inset-0 bg-gradient-to-b from-text/40 via-text/30 to-text/60"></div>
+        <div class="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-honey/10 mix-blend-overlay"></div>
+    </div>
+
+    <div class="relative z-10 page-width py-24 md:py-32">
+        <div class="max-w-3xl mx-auto text-center">
+            {# Eyebrow #}
+            {% if let Some(eyebrow) = slide.eyebrow %}
+            <p class="text-xs uppercase tracking-[0.25em] text-warm-white/80 font-medium mb-6 animate-fade-in" style="animation-delay: 100ms; opacity: 0;">
+                {{ eyebrow }}
+            </p>
+            {% endif %}
+
+            {# Headline #}
+            {% if let Some(title) = slide.title %}
+            <h1 class="font-display text-4xl md:text-6xl lg:text-7xl font-medium leading-[1.1] tracking-tight text-warm-white mb-6 animate-slide-up" style="animation-delay: 200ms; opacity: 0;">
+                {{ title }}
+            </h1>
+            {% endif %}
+
+            {# Subtitle #}
+            {% if let Some(subtitle) = slide.subtitle %}
+            <p class="text-lg md:text-xl text-warm-white/90 leading-relaxed mb-10 max-w-xl mx-auto animate-slide-up" style="animation-delay: 400ms; opacity: 0;">
+                {{ subtitle }}
+            </p>
+            {% endif %}
+
+            {# CTA Button #}
+            {% match (slide.button_text.as_ref(), slide.button_url.as_ref()) %}
+                {% when (Some(text), Some(url)) %}
+                <div class="animate-slide-up" style="animation-delay: 600ms; opacity: 0;">
+                    <a href="{{ url }}" class="btn btn-primary btn-large group">
+                        {{ text }}
+                        <svg class="w-5 h-5 transition-transform duration-300 group-hover:translate-x-1" viewBox="0 0 20 20" fill="none">
+                            <path d="M7.5 3.75L13.75 10L7.5 16.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </a>
+                </div>
+                {% when _ %}
+            {% endmatch %}
+        </div>
+    </div>
+
+    {# Scroll indicator #}
+    <div class="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce text-warm-white/60">
+        <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none">
+            <path d="M12 5v14M5 12l7 7 7-7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+    </div>
+
+    {% else %}
+    {# ─────────────────────────────────────────────────────────────────────────
+       FULL-BLEED LAYOUT — Dramatic full-screen with offset content
+       ───────────────────────────────────────────────────────────────────────── #}
+    <div class="absolute inset-0">
+        <img src="{{ slide.image_url }}"
+             alt="{{ slide.image_alt }}"
+             class="w-full h-full object-cover"
+             loading="eager">
+        {# Dramatic warm overlay #}
+        <div class="absolute inset-0 bg-gradient-to-r from-text/70 via-text/40 to-transparent"></div>
+        <div class="absolute inset-0 bg-gradient-to-t from-text/50 via-transparent to-text/20"></div>
+    </div>
+
+    <div class="relative z-10 page-width py-24 md:py-32 lg:py-40">
+        <div class="max-w-2xl">
+            {# Eyebrow #}
+            {% if let Some(eyebrow) = slide.eyebrow %}
+            <p class="text-xs uppercase tracking-[0.2em] text-honey font-medium mb-4 animate-fade-in" style="animation-delay: 100ms; opacity: 0;">
+                {{ eyebrow }}
+            </p>
+            {% endif %}
+
+            {# Headline #}
+            {% if let Some(title) = slide.title %}
+            <h1 class="font-display text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-medium leading-[1.05] tracking-tight text-warm-white mb-8 animate-slide-up" style="animation-delay: 200ms; opacity: 0;">
+                {{ title }}
+            </h1>
+            {% endif %}
+
+            {# Decorative line #}
+            <div class="w-24 h-1 bg-gradient-to-r from-primary to-honey mb-8 animate-fade-in" style="animation-delay: 350ms; opacity: 0;"></div>
+
+            {# Subtitle #}
+            {% if let Some(subtitle) = slide.subtitle %}
+            <p class="text-lg md:text-xl text-warm-white/85 leading-relaxed mb-10 max-w-lg animate-slide-up" style="animation-delay: 400ms; opacity: 0;">
+                {{ subtitle }}
+            </p>
+            {% endif %}
+
+            {# CTA Button #}
+            {% match (slide.button_text.as_ref(), slide.button_url.as_ref()) %}
+                {% when (Some(text), Some(url)) %}
+                <div class="animate-slide-up" style="animation-delay: 600ms; opacity: 0;">
+                    <a href="{{ url }}" class="btn btn-primary btn-large group">
+                        {{ text }}
+                        <svg class="w-5 h-5 transition-transform duration-300 group-hover:translate-x-1" viewBox="0 0 20 20" fill="none">
+                            <path d="M7.5 3.75L13.75 10L7.5 16.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </a>
+                </div>
+                {% when _ %}
+            {% endmatch %}
+        </div>
+    </div>
+    {% endif %}
+
+</section>
+{% endif %}
+{% endif %}
