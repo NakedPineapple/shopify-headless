@@ -1,0 +1,143 @@
+name: Deploy to Fly.io
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options: [staging, production]
+      target:
+        description: 'Deploy target'
+        required: true
+        default: 'all'
+        type: choice
+        options: [all, storefront, admin]
+      promote:
+        description: 'Promote staging image to production (skips build)'
+        required: false
+        default: false
+        type: boolean
+
+concurrency:
+  group: deploy-${{ github.ref }}-${{ inputs.environment || 'staging' }}
+  cancel-in-progress: false
+
+env:
+  FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+jobs:
+  check:
+    name: Pre-flight Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "NakedPineapple -> target"
+      - name: Check formatting
+        working-directory: NakedPineapple
+        run: cargo fmt --check
+      - name: Run clippy
+        working-directory: NakedPineapple
+        run: cargo clippy --all-targets -- -D warnings
+      - name: Run tests
+        working-directory: NakedPineapple
+        run: cargo test
+        env:
+          SQLX_OFFLINE: true
+
+  # Deploy to staging on PR or push to main
+  deploy-staging:
+    name: Deploy to Staging
+    needs: check
+    runs-on: ubuntu-latest
+    if: |
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'pull_request') ||
+      (github.event_name == 'workflow_dispatch' && inputs.environment == 'staging' && !inputs.promote)
+    environment: staging
+    outputs:
+      storefront_image: ${{ steps.storefront.outputs.image }}
+      admin_image: ${{ steps.admin.outputs.image }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy storefront to staging
+        id: storefront
+        if: inputs.target != 'admin'
+        working-directory: NakedPineapple
+        run: |
+          flyctl deploy --config fly/fly.storefront.staging.toml --remote-only
+          IMAGE=$(flyctl status -a nakedpineapple-storefront-staging --json | jq -r '.Machines[0].config.image')
+          echo "image=$IMAGE" >> $GITHUB_OUTPUT
+
+      - name: Deploy admin to staging
+        id: admin
+        if: inputs.target != 'storefront'
+        working-directory: NakedPineapple
+        run: |
+          flyctl deploy --config fly/fly.admin.staging.toml --remote-only
+          IMAGE=$(flyctl status -a nakedpineapple-admin-staging --json | jq -r '.Machines[0].config.image')
+          echo "image=$IMAGE" >> $GITHUB_OUTPUT
+
+  # Deploy to production (manual trigger only)
+  deploy-production:
+    name: Deploy to Production
+    needs: check
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && inputs.environment == 'production' && !inputs.promote
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy storefront to production
+        if: inputs.target != 'admin'
+        working-directory: NakedPineapple
+        run: flyctl deploy --config fly/fly.storefront.toml --remote-only
+
+      - name: Deploy admin to production
+        if: inputs.target != 'storefront'
+        working-directory: NakedPineapple
+        run: flyctl deploy --config fly/fly.admin.toml --remote-only
+
+  # Promote staging image to production (no rebuild)
+  promote-to-production:
+    name: Promote Staging to Production
+    needs: check
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && inputs.promote
+    environment: production
+    steps:
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Get staging storefront image
+        id: staging-storefront
+        if: inputs.target != 'admin'
+        run: |
+          IMAGE=$(flyctl status -a nakedpineapple-storefront-staging --json | jq -r '.Machines[0].config.image')
+          echo "image=$IMAGE" >> $GITHUB_OUTPUT
+
+      - name: Get staging admin image
+        id: staging-admin
+        if: inputs.target != 'storefront'
+        run: |
+          IMAGE=$(flyctl status -a nakedpineapple-admin-staging --json | jq -r '.Machines[0].config.image')
+          echo "image=$IMAGE" >> $GITHUB_OUTPUT
+
+      - name: Promote storefront to production
+        if: inputs.target != 'admin'
+        run: flyctl deploy --image ${{ steps.staging-storefront.outputs.image }} -a nakedpineapple-storefront
+
+      - name: Promote admin to production
+        if: inputs.target != 'storefront'
+        run: flyctl deploy --image ${{ steps.staging-admin.outputs.image }} -a nakedpineapple-admin

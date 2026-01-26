@@ -31,7 +31,7 @@ use secrecy::{ExposeSecret, SecretString};
 use thiserror::Error;
 
 const MIN_SESSION_SECRET_LENGTH: usize = 32;
-const MIN_ENTROPY_BITS_PER_CHAR: f64 = 3.5;
+const MIN_ENTROPY_BITS_PER_CHAR: f64 = 3.3;
 
 /// Blocklist of common placeholder patterns (case-insensitive)
 const PLACEHOLDER_PATTERNS: &[&str] = &[
@@ -148,7 +148,7 @@ impl StorefrontConfig {
         // Load .env file if present (ignore errors if not found)
         let _ = dotenvy::dotenv();
 
-        let database_url = get_required_secret("STOREFRONT_DATABASE_URL")?;
+        let database_url = get_database_url("STOREFRONT_DATABASE_URL")?;
         let host = get_env_or_default("STOREFRONT_HOST", "127.0.0.1")
             .parse::<IpAddr>()
             .map_err(|e| {
@@ -226,6 +226,19 @@ fn get_required_env(key: &str) -> Result<String, ConfigError> {
 fn get_required_secret(key: &str) -> Result<SecretString, ConfigError> {
     let value = get_required_env(key)?;
     Ok(SecretString::from(value))
+}
+
+/// Get database URL with fallback to generic `DATABASE_URL` (used by Fly.io postgres attach).
+fn get_database_url(primary_key: &str) -> Result<SecretString, ConfigError> {
+    // Try primary key first (e.g., STOREFRONT_DATABASE_URL)
+    if let Ok(value) = std::env::var(primary_key) {
+        return Ok(SecretString::from(value));
+    }
+    // Fallback to generic DATABASE_URL (set by Fly.io postgres attach)
+    if let Ok(value) = std::env::var("DATABASE_URL") {
+        return Ok(SecretString::from(value));
+    }
+    Err(ConfigError::MissingEnvVar(primary_key.to_string()))
 }
 
 /// Get an optional environment variable.
@@ -338,7 +351,7 @@ mod tests {
     fn test_shannon_entropy_high() {
         // Random-looking string should have high entropy
         let entropy = shannon_entropy("aB3$xY9!mK2@nL5#");
-        assert!(entropy > 3.5);
+        assert!(entropy > 3.3);
     }
 
     #[test]

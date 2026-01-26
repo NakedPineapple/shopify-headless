@@ -1,0 +1,37 @@
+app = "nakedpineapple-admin"
+primary_region = "sjc"
+
+[build]
+  dockerfile = "../docker/Dockerfile.admin"
+
+[mounts]
+  source = "tailscale_state"
+  destination = "/var/lib/tailscale"
+
+[env]
+  ADMIN_HOST = "0.0.0.0"
+  ADMIN_PORT = "443"
+  RUST_LOG = "info,naked_pineapple_admin=debug"
+  ADMIN_BASE_URL = "https://admin.nakedpineapple.co"
+  SHOPIFY_STORE = "nakedpineapple.myshopify.com"
+  SHOPIFY_API_VERSION = "2026-01"
+  SHOPIFY_ADMIN_CLIENT_ID = "43890b19705271a1369762cb0fea3e4b"
+  SMTP_HOST = "outbound.mailhop.org"
+  SMTP_USERNAME = "Qm49khKp "
+  SMTP_FROM = "noreply@nakedpineapple.co"
+
+# No http_service - traffic comes via Tailscale, not Fly proxy
+
+[checks]
+  [checks.health]
+    port = 443
+    type = "tcp"
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "10s"
+
+[[vm]]
+  count = 1
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1

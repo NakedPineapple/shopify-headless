@@ -1,0 +1,64 @@
+# Stage 1: Build environment
+FROM rust:1.93.0-trixie AS builder
+
+RUN apt-get update && apt-get install -y pkg-config libssl-dev && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Use sqlx offline mode (reads from .sqlx cache instead of live database)
+ENV SQLX_OFFLINE=true
+
+# Copy manifests for dependency caching
+COPY Cargo.toml Cargo.lock ./
+COPY crates/core crates/core/
+COPY crates/storefront/Cargo.toml crates/storefront/
+COPY crates/admin/Cargo.toml crates/admin/
+COPY crates/cli/Cargo.toml crates/cli/
+COPY crates/integration-tests/Cargo.toml crates/integration-tests/
+
+# Create dummy sources for dependency compilation (core is real, others are stubs)
+RUN mkdir -p crates/storefront/src crates/admin/src crates/cli/src crates/integration-tests/src \
+    && echo "fn main() {}" > crates/storefront/src/main.rs \
+    && echo "fn main() {}" > crates/admin/src/main.rs \
+    && echo "fn main() {}" > crates/cli/src/main.rs \
+    && echo "" > crates/integration-tests/src/lib.rs
+
+# Build dependencies only (cached layer)
+RUN cargo build --release -p naked-pineapple-admin -p naked-pineapple-cli
+
+# Copy actual source
+COPY . .
+
+# Rebuild with actual source
+RUN touch crates/admin/src/main.rs crates/cli/src/main.rs \
+    && cargo build --release -p naked-pineapple-admin -p naked-pineapple-cli
+
+# Stage 2: Runtime with Tailscale
+FROM debian:trixie-slim AS runtime
+
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    libssl3 \
+    iptables \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy Tailscale binaries from official image
+COPY --from=docker.io/tailscale/tailscale:stable /usr/local/bin/tailscaled /app/tailscaled
+COPY --from=docker.io/tailscale/tailscale:stable /usr/local/bin/tailscale /app/tailscale
+
+# Create Tailscale state directories
+RUN mkdir -p /var/run/tailscale /var/cache/tailscale /var/lib/tailscale
+
+WORKDIR /app
+
+COPY --from=builder /app/target/release/naked-pineapple-admin /app/server
+COPY --from=builder /app/target/release/np-cli /app/np-cli
+COPY --from=builder /app/crates/admin/static /app/crates/admin/static
+COPY --from=builder /app/crates/admin/templates /app/crates/admin/templates
+
+# Copy start script
+COPY scripts/start-admin.sh /app/start.sh
+RUN chmod +x /app/start.sh
+
+EXPOSE 443
+CMD ["/app/start.sh"]

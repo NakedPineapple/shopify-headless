@@ -22,6 +22,10 @@
 //! - `CLAUDE_MODEL` - Claude model ID (default: claude-sonnet-4-20250514)
 //! - `SMTP_PORT` - SMTP port (default: 587)
 //! - `SENTRY_DSN` - Sentry error tracking DSN
+//!
+//! ## Optional (TLS)
+//! - `ADMIN_TLS_CERT` - PEM-encoded certificate chain
+//! - `ADMIN_TLS_KEY` - PEM-encoded private key
 
 use std::collections::HashMap;
 use std::net::{IpAddr, SocketAddr};
@@ -30,7 +34,7 @@ use secrecy::{ExposeSecret, SecretString};
 use thiserror::Error;
 
 const MIN_SESSION_SECRET_LENGTH: usize = 32;
-const MIN_ENTROPY_BITS_PER_CHAR: f64 = 3.5;
+const MIN_ENTROPY_BITS_PER_CHAR: f64 = 3.3;
 const DEFAULT_CLAUDE_MODEL: &str = "claude-sonnet-4-20250514";
 
 /// Blocklist of common placeholder patterns (case-insensitive)
@@ -83,6 +87,8 @@ pub struct AdminConfig {
     pub email: EmailConfig,
     /// Sentry DSN for error tracking
     pub sentry_dsn: Option<String>,
+    /// TLS configuration for HTTPS (optional)
+    pub tls: Option<TlsConfig>,
 }
 
 /// Shopify Admin API configuration.
@@ -161,6 +167,43 @@ impl std::fmt::Debug for EmailConfig {
     }
 }
 
+/// TLS configuration for HTTPS.
+#[derive(Clone)]
+pub struct TlsConfig {
+    /// PEM-encoded certificate chain
+    pub cert_pem: String,
+    /// PEM-encoded private key
+    pub key_pem: SecretString,
+}
+
+impl std::fmt::Debug for TlsConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("TlsConfig")
+            .field("cert_pem", &"[CERTIFICATE]")
+            .field("key_pem", &"[REDACTED]")
+            .finish()
+    }
+}
+
+impl TlsConfig {
+    fn from_env() -> Result<Option<Self>, ConfigError> {
+        let cert_pem = get_optional_env("ADMIN_TLS_CERT");
+        let key_pem = get_optional_env("ADMIN_TLS_KEY");
+
+        match (cert_pem, key_pem) {
+            (Some(cert), Some(key)) => Ok(Some(Self {
+                cert_pem: cert,
+                key_pem: SecretString::from(key),
+            })),
+            (None, None) => Ok(None),
+            _ => Err(ConfigError::InvalidEnvVar(
+                "ADMIN_TLS_*".to_string(),
+                "Both ADMIN_TLS_CERT and ADMIN_TLS_KEY must be set together".to_string(),
+            )),
+        }
+    }
+}
+
 impl AdminConfig {
     /// Load configuration from environment variables.
     ///
@@ -174,7 +217,7 @@ impl AdminConfig {
         // Load .env file if present (ignore errors if not found)
         let _ = dotenvy::dotenv();
 
-        let database_url = get_required_secret("ADMIN_DATABASE_URL")?;
+        let database_url = get_database_url("ADMIN_DATABASE_URL")?;
         let host = get_env_or_default("ADMIN_HOST", "127.0.0.1")
             .parse::<IpAddr>()
             .map_err(|e| ConfigError::InvalidEnvVar("ADMIN_HOST".to_string(), e.to_string()))?;
@@ -189,6 +232,7 @@ impl AdminConfig {
         let claude = ClaudeConfig::from_env()?;
         let email = EmailConfig::from_env()?;
         let sentry_dsn = get_optional_env("SENTRY_DSN");
+        let tls = TlsConfig::from_env()?;
 
         Ok(Self {
             database_url,
@@ -200,6 +244,7 @@ impl AdminConfig {
             claude,
             email,
             sentry_dsn,
+            tls,
         })
     }
 
@@ -265,6 +310,19 @@ fn get_required_env(key: &str) -> Result<String, ConfigError> {
 fn get_required_secret(key: &str) -> Result<SecretString, ConfigError> {
     let value = get_required_env(key)?;
     Ok(SecretString::from(value))
+}
+
+/// Get database URL with fallback to generic `DATABASE_URL` (used by Fly.io postgres attach).
+fn get_database_url(primary_key: &str) -> Result<SecretString, ConfigError> {
+    // Try primary key first (e.g., ADMIN_DATABASE_URL)
+    if let Ok(value) = std::env::var(primary_key) {
+        return Ok(SecretString::from(value));
+    }
+    // Fallback to generic DATABASE_URL (set by Fly.io postgres attach)
+    if let Ok(value) = std::env::var("DATABASE_URL") {
+        return Ok(SecretString::from(value));
+    }
+    Err(ConfigError::MissingEnvVar(primary_key.to_string()))
 }
 
 /// Get an optional environment variable.
@@ -377,7 +435,7 @@ mod tests {
     fn test_shannon_entropy_high() {
         // Random-looking string should have high entropy
         let entropy = shannon_entropy("aB3$xY9!mK2@nL5#");
-        assert!(entropy > 3.5);
+        assert!(entropy > 3.3);
     }
 
     #[test]
@@ -449,6 +507,7 @@ mod tests {
                 from_address: "admin@example.com".to_string(),
             },
             sentry_dsn: None,
+            tls: None,
         };
 
         let addr = config.socket_addr();

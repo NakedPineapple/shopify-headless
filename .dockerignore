@@ -1,0 +1,28 @@
+# Build artifacts
+target/
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Documentation
+*.md
+LICENSE*
+
+# CI/CD
+.github/
+
+# Local development
+docker-compose/
+~/.cargo/

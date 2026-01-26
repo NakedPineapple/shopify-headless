@@ -1,0 +1,93 @@
+name: Renew TLS Certificates
+
+on:
+  schedule:
+    # Run weekly on Sundays at 3am UTC
+    - cron: '0 3 * * 0'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options: [staging, production, all]
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+jobs:
+  renew-staging:
+    name: Renew Staging Certificate
+    runs-on: ubuntu-latest
+    if: github.event.inputs.environment != 'production'
+    steps:
+      - name: Install certbot
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y certbot python3-certbot-dns-cloudflare
+
+      - name: Create Cloudflare credentials
+        run: |
+          mkdir -p ~/.secrets
+          echo "dns_cloudflare_api_token = $CLOUDFLARE_API_TOKEN" > ~/.secrets/cloudflare.ini
+          chmod 600 ~/.secrets/cloudflare.ini
+
+      - name: Generate certificate
+        run: |
+          sudo certbot certonly --dns-cloudflare \
+            --dns-cloudflare-credentials ~/.secrets/cloudflare.ini \
+            --non-interactive --agree-tos \
+            --email admin@nakedpineapple.co \
+            -d staging.admin.nakedpineapple.co
+
+      - name: Install flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Update Fly.io secrets
+        run: |
+          fly secrets set \
+            ADMIN_TLS_CERT="$(sudo cat /etc/letsencrypt/live/staging.admin.nakedpineapple.co/fullchain.pem)" \
+            ADMIN_TLS_KEY="$(sudo cat /etc/letsencrypt/live/staging.admin.nakedpineapple.co/privkey.pem)" \
+            --app nakedpineapple-admin-staging
+
+      - name: Restart app to pick up new certs
+        run: fly apps restart nakedpineapple-admin-staging
+
+  renew-production:
+    name: Renew Production Certificate
+    runs-on: ubuntu-latest
+    if: github.event.inputs.environment != 'staging'
+    steps:
+      - name: Install certbot
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y certbot python3-certbot-dns-cloudflare
+
+      - name: Create Cloudflare credentials
+        run: |
+          mkdir -p ~/.secrets
+          echo "dns_cloudflare_api_token = $CLOUDFLARE_API_TOKEN" > ~/.secrets/cloudflare.ini
+          chmod 600 ~/.secrets/cloudflare.ini
+
+      - name: Generate certificate
+        run: |
+          sudo certbot certonly --dns-cloudflare \
+            --dns-cloudflare-credentials ~/.secrets/cloudflare.ini \
+            --non-interactive --agree-tos \
+            --email admin@nakedpineapple.co \
+            -d admin.nakedpineapple.co
+
+      - name: Install flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Update Fly.io secrets
+        run: |
+          fly secrets set \
+            ADMIN_TLS_CERT="$(sudo cat /etc/letsencrypt/live/admin.nakedpineapple.co/fullchain.pem)" \
+            ADMIN_TLS_KEY="$(sudo cat /etc/letsencrypt/live/admin.nakedpineapple.co/privkey.pem)" \
+            --app nakedpineapple-admin
+
+      - name: Restart app to pick up new certs
+        run: fly apps restart nakedpineapple-admin

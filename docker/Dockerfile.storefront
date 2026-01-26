@@ -1,0 +1,58 @@
+# Stage 1: Build environment
+FROM rust:1.93.0-trixie AS builder
+
+RUN apt-get update && apt-get install -y pkg-config libssl-dev && rm -rf /var/lib/apt/lists/*
+
+# Install Tailwind CSS CLI
+RUN curl -sLO https://github.com/tailwindlabs/tailwindcss/releases/download/v4.0.0/tailwindcss-linux-x64 \
+    && chmod +x tailwindcss-linux-x64 && mv tailwindcss-linux-x64 /usr/local/bin/tailwindcss
+
+WORKDIR /app
+
+# Use sqlx offline mode (reads from .sqlx cache instead of live database)
+ENV SQLX_OFFLINE=true
+
+# Copy manifests for dependency caching
+COPY Cargo.toml Cargo.lock ./
+COPY crates/core crates/core/
+COPY crates/storefront/Cargo.toml crates/storefront/
+COPY crates/admin/Cargo.toml crates/admin/
+COPY crates/cli/Cargo.toml crates/cli/
+COPY crates/integration-tests/Cargo.toml crates/integration-tests/
+
+# Create dummy sources for dependency compilation (core is real, others are stubs)
+RUN mkdir -p crates/storefront/src crates/admin/src crates/cli/src crates/integration-tests/src \
+    && echo "fn main() {}" > crates/storefront/src/main.rs \
+    && echo "fn main() {}" > crates/admin/src/main.rs \
+    && echo "fn main() {}" > crates/cli/src/main.rs \
+    && echo "" > crates/integration-tests/src/lib.rs
+
+# Build dependencies only (cached layer)
+RUN cargo build --release -p naked-pineapple-storefront -p naked-pineapple-cli
+
+# Copy actual source
+COPY . .
+
+# Build Tailwind CSS
+RUN tailwindcss -i ./crates/storefront/static/css/input.css \
+    -o ./crates/storefront/static/css/main.css --minify
+
+# Rebuild with actual source
+RUN touch crates/storefront/src/main.rs crates/cli/src/main.rs \
+    && cargo build --release -p naked-pineapple-storefront -p naked-pineapple-cli
+
+# Stage 2: Runtime
+FROM debian:trixie-slim AS runtime
+
+RUN apt-get update && apt-get install -y ca-certificates libssl3 && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY --from=builder /app/target/release/naked-pineapple-storefront /app/server
+COPY --from=builder /app/target/release/np-cli /app/np-cli
+COPY --from=builder /app/crates/storefront/static /app/crates/storefront/static
+COPY --from=builder /app/crates/storefront/templates /app/crates/storefront/templates
+COPY --from=builder /app/crates/storefront/content /app/crates/storefront/content
+
+EXPOSE 8080
+CMD ["/app/server"]

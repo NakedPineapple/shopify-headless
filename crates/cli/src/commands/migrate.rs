@@ -44,12 +44,13 @@ pub enum MigrationError {
 
 /// Run storefront database migrations.
 ///
-/// Connects to the database specified by `STOREFRONT_DATABASE_URL` and runs
-/// all pending migrations from `crates/storefront/migrations/`.
+/// Connects to the database specified by `STOREFRONT_DATABASE_URL` (or `DATABASE_URL` fallback)
+/// and runs all pending migrations from `crates/storefront/migrations/`.
 pub async fn storefront() -> Result<(), MigrationError> {
     dotenvy::dotenv().ok();
 
     let database_url = std::env::var("STOREFRONT_DATABASE_URL")
+        .or_else(|_| std::env::var("DATABASE_URL"))
         .map_err(|_| MigrationError::MissingEnvVar("STOREFRONT_DATABASE_URL"))?;
 
     tracing::info!("Connecting to storefront database...");
@@ -66,12 +67,13 @@ pub async fn storefront() -> Result<(), MigrationError> {
 
 /// Run admin database migrations.
 ///
-/// Connects to the database specified by `ADMIN_DATABASE_URL` and runs
-/// all pending migrations from `crates/admin/migrations/`.
+/// Connects to the database specified by `ADMIN_DATABASE_URL` (or `DATABASE_URL` fallback)
+/// and runs all pending migrations from `crates/admin/migrations/`.
 pub async fn admin() -> Result<(), MigrationError> {
     dotenvy::dotenv().ok();
 
     let database_url = std::env::var("ADMIN_DATABASE_URL")
+        .or_else(|_| std::env::var("DATABASE_URL"))
         .map_err(|_| MigrationError::MissingEnvVar("ADMIN_DATABASE_URL"))?;
 
     tracing::info!("Connecting to admin database...");

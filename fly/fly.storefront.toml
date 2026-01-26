@@ -1,0 +1,43 @@
+app = "nakedpineapple-storefront"
+primary_region = "sjc"
+
+[build]
+  dockerfile = "../docker/Dockerfile.storefront"
+
+[env]
+  STOREFRONT_HOST = "0.0.0.0"
+  STOREFRONT_PORT = "8080"
+  RUST_LOG = "info,naked_pineapple_storefront=debug"
+  STOREFRONT_BASE_URL = "https://new.nakedpineapple.co"
+  SHOPIFY_STORE = "nakedpineapple.myshopify.com"
+  SHOPIFY_CUSTOMER_SHOP_ID = "71655391511"
+  SHOPIFY_API_VERSION = "2026-01"
+  SHOPIFY_CUSTOMER_CLIENT_ID = "d87e8c38-17a3-4ac1-981a-981ddd43d305"
+  SHOPIFY_STOREFRONT_PUBLIC_TOKEN = "acbc485b80b86144aacb8d573e521e51"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
+
+[[http_service.checks]]
+  grace_period = "10s"
+  interval = "30s"
+  method = "GET"
+  path = "/health"
+  timeout = "5s"
+
+[[http_service.checks]]
+  grace_period = "30s"
+  interval = "60s"
+  method = "GET"
+  path = "/health/ready"
+  timeout = "10s"
+
+[[vm]]
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1

@@ -32,6 +32,9 @@
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::{Router, routing::get};
+use axum_server::Handle;
+use axum_server::tls_rustls::RustlsConfig;
+use secrecy::ExposeSecret;
 use tower_http::services::ServeDir;
 
 mod claude;
@@ -52,6 +55,11 @@ use state::AppState;
 
 #[tokio::main]
 async fn main() {
+    // Install rustls crypto provider (must be done before any TLS operations)
+    rustls::crypto::ring::default_provider()
+        .install_default()
+        .expect("Failed to install rustls crypto provider");
+
     // Initialize tracing
     tracing_subscriber::fmt::init();
 
@@ -90,18 +98,45 @@ async fn main() {
         .with_state(state);
 
     // Start server
-    // NOTE: Binding to 127.0.0.1 - Tailscale handles external access
     let addr = config.socket_addr();
-    tracing::info!("admin listening on {}", addr);
 
-    let listener = tokio::net::TcpListener::bind(addr)
+    if let Some(tls_config) = &config.tls {
+        let rustls_config = RustlsConfig::from_pem(
+            tls_config.cert_pem.as_bytes().to_vec(),
+            tls_config.key_pem.expose_secret().as_bytes().to_vec(),
+        )
         .await
-        .expect("Failed to bind to address");
+        .expect("Failed to load TLS certificates");
 
-    axum::serve(listener, app)
-        .with_graceful_shutdown(shutdown_signal())
-        .await
-        .expect("Server error");
+        tracing::info!("admin listening on https://{}", addr);
+
+        let handle = Handle::new();
+        let shutdown_handle = handle.clone();
+
+        // Spawn task to handle graceful shutdown
+        tokio::spawn(async move {
+            shutdown_signal().await;
+            shutdown_handle.graceful_shutdown(Some(std::time::Duration::from_secs(30)));
+        });
+
+        axum_server::bind_rustls(addr, rustls_config)
+            .handle(handle)
+            .serve(app.into_make_service())
+            .await
+            .expect("Server error");
+    } else {
+        // NOTE: Binding to 127.0.0.1 - Tailscale handles external access
+        tracing::info!("admin listening on http://{}", addr);
+
+        let listener = tokio::net::TcpListener::bind(addr)
+            .await
+            .expect("Failed to bind to address");
+
+        axum::serve(listener, app)
+            .with_graceful_shutdown(shutdown_signal())
+            .await
+            .expect("Server error");
+    }
 }
 
 /// Liveness health check endpoint.
