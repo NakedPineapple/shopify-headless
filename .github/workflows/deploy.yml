@@ -31,6 +31,7 @@ concurrency:
 
 env:
   FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+  REGISTRY: registry.fly.io
 
 jobs:
   check:
@@ -38,6 +39,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          lfs: true
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Check formatting
@@ -49,57 +52,135 @@ jobs:
         env:
           SQLX_OFFLINE: true
 
-  # Deploy to staging on PR or push to main
+  # Build Docker images on GitHub with layer caching
+  build:
+    name: Build Images
+    needs: check
+    runs-on: ubuntu-latest
+    if: |
+      !inputs.promote &&
+      ((github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+       (github.event_name == 'pull_request') ||
+       (github.event_name == 'workflow_dispatch'))
+    outputs:
+      storefront_image: ${{ steps.storefront-meta.outputs.tags }}
+      admin_image: ${{ steps.admin-meta.outputs.tags }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Fly Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: x
+          password: ${{ secrets.FLY_API_TOKEN }}
+
+      # Determine environment and app names
+      - name: Set environment variables
+        id: env
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            ENV="${{ inputs.environment }}"
+          else
+            ENV="staging"
+          fi
+          echo "environment=$ENV" >> $GITHUB_OUTPUT
+
+          if [[ "$ENV" == "production" ]]; then
+            echo "storefront_app=nakedpineapple-storefront" >> $GITHUB_OUTPUT
+            echo "admin_app=nakedpineapple-admin" >> $GITHUB_OUTPUT
+          else
+            echo "storefront_app=nakedpineapple-storefront-staging" >> $GITHUB_OUTPUT
+            echo "admin_app=nakedpineapple-admin-staging" >> $GITHUB_OUTPUT
+          fi
+
+      # Build and push storefront
+      - name: Storefront image metadata
+        id: storefront-meta
+        if: inputs.target != 'admin'
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ steps.env.outputs.storefront_app }}
+          tags: |
+            type=sha,prefix=
+            type=raw,value=latest
+
+      - name: Build and push storefront
+        if: inputs.target != 'admin'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.storefront
+          push: true
+          tags: ${{ steps.storefront-meta.outputs.tags }}
+          cache-from: type=gha,scope=storefront
+          cache-to: type=gha,mode=max,scope=storefront
+
+      # Build and push admin
+      - name: Admin image metadata
+        id: admin-meta
+        if: inputs.target != 'storefront'
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ steps.env.outputs.admin_app }}
+          tags: |
+            type=sha,prefix=
+            type=raw,value=latest
+
+      - name: Build and push admin
+        if: inputs.target != 'storefront'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.admin
+          push: true
+          tags: ${{ steps.admin-meta.outputs.tags }}
+          cache-from: type=gha,scope=admin
+          cache-to: type=gha,mode=max,scope=admin
+
+  # Deploy to staging
   deploy-staging:
     name: Deploy to Staging
-    needs: check
+    needs: build
     runs-on: ubuntu-latest
     if: |
       (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
       (github.event_name == 'pull_request') ||
       (github.event_name == 'workflow_dispatch' && inputs.environment == 'staging' && !inputs.promote)
     environment: staging
-    outputs:
-      storefront_image: ${{ steps.storefront.outputs.image }}
-      admin_image: ${{ steps.admin.outputs.image }}
     steps:
-      - uses: actions/checkout@v4
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
       - name: Deploy storefront to staging
-        id: storefront
         if: inputs.target != 'admin'
-        run: |
-          flyctl deploy --config fly/fly.storefront.staging.toml --remote-only
-          IMAGE=$(flyctl status -a nakedpineapple-storefront-staging --json | jq -r '.Machines[0].config.image')
-          echo "image=$IMAGE" >> $GITHUB_OUTPUT
+        run: flyctl deploy --image ${{ env.REGISTRY }}/nakedpineapple-storefront-staging:${{ github.sha }} -a nakedpineapple-storefront-staging
 
       - name: Deploy admin to staging
-        id: admin
         if: inputs.target != 'storefront'
-        run: |
-          flyctl deploy --config fly/fly.admin.staging.toml --remote-only
-          IMAGE=$(flyctl status -a nakedpineapple-admin-staging --json | jq -r '.Machines[0].config.image')
-          echo "image=$IMAGE" >> $GITHUB_OUTPUT
+        run: flyctl deploy --image ${{ env.REGISTRY }}/nakedpineapple-admin-staging:${{ github.sha }} -a nakedpineapple-admin-staging
 
   # Deploy to production (manual trigger only)
   deploy-production:
     name: Deploy to Production
-    needs: check
+    needs: build
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch' && inputs.environment == 'production' && !inputs.promote
     environment: production
     steps:
-      - uses: actions/checkout@v4
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
       - name: Deploy storefront to production
         if: inputs.target != 'admin'
-        run: flyctl deploy --config fly/fly.storefront.toml --remote-only
+        run: flyctl deploy --image ${{ env.REGISTRY }}/nakedpineapple-storefront:${{ github.sha }} -a nakedpineapple-storefront
 
       - name: Deploy admin to production
         if: inputs.target != 'storefront'
-        run: flyctl deploy --config fly/fly.admin.toml --remote-only
+        run: flyctl deploy --image ${{ env.REGISTRY }}/nakedpineapple-admin:${{ github.sha }} -a nakedpineapple-admin
 
   # Promote staging image to production (no rebuild)
   promote-to-production:
