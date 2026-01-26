@@ -1,0 +1,69 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO storefront.user_credential (shopify_customer_id, email, credential_id, public_key, counter, name)\n            VALUES ($1, $2, $3, $4, $5, $6)\n            RETURNING id, user_id, shopify_customer_id, email, credential_id, public_key, name,\n                      created_at as \"created_at: DateTime<Utc>\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "shopify_customer_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "email",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "credential_id",
+        "type_info": "Bytea"
+      },
+      {
+        "ordinal": 5,
+        "name": "public_key",
+        "type_info": "Bytea"
+      },
+      {
+        "ordinal": 6,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "created_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Bytea",
+        "Bytea",
+        "Int4",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "e8f0d903f2b8f19a7d6585cf1921c103dbefe57b9fc84ad52eb784bfd79272cd"
+}

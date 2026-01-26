@@ -4,7 +4,7 @@
 
 # Create a new customer
 # Shopify automatically sends an activation email
-mutation customerCreate($input: CustomerCreateInput!) {
+mutation CustomerCreate($input: CustomerCreateInput!) {
   customerCreate(input: $input) {
     customer {
       id
@@ -21,7 +21,7 @@ mutation customerCreate($input: CustomerCreateInput!) {
 }
 
 # Create an access token (login)
-mutation customerAccessTokenCreate($input: CustomerAccessTokenCreateInput!) {
+mutation CustomerAccessTokenCreate($input: CustomerAccessTokenCreateInput!) {
   customerAccessTokenCreate(input: $input) {
     customerAccessToken {
       accessToken
@@ -36,7 +36,7 @@ mutation customerAccessTokenCreate($input: CustomerAccessTokenCreateInput!) {
 }
 
 # Activate a customer account using the URL from the activation email
-mutation customerActivateByUrl($activationUrl: URL!, $password: String!) {
+mutation CustomerActivateByUrl($activationUrl: URL!, $password: String!) {
   customerActivateByUrl(activationUrl: $activationUrl, password: $password) {
     customer {
       id
@@ -56,7 +56,7 @@ mutation customerActivateByUrl($activationUrl: URL!, $password: String!) {
 
 # Request a password recovery email
 # Shopify sends the email automatically
-mutation customerRecover($email: String!) {
+mutation CustomerRecover($email: String!) {
   customerRecover(email: $email) {
     customerUserErrors {
       field
@@ -67,7 +67,7 @@ mutation customerRecover($email: String!) {
 }
 
 # Reset password using the URL from the recovery email
-mutation customerResetByUrl($resetUrl: URL!, $password: String!) {
+mutation CustomerResetByUrl($resetUrl: URL!, $password: String!) {
   customerResetByUrl(resetUrl: $resetUrl, password: $password) {
     customer {
       id
@@ -86,7 +86,7 @@ mutation customerResetByUrl($resetUrl: URL!, $password: String!) {
 }
 
 # Renew an access token before it expires
-mutation customerAccessTokenRenew($customerAccessToken: String!) {
+mutation CustomerAccessTokenRenew($customerAccessToken: String!) {
   customerAccessTokenRenew(customerAccessToken: $customerAccessToken) {
     customerAccessToken {
       accessToken
@@ -100,7 +100,7 @@ mutation customerAccessTokenRenew($customerAccessToken: String!) {
 }
 
 # Delete an access token (logout)
-mutation customerAccessTokenDelete($customerAccessToken: String!) {
+mutation CustomerAccessTokenDelete($customerAccessToken: String!) {
   customerAccessTokenDelete(customerAccessToken: $customerAccessToken) {
     deletedAccessToken
     deletedCustomerAccessTokenId
@@ -112,7 +112,7 @@ mutation customerAccessTokenDelete($customerAccessToken: String!) {
 }
 
 # Get customer by access token
-query getCustomerByToken {
+query GetCustomerByToken {
   customer {
     id
     email

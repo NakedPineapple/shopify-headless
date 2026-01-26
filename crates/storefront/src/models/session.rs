@@ -13,7 +13,7 @@ use naked_pineapple_core::Email;
 /// (email/password login), as opposed to OAuth via Customer Account API.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct CurrentCustomer {
-    /// Shopify customer ID (e.g., "gid://shopify/Customer/123")
+    /// Shopify customer ID (e.g., `gid://shopify/Customer/123`)
     pub shopify_customer_id: String,
     /// Customer's email address
     pub email: String,
@@ -44,7 +44,7 @@ impl std::fmt::Debug for CurrentCustomer {
 impl CurrentCustomer {
     /// Create a new `CurrentCustomer`.
     #[must_use]
-    pub fn new(
+    pub const fn new(
         shopify_customer_id: String,
         email: String,
         first_name: Option<String>,
@@ -64,7 +64,7 @@ impl CurrentCustomer {
 
     /// Get the access token for making authenticated API calls.
     #[must_use]
-    pub fn access_token(&self) -> &SecretString {
+    pub const fn access_token(&self) -> &SecretString {
         &self.access_token
     }
 

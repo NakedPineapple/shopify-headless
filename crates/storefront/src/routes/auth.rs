@@ -205,10 +205,7 @@ pub async fn register_page(Query(query): Query<MessageQuery>) -> impl IntoRespon
 ///
 /// Creates customer via Shopify Storefront API `customerCreate` mutation.
 /// Shopify automatically sends an activation email.
-pub async fn register(
-    State(state): State<AppState>,
-    Form(form): Form<RegisterForm>,
-) -> Response {
+pub async fn register(State(state): State<AppState>, Form(form): Form<RegisterForm>) -> Response {
     // Validate passwords match
     if form.password != form.password_confirm {
         return Redirect::to("/auth/register?error=password_mismatch").into_response();
@@ -280,9 +277,8 @@ pub async fn activate(
     Query(query): Query<CallbackQuery>,
     Form(form): Form<ActivateForm>,
 ) -> Response {
-    let activation_url = match query.url {
-        Some(url) => url,
-        None => return Redirect::to("/auth/login?error=invalid_activation_link").into_response(),
+    let Some(activation_url) = query.url else {
+        return Redirect::to("/auth/login?error=invalid_activation_link").into_response();
     };
 
     // Validate passwords match
@@ -381,9 +377,8 @@ pub async fn reset_password(
     Query(query): Query<CallbackQuery>,
     Form(form): Form<ResetPasswordForm>,
 ) -> Response {
-    let reset_url = match query.url {
-        Some(url) => url,
-        None => return Redirect::to("/auth/forgot-password?error=invalid_reset_link").into_response(),
+    let Some(reset_url) = query.url else {
+        return Redirect::to("/auth/forgot-password?error=invalid_reset_link").into_response();
     };
 
     // Validate passwords match

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT id, user_id, credential_id, public_key, name,\n                   created_at as \"created_at: DateTime<Utc>\"\n            FROM storefront.user_credential\n            WHERE user_id = $1\n            ORDER BY created_at ASC\n            ",
+  "query": "\n            SELECT id, user_id, shopify_customer_id, email, credential_id, public_key, name,\n                   created_at as \"created_at: DateTime<Utc>\"\n            FROM storefront.user_credential\n            WHERE credential_id = $1\n            ",
   "describe": {
     "columns": [
       {
@@ -15,38 +15,50 @@
       },
       {
         "ordinal": 2,
+        "name": "shopify_customer_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "email",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
         "name": "credential_id",
         "type_info": "Bytea"
       },
       {
-        "ordinal": 3,
+        "ordinal": 5,
         "name": "public_key",
         "type_info": "Bytea"
       },
       {
-        "ordinal": 4,
+        "ordinal": 6,
         "name": "name",
         "type_info": "Text"
       },
       {
-        "ordinal": 5,
+        "ordinal": 7,
         "name": "created_at: DateTime<Utc>",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
-        "Int4"
+        "Bytea"
       ]
     },
     "nullable": [
       false,
       false,
+      true,
+      true,
       false,
       false,
       false,
       false
     ]
   },
-  "hash": "f8402a330f4283db3dae0bc931122d1714df5a25d8b800fc873112d5bc827618"
+  "hash": "2875ffe4a3c3ec3a5640e1aaa6968c23bb71129a0719de24ea322cfbda191230"
 }

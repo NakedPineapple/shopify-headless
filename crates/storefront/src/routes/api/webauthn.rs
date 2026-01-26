@@ -1,6 +1,9 @@
 //! `WebAuthn` API routes.
 //!
 //! JSON API endpoints for passkey registration and authentication.
+//!
+//! Passkeys are linked to Shopify customer IDs, allowing customers to authenticate
+//! without a password after initial setup.
 
 use axum::{
     Json,
@@ -8,12 +11,13 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
 };
+use secrecy::SecretString;
 use serde::{Deserialize, Serialize};
 use tower_sessions::Session;
 use webauthn_rs::prelude::*;
 
-use crate::middleware::{RequireAuth, set_current_user};
-use crate::models::{CurrentUser, session_keys};
+use crate::middleware::{RequireAuth, set_current_customer};
+use crate::models::{CurrentCustomer, session_keys};
 use crate::services::{AuthError, AuthService};
 use crate::state::AppState;
 
@@ -52,9 +56,11 @@ pub struct StartRegistrationResponse {
     pub options: CreationChallengeResponse,
 }
 
-/// Start passkey registration for the current user.
+/// Start passkey registration for the current customer.
 ///
 /// POST /api/auth/webauthn/register/start
+///
+/// The customer must already be logged in (via Shopify password auth).
 ///
 /// # Errors
 ///
@@ -62,24 +68,23 @@ pub struct StartRegistrationResponse {
 pub async fn start_registration(
     State(state): State<AppState>,
     session: Session,
-    RequireAuth(current_user): RequireAuth,
+    RequireAuth(current_customer): RequireAuth,
 ) -> Result<Json<StartRegistrationResponse>, ApiError> {
     let auth = AuthService::new(state.pool(), state.webauthn());
 
-    // Get user and existing credentials
-    let user = auth
-        .get_user(current_user.id)
-        .await
-        .map_err(|e| ApiError::new(e.to_string()))?;
-
+    // Get existing credentials for this Shopify customer
     let credentials = auth
-        .get_credentials(current_user.id)
+        .get_credentials_by_shopify_customer_id(&current_customer.shopify_customer_id)
         .await
         .map_err(|e| ApiError::new(e.to_string()))?;
 
-    // Start registration
+    // Start registration using Shopify customer ID as the user identifier
     let (options, reg_state) = auth
-        .start_passkey_registration(&user, &credentials)
+        .start_passkey_registration_for_shopify_customer(
+            &current_customer.shopify_customer_id,
+            &current_customer.email,
+            &credentials,
+        )
         .map_err(|e| ApiError::new(e.to_string()))?;
 
     // Store registration state in session
@@ -117,7 +122,7 @@ pub struct FinishRegistrationResponse {
 pub async fn finish_registration(
     State(state): State<AppState>,
     session: Session,
-    RequireAuth(current_user): RequireAuth,
+    RequireAuth(current_customer): RequireAuth,
     Json(req): Json<FinishRegistrationRequest>,
 ) -> Result<Json<FinishRegistrationResponse>, ApiError> {
     // Get registration state from session
@@ -139,9 +144,19 @@ pub async fn finish_registration(
         .finish_passkey_registration(&reg_state, &req.credential)
         .map_err(|e| ApiError::new(e.to_string()))?;
 
-    // Save credential
+    // Parse email for credential storage (enables passkey-by-email lookup)
+    let email = current_customer
+        .email_parsed()
+        .map_err(|e| ApiError::new(format!("invalid email: {e}")))?;
+
+    // Save credential linked to Shopify customer ID and email
     let credential = auth
-        .save_credential(current_user.id, &passkey, &req.name)
+        .save_credential_for_shopify_customer(
+            &current_customer.shopify_customer_id,
+            &email,
+            &passkey,
+            &req.name,
+        )
         .await
         .map_err(|e| ApiError::new(e.to_string()))?;
 
@@ -181,19 +196,23 @@ pub async fn start_authentication(
 ) -> Result<Json<StartAuthenticationResponse>, ApiError> {
     let auth = AuthService::new(state.pool(), state.webauthn());
 
-    // Start authentication
-    let (options, auth_state, user_id) = auth
-        .start_passkey_authentication(&req.email)
+    // Start authentication - this looks up credentials by email
+    // and returns the Shopify customer ID for verification after auth
+    let (options, auth_state, shopify_customer_id) = auth
+        .start_passkey_authentication_for_shopify_customer(&req.email)
         .await
         .map_err(|e| match e {
-            AuthError::UserNotFound => ApiError::new("user not found"),
-            AuthError::NoCredentials => ApiError::new("no passkeys registered"),
+            AuthError::UserNotFound => ApiError::new("no account found with this email"),
+            AuthError::NoCredentials => ApiError::new("no passkeys registered for this account"),
             other => ApiError::new(other.to_string()),
         })?;
 
-    // Store authentication state in session (includes user_id for verification)
+    // Store authentication state in session (includes Shopify customer ID for verification)
     session
-        .insert(session_keys::WEBAUTHN_AUTH, (auth_state, user_id))
+        .insert(
+            session_keys::WEBAUTHN_AUTH,
+            (auth_state, shopify_customer_id),
+        )
         .await
         .map_err(|e| ApiError::new(format!("session error: {e}")))?;
 
@@ -225,10 +244,8 @@ pub async fn finish_authentication(
     session: Session,
     Json(req): Json<FinishAuthenticationRequest>,
 ) -> Result<Json<FinishAuthenticationResponse>, ApiError> {
-    use naked_pineapple_core::UserId;
-
     // Get authentication state from session
-    let (auth_state, user_id): (PasskeyAuthentication, UserId) = session
+    let (auth_state, shopify_customer_id): (PasskeyAuthentication, String) = session
         .get(session_keys::WEBAUTHN_AUTH)
         .await
         .map_err(|e| ApiError::new(format!("session error: {e}")))?
@@ -236,24 +253,47 @@ pub async fn finish_authentication(
 
     // Clear authentication state
     let _ = session
-        .remove::<(PasskeyAuthentication, UserId)>(session_keys::WEBAUTHN_AUTH)
+        .remove::<(PasskeyAuthentication, String)>(session_keys::WEBAUTHN_AUTH)
         .await;
 
     let auth = AuthService::new(state.pool(), state.webauthn());
 
-    // Finish authentication
-    let user = auth
-        .finish_passkey_authentication(&auth_state, &req.credential, user_id)
-        .await
-        .map_err(|e| ApiError::new(e.to_string()))?;
+    // Finish authentication - verifies the passkey response
+    auth.finish_passkey_authentication_for_shopify_customer(
+        &auth_state,
+        &req.credential,
+        &shopify_customer_id,
+    )
+    .await
+    .map_err(|e| ApiError::new(e.to_string()))?;
 
-    // Set current user in session
-    let current_user = CurrentUser {
-        id: user.id,
-        email: user.email,
-    };
+    // After successful passkey auth, we need to get customer data from Shopify
+    // and create an access token. For now, we'll create a session with the customer ID
+    // but without a Shopify access token (the customer will need to login with password
+    // to get a full session with Shopify API access).
+    //
+    // TODO: Consider using Shopify's customerAccessTokenCreateWithMultipass for
+    // full Shopify integration, or store a long-lived token during password auth.
 
-    set_current_user(&session, &current_user)
+    // For now, fetch customer info from Shopify to populate the session
+    // This requires that the customer already has a stored access token or we skip this
+    // In a production implementation, you might want to:
+    // 1. Store a refresh token during password auth
+    // 2. Use multipass for seamless token creation
+    // 3. Require password auth periodically to refresh tokens
+
+    // Create a minimal session - the customer is authenticated via passkey
+    // but doesn't have a fresh Shopify access token
+    let current_customer = CurrentCustomer::new(
+        shopify_customer_id,
+        String::new(), // Email will be fetched when needed
+        None,
+        None,
+        SecretString::from(String::new()), // No access token for passkey-only auth
+        String::new(),                     // No expiry
+    );
+
+    set_current_customer(&session, &current_customer)
         .await
         .map_err(|e| ApiError::new(format!("session error: {e}")))?;
 

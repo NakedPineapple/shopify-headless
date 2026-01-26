@@ -61,6 +61,7 @@ struct UserCredentialRow {
     id: i32,
     user_id: Option<i32>,
     shopify_customer_id: Option<String>,
+    email: Option<String>,
     credential_id: Vec<u8>,
     public_key: Vec<u8>,
     name: String,
@@ -77,9 +78,19 @@ impl TryFrom<UserCredentialRow> for UserCredential {
         // Require shopify_customer_id for new credentials
         let shopify_customer_id = row.shopify_customer_id.unwrap_or_default();
 
+        // Parse email if present
+        let email = row
+            .email
+            .map(|e| Email::parse(&e))
+            .transpose()
+            .map_err(|e| {
+                RepositoryError::DataCorruption(format!("invalid email in credential: {e}"))
+            })?;
+
         Ok(Self {
             id: CredentialId::new(row.id),
             shopify_customer_id,
+            email,
             user_id: row.user_id.map(UserId::new),
             webauthn_id: row.credential_id,
             passkey,
@@ -306,13 +317,42 @@ impl<'a> UserRepository<'a> {
         let rows = sqlx::query_as!(
             UserCredentialRow,
             r#"
-            SELECT id, user_id, shopify_customer_id, credential_id, public_key, name,
+            SELECT id, user_id, shopify_customer_id, email, credential_id, public_key, name,
                    created_at as "created_at: DateTime<Utc>"
             FROM storefront.user_credential
             WHERE shopify_customer_id = $1
             ORDER BY created_at ASC
             "#,
             shopify_customer_id
+        )
+        .fetch_all(self.pool)
+        .await?;
+
+        rows.into_iter().map(TryInto::try_into).collect()
+    }
+
+    /// Get all credentials for an email address.
+    ///
+    /// This enables passkey-by-email lookup for passwordless authentication.
+    ///
+    /// # Errors
+    ///
+    /// Returns `RepositoryError::Database` if the query fails.
+    /// Returns `RepositoryError::DataCorruption` if any credential data is invalid.
+    pub async fn get_credentials_by_email(
+        &self,
+        email: &Email,
+    ) -> Result<Vec<UserCredential>, RepositoryError> {
+        let rows = sqlx::query_as!(
+            UserCredentialRow,
+            r#"
+            SELECT id, user_id, shopify_customer_id, email, credential_id, public_key, name,
+                   created_at as "created_at: DateTime<Utc>"
+            FROM storefront.user_credential
+            WHERE email = $1
+            ORDER BY created_at ASC
+            "#,
+            email.as_str()
         )
         .fetch_all(self.pool)
         .await?;
@@ -329,6 +369,7 @@ impl<'a> UserRepository<'a> {
     pub async fn create_credential_for_shopify_customer(
         &self,
         shopify_customer_id: &str,
+        email: &Email,
         passkey: &Passkey,
         name: &str,
     ) -> Result<UserCredential, RepositoryError> {
@@ -339,12 +380,13 @@ impl<'a> UserRepository<'a> {
         let row = sqlx::query_as!(
             UserCredentialRow,
             r#"
-            INSERT INTO storefront.user_credential (shopify_customer_id, credential_id, public_key, counter, name)
-            VALUES ($1, $2, $3, $4, $5)
-            RETURNING id, user_id, shopify_customer_id, credential_id, public_key, name,
+            INSERT INTO storefront.user_credential (shopify_customer_id, email, credential_id, public_key, counter, name)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            RETURNING id, user_id, shopify_customer_id, email, credential_id, public_key, name,
                       created_at as "created_at: DateTime<Utc>"
             "#,
             shopify_customer_id,
+            email.as_str(),
             passkey.cred_id().as_ref(),
             &public_key,
             0_i32,
@@ -409,7 +451,7 @@ impl<'a> UserRepository<'a> {
         let rows = sqlx::query_as!(
             UserCredentialRow,
             r#"
-            SELECT id, user_id, shopify_customer_id, credential_id, public_key, name,
+            SELECT id, user_id, shopify_customer_id, email, credential_id, public_key, name,
                    created_at as "created_at: DateTime<Utc>"
             FROM storefront.user_credential
             WHERE user_id = $1
@@ -444,7 +486,7 @@ impl<'a> UserRepository<'a> {
             r#"
             INSERT INTO storefront.user_credential (user_id, credential_id, public_key, counter, name)
             VALUES ($1, $2, $3, $4, $5)
-            RETURNING id, user_id, shopify_customer_id, credential_id, public_key, name,
+            RETURNING id, user_id, shopify_customer_id, email, credential_id, public_key, name,
                       created_at as "created_at: DateTime<Utc>"
             "#,
             user_id.as_i32(),
@@ -484,7 +526,7 @@ impl<'a> UserRepository<'a> {
         let row = sqlx::query_as!(
             UserCredentialRow,
             r#"
-            SELECT id, user_id, shopify_customer_id, credential_id, public_key, name,
+            SELECT id, user_id, shopify_customer_id, email, credential_id, public_key, name,
                    created_at as "created_at: DateTime<Utc>"
             FROM storefront.user_credential
             WHERE credential_id = $1

@@ -1193,8 +1193,7 @@ impl StorefrontClient {
     ) -> Result<StorefrontCustomer, ShopifyError> {
         // For customer-scoped queries, we need to include the access token in the request
         // This requires a modified execute method that accepts an access token header
-        let request_body =
-            GetCustomerByToken::build_query(get_customer_by_token::Variables {});
+        let request_body = GetCustomerByToken::build_query(get_customer_by_token::Variables {});
 
         let response = self
             .inner
@@ -1221,15 +1220,15 @@ impl StorefrontClient {
         let response: graphql_client::Response<get_customer_by_token::ResponseData> =
             serde_json::from_str(&response_text)?;
 
-        if let Some(data) = response.data {
-            if let Some(customer) = data.customer {
-                return Ok(StorefrontCustomer {
-                    id: customer.id,
-                    email: customer.email,
-                    first_name: customer.first_name,
-                    last_name: customer.last_name,
-                });
-            }
+        if let Some(data) = response.data
+            && let Some(customer) = data.customer
+        {
+            return Ok(StorefrontCustomer {
+                id: customer.id,
+                email: customer.email,
+                first_name: customer.first_name,
+                last_name: customer.last_name,
+            });
         }
 
         Err(ShopifyError::GraphQL(vec![super::GraphQLError {
@@ -1250,7 +1249,7 @@ impl StorefrontClient {
 /// For full customer data, use the Customer Account API.
 #[derive(Debug, Clone)]
 pub struct StorefrontCustomer {
-    /// Shopify customer ID (e.g., "gid://shopify/Customer/123")
+    /// Shopify customer ID (e.g., `gid://shopify/Customer/123`)
     pub id: String,
     /// Customer's email address
     pub email: Option<String>,

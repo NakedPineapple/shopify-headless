@@ -33,9 +33,12 @@ pub struct User {
 pub struct UserCredential {
     /// Database ID of this credential.
     pub id: CredentialId,
-    /// Shopify customer ID (e.g., "gid://shopify/Customer/123").
+    /// Shopify customer ID (e.g., `gid://shopify/Customer/123`).
     /// This links the credential to a Shopify customer.
     pub shopify_customer_id: String,
+    /// Customer's email address (for passkey-by-email lookup).
+    /// Stored at registration time to enable passwordless login.
+    pub email: Option<Email>,
     /// Legacy local user ID (for backwards compatibility during migration).
     /// Will be None for new credentials created after migration.
     pub user_id: Option<UserId>,
