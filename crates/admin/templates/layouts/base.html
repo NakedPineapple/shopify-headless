@@ -18,52 +18,15 @@
     })();
     </script>
 
-    <!-- Tailwind CSS (CDN for internal admin) -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        coral: '#d63a2f',
-                        honey: '#daa520',
-                        cream: '#fdfbf7',
-                        sand: '#f5f0e8',
-                        leaf: '#4a7c59',
-                    },
-                    fontFamily: {
-                        display: ['Playfair Display', 'serif'],
-                        sans: ['DM Sans', 'sans-serif'],
-                    }
-                }
-            }
-        }
-    </script>
+    <!-- Tailwind CSS -->
+    <link rel="stylesheet" href="/static/css/main.css">
 
     <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/fonts/fonts.css">
 
     <!-- Phosphor Icons -->
-    <script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
-
-    <style>
-        body { font-family: 'DM Sans', sans-serif; }
-        .font-display { font-family: 'Playfair Display', serif; }
-
-        /* Sidebar transition */
-        .sidebar { transition: width 0.2s ease-in-out; }
-        .sidebar.collapsed { width: 4rem; }
-        .sidebar.collapsed .sidebar-text { display: none; }
-        .sidebar.collapsed .sidebar-logo { justify-content: center; }
-        .sidebar.collapsed .nav-item { justify-content: center; padding-left: 0; padding-right: 0; }
-        .sidebar.collapsed .nav-item i { margin-right: 0; }
-
-        /* Main content transition */
-        .main-content { transition: margin-left 0.2s ease-in-out; }
-    </style>
+    <link rel="stylesheet" href="/static/vendor/phosphor-icons.css">
+    <link rel="stylesheet" href="/static/vendor/phosphor-icons-fill.css">
 
     {% block head %}{% endblock %}
 </head>
@@ -236,7 +199,7 @@
     </div>
 
     <!-- HTMX -->
-    <script src="https://unpkg.com/htmx.org@2.0.0"></script>
+    <script src="/static/vendor/htmx.min.js"></script>
 
     <!-- Sidebar collapse script -->
     <script>

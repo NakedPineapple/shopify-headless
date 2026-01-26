@@ -1,11 +1,7 @@
 {# Sentry Browser SDK for frontend error tracking #}
 {# Reads configuration from data-sentry-* attributes on body tag #}
 {% if sentry_dsn_public.is_some() %}
-<script
-    src="https://browser.sentry-cdn.com/8.40.0/bundle.tracing.min.js"
-    integrity="sha384-NAjEiKECjWrfCdp1F7PpN3OA97xGk9hvNzx7FsqIxpPqPIhxyHhzfcWuHUy8bJyS"
-    crossorigin="anonymous"
-></script>
+<script src="/static/vendor/sentry.bundle.tracing.min.js"></script>
 <script>
 (function() {
     'use strict';

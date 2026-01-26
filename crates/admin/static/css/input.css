@@ -1,0 +1,125 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/forms";
+
+/* Admin Panel - Tailwind v4 Configuration */
+
+@layer base {
+  :root {
+    /* Brand palette */
+    --coral: #d63a2f;
+    --honey: #daa520;
+    --cream: #fdfbf7;
+    --sand: #f5f0e8;
+    --leaf: #4a7c59;
+
+    /* Light mode semantic colors */
+    --background: var(--sand);
+    --foreground: #1f2937;
+    --card: #ffffff;
+    --card-foreground: #1f2937;
+    --muted: #f3f4f6;
+    --muted-foreground: #6b7280;
+    --border: #e5e7eb;
+    --input: #e5e7eb;
+    --ring: var(--coral);
+  }
+
+  /* Dark mode - triggered by .dark class */
+  .dark {
+    --background: #030712;
+    --foreground: #f9fafb;
+    --card: #111827;
+    --card-foreground: #f9fafb;
+    --muted: #1f2937;
+    --muted-foreground: #9ca3af;
+    --border: #1f2937;
+    --input: #1f2937;
+    --ring: var(--coral);
+  }
+}
+
+/* Register with Tailwind v4 */
+@theme inline {
+  /* Brand colors */
+  --color-coral: var(--coral);
+  --color-honey: var(--honey);
+  --color-cream: var(--cream);
+  --color-sand: var(--sand);
+  --color-leaf: var(--leaf);
+
+  /* Semantic colors */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* Gray scale for Tailwind compatibility */
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f3f4f6;
+  --color-gray-200: #e5e7eb;
+  --color-gray-300: #d1d5db;
+  --color-gray-400: #9ca3af;
+  --color-gray-500: #6b7280;
+  --color-gray-600: #4b5563;
+  --color-gray-700: #374151;
+  --color-gray-800: #1f2937;
+  --color-gray-900: #111827;
+  --color-gray-950: #030712;
+
+  /* White/Black */
+  --color-white: #ffffff;
+  --color-black: #000000;
+
+  /* Font families */
+  --font-display: "Playfair Display", serif;
+  --font-sans: "DM Sans", sans-serif;
+}
+
+@layer base {
+  body {
+    font-family: var(--font-sans);
+  }
+
+  .font-display {
+    font-family: var(--font-display);
+  }
+}
+
+@layer components {
+  /* Sidebar styles */
+  .sidebar {
+    transition: width 0.2s ease-in-out;
+  }
+
+  .sidebar.collapsed {
+    width: 4rem;
+  }
+
+  .sidebar.collapsed .sidebar-text {
+    display: none;
+  }
+
+  .sidebar.collapsed .sidebar-logo {
+    justify-content: center;
+  }
+
+  .sidebar.collapsed .nav-item {
+    justify-content: center;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .sidebar.collapsed .nav-item i {
+    margin-right: 0;
+  }
+
+  /* Main content transition */
+  .main-content {
+    transition: margin-left 0.2s ease-in-out;
+  }
+}
