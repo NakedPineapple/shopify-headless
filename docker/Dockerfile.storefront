@@ -1,70 +1,66 @@
-# Stage 1: Image Optimization (Node.js)
-# Generates responsive images (AVIF, WebP, JPEG) with content-based hashes
-FROM node:25.4.0-alpine3.22 AS image-optimizer
-
+# =============================================================================
+# Stage 1: Chef base image with cargo-chef installed
+# =============================================================================
+FROM rust:1.93.0-trixie AS chef
+RUN cargo install cargo-chef --locked
 WORKDIR /app
 
-# Copy package files and install dependencies
-COPY scripts/image-optimizer/package.json scripts/image-optimizer/package-lock.json scripts/image-optimizer/
-RUN cd scripts/image-optimizer && npm ci
+# =============================================================================
+# Stage 2: Planner - creates recipe.json capturing the exact dependency graph
+# =============================================================================
+FROM chef AS planner
+COPY Cargo.toml Cargo.lock ./
+COPY crates ./crates
+RUN cargo chef prepare --recipe-path recipe.json
 
-# Copy optimizer script and source files needed for discovery
-COPY scripts/image-optimizer/optimize-images.mjs scripts/image-optimizer/
-COPY crates/storefront/templates crates/storefront/templates/
-COPY crates/storefront/src crates/storefront/src/
-COPY crates/storefront/static/images/original crates/storefront/static/images/original/
+# =============================================================================
+# Stage 3: Deps builder - compiles dependencies only (cached when recipe unchanged)
+# =============================================================================
+FROM chef AS deps-builder
 
-# Discover used images and generate optimized variants
-RUN node scripts/image-optimizer/optimize-images.mjs
+# Install build dependencies including mold linker for faster linking
+RUN apt-get update && apt-get install -y \
+    pkg-config \
+    libssl-dev \
+    mold \
+    && rm -rf /var/lib/apt/lists/*
 
-# Stage 2: Rust Build environment
-FROM rust:1.93.0-trixie AS builder
+# Use mold linker for faster linking
+ENV RUSTFLAGS="-C link-arg=-fuse-ld=mold"
 
-RUN apt-get update && apt-get install -y pkg-config libssl-dev && rm -rf /var/lib/apt/lists/*
+# Copy recipe and build dependencies
+COPY --from=planner /app/recipe.json recipe.json
+RUN cargo chef cook --release --recipe-path recipe.json
+
+# =============================================================================
+# Stage 4: Builder - compiles actual source code (deps already cached)
+# =============================================================================
+FROM deps-builder AS builder
 
 # Install Tailwind CSS CLI
 RUN curl -sLO https://github.com/tailwindlabs/tailwindcss/releases/download/v4.0.0/tailwindcss-linux-x64 \
     && chmod +x tailwindcss-linux-x64 && mv tailwindcss-linux-x64 /usr/local/bin/tailwindcss
 
-WORKDIR /app
-
 # Use sqlx offline mode (reads from .sqlx cache instead of live database)
 ENV SQLX_OFFLINE=true
 
-# Copy manifests for dependency caching
-COPY Cargo.toml Cargo.lock ./
-COPY crates/core crates/core/
-COPY crates/storefront/Cargo.toml crates/storefront/
-COPY crates/admin/Cargo.toml crates/admin/
-COPY crates/cli/Cargo.toml crates/cli/
-COPY crates/integration-tests/Cargo.toml crates/integration-tests/
-
-# Create dummy sources for dependency compilation (core is real, others are stubs)
-RUN mkdir -p crates/storefront/src crates/admin/src crates/cli/src crates/integration-tests/src \
-    && echo "fn main() {}" > crates/storefront/src/main.rs \
-    && echo "fn main() {}" > crates/admin/src/main.rs \
-    && echo "fn main() {}" > crates/cli/src/main.rs \
-    && echo "" > crates/integration-tests/src/lib.rs
-
-# Build dependencies only (cached layer)
-RUN cargo build --release -p naked-pineapple-storefront -p naked-pineapple-cli
-
-# Copy actual source
+# Copy full source
 COPY . .
 
-# Copy optimized images from image-optimizer stage
-# (must come after COPY . . to not be overwritten)
-COPY --from=image-optimizer /app/crates/storefront/static/images/derived /app/crates/storefront/static/images/derived
+# Pull pre-built optimized images from image-assets registry
+# This is built separately by build-images.yml when images change
+COPY --from=registry.fly.io/nakedpineapple-image-assets:latest /derived /app/crates/storefront/static/images/derived
 
 # Build Tailwind CSS
 RUN tailwindcss -i ./crates/storefront/static/css/input.css \
     -o ./crates/storefront/static/css/main.css --minify
 
-# Rebuild with actual source
-RUN touch crates/storefront/src/main.rs crates/cli/src/main.rs \
-    && cargo build --release -p naked-pineapple-storefront -p naked-pineapple-cli
+# Build the binaries (dependencies already compiled in deps-builder)
+RUN cargo build --release -p naked-pineapple-storefront -p naked-pineapple-cli
 
-# Stage 3: Runtime
+# =============================================================================
+# Stage 5: Runtime - minimal image for production
+# =============================================================================
 FROM debian:trixie-slim AS runtime
 
 RUN apt-get update && apt-get install -y ca-certificates libssl3 && rm -rf /var/lib/apt/lists/*

@@ -1,39 +1,54 @@
-# Stage 1: Build environment
-FROM rust:1.93.0-trixie AS builder
-
-RUN apt-get update && apt-get install -y pkg-config libssl-dev && rm -rf /var/lib/apt/lists/*
-
+# =============================================================================
+# Stage 1: Chef base image with cargo-chef installed
+# =============================================================================
+FROM rust:1.93.0-trixie AS chef
+RUN cargo install cargo-chef --locked
 WORKDIR /app
+
+# =============================================================================
+# Stage 2: Planner - creates recipe.json capturing the exact dependency graph
+# =============================================================================
+FROM chef AS planner
+COPY Cargo.toml Cargo.lock ./
+COPY crates ./crates
+RUN cargo chef prepare --recipe-path recipe.json
+
+# =============================================================================
+# Stage 3: Deps builder - compiles dependencies only (cached when recipe unchanged)
+# =============================================================================
+FROM chef AS deps-builder
+
+# Install build dependencies including mold linker for faster linking
+RUN apt-get update && apt-get install -y \
+    pkg-config \
+    libssl-dev \
+    mold \
+    && rm -rf /var/lib/apt/lists/*
+
+# Use mold linker for faster linking
+ENV RUSTFLAGS="-C link-arg=-fuse-ld=mold"
+
+# Copy recipe and build dependencies
+COPY --from=planner /app/recipe.json recipe.json
+RUN cargo chef cook --release --recipe-path recipe.json
+
+# =============================================================================
+# Stage 4: Builder - compiles actual source code (deps already cached)
+# =============================================================================
+FROM deps-builder AS builder
 
 # Use sqlx offline mode (reads from .sqlx cache instead of live database)
 ENV SQLX_OFFLINE=true
 
-# Copy manifests for dependency caching
-COPY Cargo.toml Cargo.lock ./
-COPY crates/core crates/core/
-COPY crates/storefront/Cargo.toml crates/storefront/
-COPY crates/admin/Cargo.toml crates/admin/
-COPY crates/cli/Cargo.toml crates/cli/
-COPY crates/integration-tests/Cargo.toml crates/integration-tests/
-
-# Create dummy sources for dependency compilation (core is real, others are stubs)
-RUN mkdir -p crates/storefront/src crates/admin/src crates/cli/src crates/integration-tests/src \
-    && echo "fn main() {}" > crates/storefront/src/main.rs \
-    && echo "fn main() {}" > crates/admin/src/main.rs \
-    && echo "fn main() {}" > crates/cli/src/main.rs \
-    && echo "" > crates/integration-tests/src/lib.rs
-
-# Build dependencies only (cached layer)
-RUN cargo build --release -p naked-pineapple-admin -p naked-pineapple-cli
-
-# Copy actual source
+# Copy full source
 COPY . .
 
-# Rebuild with actual source
-RUN touch crates/admin/src/main.rs crates/cli/src/main.rs \
-    && cargo build --release -p naked-pineapple-admin -p naked-pineapple-cli
+# Build the binaries (dependencies already compiled in deps-builder)
+RUN cargo build --release -p naked-pineapple-admin -p naked-pineapple-cli
 
-# Stage 2: Runtime with Tailscale
+# =============================================================================
+# Stage 5: Runtime with Tailscale
+# =============================================================================
 FROM debian:trixie-slim AS runtime
 
 RUN apt-get update && apt-get install -y \

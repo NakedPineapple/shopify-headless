@@ -29,38 +29,46 @@ env:
 
 jobs:
   # ============================================================================
-  # Stage 1: Pre-flight checks
+  # Stage 1: Lint (fast gate before heavier jobs)
   # ============================================================================
-  check:
-    name: Pre-flight Checks
+  lint:
+    name: Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        with:
-          lfs: true
+      - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Check formatting
         run: cargo fmt --check
       - name: Run clippy
         run: cargo clippy --all-targets -- -D warnings
+
+  # ============================================================================
+  # Stage 2a: Tests (runs in parallel with build)
+  # ============================================================================
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
       - name: Run tests
         run: cargo test
         env:
           SQLX_OFFLINE: true
 
   # ============================================================================
-  # Stage 2: Build Docker images (skipped if promoting)
+  # Stage 2b: Build Docker images (runs in parallel with test, skipped if promoting)
   # ============================================================================
   build:
     name: Build Images
-    needs: check
+    needs: lint
     runs-on: ubuntu-latest
     if: ${{ !inputs.promote_to_production }}
     steps:
-      - uses: actions/checkout@v4
-        with:
-          lfs: true
+      - uses: actions/checkout@v6
+        # Note: LFS not needed - images come from pre-built image-assets registry
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -72,7 +80,7 @@ jobs:
           username: x
           password: ${{ secrets.FLY_API_TOKEN }}
 
-      # Build and push storefront
+      # Build and push storefront (registry cache for faster/unlimited caching)
       - name: Build and push storefront
         if: inputs.target != 'admin'
         uses: docker/build-push-action@v6
@@ -83,10 +91,10 @@ jobs:
           tags: |
             ${{ env.REGISTRY }}/nakedpineapple-storefront-staging:${{ github.sha }}
             ${{ env.REGISTRY }}/nakedpineapple-storefront-staging:latest
-          cache-from: type=gha,scope=storefront
-          cache-to: type=gha,mode=max,scope=storefront
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/nakedpineapple-storefront-cache:latest
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/nakedpineapple-storefront-cache:latest,mode=max
 
-      # Build and push admin
+      # Build and push admin (registry cache for faster/unlimited caching)
       - name: Build and push admin
         if: inputs.target != 'storefront'
         uses: docker/build-push-action@v6
@@ -97,15 +105,15 @@ jobs:
           tags: |
             ${{ env.REGISTRY }}/nakedpineapple-admin-staging:${{ github.sha }}
             ${{ env.REGISTRY }}/nakedpineapple-admin-staging:latest
-          cache-from: type=gha,scope=admin
-          cache-to: type=gha,mode=max,scope=admin
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/nakedpineapple-admin-cache:latest
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/nakedpineapple-admin-cache:latest,mode=max
 
   # ============================================================================
-  # Stage 3: Deploy to staging
+  # Stage 3: Deploy to staging (requires both build and test to pass)
   # ============================================================================
   deploy-staging:
     name: Deploy to Staging
-    needs: build
+    needs: [build, test]
     runs-on: ubuntu-latest
     environment: staging
     steps:
@@ -124,7 +132,7 @@ jobs:
   # ============================================================================
   promote-to-production:
     name: Promote to Production
-    needs: check
+    needs: lint
     runs-on: ubuntu-latest
     if: ${{ inputs.promote_to_production }}
     environment: production

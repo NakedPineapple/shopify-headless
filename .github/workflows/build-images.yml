@@ -1,0 +1,49 @@
+name: Build Image Assets
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'crates/storefront/static/images/original/**'
+      - 'scripts/image-optimizer/**'
+      - 'docker/Dockerfile.images'
+  workflow_dispatch:
+
+concurrency:
+  group: build-images-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+  REGISTRY: registry.fly.io
+
+jobs:
+  build-images:
+    name: Build Image Assets
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          lfs: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Fly Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: x
+          password: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Build and push image assets
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.images
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/nakedpineapple-image-assets:${{ github.sha }}
+            ${{ env.REGISTRY }}/nakedpineapple-image-assets:latest
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/nakedpineapple-image-assets:cache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/nakedpineapple-image-assets:cache,mode=max
