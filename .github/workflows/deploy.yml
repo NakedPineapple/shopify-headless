@@ -40,16 +40,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: "NakedPineapple -> target"
       - name: Check formatting
-        working-directory: NakedPineapple
         run: cargo fmt --check
       - name: Run clippy
-        working-directory: NakedPineapple
         run: cargo clippy --all-targets -- -D warnings
       - name: Run tests
-        working-directory: NakedPineapple
         run: cargo test
         env:
           SQLX_OFFLINE: true
@@ -74,7 +69,6 @@ jobs:
       - name: Deploy storefront to staging
         id: storefront
         if: inputs.target != 'admin'
-        working-directory: NakedPineapple
         run: |
           flyctl deploy --config fly/fly.storefront.staging.toml --remote-only
           IMAGE=$(flyctl status -a nakedpineapple-storefront-staging --json | jq -r '.Machines[0].config.image')
@@ -83,7 +77,6 @@ jobs:
       - name: Deploy admin to staging
         id: admin
         if: inputs.target != 'storefront'
-        working-directory: NakedPineapple
         run: |
           flyctl deploy --config fly/fly.admin.staging.toml --remote-only
           IMAGE=$(flyctl status -a nakedpineapple-admin-staging --json | jq -r '.Machines[0].config.image')
@@ -102,12 +95,10 @@ jobs:
 
       - name: Deploy storefront to production
         if: inputs.target != 'admin'
-        working-directory: NakedPineapple
         run: flyctl deploy --config fly/fly.storefront.toml --remote-only
 
       - name: Deploy admin to production
         if: inputs.target != 'storefront'
-        working-directory: NakedPineapple
         run: flyctl deploy --config fly/fly.admin.toml --remote-only
 
   # Promote staging image to production (no rebuild)
