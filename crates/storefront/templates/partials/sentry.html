@@ -1,0 +1,66 @@
+{# Sentry Browser SDK for frontend error tracking #}
+{# Reads configuration from data-sentry-* attributes on body tag #}
+{% if sentry_dsn_public.is_some() %}
+<script
+    src="https://browser.sentry-cdn.com/8.40.0/bundle.tracing.min.js"
+    integrity="sha384-NAjEiKECjWrfCdp1F7PpN3OA97xGk9hvNzx7FsqIxpPqPIhxyHhzfcWuHUy8bJyS"
+    crossorigin="anonymous"
+></script>
+<script>
+(function() {
+    'use strict';
+
+    var dsn = '{{ sentry_dsn_public.as_ref().unwrap_or(&String::new()) }}';
+    var environment = '{{ sentry_environment.as_ref().unwrap_or(&"production".to_string()) }}';
+
+    if (!dsn) return;
+
+    Sentry.init({
+        dsn: dsn,
+        environment: environment,
+        integrations: [
+            Sentry.browserTracingIntegration()
+        ],
+        tracesSampleRate: 1.0,
+        tracePropagationTargets: ['localhost', /^https:\/\/.*\.nakedpineapple\.com/],
+        beforeSend: function(event) {
+            // Filter out known non-errors
+            if (event.exception && event.exception.values) {
+                var firstException = event.exception.values[0];
+                if (firstException && firstException.value) {
+                    // Skip ResizeObserver loop errors (benign browser quirk)
+                    if (firstException.value.indexOf('ResizeObserver loop') !== -1) {
+                        return null;
+                    }
+                }
+            }
+            return event;
+        }
+    });
+
+    // Capture HTMX-specific errors
+    document.body.addEventListener('htmx:sendError', function(evt) {
+        Sentry.captureException(new Error('HTMX send error: ' + evt.detail.error), {
+            extra: {
+                xhr: evt.detail.xhr,
+                path: evt.detail.pathInfo ? evt.detail.pathInfo.requestPath : 'unknown'
+            }
+        });
+    });
+
+    document.body.addEventListener('htmx:responseError', function(evt) {
+        // Only capture 5xx errors (4xx are expected user errors)
+        var status = evt.detail.xhr ? evt.detail.xhr.status : 0;
+        if (status >= 500) {
+            Sentry.captureException(new Error('HTMX response error: ' + status), {
+                extra: {
+                    status: status,
+                    path: evt.detail.pathInfo ? evt.detail.pathInfo.requestPath : 'unknown',
+                    response: evt.detail.xhr ? evt.detail.xhr.responseText.substring(0, 500) : ''
+                }
+            });
+        }
+    });
+})();
+</script>
+{% endif %}

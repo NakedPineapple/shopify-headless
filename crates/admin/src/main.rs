@@ -51,8 +51,42 @@ mod state;
 
 use config::AdminConfig;
 use middleware::create_session_layer;
+use sentry::integrations::tracing as sentry_tracing;
 use state::AppState;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+
+/// Initialize Sentry error tracking and return guard that must be kept alive.
+fn init_sentry(config: &AdminConfig) -> Option<sentry::ClientInitGuard> {
+    let dsn = config.sentry_dsn.as_ref()?;
+
+    let guard = sentry::init((
+        dsn.as_str(),
+        sentry::ClientOptions {
+            release: sentry::release_name!(),
+            environment: config
+                .sentry_environment
+                .clone()
+                .map(std::borrow::Cow::Owned),
+            sample_rate: config.sentry_sample_rate,
+            traces_sample_rate: config.sentry_traces_sample_rate,
+            attach_stacktrace: true,
+            send_default_pii: true, // Admin panel can include PII for debugging
+            ..Default::default()
+        },
+    ));
+
+    tracing::info!("Sentry initialized");
+    Some(guard)
+}
+
+/// Filter tracing events to Sentry event types.
+fn sentry_event_filter(metadata: &tracing::Metadata<'_>) -> sentry_tracing::EventFilter {
+    match *metadata.level() {
+        tracing::Level::ERROR | tracing::Level::WARN => sentry_tracing::EventFilter::Event,
+        tracing::Level::INFO | tracing::Level::DEBUG => sentry_tracing::EventFilter::Breadcrumb,
+        _ => sentry_tracing::EventFilter::Ignore,
+    }
+}
 
 #[tokio::main]
 async fn main() {
@@ -61,7 +95,13 @@ async fn main() {
         .install_default()
         .expect("Failed to install rustls crypto provider");
 
-    // Initialize tracing with EnvFilter
+    // Load configuration from environment (needed for Sentry init)
+    let config = AdminConfig::from_env().expect("Failed to load configuration");
+
+    // Initialize Sentry (must be done before tracing subscriber)
+    let _sentry_guard = init_sentry(&config);
+
+    // Initialize tracing with EnvFilter and Sentry integration
     // Defaults to info level for our crate if RUST_LOG is not set
     let env_filter = tracing_subscriber::EnvFilter::try_from_default_env()
         .unwrap_or_else(|_| "naked_pineapple_admin=info,tower_http=debug".into());
@@ -69,17 +109,8 @@ async fn main() {
     tracing_subscriber::registry()
         .with(env_filter)
         .with(tracing_subscriber::fmt::layer())
+        .with(sentry_tracing::layer().event_filter(sentry_event_filter))
         .init();
-
-    // Load configuration from environment
-    let config = AdminConfig::from_env().expect("Failed to load configuration");
-
-    // TODO: Initialize Sentry for error tracking
-    // let _guard = sentry::init(sentry::ClientOptions {
-    //     dsn: config.sentry_dsn.clone(),
-    //     release: sentry::release_name!(),
-    //     ..Default::default()
-    // });
 
     // Initialize database connection pool
     let pool = db::create_pool(&config.database_url)
@@ -103,7 +134,10 @@ async fn main() {
         .merge(routes::routes())
         .nest_service("/static", ServeDir::new("crates/admin/static"))
         .layer(session_layer)
-        .with_state(state);
+        .with_state(state)
+        // Sentry layers (outermost for full request coverage)
+        .layer(sentry_tower::NewSentryLayer::new_from_top())
+        .layer(sentry_tower::SentryHttpLayer::new().enable_transaction());
 
     // Start server
     let addr = config.socket_addr();

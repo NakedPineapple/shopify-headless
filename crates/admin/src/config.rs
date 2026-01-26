@@ -87,6 +87,12 @@ pub struct AdminConfig {
     pub email: EmailConfig,
     /// Sentry DSN for error tracking
     pub sentry_dsn: Option<String>,
+    /// Sentry environment (e.g., "development", "staging", "production")
+    pub sentry_environment: Option<String>,
+    /// Sentry error sample rate (0.0 to 1.0)
+    pub sentry_sample_rate: f32,
+    /// Sentry traces sample rate for performance monitoring (0.0 to 1.0)
+    pub sentry_traces_sample_rate: f32,
     /// TLS configuration for HTTPS (optional)
     pub tls: Option<TlsConfig>,
 }
@@ -232,6 +238,13 @@ impl AdminConfig {
         let claude = ClaudeConfig::from_env()?;
         let email = EmailConfig::from_env()?;
         let sentry_dsn = get_optional_env("SENTRY_DSN");
+        let sentry_environment = get_optional_env("SENTRY_ENVIRONMENT");
+        let sentry_sample_rate = get_optional_env("SENTRY_SAMPLE_RATE")
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(1.0);
+        let sentry_traces_sample_rate = get_optional_env("SENTRY_TRACES_SAMPLE_RATE")
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(1.0);
         let tls = TlsConfig::from_env()?;
 
         Ok(Self {
@@ -244,6 +257,9 @@ impl AdminConfig {
             claude,
             email,
             sentry_dsn,
+            sentry_environment,
+            sentry_sample_rate,
+            sentry_traces_sample_rate,
             tls,
         })
     }
@@ -507,6 +523,9 @@ mod tests {
                 from_address: "admin@example.com".to_string(),
             },
             sentry_dsn: None,
+            sentry_environment: None,
+            sentry_sample_rate: 1.0,
+            sentry_traces_sample_rate: 1.0,
             tls: None,
         };
 

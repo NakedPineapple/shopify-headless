@@ -79,8 +79,16 @@ pub struct StorefrontConfig {
     pub shopify: ShopifyStorefrontConfig,
     /// Analytics tracking configuration
     pub analytics: AnalyticsConfig,
-    /// Sentry DSN for error tracking
+    /// Sentry DSN for error tracking (server-side)
     pub sentry_dsn: Option<String>,
+    /// Sentry DSN for frontend error tracking (public, safe to expose in browser)
+    pub sentry_dsn_public: Option<String>,
+    /// Sentry environment (e.g., "development", "staging", "production")
+    pub sentry_environment: Option<String>,
+    /// Sentry error sample rate (0.0 to 1.0)
+    pub sentry_sample_rate: f32,
+    /// Sentry traces sample rate for performance monitoring (0.0 to 1.0)
+    pub sentry_traces_sample_rate: f32,
 }
 
 /// Shopify Storefront API configuration.
@@ -166,6 +174,14 @@ impl StorefrontConfig {
         let shopify = ShopifyStorefrontConfig::from_env()?;
         let analytics = AnalyticsConfig::from_env();
         let sentry_dsn = get_optional_env("SENTRY_DSN");
+        let sentry_dsn_public = get_optional_env("SENTRY_DSN_PUBLIC");
+        let sentry_environment = get_optional_env("SENTRY_ENVIRONMENT");
+        let sentry_sample_rate = get_optional_env("SENTRY_SAMPLE_RATE")
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(1.0);
+        let sentry_traces_sample_rate = get_optional_env("SENTRY_TRACES_SAMPLE_RATE")
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(1.0);
 
         Ok(Self {
             database_url,
@@ -176,6 +192,10 @@ impl StorefrontConfig {
             shopify,
             analytics,
             sentry_dsn,
+            sentry_dsn_public,
+            sentry_environment,
+            sentry_sample_rate,
+            sentry_traces_sample_rate,
         })
     }
 
@@ -416,6 +436,10 @@ mod tests {
             },
             analytics: AnalyticsConfig::default(),
             sentry_dsn: None,
+            sentry_dsn_public: None,
+            sentry_environment: None,
+            sentry_sample_rate: 1.0,
+            sentry_traces_sample_rate: 1.0,
         };
 
         let addr = config.socket_addr();
