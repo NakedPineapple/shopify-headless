@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Your Verification Code</title>
+    <!--[if mso]>
+    <noscript>
+        <xml>
+            <o:OfficeDocumentSettings>
+                <o:PixelsPerInch>96</o:PixelsPerInch>
+            </o:OfficeDocumentSettings>
+        </xml>
+    </noscript>
+    <![endif]-->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Playfair+Display:wght@600&display=swap');
+    </style>
+</head>
+<body style="margin: 0; padding: 0; background-color: #faf8f5; font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+    <!-- Preheader text (hidden) -->
+    <div style="display: none; max-height: 0; overflow: hidden;">
+        Your verification code is {{ code }} — expires in 10 minutes.
+    </div>
+
+    <!-- Email wrapper -->
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #faf8f5;">
+        <tr>
+            <td style="padding: 40px 20px;">
+                <!-- Main container -->
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width: 520px; margin: 0 auto;">
+
+                    <!-- Logo & Header -->
+                    <tr>
+                        <td style="text-align: center; padding-bottom: 32px;">
+                            <!-- Pineapple Icon -->
+                            <div style="width: 56px; height: 56px; margin: 0 auto 16px; background: linear-gradient(135deg, #d4a574 0%, #c9956a 100%); border-radius: 16px; display: flex; align-items: center; justify-content: center;">
+                                <img src="https://nakedpineapple.co/static/images/pineapple-icon.png" alt="" width="32" height="32" style="display: block;" />
+                            </div>
+                            <h1 style="margin: 0; font-family: 'Playfair Display', Georgia, serif; font-size: 24px; font-weight: 600; color: #1a1614; letter-spacing: -0.02em;">
+                                Naked Pineapple
+                            </h1>
+                            <p style="margin: 4px 0 0; font-size: 13px; color: #8b7355; text-transform: uppercase; letter-spacing: 0.1em;">
+                                Admin Portal
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Main Card -->
+                    <tr>
+                        <td>
+                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #ffffff; border-radius: 24px; box-shadow: 0 4px 24px rgba(26, 22, 20, 0.06);">
+                                <tr>
+                                    <td style="padding: 48px 40px;">
+                                        <!-- Welcome Text -->
+                                        <p style="margin: 0 0 8px; font-size: 14px; color: #d63a2f; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">
+                                            Verification Code
+                                        </p>
+                                        <h2 style="margin: 0 0 16px; font-family: 'Playfair Display', Georgia, serif; font-size: 28px; font-weight: 600; color: #1a1614; line-height: 1.2;">
+                                            Welcome to Admin
+                                        </h2>
+                                        <p style="margin: 0 0 32px; font-size: 16px; color: #5c5248; line-height: 1.6;">
+                                            Enter this code on the setup page to verify your email and create your secure passkey.
+                                        </p>
+
+                                        <!-- Code Box -->
+                                        <div style="background: linear-gradient(135deg, #fdfcfa 0%, #f8f5f0 100%); border: 2px solid #e8e2d9; border-radius: 16px; padding: 28px 24px; text-align: center; margin-bottom: 32px;">
+                                            <p style="margin: 0 0 8px; font-size: 12px; color: #8b7355; text-transform: uppercase; letter-spacing: 0.1em;">
+                                                Your Code
+                                            </p>
+                                            <p style="margin: 0; font-family: 'DM Sans', monospace; font-size: 40px; font-weight: 600; color: #1a1614; letter-spacing: 0.2em;">
+                                                {{ code }}
+                                            </p>
+                                        </div>
+
+                                        <!-- Expiry Notice -->
+                                        <div style="display: flex; align-items: center; gap: 12px; padding: 16px 20px; background-color: #fff8f0; border-radius: 12px; border-left: 3px solid #d4a574;">
+                                            <div>
+                                                <p style="margin: 0; font-size: 14px; color: #5c5248;">
+                                                    <strong style="color: #1a1614;">Expires in 10 minutes</strong><br>
+                                                    If you didn't request this code, you can safely ignore this email.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td style="padding-top: 32px; text-align: center;">
+                            <p style="margin: 0 0 8px; font-size: 13px; color: #8b7355;">
+                                Naked Pineapple — Natural Skincare
+                            </p>
+                            <p style="margin: 0; font-size: 12px; color: #a89a8a;">
+                                This is an automated message. Please do not reply.
+                            </p>
+                        </td>
+                    </tr>
+
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

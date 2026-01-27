@@ -1,0 +1,21 @@
+NAKED PINEAPPLE ADMIN
+=====================
+
+Your Verification Code
+----------------------
+
+Welcome to Naked Pineapple Admin!
+
+Your verification code is:
+
+    {{ code }}
+
+This code expires in 10 minutes.
+
+Enter this code on the setup page to verify your email and create your secure passkey.
+
+If you didn't request this code, you can safely ignore this email.
+
+---
+Naked Pineapple — Natural Skincare
+This is an automated message. Please do not reply.

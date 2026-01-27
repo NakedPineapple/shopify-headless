@@ -109,7 +109,9 @@ pub async fn create_user(email: &str, name: &str, role: &str) -> Result<i32, Adm
         email,
         role
     );
-    tracing::warn!("Note: User has no passkey. Use 'admin invite' instead to allow users to set up their own passkey.");
+    tracing::warn!(
+        "Note: User has no passkey. Use 'admin invite' instead to allow users to set up their own passkey."
+    );
 
     Ok(user_id)
 }
@@ -205,7 +207,10 @@ pub async fn create_invite(
     tracing::info!("Share this setup link with the user:");
     tracing::info!("  {}", setup_url);
     tracing::info!("");
-    tracing::info!("They will need to enter their email ({}) to verify and create their passkey.", email);
+    tracing::info!(
+        "They will need to enter their email ({}) to verify and create their passkey.",
+        email
+    );
 
     Ok(invite_id)
 }

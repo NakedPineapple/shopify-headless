@@ -1,0 +1,70 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT id, email, name, role as \"role: AdminRole\",\n                   invited_by, created_at as \"created_at: DateTime<Utc>\",\n                   expires_at as \"expires_at: DateTime<Utc>\",\n                   used_at as \"used_at: DateTime<Utc>\",\n                   used_by\n            FROM admin.admin_invite\n            WHERE email = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "email",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "role: AdminRole",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "invited_by",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 5,
+        "name": "created_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "expires_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 7,
+        "name": "used_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "used_by",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "16c9e6249ae0c245da7ae62a8ec4c985795b555fbf5b57c3a0e95beef0d27f65"
+}

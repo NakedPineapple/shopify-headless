@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE admin.admin_invite\n            SET used_at = NOW(), used_by = $1\n            WHERE email = $2 AND used_at IS NULL\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "52722a015818e45c95924a425aba9723b4a411cd2b47bb47d11a13e8bc5c3746"
+}

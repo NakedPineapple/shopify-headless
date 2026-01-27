@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT EXISTS(\n                SELECT 1 FROM admin.admin_invite\n                WHERE email = $1\n                  AND used_at IS NULL\n                  AND expires_at > NOW()\n            ) as \"exists!\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "exists!",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "5d9a794e89cb0ab786848cd4a8a0e3e8cd10066870478459fbe69379ec500234"
+}

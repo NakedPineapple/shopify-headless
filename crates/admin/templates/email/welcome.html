@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Welcome to Naked Pineapple Admin</title>
+    <!--[if mso]>
+    <noscript>
+        <xml>
+            <o:OfficeDocumentSettings>
+                <o:PixelsPerInch>96</o:PixelsPerInch>
+            </o:OfficeDocumentSettings>
+        </xml>
+    </noscript>
+    <![endif]-->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Playfair+Display:wght@600&display=swap');
+    </style>
+</head>
+<body style="margin: 0; padding: 0; background-color: #faf8f5; font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+    <!-- Preheader text (hidden) -->
+    <div style="display: none; max-height: 0; overflow: hidden;">
+        Your admin account is ready. Log in with your passkey to get started.
+    </div>
+
+    <!-- Email wrapper -->
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #faf8f5;">
+        <tr>
+            <td style="padding: 40px 20px;">
+                <!-- Main container -->
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width: 520px; margin: 0 auto;">
+
+                    <!-- Logo & Header -->
+                    <tr>
+                        <td style="text-align: center; padding-bottom: 32px;">
+                            <!-- Pineapple Icon -->
+                            <div style="width: 56px; height: 56px; margin: 0 auto 16px; background: linear-gradient(135deg, #d4a574 0%, #c9956a 100%); border-radius: 16px; display: flex; align-items: center; justify-content: center;">
+                                <img src="https://nakedpineapple.co/static/images/pineapple-icon.png" alt="" width="32" height="32" style="display: block;" />
+                            </div>
+                            <h1 style="margin: 0; font-family: 'Playfair Display', Georgia, serif; font-size: 24px; font-weight: 600; color: #1a1614; letter-spacing: -0.02em;">
+                                Naked Pineapple
+                            </h1>
+                            <p style="margin: 4px 0 0; font-size: 13px; color: #8b7355; text-transform: uppercase; letter-spacing: 0.1em;">
+                                Admin Portal
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Main Card -->
+                    <tr>
+                        <td>
+                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #ffffff; border-radius: 24px; box-shadow: 0 4px 24px rgba(26, 22, 20, 0.06);">
+                                <tr>
+                                    <td style="padding: 48px 40px;">
+                                        <!-- Celebration Icon -->
+                                        <div style="width: 64px; height: 64px; margin: 0 auto 24px; background: linear-gradient(135deg, #e8f5e8 0%, #d4edda 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                                            <span style="font-size: 28px;">&#10003;</span>
+                                        </div>
+
+                                        <!-- Welcome Text -->
+                                        <p style="margin: 0 0 8px; font-size: 14px; color: #28a745; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; text-align: center;">
+                                            You're All Set
+                                        </p>
+                                        <h2 style="margin: 0 0 16px; font-family: 'Playfair Display', Georgia, serif; font-size: 28px; font-weight: 600; color: #1a1614; line-height: 1.2; text-align: center;">
+                                            Welcome, {{ name }}!
+                                        </h2>
+                                        <p style="margin: 0 0 32px; font-size: 16px; color: #5c5248; line-height: 1.6; text-align: center;">
+                                            Your admin account has been created successfully. You can now access the admin panel using your passkey.
+                                        </p>
+
+                                        <!-- CTA Button -->
+                                        <div style="text-align: center; margin-bottom: 32px;">
+                                            <a href="{{ admin_url }}" style="display: inline-block; background: linear-gradient(135deg, #d63a2f 0%, #c43328 100%); color: #ffffff; font-size: 15px; font-weight: 600; text-decoration: none; padding: 16px 40px; border-radius: 12px; box-shadow: 0 4px 12px rgba(214, 58, 47, 0.3);">
+                                                Open Admin Panel
+                                            </a>
+                                        </div>
+
+                                        <!-- Divider -->
+                                        <div style="height: 1px; background: linear-gradient(90deg, transparent, #e8e2d9, transparent); margin: 32px 0;"></div>
+
+                                        <!-- Security Notice -->
+                                        <div style="padding: 20px; background-color: #f8f5f0; border-radius: 12px;">
+                                            <p style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #1a1614;">
+                                                Keep Your Account Secure
+                                            </p>
+                                            <ul style="margin: 0; padding-left: 20px; font-size: 14px; color: #5c5248; line-height: 1.8;">
+                                                <li>Your passkey is the only way to access your account</li>
+                                                <li>Keep your authenticator device secure</li>
+                                                <li>Never share your login credentials</li>
+                                            </ul>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- Quick Links -->
+                    <tr>
+                        <td style="padding-top: 24px;">
+                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                                <tr>
+                                    <td style="text-align: center;">
+                                        <a href="{{ admin_url }}/products" style="display: inline-block; margin: 0 8px; padding: 12px 20px; background-color: #ffffff; border-radius: 10px; font-size: 13px; color: #5c5248; text-decoration: none; box-shadow: 0 2px 8px rgba(26, 22, 20, 0.04);">
+                                            Products
+                                        </a>
+                                        <a href="{{ admin_url }}/orders" style="display: inline-block; margin: 0 8px; padding: 12px 20px; background-color: #ffffff; border-radius: 10px; font-size: 13px; color: #5c5248; text-decoration: none; box-shadow: 0 2px 8px rgba(26, 22, 20, 0.04);">
+                                            Orders
+                                        </a>
+                                        <a href="{{ admin_url }}/customers" style="display: inline-block; margin: 0 8px; padding: 12px 20px; background-color: #ffffff; border-radius: 10px; font-size: 13px; color: #5c5248; text-decoration: none; box-shadow: 0 2px 8px rgba(26, 22, 20, 0.04);">
+                                            Customers
+                                        </a>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td style="padding-top: 32px; text-align: center;">
+                            <p style="margin: 0 0 8px; font-size: 13px; color: #8b7355;">
+                                Naked Pineapple — Natural Skincare
+                            </p>
+                            <p style="margin: 0; font-size: 12px; color: #a89a8a;">
+                                Questions? Reach out to the team.
+                            </p>
+                        </td>
+                    </tr>
+
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

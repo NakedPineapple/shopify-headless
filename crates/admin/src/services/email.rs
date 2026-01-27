@@ -1,16 +1,47 @@
 //! Email service for sending verification codes and notifications.
 //!
-//! Uses SMTP via lettre for delivery.
+//! Uses SMTP via lettre for delivery with Askama HTML templates.
 
+use askama::Template;
 use lettre::{
     AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor,
-    message::header::ContentType,
-    transport::smtp::{authentication::Credentials, Error as SmtpError},
+    message::{MultiPart, SinglePart, header::ContentType},
+    transport::smtp::{Error as SmtpError, authentication::Credentials},
 };
 use secrecy::ExposeSecret;
 use thiserror::Error;
 
 use crate::config::EmailConfig;
+
+/// HTML template for verification code email.
+#[derive(Template)]
+#[template(path = "email/verification_code.html")]
+struct VerificationCodeEmailHtml<'a> {
+    code: &'a str,
+}
+
+/// Plain text template for verification code email.
+#[derive(Template)]
+#[template(path = "email/verification_code.txt")]
+struct VerificationCodeEmailText<'a> {
+    code: &'a str,
+}
+
+/// HTML template for welcome email.
+#[derive(Template)]
+#[template(path = "email/welcome.html")]
+struct WelcomeEmailHtml<'a> {
+    name: &'a str,
+    admin_url: &'a str,
+}
+
+/// Plain text template for welcome email.
+#[derive(Template)]
+#[template(path = "email/welcome.txt")]
+struct WelcomeEmailText<'a> {
+    name: &'a str,
+    admin_url: &'a str,
+}
 
 /// Errors that can occur when sending email.
 #[derive(Debug, Error)]
@@ -26,6 +57,10 @@ pub enum EmailError {
     /// Invalid email address.
     #[error("Invalid email address: {0}")]
     InvalidAddress(String),
+
+    /// Template rendering error.
+    #[error("Template error: {0}")]
+    Template(#[from] askama::Error),
 }
 
 /// Email service for sending transactional emails.
@@ -62,52 +97,42 @@ impl EmailService {
     ///
     /// # Errors
     ///
-    /// Returns error if email fails to send.
+    /// Returns error if email fails to send or template fails to render.
     pub async fn send_verification_code(&self, to: &str, code: &str) -> Result<(), EmailError> {
-        let subject = "Your Naked Pineapple Admin Verification Code";
-        let body = format!(
-            r#"Welcome to Naked Pineapple Admin!
+        let html = VerificationCodeEmailHtml { code }.render()?;
+        let text = VerificationCodeEmailText { code }.render()?;
 
-Your verification code is: {code}
-
-This code expires in 10 minutes.
-
-Enter this code on the setup page to verify your email and create your passkey.
-
-If you didn't request this code, you can safely ignore this email.
-
-— The Naked Pineapple Team"#
-        );
-
-        self.send_email(to, subject, &body).await
+        self.send_multipart_email(
+            to,
+            "Your Naked Pineapple Admin Verification Code",
+            &text,
+            &html,
+        )
+        .await
     }
 
     /// Send a welcome email after successful registration.
     ///
     /// # Errors
     ///
-    /// Returns error if email fails to send.
+    /// Returns error if email fails to send or template fails to render.
     pub async fn send_welcome_email(&self, to: &str, name: &str) -> Result<(), EmailError> {
-        let subject = "Welcome to Naked Pineapple Admin";
-        let body = format!(
-            r#"Hi {name}!
+        let admin_url = "https://admin.nakedpineapple.co";
+        let html = WelcomeEmailHtml { name, admin_url }.render()?;
+        let text = WelcomeEmailText { name, admin_url }.render()?;
 
-Your admin account has been set up successfully. You can now log in using your passkey.
-
-Admin Panel: https://admin.nakedpineapple.co
-
-Your passkey is the only way to access your account — keep your device secure!
-
-If you have any questions, reach out to the team.
-
-— The Naked Pineapple Team"#
-        );
-
-        self.send_email(to, subject, &body).await
+        self.send_multipart_email(to, "Welcome to Naked Pineapple Admin", &text, &html)
+            .await
     }
 
-    /// Send a generic email.
-    async fn send_email(&self, to: &str, subject: &str, body: &str) -> Result<(), EmailError> {
+    /// Send a multipart email with both plain text and HTML versions.
+    async fn send_multipart_email(
+        &self,
+        to: &str,
+        subject: &str,
+        text_body: &str,
+        html_body: &str,
+    ) -> Result<(), EmailError> {
         let email = Message::builder()
             .from(
                 self.from_address
@@ -118,8 +143,19 @@ If you have any questions, reach out to the team.
                 .parse()
                 .map_err(|_| EmailError::InvalidAddress(to.to_string()))?)
             .subject(subject)
-            .header(ContentType::TEXT_PLAIN)
-            .body(body.to_string())?;
+            .multipart(
+                MultiPart::alternative()
+                    .singlepart(
+                        SinglePart::builder()
+                            .header(ContentType::TEXT_PLAIN)
+                            .body(text_body.to_string()),
+                    )
+                    .singlepart(
+                        SinglePart::builder()
+                            .header(ContentType::TEXT_HTML)
+                            .body(html_body.to_string()),
+                    ),
+            )?;
 
         self.mailer.send(email).await?;
 

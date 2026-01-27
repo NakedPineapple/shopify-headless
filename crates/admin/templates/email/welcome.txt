@@ -1,0 +1,27 @@
+NAKED PINEAPPLE ADMIN
+=====================
+
+Welcome, {{ name }}!
+--------------------
+
+Your admin account has been created successfully. You can now access the admin panel using your passkey.
+
+Open Admin Panel: {{ admin_url }}
+
+Keep Your Account Secure
+------------------------
+
+- Your passkey is the only way to access your account
+- Keep your authenticator device secure
+- Never share your login credentials
+
+Quick Links
+-----------
+
+Products:  {{ admin_url }}/products
+Orders:    {{ admin_url }}/orders
+Customers: {{ admin_url }}/customers
+
+---
+Naked Pineapple — Natural Skincare
+Questions? Reach out to the team.

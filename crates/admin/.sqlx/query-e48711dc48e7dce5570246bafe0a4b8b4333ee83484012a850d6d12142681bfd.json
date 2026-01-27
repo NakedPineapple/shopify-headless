@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            DELETE FROM admin.admin_invite\n            WHERE used_at IS NULL AND expires_at < NOW()\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "e48711dc48e7dce5570246bafe0a4b8b4333ee83484012a850d6d12142681bfd"
+}

@@ -35,6 +35,14 @@ mod setup_session_keys {
     pub const EMAIL_VERIFIED: &str = "setup_email_verified";
 }
 
+/// Pending registration info stored in session.
+#[derive(Serialize, Deserialize)]
+struct PendingRegistration {
+    email: String,
+    display_name: String,
+    passkey_name: String,
+}
+
 /// Setup page template.
 #[derive(Template)]
 #[template(path = "auth/setup.html")]
@@ -151,7 +159,10 @@ async fn send_verification_code(
         .await
         .map_err(|e| ApiError::new(format!("Session error: {e}")))?;
     session
-        .insert(setup_session_keys::VERIFICATION_EXPIRES, expires_at.timestamp())
+        .insert(
+            setup_session_keys::VERIFICATION_EXPIRES,
+            expires_at.timestamp(),
+        )
         .await
         .map_err(|e| ApiError::new(format!("Session error: {e}")))?;
 
@@ -349,13 +360,6 @@ async fn register_start(
         .map_err(|e| ApiError::new(format!("Session error: {e}")))?;
 
     // Store pending registration info
-    #[derive(Serialize, Deserialize)]
-    struct PendingRegistration {
-        email: String,
-        display_name: String,
-        passkey_name: String,
-    }
-
     let pending = PendingRegistration {
         email,
         display_name: req.display_name,
@@ -399,13 +403,6 @@ async fn register_finish(
         .ok_or_else(|| ApiError::new("No registration in progress"))?;
 
     // Get pending registration info
-    #[derive(Serialize, Deserialize)]
-    struct PendingRegistration {
-        email: String,
-        display_name: String,
-        passkey_name: String,
-    }
-
     let pending: PendingRegistration = session
         .get("setup_pending_registration")
         .await
@@ -439,8 +436,7 @@ async fn register_finish(
     }
 
     // Parse email
-    let email =
-        Email::parse(&pending.email).map_err(|_| ApiError::new("Invalid email address"))?;
+    let email = Email::parse(&pending.email).map_err(|_| ApiError::new("Invalid email address"))?;
 
     // Create admin user
     let user_repo = AdminUserRepository::new(state.pool());
@@ -488,13 +484,12 @@ async fn register_finish(
     );
 
     // Send welcome email
-    if let Some(email_service) = state.email_service() {
-        if let Err(e) = email_service
+    if let Some(email_service) = state.email_service()
+        && let Err(e) = email_service
             .send_welcome_email(&pending.email, &pending.display_name)
             .await
-        {
-            tracing::warn!(error = %e, "Failed to send welcome email");
-        }
+    {
+        tracing::warn!(error = %e, "Failed to send welcome email");
     }
 
     Ok(Json(FinishRegistrationResponse {
