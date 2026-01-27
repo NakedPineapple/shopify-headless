@@ -23,9 +23,10 @@
 {% macro picture(path, alt, sizes, class="", loading="lazy") %}
 {# Extract the base path: remove /static/images/original/ prefix and file extension #}
 {% let base = path.trim_start_matches("/static/images/original/").trim_end_matches(".jpg").trim_end_matches(".jpeg").trim_end_matches(".png").trim_end_matches(".JPG").trim_end_matches(".JPEG").trim_end_matches(".PNG") %}
-{# Get the content hash and default size for this image #}
+{# Get the content hash, default size, and base URL for this image #}
 {% let hash = base|image_hash %}
 {% let default_size = base|image_default_size %}
+{% let img_base_url = ""|image_base_url %}
 <picture>
   <source type="image/avif"
     srcset="{{ base|image_srcset(hash, "avif") }}"
@@ -34,7 +35,7 @@
     srcset="{{ base|image_srcset(hash, "webp") }}"
     sizes="{{ sizes }}">
   <img
-    src="/static/images/derived/{{ base }}.{{ hash }}-{{ default_size }}.jpg"
+    src="{{ img_base_url }}/{{ base }}.{{ hash }}-{{ default_size }}.jpg"
     srcset="{{ base|image_srcset(hash, "jpg") }}"
     sizes="{{ sizes }}"
     {% if !class.is_empty() %}class="{{ class }}"{% endif %}
@@ -59,5 +60,6 @@
 {# Extract base path and get hash #}
 {% let base = path.trim_start_matches("/static/images/original/").trim_end_matches(".svg") %}
 {% let hash = base|image_hash %}
-<img src="/static/images/derived/{{ base }}.{{ hash }}.svg" alt="{{ alt }}" {% if !class.is_empty() %}class="{{ class }}"{% endif %} decoding="async">
+{% let img_base_url = ""|image_base_url %}
+<img src="{{ img_base_url }}/{{ base }}.{{ hash }}.svg" alt="{{ alt }}" {% if !class.is_empty() %}class="{{ class }}"{% endif %} decoding="async">
 {% endmacro %}

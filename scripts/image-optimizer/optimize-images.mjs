@@ -9,9 +9,17 @@
  * Usage:
  *   node optimize-images.mjs                    # Optimize all referenced images
  *   node optimize-images.mjs path/to/image.jpg  # Optimize a specific image
+ *   node optimize-images.mjs --upload           # Optimize and upload to R2
+ *   node optimize-images.mjs --upload-only      # Upload existing derived images to R2
  *
  * The path should be relative to static/images/original/
  * Example: node optimize-images.mjs lifestyle/DSC_2634.jpg
+ *
+ * R2 Upload Environment Variables:
+ *   R2_ENDPOINT               - Cloudflare R2 endpoint (https://<account>.r2.cloudflarestorage.com)
+ *   R2_ACCESS_KEY_ID          - R2 access key
+ *   R2_SECRET_ACCESS_KEY      - R2 secret key
+ *   R2_BUCKET_DERIVED_IMAGES  - Bucket name for derived images
  *
  * Output:
  *   - crates/storefront/static/images/derived/ (optimized images)
@@ -24,9 +32,14 @@ import { dirname, join, basename, extname, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import fg from "fast-glob";
 import sharp from "sharp";
+import { S3Client, PutObjectCommand, ListObjectsV2Command } from "@aws-sdk/client-s3";
+import { lookup as getMimeType } from "mime-types";
+import dotenv from "dotenv";
 
+// Load .env from project root
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = join(__dirname, "..", "..");
+dotenv.config({ path: join(PROJECT_ROOT, ".env") });
 const STOREFRONT_ROOT = join(PROJECT_ROOT, "crates", "storefront");
 const IMAGES_ROOT = join(STOREFRONT_ROOT, "static", "images");
 const ORIGINAL_DIR = join(IMAGES_ROOT, "original");
@@ -48,6 +61,133 @@ const RASTER_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".webp"]);
 
 // SVG extension (copy as-is)
 const SVG_EXTENSION = ".svg";
+
+// R2 configuration from environment variables
+const R2_CONFIG = {
+  endpoint: process.env.R2_ENDPOINT,
+  accessKeyId: process.env.R2_ACCESS_KEY_ID,
+  secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
+  bucket: process.env.R2_BUCKET_DERIVED_IMAGES,
+};
+
+/**
+ * Create S3 client for R2
+ */
+function createR2Client() {
+  if (!R2_CONFIG.endpoint || !R2_CONFIG.accessKeyId || !R2_CONFIG.secretAccessKey) {
+    throw new Error(
+      "Missing R2 credentials. Set R2_ENDPOINT, R2_ACCESS_KEY_ID, and R2_SECRET_ACCESS_KEY environment variables."
+    );
+  }
+  if (!R2_CONFIG.bucket) {
+    throw new Error("Missing R2_BUCKET_DERIVED_IMAGES environment variable.");
+  }
+
+  return new S3Client({
+    region: "auto",
+    endpoint: R2_CONFIG.endpoint,
+    credentials: {
+      accessKeyId: R2_CONFIG.accessKeyId,
+      secretAccessKey: R2_CONFIG.secretAccessKey,
+    },
+  });
+}
+
+/**
+ * Upload a file to R2 with immutable caching headers
+ */
+async function uploadToR2(client, localPath, key) {
+  const content = await readFile(localPath);
+  const contentType = getMimeType(localPath) || "application/octet-stream";
+
+  const command = new PutObjectCommand({
+    Bucket: R2_CONFIG.bucket,
+    Key: key,
+    Body: content,
+    ContentType: contentType,
+    CacheControl: "public, max-age=31536000, immutable",
+  });
+
+  await client.send(command);
+}
+
+/**
+ * List all existing objects in R2 bucket
+ */
+async function listExistingR2Objects(client) {
+  const existingKeys = new Set();
+  let continuationToken;
+
+  do {
+    const command = new ListObjectsV2Command({
+      Bucket: R2_CONFIG.bucket,
+      ContinuationToken: continuationToken,
+    });
+
+    const response = await client.send(command);
+
+    if (response.Contents) {
+      for (const obj of response.Contents) {
+        existingKeys.add(obj.Key);
+      }
+    }
+
+    continuationToken = response.IsTruncated ? response.NextContinuationToken : undefined;
+  } while (continuationToken);
+
+  return existingKeys;
+}
+
+/**
+ * Upload all derived images to R2
+ */
+async function uploadDerivedImagesToR2() {
+  console.log("☁️  Uploading derived images to R2...\n");
+
+  const client = createR2Client();
+  const files = await getAllImages(DERIVED_DIR);
+
+  if (files.length === 0) {
+    console.log("   No files found in derived directory.");
+    return;
+  }
+
+  console.log(`   Found ${files.length} local files`);
+
+  // List existing objects in R2 to skip already-uploaded files
+  console.log("   Checking existing files in R2...");
+  const existingKeys = await listExistingR2Objects(client);
+  console.log(`   Found ${existingKeys.size} existing files in R2\n`);
+
+  let uploaded = 0;
+  let skipped = 0;
+  let errors = 0;
+
+  for (const filePath of files) {
+    const key = relative(DERIVED_DIR, filePath);
+
+    // Skip if file already exists in R2
+    if (existingKeys.has(key)) {
+      skipped++;
+      continue;
+    }
+
+    try {
+      await uploadToR2(client, filePath, key);
+      console.log(`   ✓ ${key}`);
+      uploaded++;
+    } catch (err) {
+      console.log(`   ❌ ${key}: ${err.message}`);
+      errors++;
+    }
+  }
+
+  console.log(`\n✅ Upload complete: ${uploaded} uploaded, ${skipped} skipped (already exist), ${errors} errors`);
+
+  if (errors > 0) {
+    process.exit(1);
+  }
+}
 
 /**
  * Generate a short content hash from file contents
@@ -490,17 +630,30 @@ async function optimizeSingle(imagePath) {
 
 // Parse command line arguments and run
 const args = process.argv.slice(2);
+const hasUploadOnly = args.includes("--upload-only");
+const hasUpload = args.includes("--upload");
+const imageArg = args.find((arg) => !arg.startsWith("--"));
 
-if (args.length > 0) {
-  // Single image mode
-  optimizeSingle(args[0]).catch((err) => {
-    console.error("❌ Error:", err);
-    process.exit(1);
-  });
-} else {
-  // Full optimization mode
-  optimize().catch((err) => {
-    console.error("❌ Error:", err);
-    process.exit(1);
-  });
+async function main() {
+  if (hasUploadOnly) {
+    // Upload-only mode: just upload existing derived images to R2
+    await uploadDerivedImagesToR2();
+  } else if (imageArg) {
+    // Single image mode
+    await optimizeSingle(imageArg);
+    if (hasUpload) {
+      await uploadDerivedImagesToR2();
+    }
+  } else {
+    // Full optimization mode
+    await optimize();
+    if (hasUpload) {
+      await uploadDerivedImagesToR2();
+    }
+  }
 }
+
+main().catch((err) => {
+  console.error("❌ Error:", err);
+  process.exit(1);
+});

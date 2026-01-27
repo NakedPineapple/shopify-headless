@@ -27,9 +27,13 @@ LICENSE*
 docker-compose/
 ~/.cargo/
 
-# Generated assets (rebuilt during Docker build)
-crates/storefront/static/images/derived/
+# Generated CSS assets (rebuilt during Docker build)
 crates/storefront/static/css/derived/
+
+# Images - original images not needed in Docker (served from R2 CDN)
+# Derived images are generated and uploaded to R2 separately
+crates/storefront/static/images/original/
+crates/storefront/static/images/derived/
 
 # Node modules (reinstalled in Docker)
 node_modules/

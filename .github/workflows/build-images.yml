@@ -1,4 +1,4 @@
-name: Build Image Assets
+name: Build and Upload Images to R2
 
 on:
   push:
@@ -6,44 +6,53 @@ on:
     paths:
       - 'crates/storefront/static/images/original/**'
       - 'scripts/image-optimizer/**'
-      - 'docker/Dockerfile.images'
   workflow_dispatch:
 
 concurrency:
   group: build-images-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-  REGISTRY: registry.fly.io
-
 jobs:
-  build-images:
-    name: Build Image Assets
+  build-and-upload:
+    name: Build and Upload Images
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
         with:
           lfs: true
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to Fly Registry
-        uses: docker/login-action@v3
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          registry: ${{ env.REGISTRY }}
-          username: x
-          password: ${{ secrets.FLY_API_TOKEN }}
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: scripts/image-optimizer/package-lock.json
 
-      - name: Build and push image assets
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: docker/Dockerfile.images
-          push: true
-          tags: |
-            ${{ env.REGISTRY }}/nakedpineapple-storefront-image-assets:${{ github.sha }}
-            ${{ env.REGISTRY }}/nakedpineapple-storefront-image-assets:latest
-          cache-from: type=registry,ref=${{ env.REGISTRY }}/nakedpineapple-storefront-image-assets:cache
-          cache-to: type=registry,ref=${{ env.REGISTRY }}/nakedpineapple-storefront-image-assets:cache,mode=max
+      - name: Install dependencies
+        working-directory: scripts/image-optimizer
+        run: npm ci
+
+      - name: Optimize images
+        working-directory: scripts/image-optimizer
+        run: node optimize-images.mjs
+
+      - name: Upload to R2
+        working-directory: scripts/image-optimizer
+        run: node optimize-images.mjs --upload-only
+        env:
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET_DERIVED_IMAGES: ${{ secrets.R2_BUCKET_DERIVED_IMAGES }}
+
+      - name: Commit manifest updates
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet crates/storefront/src/image_manifest.rs; then
+            echo "No manifest changes to commit"
+          else
+            git add crates/storefront/src/image_manifest.rs
+            git commit -m "chore: update image manifest"
+            git push
+          fi

@@ -1,5 +1,7 @@
 version: '3'
 
+dotenv: ['.env']
+
 tasks:
   # ============================================================================
   # Top-level tasks
@@ -387,6 +389,35 @@ tasks:
     cmds:
       - npm install --silent
       - node optimize-images.mjs
+
+  images:optimize:upload:
+    desc: "Optimize images and upload to R2"
+    dir: scripts/image-optimizer
+    cmds:
+      - npm install --silent
+      - node optimize-images.mjs --upload
+
+  images:upload:
+    desc: "Upload existing derived images to R2"
+    dir: scripts/image-optimizer
+    cmds:
+      - npm install --silent
+      - node optimize-images.mjs --upload-only
+
+  images:sync:
+    desc: "Sync optimized images from R2 for local development"
+    cmds:
+      - rclone sync r2:$R2_BUCKET_DERIVED_IMAGES/ crates/storefront/static/images/derived/ --progress
+
+  images:sync:originals:
+    desc: "Sync original images from R2 (for running optimizer locally)"
+    cmds:
+      - rclone sync r2:$R2_BUCKET_ORIGINAL_IMAGES/ crates/storefront/static/images/original/ --progress
+
+  images:upload:originals:
+    desc: "Upload original images to R2"
+    cmds:
+      - rclone sync crates/storefront/static/images/original/ r2:$R2_BUCKET_ORIGINAL_IMAGES/ --progress
 
   images:clean:
     desc: "Remove generated image variants"

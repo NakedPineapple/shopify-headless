@@ -68,8 +68,12 @@ Desktop.ini
 crates/storefront/static/css/output.css
 
 # Derived assets (generated at build time with content hashes)
-# crates/storefront/static/images/derived/  # Committed for local dev; excluded via .dockerignore
 crates/storefront/static/css/derived/
+
+# Images - stored in Cloudflare R2, not Git
+# Use `task images:sync` to download for local development
+crates/storefront/static/images/original/
+crates/storefront/static/images/derived/
 
 # Node modules (for Tailwind and image optimization)
 node_modules/

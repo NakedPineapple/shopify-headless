@@ -3,8 +3,15 @@
 #![allow(clippy::unnecessary_wraps)]
 
 use std::fmt::Display;
+use std::sync::LazyLock;
 
 use crate::image_manifest;
+
+/// Base URL for images, read from `IMAGE_BASE_URL` env var at runtime.
+/// Defaults to "/static/images/derived" for local development.
+static IMAGE_BASE_URL: LazyLock<String> = LazyLock::new(|| {
+    std::env::var("IMAGE_BASE_URL").unwrap_or_else(|_| "/static/images/derived".to_string())
+});
 
 /// Returns the current year.
 ///
@@ -61,10 +68,11 @@ pub fn image_srcset(
     // If max_width is 0 (SVG or not found), include all sizes as fallback
     let effective_max = if max_width == 0 { 2400 } else { max_width };
 
+    let base_url = &*IMAGE_BASE_URL;
     let srcset: Vec<String> = SIZES
         .iter()
         .filter(|&&size| size <= effective_max)
-        .map(|&size| format!("/static/images/derived/{base_path}.{hash}-{size}.{format} {size}w"))
+        .map(|&size| format!("{base_url}/{base_path}.{hash}-{size}.{format} {size}w"))
         .collect();
 
     Ok(srcset.join(", "))
@@ -126,9 +134,19 @@ pub fn to_derived_image(
         size
     };
 
-    Ok(format!(
-        "/static/images/derived/{base}.{hash}-{effective_size}.jpg"
-    ))
+    let base_url = &*IMAGE_BASE_URL;
+    Ok(format!("{base_url}/{base}.{hash}-{effective_size}.jpg"))
+}
+
+/// Returns the base URL for derived images.
+///
+/// Reads from `IMAGE_BASE_URL` env var at runtime, defaults to "/static/images/derived".
+///
+/// Usage in templates: `{{ ""|image_base_url }}`
+#[allow(clippy::unnecessary_wraps)]
+#[askama::filter_fn]
+pub fn image_base_url(_value: impl Display, _env: &dyn askama::Values) -> askama::Result<String> {
+    Ok(IMAGE_BASE_URL.clone())
 }
 
 /// Returns the content hash for main.css.

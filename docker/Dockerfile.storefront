@@ -47,10 +47,6 @@ ENV SQLX_OFFLINE=true
 # Copy full source
 COPY . .
 
-# Pull pre-built optimized images from image-assets registry
-# This is built separately by build-images.yml when images change
-COPY --from=registry.fly.io/nakedpineapple-storefront-image-assets:latest /derived /app/crates/storefront/static/images/derived
-
 # Build Tailwind CSS
 RUN tailwindcss -i ./crates/storefront/static/css/input.css \
     -o ./crates/storefront/static/css/main.css --minify
@@ -67,6 +63,10 @@ RUN apt-get update && apt-get install -y ca-certificates libssl3 && rm -rf /var/
 
 WORKDIR /app
 
+# Image CDN URL - defaults to Cloudflare R2 CDN
+ARG IMAGE_BASE_URL=https://images.nakedpineapple.com
+ENV IMAGE_BASE_URL=${IMAGE_BASE_URL}
+
 # Copy binaries
 COPY --from=builder /app/target/release/naked-pineapple-storefront /app/server
 COPY --from=builder /app/target/release/np-cli /app/np-cli
@@ -75,11 +75,10 @@ COPY --from=builder /app/target/release/np-cli /app/np-cli
 COPY --from=builder /app/crates/storefront/templates /app/crates/storefront/templates
 COPY --from=builder /app/crates/storefront/content /app/crates/storefront/content
 
-# Copy static assets - only derived images (not original) to save space
+# Copy static assets (CSS, JS, vendor) - images served from CDN
 COPY --from=builder /app/crates/storefront/static/css /app/crates/storefront/static/css
 COPY --from=builder /app/crates/storefront/static/js /app/crates/storefront/static/js
 COPY --from=builder /app/crates/storefront/static/vendor /app/crates/storefront/static/vendor
-COPY --from=builder /app/crates/storefront/static/images/derived /app/crates/storefront/static/images/derived
 
 EXPOSE 8080
 CMD ["/app/server"]
