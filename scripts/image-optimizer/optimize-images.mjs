@@ -133,6 +133,7 @@ async function getAllImages(dir) {
 
 /**
  * Process a single raster image into multiple sizes and formats with hashed filenames
+ * Returns { files: string[], maxWidth: number }
  */
 async function processRasterImage(inputPath, outputDir, relativePath, hash) {
   const ext = extname(relativePath).toLowerCase();
@@ -146,7 +147,7 @@ async function processRasterImage(inputPath, outputDir, relativePath, hash) {
     metadata = await image.metadata();
   } catch (err) {
     console.log(`      ⚠️  Skipping (unsupported format): ${err.message}`);
-    return [];
+    return { files: [], maxWidth: 0 };
   }
   const originalWidth = metadata.width || 0;
 
@@ -154,13 +155,16 @@ async function processRasterImage(inputPath, outputDir, relativePath, hash) {
   const outputSubDir = join(outputDir, dirname(relativePath));
   await mkdir(outputSubDir, { recursive: true });
 
-  const results = [];
+  const files = [];
+  let maxGeneratedWidth = 0;
 
   // Generate each size variant (capped at original size)
   for (const targetWidth of SIZES) {
     if (targetWidth > originalWidth) {
       continue; // Skip sizes larger than original
     }
+
+    maxGeneratedWidth = targetWidth;
 
     const resized = sharp(inputPath).resize(targetWidth, null, {
       withoutEnlargement: true,
@@ -171,20 +175,20 @@ async function processRasterImage(inputPath, outputDir, relativePath, hash) {
     const avifPath = join(outputDir, `${nameWithoutExt}.${hash}-${targetWidth}.avif`);
     await mkdir(dirname(avifPath), { recursive: true });
     await resized.clone().avif({ quality: QUALITY.avif }).toFile(avifPath);
-    results.push(avifPath);
+    files.push(avifPath);
 
     // Generate WebP with hash
     const webpPath = join(outputDir, `${nameWithoutExt}.${hash}-${targetWidth}.webp`);
     await resized.clone().webp({ quality: QUALITY.webp }).toFile(webpPath);
-    results.push(webpPath);
+    files.push(webpPath);
 
     // Generate JPEG with hash
     const jpegPath = join(outputDir, `${nameWithoutExt}.${hash}-${targetWidth}.jpg`);
     await resized.clone().jpeg({ quality: QUALITY.jpeg, progressive: true }).toFile(jpegPath);
-    results.push(jpegPath);
+    files.push(jpegPath);
   }
 
-  return results;
+  return { files, maxWidth: maxGeneratedWidth };
 }
 
 /**
@@ -200,13 +204,13 @@ async function copySvgFile(inputPath, outputDir, relativePath, hash) {
 }
 
 /**
- * Generate Rust manifest file with image hashes
+ * Generate Rust manifest file with image hashes and max widths
  *
  * Generates the manifest and runs rustfmt for proper formatting.
  */
 async function generateRustManifest(manifest) {
   const entries = Object.entries(manifest)
-    .map(([path, hash]) => `        ("${path}", "${hash}"),`)
+    .map(([path, { hash, maxWidth }]) => `        ("${path}", ("${hash}", ${maxWidth})),`)
     .join("\n");
 
   // Note: imports must be in alphabetical order for rustfmt
@@ -217,11 +221,16 @@ async function generateRustManifest(manifest) {
 use std::collections::HashMap;
 use std::sync::LazyLock;
 
-/// Maps image base paths to their content hashes.
+/// Image metadata: (hash, max_width)
+/// - hash: 8-character content hash for cache busting
+/// - max_width: largest generated size in pixels (0 for SVGs)
+pub type ImageInfo = (&'static str, u32);
+
+/// Maps image base paths to their metadata.
 ///
 /// Key: base path without extension (e.g., \`"lifestyle/DSC_1068"\`)
-/// Value: 8-character content hash
-pub static IMAGE_HASHES: LazyLock<HashMap<&'static str, &'static str>> = LazyLock::new(|| {
+/// Value: (hash, max_width)
+pub static IMAGE_INFO: LazyLock<HashMap<&'static str, ImageInfo>> = LazyLock::new(|| {
     HashMap::from([
 ${entries}
     ])
@@ -232,7 +241,16 @@ ${entries}
 /// Returns the hash if found, or an empty string if not found.
 #[must_use]
 pub fn get_image_hash(base_path: &str) -> &'static str {
-    IMAGE_HASHES.get(base_path).copied().unwrap_or("")
+    IMAGE_INFO.get(base_path).map(|(hash, _)| *hash).unwrap_or("")
+}
+
+/// Look up the maximum generated width for an image path.
+///
+/// Returns the max width if found, or 0 if not found.
+/// SVGs return 0 (they are resolution-independent).
+#[must_use]
+pub fn get_image_max_width(base_path: &str) -> u32 {
+    IMAGE_INFO.get(base_path).map(|(_, width)| *width).unwrap_or(0)
 }
 `;
 
@@ -274,7 +292,7 @@ async function optimize() {
   await mkdir(DERIVED_DIR, { recursive: true });
 
   // Step 3: Process each used image and build manifest
-  const manifest = {}; // Maps base path (without extension) to hash
+  const manifest = {}; // Maps base path (without extension) to { hash, maxWidth }
   let processedCount = 0;
   let skippedCount = 0;
   let totalVariants = 0;
@@ -297,24 +315,25 @@ async function optimize() {
 
     // Store in manifest (base path without extension)
     const basePath = imagePath.slice(0, -ext.length);
-    manifest[basePath] = hash;
 
     try {
       if (ext === SVG_EXTENSION) {
-        // Copy SVG with hash
+        // Copy SVG with hash (maxWidth = 0 for SVGs, they're resolution-independent)
         const results = await copySvgFile(inputPath, DERIVED_DIR, imagePath, hash);
+        manifest[basePath] = { hash, maxWidth: 0 };
         console.log(`   ✓ Copied SVG: ${imagePath} [${hash}]`);
         totalVariants += results.length;
       } else if (RASTER_EXTENSIONS.has(ext)) {
         // Process raster image with hash
         console.log(`   🖼️  Processing: ${imagePath} [${hash}]`);
-        const results = await processRasterImage(inputPath, DERIVED_DIR, imagePath, hash);
-        if (results.length === 0) {
+        const { files, maxWidth } = await processRasterImage(inputPath, DERIVED_DIR, imagePath, hash);
+        if (files.length === 0) {
           skippedCount++;
           continue;
         }
-        console.log(`      Generated ${results.length} variants`);
-        totalVariants += results.length;
+        manifest[basePath] = { hash, maxWidth };
+        console.log(`      Generated ${files.length} variants (max: ${maxWidth}px)`);
+        totalVariants += files.length;
       } else {
         console.log(`   ⚠️  Skipping (unknown type): ${imagePath}`);
         skippedCount++;

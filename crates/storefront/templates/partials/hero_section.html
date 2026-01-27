@@ -17,7 +17,7 @@
                 {# Background Image #}
                 <div class="absolute inset-0 overflow-hidden">
                     <div class="w-full h-full{% if slide.zoom_from.is_some() || slide.zoom_to.is_some() %} custom-zoom{% endif %}">
-                        <img src="{{ slide.image_url }}"
+                        <img src="{{ slide.image_path|to_derived_image(2400) }}"
                              alt="{{ slide.image_alt }}"
                              class="w-full h-full object-cover will-change-transform{% if slide.pan_from.is_some() || slide.pan_to.is_some() %} custom-pan{% endif %}"
                              {% if loop.first %}loading="eager"{% else %}loading="lazy"{% endif %}>
@@ -169,7 +169,7 @@
         {# Image Panel #}
         <div class="relative h-[50vh] lg:h-auto {% if hero.layout == crate::routes::home::HeroLayout::SplitRight %}lg:order-2{% endif %}">
             <div class="absolute inset-0">
-                <img src="{{ slide.image_url }}"
+                <img src="{{ slide.image_path|to_derived_image(2400) }}"
                      alt="{{ slide.image_alt }}"
                      class="w-full h-full object-cover"
                      loading="eager">
@@ -233,7 +233,7 @@
        CENTERED LAYOUT — Full background with centered content
        ───────────────────────────────────────────────────────────────────────── #}
     <div class="absolute inset-0">
-        <img src="{{ slide.image_url }}"
+        <img src="{{ slide.image_path|to_derived_image(2400) }}"
              alt="{{ slide.image_alt }}"
              class="w-full h-full object-cover"
              loading="eager">
@@ -293,7 +293,7 @@
        FULL-BLEED LAYOUT — Dramatic full-screen with offset content
        ───────────────────────────────────────────────────────────────────────── #}
     <div class="absolute inset-0">
-        <img src="{{ slide.image_url }}"
+        <img src="{{ slide.image_path|to_derived_image(2400) }}"
              alt="{{ slide.image_alt }}"
              class="w-full h-full object-cover"
              loading="eager">

@@ -877,9 +877,9 @@
                 <div class="border-t border-border-light pt-4 mt-6">
                     <p class="font-medium text-foreground">{{ review.reviewer_name }}</p>
                     <a href="/products/{{ review.product_handle }}" class="flex items-center gap-3 mt-2 group">
-                        {% if let Some(image_url) = review.product_image_url %}
+                        {% if let Some(product_image_path) = review.product_image_path %}
                         <div class="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-sand">
-                            <img src="{{ image_url }}"
+                            <img src="{{ product_image_path|to_derived_image(320) }}"
                                  alt="{{ review.product_title }}"
                                  class="w-full h-full object-cover"
                                  loading="lazy">
@@ -911,9 +911,9 @@
                 <div class="border-t border-border-light pt-4 mt-6">
                     <p class="font-medium text-foreground">{{ review.reviewer_name }}</p>
                     <a href="/products/{{ review.product_handle }}" class="flex items-center gap-3 mt-2 group">
-                        {% if let Some(image_url) = review.product_image_url %}
+                        {% if let Some(product_image_path) = review.product_image_path %}
                         <div class="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-sand">
-                            <img src="{{ image_url }}"
+                            <img src="{{ product_image_path|to_derived_image(320) }}"
                                  alt="{{ review.product_title }}"
                                  class="w-full h-full object-cover"
                                  loading="lazy">
