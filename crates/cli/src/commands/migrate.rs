@@ -11,6 +11,12 @@
 //!
 //! # Run all migrations
 //! np-cli migrate all
+//!
+//! # Rollback storefront migrations (1 by default)
+//! np-cli migrate rollback storefront
+//!
+//! # Rollback multiple migrations
+//! np-cli migrate rollback storefront --count 3
 //! ```
 //!
 //! # Environment Variables
@@ -83,5 +89,51 @@ pub async fn admin() -> Result<(), MigrationError> {
     sqlx::migrate!("../admin/migrations").run(&pool).await?;
 
     tracing::info!("Admin migrations complete!");
+    Ok(())
+}
+
+/// Rollback storefront database migrations.
+///
+/// Connects to the database specified by `STOREFRONT_DATABASE_URL` (or `DATABASE_URL` fallback)
+/// and rolls back the specified number of migrations from `crates/storefront/migrations/`.
+pub async fn rollback_storefront(count: i64) -> Result<(), MigrationError> {
+    dotenvy::dotenv().ok();
+
+    let database_url = std::env::var("STOREFRONT_DATABASE_URL")
+        .or_else(|_| std::env::var("DATABASE_URL"))
+        .map_err(|_| MigrationError::MissingEnvVar("STOREFRONT_DATABASE_URL"))?;
+
+    tracing::info!("Connecting to storefront database...");
+    let pool = PgPool::connect(&database_url).await?;
+
+    tracing::info!("Rolling back {count} storefront migration(s)...");
+    sqlx::migrate!("../storefront/migrations")
+        .undo(&pool, count)
+        .await?;
+
+    tracing::info!("Storefront rollback complete!");
+    Ok(())
+}
+
+/// Rollback admin database migrations.
+///
+/// Connects to the database specified by `ADMIN_DATABASE_URL` (or `DATABASE_URL` fallback)
+/// and rolls back the specified number of migrations from `crates/admin/migrations/`.
+pub async fn rollback_admin(count: i64) -> Result<(), MigrationError> {
+    dotenvy::dotenv().ok();
+
+    let database_url = std::env::var("ADMIN_DATABASE_URL")
+        .or_else(|_| std::env::var("DATABASE_URL"))
+        .map_err(|_| MigrationError::MissingEnvVar("ADMIN_DATABASE_URL"))?;
+
+    tracing::info!("Connecting to admin database...");
+    let pool = PgPool::connect(&database_url).await?;
+
+    tracing::info!("Rolling back {count} admin migration(s)...");
+    sqlx::migrate!("../admin/migrations")
+        .undo(&pool, count)
+        .await?;
+
+    tracing::info!("Admin rollback complete!");
     Ok(())
 }

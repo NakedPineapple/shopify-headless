@@ -1,0 +1,94 @@
+name: Database Migrations
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        type: choice
+        options: [staging, production]
+      action:
+        description: 'Migration action'
+        required: true
+        default: 'migrate'
+        type: choice
+        options: [migrate, rollback]
+      target:
+        description: 'Database to migrate'
+        required: true
+        default: 'all'
+        type: choice
+        options: [all, storefront, admin]
+      rollback_count:
+        description: 'Number of migrations to roll back (only for rollback action)'
+        required: false
+        default: '1'
+        type: string
+
+env:
+  FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+jobs:
+  migrate:
+    name: ${{ inputs.action == 'rollback' && 'Rollback' || 'Migrate' }} (${{ inputs.environment }})
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Build migration CLI
+        run: cargo build --release -p naked-pineapple-cli
+        env:
+          SQLX_OFFLINE: true
+
+      - name: Run storefront ${{ inputs.action }}
+        if: inputs.target == 'all' || inputs.target == 'storefront'
+        run: |
+          set -euo pipefail
+
+          echo "Starting Fly proxy to storefront Postgres..."
+          flyctl proxy 5433:5432 -a ${{ vars.STOREFRONT_POSTGRES_APP }} &
+          PROXY_PID=$!
+          sleep 3
+
+          trap "kill $PROXY_PID 2>/dev/null || true" EXIT
+
+          if [ "${{ inputs.action }}" = "rollback" ]; then
+            echo "Rolling back ${{ inputs.rollback_count }} storefront migration(s)..."
+            ./target/release/np-cli migrate rollback storefront --count ${{ inputs.rollback_count }}
+          else
+            echo "Running storefront migrations..."
+            ./target/release/np-cli migrate storefront
+          fi
+          echo "Storefront ${{ inputs.action }} completed successfully"
+        env:
+          STOREFRONT_DATABASE_URL: ${{ secrets.STOREFRONT_DATABASE_URL }}
+          RUST_LOG: info
+
+      - name: Run admin ${{ inputs.action }}
+        if: inputs.target == 'all' || inputs.target == 'admin'
+        run: |
+          set -euo pipefail
+
+          echo "Starting Fly proxy to admin Postgres..."
+          flyctl proxy 5433:5432 -a ${{ vars.ADMIN_POSTGRES_APP }} &
+          PROXY_PID=$!
+          sleep 3
+
+          trap "kill $PROXY_PID 2>/dev/null || true" EXIT
+
+          if [ "${{ inputs.action }}" = "rollback" ]; then
+            echo "Rolling back ${{ inputs.rollback_count }} admin migration(s)..."
+            ./target/release/np-cli migrate rollback admin --count ${{ inputs.rollback_count }}
+          else
+            echo "Running admin migrations..."
+            ./target/release/np-cli migrate admin
+          fi
+          echo "Admin ${{ inputs.action }} completed successfully"
+        env:
+          ADMIN_DATABASE_URL: ${{ secrets.ADMIN_DATABASE_URL }}
+          RUST_LOG: info
