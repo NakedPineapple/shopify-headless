@@ -4,9 +4,10 @@ on:
   push:
     branches: [main]
     paths:
-      - 'crates/storefront/static/images/original/**'
+      # Trigger when optimizer script changes
       - 'scripts/image-optimizer/**'
   workflow_dispatch:
+    # Manual trigger for when new images are added to R2
 
 concurrency:
   group: build-images-${{ github.ref }}
@@ -18,8 +19,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-        with:
-          lfs: true
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -27,6 +26,15 @@ jobs:
           node-version: '22'
           cache: 'npm'
           cache-dependency-path: scripts/image-optimizer/package-lock.json
+
+      - name: Download original images from R2
+        run: |
+          mkdir -p crates/storefront/static/images/original
+          aws s3 sync s3://${{ secrets.R2_BUCKET_ORIGINAL_IMAGES }}/ crates/storefront/static/images/original/ --endpoint-url ${{ secrets.R2_ENDPOINT }}
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
 
       - name: Install dependencies
         working-directory: scripts/image-optimizer
