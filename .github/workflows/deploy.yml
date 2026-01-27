@@ -36,6 +36,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          lfs: true
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Check formatting
@@ -51,6 +53,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          lfs: true
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Run tests
@@ -63,7 +67,7 @@ jobs:
   # ============================================================================
   build:
     name: Build Images
-    needs: lint
+    needs: [lint, test]
     runs-on: ubuntu-latest
     if: ${{ !inputs.promote_to_production }}
     steps:
@@ -132,7 +136,6 @@ jobs:
   # ============================================================================
   promote-to-production:
     name: Promote to Production
-    needs: lint
     runs-on: ubuntu-latest
     if: ${{ inputs.promote_to_production }}
     environment: production
