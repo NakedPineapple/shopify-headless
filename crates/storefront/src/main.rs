@@ -36,6 +36,21 @@ use tower::ServiceBuilder;
 use tower_http::services::ServeDir;
 use tower_http::set_header::SetResponseHeaderLayer;
 
+/// Sets cache-control header only on successful (2xx) responses.
+/// This prevents Cloudflare from caching 404s with immutable headers.
+fn cache_on_success<B>(
+    header_value: HeaderValue,
+) -> impl Fn(axum::http::Response<B>) -> axum::http::Response<B> + Clone {
+    move |mut response: axum::http::Response<B>| {
+        if response.status().is_success() {
+            response
+                .headers_mut()
+                .insert(CACHE_CONTROL, header_value.clone());
+        }
+        response
+    }
+}
+
 mod config;
 mod content;
 mod db;
@@ -145,14 +160,11 @@ async fn main() {
         .route("/health", get(health))
         .route("/health/ready", get(readiness))
         .merge(routes::routes())
-        // Optimized images - immutable (1 year cache)
+        // Optimized images - immutable (1 year cache, only on success)
         .nest_service(
             "/static/images/derived",
             ServiceBuilder::new()
-                .layer(SetResponseHeaderLayer::if_not_present(
-                    CACHE_CONTROL,
-                    cache_immutable.clone(),
-                ))
+                .map_response(cache_on_success(cache_immutable.clone()))
                 .service(ServeDir::new("crates/storefront/static/images/derived")),
         )
         // Original images fallback (for development) - short cache
