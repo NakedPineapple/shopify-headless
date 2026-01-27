@@ -124,6 +124,11 @@
                             <i class="ph ph-shield-check text-xl"></i>
                             <span class="sidebar-text">Admin Users</span>
                         </a>
+                        <a href="/shopify"
+                           class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors {% if current_path.starts_with("/shopify") %}bg-coral text-white{% else %}text-gray-300 hover:bg-gray-800 hover:text-white{% endif %}">
+                            <i class="ph ph-storefront text-xl"></i>
+                            <span class="sidebar-text">Shopify Settings</span>
+                        </a>
                     </div>
                 </div>
                 {% endif %}

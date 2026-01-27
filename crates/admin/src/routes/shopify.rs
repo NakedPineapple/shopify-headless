@@ -3,10 +3,11 @@
 //! These routes handle the OAuth flow to connect the admin panel to Shopify's Admin API.
 //! Only `super_admin` users can manage Shopify settings.
 
+use askama::Template;
 use axum::{
     Router,
     extract::{Query, State},
-    response::{IntoResponse, Redirect, Response},
+    response::{Html, IntoResponse, Redirect, Response},
     routing::get,
 };
 use hmac::{Hmac, Mac};
@@ -16,8 +17,12 @@ use tower_sessions::Session;
 use tracing::instrument;
 
 use crate::db::ShopifyTokenRepository;
+use crate::filters;
 use crate::middleware::require_super_admin;
+use crate::models::CurrentAdmin;
 use crate::state::AppState;
+
+use super::dashboard::AdminUserView;
 
 const OAUTH_STATE_KEY: &str = "shopify_admin_oauth_state";
 
@@ -37,6 +42,23 @@ const ADMIN_SCOPES: &[&str] = &[
     "read_marketing_activities",
     "read_shopify_payments_payouts",
 ];
+
+// =============================================================================
+// Templates
+// =============================================================================
+
+/// Shopify settings page template.
+#[derive(Template)]
+#[template(path = "shopify/settings.html")]
+pub struct ShopifySettingsTemplate {
+    pub admin_user: AdminUserView,
+    pub current_path: String,
+    pub connected: bool,
+    pub shop: String,
+    pub scopes: Vec<String>,
+    pub success_message: Option<String>,
+    pub error_message: Option<String>,
+}
 
 /// Build the Shopify OAuth router.
 ///
@@ -142,21 +164,57 @@ async fn settings_page(
         return response;
     }
 
-    // Check connection status
-    let shop = state.shopify().store();
-    let repo = ShopifyTokenRepository::new(state.pool());
-    let connected = repo.exists(shop).await.unwrap_or(false);
-
-    // For now, redirect to dashboard with status
-    // TODO: Create a proper settings template
-    let redirect_url = match (&params.success, &params.error) {
-        (Some(_), _) => "/?shopify=connected",
-        (_, Some(_)) => "/?shopify=error",
-        _ if connected => "/?shopify=connected",
-        _ => "/?shopify=disconnected",
+    // Get current admin from session (we know it exists after require_super_admin)
+    let Some(admin) = session
+        .get::<CurrentAdmin>(crate::models::session_keys::CURRENT_ADMIN)
+        .await
+        .ok()
+        .flatten()
+    else {
+        // This should never happen after require_super_admin, but handle gracefully
+        return Redirect::to("/auth/login").into_response();
     };
 
-    Redirect::to(redirect_url).into_response()
+    // Check connection status and get token details
+    let shop = state.shopify().store().to_string();
+    let repo = ShopifyTokenRepository::new(state.pool());
+    let token = repo.get_by_shop(&shop).await.ok().flatten();
+    let connected = token.is_some();
+    let scopes = token.map_or_else(Vec::new, |t| t.scopes);
+
+    // Map query params to user-friendly messages
+    let success_message = params.success.as_deref().map(|s| match s {
+        "connected" => "Successfully connected to Shopify!".to_string(),
+        "disconnected" => "Successfully disconnected from Shopify.".to_string(),
+        _ => format!("Success: {s}"),
+    });
+
+    let error_message = params.error.as_deref().map(|e| match e {
+        "oauth_denied" => "OAuth authorization was denied.".to_string(),
+        "oauth_invalid_hmac" => "Invalid security signature. Please try again.".to_string(),
+        "oauth_invalid_state" => "Invalid state parameter. Please try again.".to_string(),
+        "oauth_failed" => "OAuth flow failed. Please try again.".to_string(),
+        "oauth_exchange_failed" => "Failed to exchange authorization code.".to_string(),
+        "oauth_save_failed" => "Failed to save credentials.".to_string(),
+        "disconnect_failed" => "Failed to disconnect from Shopify.".to_string(),
+        _ => format!("Error: {e}"),
+    });
+
+    let template = ShopifySettingsTemplate {
+        admin_user: AdminUserView::from(&admin),
+        current_path: "/shopify".to_string(),
+        connected,
+        shop,
+        scopes,
+        success_message,
+        error_message,
+    };
+
+    Html(template.render().unwrap_or_else(|e| {
+        tracing::error!("Template render error: {}", e);
+        "Internal Server Error".to_string()
+    }))
+    .into_response()
 }
 
 /// GET /shopify/connect - Start OAuth flow.
