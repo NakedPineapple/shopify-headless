@@ -116,7 +116,7 @@ jobs:
             ${{ env.REGISTRY }}/${{ matrix.image }}:${{ github.sha }}
             ${{ env.REGISTRY }}/${{ matrix.image }}:latest
           build-args: |
-            IMAGE_BASE_URL=${{ secrets.IMAGE_BASE_URL }}
+            IMAGE_BASE_URL=${{ vars.IMAGE_BASE_URL }}
           cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ matrix.cache }}:latest
           cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ matrix.cache }}:latest,mode=max
 
