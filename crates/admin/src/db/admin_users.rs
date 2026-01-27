@@ -91,6 +91,29 @@ impl<'a> AdminUserRepository<'a> {
         Self { pool }
     }
 
+    /// List all admin users.
+    ///
+    /// # Errors
+    ///
+    /// Returns `RepositoryError::Database` if the query fails.
+    /// Returns `RepositoryError::DataCorruption` if the data is invalid.
+    pub async fn list_all(&self) -> Result<Vec<AdminUser>, RepositoryError> {
+        let rows = sqlx::query_as!(
+            AdminUserRow,
+            r#"
+            SELECT id, email, name, role as "role: AdminRole",
+                   created_at as "created_at: DateTime<Utc>",
+                   updated_at as "updated_at: DateTime<Utc>"
+            FROM admin.admin_user
+            ORDER BY created_at DESC
+            "#
+        )
+        .fetch_all(self.pool)
+        .await?;
+
+        rows.into_iter().map(TryInto::try_into).collect()
+    }
+
     /// Get an admin user by their ID.
     ///
     /// # Errors

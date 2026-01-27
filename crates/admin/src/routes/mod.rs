@@ -45,6 +45,7 @@
 //! POST /chat/sessions/:id/messages - Send message (returns response)
 //! ```
 
+pub mod admin_users;
 pub mod api;
 pub mod auth;
 pub mod chat;
@@ -67,6 +68,8 @@ pub fn routes() -> Router<AppState> {
         .route("/products", get(products::index))
         .route("/orders", get(orders::index))
         .route("/customers", get(customers::index))
+        // Admin management (super_admin only)
+        .route("/admin-users", get(admin_users::index))
         // Auth
         .merge(auth::router())
         .merge(setup::router())

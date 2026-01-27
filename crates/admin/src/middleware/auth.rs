@@ -115,6 +115,85 @@ where
     }
 }
 
+/// Extractor that requires super admin authentication.
+///
+/// If the admin is not logged in, redirects to login.
+/// If the admin is not a super admin, returns 403 Forbidden.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// async fn super_admin_handler(
+///     RequireSuperAdmin(admin): RequireSuperAdmin,
+/// ) -> impl IntoResponse {
+///     format!("Hello super admin {}!", admin.name)
+/// }
+/// ```
+pub struct RequireSuperAdmin(pub CurrentAdmin);
+
+/// Error returned when super admin authentication is required.
+pub enum SuperAdminRejection {
+    /// Redirect to login page (for HTML requests).
+    RedirectToLogin,
+    /// Unauthorized response (for API requests).
+    Unauthorized,
+    /// Forbidden - user is admin but not super admin.
+    Forbidden,
+}
+
+impl IntoResponse for SuperAdminRejection {
+    fn into_response(self) -> Response {
+        match self {
+            Self::RedirectToLogin => Redirect::to("/auth/login").into_response(),
+            Self::Unauthorized => StatusCode::UNAUTHORIZED.into_response(),
+            Self::Forbidden => (
+                StatusCode::FORBIDDEN,
+                "Only super admins can access this resource",
+            )
+                .into_response(),
+        }
+    }
+}
+
+impl<S> FromRequestParts<S> for RequireSuperAdmin
+where
+    S: Send + Sync,
+{
+    type Rejection = SuperAdminRejection;
+
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        use crate::models::AdminRole;
+
+        // Get the session from extensions
+        let session = parts
+            .extensions
+            .get::<Session>()
+            .ok_or(SuperAdminRejection::Unauthorized)?;
+
+        // Get the current admin from the session
+        let admin: CurrentAdmin = session
+            .get(session_keys::CURRENT_ADMIN)
+            .await
+            .ok()
+            .flatten()
+            .ok_or_else(|| {
+                let is_api = parts.uri.path().starts_with("/api/");
+                if is_api {
+                    SuperAdminRejection::Unauthorized
+                } else {
+                    SuperAdminRejection::RedirectToLogin
+                }
+            })?;
+
+        // Check for super admin role
+        if admin.role != AdminRole::SuperAdmin {
+            return Err(SuperAdminRejection::Forbidden);
+        }
+
+        Ok(Self(admin))
+    }
+}
+
 /// Helper to set the current admin in the session.
 ///
 /// # Errors

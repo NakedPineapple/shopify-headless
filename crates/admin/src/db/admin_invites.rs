@@ -101,6 +101,30 @@ impl<'a> AdminInviteRepository<'a> {
         Self { pool }
     }
 
+    /// List all invites (pending and used).
+    ///
+    /// # Errors
+    ///
+    /// Returns `RepositoryError::Database` if the query fails.
+    pub async fn list_all(&self) -> Result<Vec<AdminInvite>, RepositoryError> {
+        let rows = sqlx::query_as!(
+            AdminInviteRow,
+            r#"
+            SELECT id, email, name, role as "role: AdminRole",
+                   invited_by, created_at as "created_at: DateTime<Utc>",
+                   expires_at as "expires_at: DateTime<Utc>",
+                   used_at as "used_at: DateTime<Utc>",
+                   used_by
+            FROM admin.admin_invite
+            ORDER BY created_at DESC
+            "#
+        )
+        .fetch_all(self.pool)
+        .await?;
+
+        rows.into_iter().map(TryInto::try_into).collect()
+    }
+
     /// Get an invite by email address.
     ///
     /// # Errors
