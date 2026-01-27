@@ -1,0 +1,56 @@
+# Refund queries and mutations for Shopify Admin API
+
+# Calculate suggested refund
+query SuggestedRefund($orderId: ID!) {
+  order(id: $orderId) {
+    id
+    name
+    suggestedRefund(refundLineItems: [], suggestFullRefund: true) {
+      amountSet {
+        shopMoney {
+          amount
+          currencyCode
+        }
+      }
+      subtotalSet {
+        shopMoney {
+          amount
+          currencyCode
+        }
+      }
+      totalTaxSet {
+        shopMoney {
+          amount
+          currencyCode
+        }
+      }
+      refundLineItems {
+        lineItem {
+          id
+          title
+          quantity
+        }
+        quantity
+      }
+    }
+  }
+}
+
+# Create a refund
+mutation RefundCreate($input: RefundInput!) {
+  refundCreate(input: $input) {
+    refund {
+      id
+      totalRefundedSet {
+        shopMoney {
+          amount
+          currencyCode
+        }
+      }
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}

@@ -270,3 +270,43 @@ query GetOrders(
     }
   }
 }
+
+# Update order note
+mutation OrderUpdate($input: OrderInput!) {
+  orderUpdate(input: $input) {
+    order {
+      id
+      note
+      tags
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
+# Mark order as paid
+mutation OrderMarkAsPaid($input: OrderMarkAsPaidInput!) {
+  orderMarkAsPaid(input: $input) {
+    order {
+      id
+      displayFinancialStatus
+      fullyPaid
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
+# Cancel order
+mutation OrderCancel($orderId: ID!, $reason: OrderCancelReason, $notifyCustomer: Boolean, $refund: Boolean, $restock: Boolean, $staffNote: String) {
+  orderCancel(orderId: $orderId, reason: $reason, notifyCustomer: $notifyCustomer, refund: $refund, restock: $restock, staffNote: $staffNote) {
+    orderCancelUserErrors {
+      field
+      message
+    }
+  }
+}

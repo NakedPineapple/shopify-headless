@@ -1,0 +1,191 @@
+# Discount queries and mutations for Shopify Admin API
+
+# Get paginated list of discount codes
+query GetDiscountCodes(
+  $first: Int = 20
+  $after: String
+  $query: String
+) {
+  codeDiscountNodes(first: $first, after: $after, query: $query) {
+    edges {
+      node {
+        id
+        codeDiscount {
+          __typename
+          ... on DiscountCodeBasic {
+            title
+            status
+            startsAt
+            endsAt
+            usageLimit
+            asyncUsageCount
+            codes(first: 1) {
+              edges {
+                node {
+                  code
+                }
+              }
+            }
+            customerGets {
+              value {
+                __typename
+                ... on DiscountPercentage {
+                  percentage
+                }
+                ... on DiscountAmount {
+                  amount {
+                    amount
+                    currencyCode
+                  }
+                }
+              }
+            }
+          }
+          ... on DiscountCodeBxgy {
+            title
+            status
+            startsAt
+            endsAt
+            usageLimit
+            asyncUsageCount
+            codes(first: 1) {
+              edges {
+                node {
+                  code
+                }
+              }
+            }
+          }
+          ... on DiscountCodeFreeShipping {
+            title
+            status
+            startsAt
+            endsAt
+            usageLimit
+            asyncUsageCount
+            codes(first: 1) {
+              edges {
+                node {
+                  code
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}
+
+# Get a single discount by ID
+query GetDiscountCode($id: ID!) {
+  codeDiscountNode(id: $id) {
+    id
+    codeDiscount {
+      __typename
+      ... on DiscountCodeBasic {
+        title
+        status
+        startsAt
+        endsAt
+        usageLimit
+        asyncUsageCount
+        codes(first: 5) {
+          edges {
+            node {
+              code
+            }
+          }
+        }
+        customerGets {
+          value {
+            __typename
+            ... on DiscountPercentage {
+              percentage
+            }
+            ... on DiscountAmount {
+              amount {
+                amount
+                currencyCode
+              }
+            }
+          }
+        }
+        minimumRequirement {
+          __typename
+          ... on DiscountMinimumQuantity {
+            greaterThanOrEqualToQuantity
+          }
+          ... on DiscountMinimumSubtotal {
+            greaterThanOrEqualToSubtotal {
+              amount
+              currencyCode
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+# Create a basic percentage or fixed amount discount
+mutation DiscountCodeBasicCreate($basicCodeDiscount: DiscountCodeBasicInput!) {
+  discountCodeBasicCreate(basicCodeDiscount: $basicCodeDiscount) {
+    codeDiscountNode {
+      id
+      codeDiscount {
+        __typename
+        ... on DiscountCodeBasic {
+          title
+          codes(first: 1) {
+            edges {
+              node {
+                code
+              }
+            }
+          }
+        }
+      }
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
+# Update a basic discount
+mutation DiscountCodeBasicUpdate($id: ID!, $basicCodeDiscount: DiscountCodeBasicInput!) {
+  discountCodeBasicUpdate(id: $id, basicCodeDiscount: $basicCodeDiscount) {
+    codeDiscountNode {
+      id
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
+# Deactivate a discount
+mutation DiscountCodeDeactivate($id: ID!) {
+  discountCodeDeactivate(id: $id) {
+    codeDiscountNode {
+      id
+      codeDiscount {
+        __typename
+        ... on DiscountCodeBasic {
+          status
+        }
+      }
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}

@@ -8,11 +8,14 @@ use crate::{
     filters,
     middleware::auth::RequireAdminAuth,
     models::CurrentAdmin,
-    shopify::types::{Money, Order},
+    shopify::types::{AdminProduct, Money, Order, ProductStatus},
     state::AppState,
 };
 
 use naked_pineapple_core::AdminRole;
+
+/// Low stock threshold for alerts.
+const LOW_STOCK_THRESHOLD: i64 = 10;
 
 /// Admin user view for templates.
 #[derive(Debug, Clone)]
@@ -70,6 +73,38 @@ pub struct ActivityView {
     pub time_ago: String,
 }
 
+/// Low stock item view for dashboard alerts.
+#[derive(Debug, Clone)]
+pub struct LowStockItemView {
+    pub product_title: String,
+    pub variant_title: String,
+    pub sku: Option<String>,
+    pub quantity: i64,
+    pub image_url: Option<String>,
+}
+
+impl LowStockItemView {
+    fn from_product(product: &AdminProduct) -> Vec<Self> {
+        // Only include active products
+        if product.status != ProductStatus::Active {
+            return vec![];
+        }
+
+        product
+            .variants
+            .iter()
+            .filter(|v| v.inventory_quantity <= LOW_STOCK_THRESHOLD)
+            .map(|v| Self {
+                product_title: product.title.clone(),
+                variant_title: v.title.clone(),
+                sku: v.sku.clone(),
+                quantity: v.inventory_quantity,
+                image_url: product.featured_image.as_ref().map(|img| img.url.clone()),
+            })
+            .collect()
+    }
+}
+
 /// Dashboard template.
 #[derive(Template)]
 #[template(path = "dashboard.html")]
@@ -79,6 +114,7 @@ pub struct DashboardTemplate {
     pub metrics: DashboardMetrics,
     pub recent_orders: Vec<RecentOrderView>,
     pub recent_activity: Vec<ActivityView>,
+    pub low_stock_items: Vec<LowStockItemView>,
 }
 
 // =============================================================================
@@ -151,7 +187,7 @@ pub async fn dashboard(
 ) -> Html<String> {
     // Fetch data from Shopify Admin API in parallel
     let orders_future = state.shopify().get_orders(50, None, None);
-    let products_future = state.shopify().get_products(1, None, None);
+    let products_future = state.shopify().get_products(50, None, None);
     let customers_future = state.shopify().get_customers(1, None, None);
 
     let (orders_result, products_result, customers_result) =
@@ -180,20 +216,30 @@ pub async fn dashboard(
         }
     };
 
-    // Get product count (from page info if available, else use results)
-    let product_count = match products_result {
+    // Get product count and low stock items
+    let (product_count, low_stock_items) = match products_result {
         Ok(product_conn) => {
             // Shopify doesn't return total count easily, so we approximate
             // In production, you'd cache this or use a separate count query
-            if product_conn.page_info.has_next_page {
+            let count = if product_conn.page_info.has_next_page {
                 "50+".to_string() // Indicates there are more
             } else {
                 product_conn.products.len().to_string()
-            }
+            };
+
+            // Extract low stock items from all products
+            let low_stock: Vec<LowStockItemView> = product_conn
+                .products
+                .iter()
+                .flat_map(LowStockItemView::from_product)
+                .take(5) // Limit to 5 items on dashboard
+                .collect();
+
+            (count, low_stock)
         }
         Err(e) => {
             tracing::error!("Failed to fetch products: {e}");
-            "0".to_string()
+            ("0".to_string(), vec![])
         }
     };
 
@@ -237,6 +283,7 @@ pub async fn dashboard(
         metrics,
         recent_orders,
         recent_activity,
+        low_stock_items,
     };
 
     Html(template.render().unwrap_or_else(|e| {

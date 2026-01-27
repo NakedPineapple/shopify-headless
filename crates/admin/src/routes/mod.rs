@@ -49,14 +49,22 @@ pub mod admin_users;
 pub mod api;
 pub mod auth;
 pub mod chat;
+pub mod collections;
 pub mod customers;
 pub mod dashboard;
+pub mod discounts;
+pub mod gift_cards;
+pub mod inventory;
 pub mod orders;
+pub mod payouts;
 pub mod products;
 pub mod setup;
 pub mod shopify;
 
-use axum::{Router, routing::get};
+use axum::{
+    Router,
+    routing::{get, post},
+};
 
 use crate::state::AppState;
 
@@ -64,10 +72,50 @@ use crate::state::AppState;
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/", get(dashboard::dashboard))
-        // List views
-        .route("/products", get(products::index))
+        // Products CRUD
+        .route("/products", get(products::index).post(products::create))
+        .route("/products/new", get(products::new_product))
+        .route("/products/{id}", get(products::show).post(products::update))
+        .route("/products/{id}/edit", get(products::edit))
+        .route("/products/{id}/archive", post(products::archive))
+        .route("/products/{id}/delete", post(products::delete))
+        // Orders CRUD
         .route("/orders", get(orders::index))
+        .route("/orders/{id}", get(orders::show))
+        .route("/orders/{id}/note", post(orders::update_note))
+        .route("/orders/{id}/mark-paid", post(orders::mark_paid))
+        .route("/orders/{id}/cancel", post(orders::cancel))
+        // Customers
         .route("/customers", get(customers::index))
+        // Collections CRUD
+        .route(
+            "/collections",
+            get(collections::index).post(collections::create),
+        )
+        .route("/collections/new", get(collections::new_collection))
+        .route("/collections/{id}/edit", get(collections::edit))
+        .route("/collections/{id}", post(collections::update))
+        .route("/collections/{id}/delete", post(collections::delete))
+        // Discounts CRUD
+        .route("/discounts", get(discounts::index).post(discounts::create))
+        .route("/discounts/new", get(discounts::new_discount))
+        .route("/discounts/{id}/edit", get(discounts::edit))
+        .route("/discounts/{id}", post(discounts::update))
+        .route("/discounts/{id}/deactivate", post(discounts::deactivate))
+        // Inventory management
+        .route("/inventory", get(inventory::index))
+        .route("/inventory/adjust", post(inventory::adjust))
+        .route("/inventory/set", post(inventory::set))
+        // Gift Cards CRUD
+        .route(
+            "/gift-cards",
+            get(gift_cards::index).post(gift_cards::create),
+        )
+        .route("/gift-cards/new", get(gift_cards::new_gift_card))
+        .route("/gift-cards/{id}/disable", post(gift_cards::disable))
+        // Payouts (read-only)
+        .route("/payouts", get(payouts::index))
+        .route("/payouts/{id}", get(payouts::show))
         // Admin management (super_admin only)
         .route("/admin-users", get(admin_users::index))
         // Auth

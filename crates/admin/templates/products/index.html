@@ -61,7 +61,10 @@
                             </div>
                             {% endif %}
                             <div>
-                                <p class="font-medium text-gray-900 dark:text-gray-100">{{ product.title }}</p>
+                                <a href="/products/{{ product.id.split("/").last().unwrap_or("") }}"
+                                   class="font-medium text-gray-900 dark:text-gray-100 hover:text-coral transition-colors">
+                                    {{ product.title }}
+                                </a>
                                 <p class="text-sm text-gray-500 dark:text-gray-400">{{ product.handle }}</p>
                             </div>
                         </div>
@@ -80,11 +83,17 @@
                         {{ product.price }}
                     </td>
                     <td class="px-6 py-4 text-right">
-                        <a href="https://admin.shopify.com/store/YOUR_STORE/products/{{ product.id.split("/").last().unwrap_or("") }}"
-                           target="_blank"
-                           class="text-sm text-coral hover:underline">
-                            Edit in Shopify
-                        </a>
+                        <div class="flex items-center justify-end gap-2">
+                            <a href="/products/{{ product.id.split("/").last().unwrap_or("") }}"
+                               class="text-sm text-coral hover:underline">
+                                View
+                            </a>
+                            <span class="text-gray-300 dark:text-gray-600">|</span>
+                            <a href="/products/{{ product.id.split("/").last().unwrap_or("") }}/edit"
+                               class="text-sm text-gray-600 dark:text-gray-400 hover:text-coral">
+                                Edit
+                            </a>
+                        </div>
                     </td>
                 </tr>
                 {% endfor %}

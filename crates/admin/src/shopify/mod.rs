@@ -46,7 +46,9 @@
 mod admin;
 pub mod types;
 
-pub use admin::{AdminClient, OAuthToken};
+pub use admin::{
+    AdminClient, DiscountCreateInput, DiscountUpdateInput, OAuthToken, ProductUpdateInput,
+};
 pub use types::*;
 
 use thiserror::Error;

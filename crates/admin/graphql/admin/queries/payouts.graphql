@@ -1,0 +1,54 @@
+# Payout queries for Shopify Admin API
+
+# Get a single payout by ID
+query GetPayout($id: ID!) {
+  node(id: $id) {
+    __typename
+    ... on ShopifyPaymentsPayout {
+      id
+      legacyResourceId
+      status
+      net {
+        amount
+        currencyCode
+      }
+      gross {
+        amount
+        currencyCode
+      }
+      issuedAt
+    }
+  }
+}
+
+# Get paginated list of payouts
+query GetPayouts($first: Int = 20, $after: String) {
+  shopifyPaymentsAccount {
+    payouts(first: $first, after: $after) {
+      edges {
+        node {
+          id
+          legacyResourceId
+          status
+          net {
+            amount
+            currencyCode
+          }
+          gross {
+            amount
+            currencyCode
+          }
+          issuedAt
+        }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+    }
+    balance {
+      amount
+      currencyCode
+    }
+  }
+}

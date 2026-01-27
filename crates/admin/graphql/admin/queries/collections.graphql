@@ -1,0 +1,102 @@
+# Collection queries and mutations for Shopify Admin API
+
+# Get a single collection by ID
+query GetCollection($id: ID!) {
+  collection(id: $id) {
+    id
+    title
+    handle
+    description
+    descriptionHtml
+    updatedAt
+    productsCount {
+      count
+    }
+    image {
+      id
+      url
+      altText
+    }
+    ruleSet {
+      appliedDisjunctively
+      rules {
+        column
+        relation
+        condition
+      }
+    }
+  }
+}
+
+# Get paginated list of collections
+query GetCollections(
+  $first: Int = 20
+  $after: String
+  $query: String
+) {
+  collections(first: $first, after: $after, query: $query) {
+    edges {
+      node {
+        id
+        title
+        handle
+        description
+        updatedAt
+        productsCount {
+          count
+        }
+        image {
+          id
+          url
+          altText
+        }
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}
+
+# Create a new collection
+mutation CollectionCreate($input: CollectionInput!) {
+  collectionCreate(input: $input) {
+    collection {
+      id
+      title
+      handle
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
+# Update an existing collection
+mutation CollectionUpdate($input: CollectionInput!) {
+  collectionUpdate(input: $input) {
+    collection {
+      id
+      title
+      handle
+      updatedAt
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
+# Delete a collection
+mutation CollectionDelete($input: CollectionDeleteInput!) {
+  collectionDelete(input: $input) {
+    deletedCollectionId
+    userErrors {
+      field
+      message
+    }
+  }
+}

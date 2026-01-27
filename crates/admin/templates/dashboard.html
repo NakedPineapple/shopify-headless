@@ -9,6 +9,44 @@
 {% endblock %}
 
 {% block content %}
+<!-- Low Stock Alert Banner -->
+{% if !low_stock_items.is_empty() %}
+<div class="mb-6 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl p-4">
+    <div class="flex items-start gap-4">
+        <div class="w-10 h-10 rounded-lg bg-yellow-100 dark:bg-yellow-900/50 flex items-center justify-center shrink-0">
+            <i class="ph ph-warning text-xl text-yellow-600 dark:text-yellow-400"></i>
+        </div>
+        <div class="flex-1 min-w-0">
+            <p class="font-medium text-yellow-800 dark:text-yellow-200 mb-2">Low Stock Alert</p>
+            <div class="space-y-2">
+                {% for item in low_stock_items %}
+                <div class="flex items-center gap-3 text-sm">
+                    {% if let Some(url) = item.image_url %}
+                    <img src="{{ url }}" alt="{{ item.product_title }}" class="w-8 h-8 rounded object-cover">
+                    {% else %}
+                    <div class="w-8 h-8 rounded bg-yellow-200/50 dark:bg-yellow-900/30 flex items-center justify-center">
+                        <i class="ph ph-package text-yellow-600 dark:text-yellow-400 text-xs"></i>
+                    </div>
+                    {% endif %}
+                    <div class="flex-1 min-w-0">
+                        <span class="text-yellow-800 dark:text-yellow-200 truncate">{{ item.product_title }}</span>
+                        {% if item.variant_title != "Default Title" %}
+                        <span class="text-yellow-600 dark:text-yellow-400 truncate"> - {{ item.variant_title }}</span>
+                        {% endif %}
+                    </div>
+                    <span class="font-medium text-yellow-700 dark:text-yellow-300 tabular-nums">{{ item.quantity }} left</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        <a href="/inventory?low_stock_only=true"
+           class="px-4 py-2 bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-300 rounded-lg text-sm font-medium hover:bg-yellow-200 dark:hover:bg-yellow-900 transition-colors whitespace-nowrap">
+            View All
+        </a>
+    </div>
+</div>
+{% endif %}
+
 <!-- Metrics Cards -->
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
     <!-- Total Orders -->

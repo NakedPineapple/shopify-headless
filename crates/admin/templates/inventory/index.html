@@ -1,0 +1,216 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Inventory{% endblock %}
+
+{% block page_title %}Inventory{% endblock %}
+
+{% block page_subtitle %}
+<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Manage stock levels across locations</p>
+{% endblock %}
+
+{% block content %}
+<!-- Low Stock Alert Banner -->
+{% if low_stock_count > 0 %}
+<div class="mb-6 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl p-4">
+    <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-lg bg-yellow-100 dark:bg-yellow-900/50 flex items-center justify-center">
+            <i class="ph ph-warning text-xl text-yellow-600 dark:text-yellow-400"></i>
+        </div>
+        <div class="flex-1">
+            <p class="font-medium text-yellow-800 dark:text-yellow-200">{{ low_stock_count }} item{% if low_stock_count != 1 %}s{% endif %} with low stock</p>
+            <p class="text-sm text-yellow-600 dark:text-yellow-400">Items with 10 or fewer units are highlighted below</p>
+        </div>
+        <a href="/inventory?low_stock_only=true{% if let Some(loc) = selected_location_id %}&location_id={{ loc }}{% endif %}"
+           class="px-4 py-2 bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-300 rounded-lg text-sm font-medium hover:bg-yellow-200 dark:hover:bg-yellow-900 transition-colors">
+            View Low Stock Only
+        </a>
+    </div>
+</div>
+{% endif %}
+
+<!-- Filters and Search -->
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+    <form method="GET" action="/inventory" class="flex-1 flex flex-col sm:flex-row gap-4">
+        <!-- Location Selector -->
+        <div class="relative">
+            <select name="location_id"
+                    onchange="this.form.submit()"
+                    class="appearance-none pl-10 pr-8 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-coral focus:border-coral transition-colors">
+                {% for location in locations %}
+                <option value="{{ location.id }}" {% if selected_location_id == Some(location.id.clone()) %}selected{% endif %}>
+                    {{ location.name }}
+                </option>
+                {% endfor %}
+            </select>
+            <i class="ph ph-map-pin absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+            <i class="ph ph-caret-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+        </div>
+
+        <!-- Search -->
+        <div class="relative flex-1 max-w-md">
+            <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+            <input type="search"
+                   name="query"
+                   value="{{ search_query.as_deref().unwrap_or("") }}"
+                   placeholder="Search products..."
+                   class="w-full pl-10 pr-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-coral focus:border-coral transition-colors">
+            {% if let Some(loc) = selected_location_id %}
+            <input type="hidden" name="location_id" value="{{ loc }}">
+            {% endif %}
+        </div>
+
+        <!-- Low Stock Filter -->
+        <label class="inline-flex items-center gap-2 cursor-pointer">
+            <input type="checkbox"
+                   name="low_stock_only"
+                   value="true"
+                   {% if low_stock_only %}checked{% endif %}
+                   onchange="this.form.submit()"
+                   class="w-4 h-4 rounded border-gray-300 text-coral focus:ring-coral">
+            <span class="text-sm text-gray-700 dark:text-gray-300">Low stock only</span>
+        </label>
+    </form>
+</div>
+
+<!-- Inventory Table -->
+<div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+    <div class="overflow-x-auto">
+        <table class="w-full">
+            <thead class="bg-gray-50 dark:bg-gray-800">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Product / Variant</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">SKU</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                    <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Quantity</th>
+                    <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Adjust</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
+                {% if items.is_empty() %}
+                <tr>
+                    <td colspan="5" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                        <i class="ph ph-package text-4xl mb-2"></i>
+                        <p>No inventory items found</p>
+                    </td>
+                </tr>
+                {% else %}
+                {% for item in items %}
+                <tr id="row-{{ item.inventory_item_id }}" class="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors {% if item.is_low_stock %}bg-yellow-50/50 dark:bg-yellow-900/10{% endif %}">
+                    <td class="px-6 py-4">
+                        <div class="flex items-center gap-4">
+                            {% if let Some(url) = item.product_image_url %}
+                            <img src="{{ url }}" alt="{{ item.product_title }}" class="w-10 h-10 rounded-lg object-cover">
+                            {% else %}
+                            <div class="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                                <i class="ph ph-image text-gray-400"></i>
+                            </div>
+                            {% endif %}
+                            <div>
+                                <p class="font-medium text-gray-900 dark:text-gray-100">{{ item.product_title }}</p>
+                                {% if item.variant_title != "Default Title" %}
+                                <p class="text-sm text-gray-500 dark:text-gray-400">{{ item.variant_title }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                        {{ item.sku.as_deref().unwrap_or("-") }}
+                    </td>
+                    <td class="px-6 py-4">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ item.status_class }}">
+                            {{ item.status }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 text-center">
+                        <span id="qty-{{ item.inventory_item_id }}"
+                              class="text-lg font-semibold {% if item.is_low_stock %}text-yellow-600 dark:text-yellow-400{% else %}text-gray-900 dark:text-gray-100{% endif %}">
+                            {{ item.quantity }}
+                        </span>
+                        {% if item.is_low_stock %}
+                        <i class="ph ph-warning ml-1 text-yellow-500" title="Low stock"></i>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="flex items-center justify-center gap-2">
+                            <!-- Quick adjust buttons -->
+                            <form hx-post="/inventory/adjust"
+                                  hx-target="#qty-{{ item.inventory_item_id }}"
+                                  hx-swap="innerHTML"
+                                  class="flex items-center gap-1">
+                                <input type="hidden" name="inventory_item_id" value="{{ item.inventory_item_id }}">
+                                <input type="hidden" name="location_id" value="{{ selected_location_id.as_deref().unwrap_or("") }}">
+                                <input type="hidden" name="delta" value="-1">
+                                <button type="submit"
+                                        class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 flex items-center justify-center transition-colors"
+                                        title="Decrease by 1">
+                                    <i class="ph ph-minus text-gray-600 dark:text-gray-300"></i>
+                                </button>
+                            </form>
+
+                            <form hx-post="/inventory/adjust"
+                                  hx-target="#qty-{{ item.inventory_item_id }}"
+                                  hx-swap="innerHTML"
+                                  class="flex items-center gap-1">
+                                <input type="hidden" name="inventory_item_id" value="{{ item.inventory_item_id }}">
+                                <input type="hidden" name="location_id" value="{{ selected_location_id.as_deref().unwrap_or("") }}">
+                                <input type="hidden" name="delta" value="1">
+                                <button type="submit"
+                                        class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 flex items-center justify-center transition-colors"
+                                        title="Increase by 1">
+                                    <i class="ph ph-plus text-gray-600 dark:text-gray-300"></i>
+                                </button>
+                            </form>
+
+                            <!-- Set quantity input -->
+                            <form hx-post="/inventory/set"
+                                  hx-target="#qty-{{ item.inventory_item_id }}"
+                                  hx-swap="innerHTML"
+                                  class="flex items-center gap-1 ml-2">
+                                <input type="hidden" name="inventory_item_id" value="{{ item.inventory_item_id }}">
+                                <input type="hidden" name="location_id" value="{{ selected_location_id.as_deref().unwrap_or("") }}">
+                                <input type="number"
+                                       name="quantity"
+                                       value="{{ item.quantity }}"
+                                       min="0"
+                                       class="w-20 px-2 py-1 text-sm text-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-coral focus:border-coral">
+                                <button type="submit"
+                                        class="px-3 py-1 bg-coral text-white text-sm rounded-lg hover:bg-coral/90 transition-colors"
+                                        title="Set quantity">
+                                    Set
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if has_next_page %}
+    <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-800">
+        <a href="/inventory?cursor={{ next_cursor.as_deref().unwrap_or("") }}{% if let Some(loc) = selected_location_id %}&location_id={{ loc }}{% endif %}{% if let Some(q) = search_query %}&query={{ q }}{% endif %}{% if low_stock_only %}&low_stock_only=true{% endif %}"
+           class="inline-flex items-center gap-2 text-sm text-coral hover:underline">
+            Load more
+            <i class="ph ph-arrow-right"></i>
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Show success/error notifications for HTMX updates
+document.body.addEventListener('htmx:afterRequest', function(evt) {
+    // Reload after a short delay to show updated quantity
+    if (evt.detail.successful) {
+        setTimeout(function() {
+            location.reload();
+        }, 1000);
+    }
+});
+</script>
+{% endblock %}

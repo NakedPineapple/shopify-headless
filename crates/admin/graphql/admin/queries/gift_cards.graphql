@@ -1,0 +1,99 @@
+# Gift Card queries and mutations for Shopify Admin API
+
+# Get paginated list of gift cards
+query GetGiftCards(
+  $first: Int = 20
+  $after: String
+  $query: String
+) {
+  giftCards(first: $first, after: $after, query: $query) {
+    edges {
+      node {
+        id
+        lastCharacters
+        balance {
+          amount
+          currencyCode
+        }
+        initialValue {
+          amount
+          currencyCode
+        }
+        expiresOn
+        enabled
+        createdAt
+        customer {
+          id
+          displayName
+          email
+        }
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}
+
+# Get a single gift card by ID
+query GetGiftCard($id: ID!) {
+  giftCard(id: $id) {
+    id
+    lastCharacters
+    balance {
+      amount
+      currencyCode
+    }
+    initialValue {
+      amount
+      currencyCode
+    }
+    expiresOn
+    enabled
+    createdAt
+    note
+    customer {
+      id
+      displayName
+      email
+    }
+    order {
+      id
+      name
+    }
+  }
+}
+
+# Create a gift card
+mutation GiftCardCreate($input: GiftCardCreateInput!) {
+  giftCardCreate(input: $input) {
+    giftCard {
+      id
+      lastCharacters
+      balance {
+        amount
+        currencyCode
+      }
+    }
+    giftCardCode
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
+# Update a gift card (used to disable)
+mutation GiftCardUpdate($id: ID!, $input: GiftCardUpdateInput!) {
+  giftCardUpdate(id: $id, input: $input) {
+    giftCard {
+      id
+      enabled
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}

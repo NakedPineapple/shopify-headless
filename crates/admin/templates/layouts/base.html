@@ -58,6 +58,11 @@
                         <i class="ph ph-package text-xl"></i>
                         <span class="sidebar-text">Products</span>
                     </a>
+                    <a href="/collections"
+                       class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors {% if current_path.starts_with("/collections") %}bg-coral text-white{% else %}text-gray-300 hover:bg-gray-800 hover:text-white{% endif %}">
+                        <i class="ph ph-folders text-xl"></i>
+                        <span class="sidebar-text">Collections</span>
+                    </a>
                     <a href="/orders"
                        class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors {% if current_path.starts_with("/orders") %}bg-coral text-white{% else %}text-gray-300 hover:bg-gray-800 hover:text-white{% endif %}">
                         <i class="ph ph-receipt text-xl"></i>
@@ -72,6 +77,21 @@
                        class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors {% if current_path.starts_with("/inventory") %}bg-coral text-white{% else %}text-gray-300 hover:bg-gray-800 hover:text-white{% endif %}">
                         <i class="ph ph-warehouse text-xl"></i>
                         <span class="sidebar-text">Inventory</span>
+                    </a>
+                    <a href="/discounts"
+                       class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors {% if current_path.starts_with("/discounts") %}bg-coral text-white{% else %}text-gray-300 hover:bg-gray-800 hover:text-white{% endif %}">
+                        <i class="ph ph-tag text-xl"></i>
+                        <span class="sidebar-text">Discounts</span>
+                    </a>
+                    <a href="/gift-cards"
+                       class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors {% if current_path.starts_with("/gift-cards") %}bg-coral text-white{% else %}text-gray-300 hover:bg-gray-800 hover:text-white{% endif %}">
+                        <i class="ph ph-gift text-xl"></i>
+                        <span class="sidebar-text">Gift Cards</span>
+                    </a>
+                    <a href="/payouts"
+                       class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors {% if current_path.starts_with("/payouts") %}bg-coral text-white{% else %}text-gray-300 hover:bg-gray-800 hover:text-white{% endif %}">
+                        <i class="ph ph-wallet text-xl"></i>
+                        <span class="sidebar-text">Payouts</span>
                     </a>
                 </div>
 

@@ -200,3 +200,80 @@ query GetProducts(
     }
   }
 }
+
+# Create a new product
+mutation ProductCreate($input: ProductInput!) {
+  productCreate(input: $input) {
+    product {
+      id
+      title
+      handle
+      status
+      descriptionHtml
+      productType
+      vendor
+      tags
+      totalInventory
+      createdAt
+      variants(first: 50) {
+        edges {
+          node {
+            id
+            title
+            sku
+            price
+            inventoryQuantity
+          }
+        }
+      }
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
+# Update an existing product
+mutation ProductUpdate($input: ProductInput!) {
+  productUpdate(input: $input) {
+    product {
+      id
+      title
+      handle
+      status
+      descriptionHtml
+      productType
+      vendor
+      tags
+      totalInventory
+      updatedAt
+      variants(first: 50) {
+        edges {
+          node {
+            id
+            title
+            sku
+            price
+            inventoryQuantity
+          }
+        }
+      }
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
+# Delete a product
+mutation ProductDelete($input: ProductDeleteInput!) {
+  productDelete(input: $input) {
+    deletedProductId
+    userErrors {
+      field
+      message
+    }
+  }
+}

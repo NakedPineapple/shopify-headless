@@ -82,10 +82,9 @@
                         {{ order.total }}
                     </td>
                     <td class="px-6 py-4 text-right">
-                        <a href="https://admin.shopify.com/store/YOUR_STORE/orders/{{ order.id.split("/").last().unwrap_or("") }}"
-                           target="_blank"
+                        <a href="/orders/{{ order.id|extract_id }}"
                            class="text-sm text-coral hover:underline">
-                            View in Shopify
+                            View
                         </a>
                     </td>
                 </tr>

@@ -1,0 +1,274 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}{{ order.name }} - Orders{% endblock %}
+
+{% block page_title %}Order {{ order.name }}{% endblock %}
+
+{% block page_subtitle %}
+<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+    {{ order.created_at }}
+    {% if order.is_test %}<span class="ml-2 text-yellow-600">(Test Order)</span>{% endif %}
+</p>
+{% endblock %}
+
+{% block content %}
+<!-- Back Link -->
+<div class="mb-6">
+    <a href="/orders" class="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-coral transition-colors">
+        <i class="ph ph-arrow-left"></i>
+        Back to Orders
+    </a>
+</div>
+
+<!-- Error Banner -->
+{% if let Some(err) = error %}
+<div class="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
+    <div class="flex items-center gap-3">
+        <i class="ph ph-warning-circle text-xl text-red-600 dark:text-red-400"></i>
+        <p class="text-sm text-red-800 dark:text-red-200">{{ err }}</p>
+    </div>
+</div>
+{% endif %}
+
+<div class="grid lg:grid-cols-3 gap-6">
+    <!-- Main Content -->
+    <div class="lg:col-span-2 space-y-6">
+        <!-- Order Status -->
+        <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Status</h3>
+                <div class="flex items-center gap-3">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ order.financial_status_class }}">
+                        {{ order.financial_status }}
+                    </span>
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ order.fulfillment_status_class }}">
+                        {{ order.fulfillment_status }}
+                    </span>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex flex-wrap gap-3">
+                {% if !order.is_paid %}
+                <form action="/orders/{{ order.id|extract_id }}/mark-paid" method="POST" class="inline">
+                    <button type="submit"
+                            class="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors"
+                            onclick="return confirm('Mark this order as paid?');">
+                        <i class="ph ph-check-circle"></i>
+                        Mark as Paid
+                    </button>
+                </form>
+                {% endif %}
+
+                <button type="button"
+                        onclick="document.getElementById('cancel-modal').classList.remove('hidden')"
+                        class="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors">
+                    <i class="ph ph-x-circle"></i>
+                    Cancel Order
+                </button>
+            </div>
+        </div>
+
+        <!-- Line Items -->
+        <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800">
+            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-800">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Items</h3>
+            </div>
+            <div class="divide-y divide-gray-200 dark:divide-gray-800">
+                {% for item in order.line_items %}
+                <div class="px-6 py-4 flex items-center justify-between">
+                    <div class="flex-1">
+                        <p class="font-medium text-gray-900 dark:text-gray-100">{{ item.title }}</p>
+                        {% if let Some(variant) = item.variant_title %}
+                        <p class="text-sm text-gray-500 dark:text-gray-400">{{ variant }}</p>
+                        {% endif %}
+                        {% if let Some(sku) = item.sku %}
+                        <p class="text-xs text-gray-400 dark:text-gray-500">SKU: {{ sku }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="text-right">
+                        <p class="text-sm text-gray-900 dark:text-gray-100">{{ item.unit_price }} x {{ item.quantity }}</p>
+                        <p class="font-medium text-gray-900 dark:text-gray-100">{{ item.total_price }}</p>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Totals -->
+            <div class="px-6 py-4 bg-gray-50 dark:bg-gray-800/50 space-y-2 text-sm">
+                <div class="flex justify-between">
+                    <span class="text-gray-600 dark:text-gray-400">Subtotal</span>
+                    <span class="text-gray-900 dark:text-gray-100">{{ order.subtotal }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-600 dark:text-gray-400">Shipping</span>
+                    <span class="text-gray-900 dark:text-gray-100">{{ order.shipping }}</span>
+                </div>
+                {% if order.discount != "$0.00" %}
+                <div class="flex justify-between">
+                    <span class="text-gray-600 dark:text-gray-400">Discount</span>
+                    <span class="text-green-600">-{{ order.discount }}</span>
+                </div>
+                {% endif %}
+                <div class="flex justify-between">
+                    <span class="text-gray-600 dark:text-gray-400">Tax</span>
+                    <span class="text-gray-900 dark:text-gray-100">{{ order.tax }}</span>
+                </div>
+                <div class="flex justify-between pt-2 border-t border-gray-200 dark:border-gray-700">
+                    <span class="font-semibold text-gray-900 dark:text-gray-100">Total</span>
+                    <span class="font-semibold text-gray-900 dark:text-gray-100">{{ order.total }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Fulfillments -->
+        {% if !order.fulfillments.is_empty() %}
+        <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800">
+            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-800">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Fulfillments</h3>
+            </div>
+            <div class="divide-y divide-gray-200 dark:divide-gray-800">
+                {% for fulfillment in order.fulfillments %}
+                <div class="px-6 py-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                            {{ fulfillment.status }}
+                        </span>
+                        <span class="text-sm text-gray-500 dark:text-gray-400">{{ fulfillment.created_at }}</span>
+                    </div>
+                    {% if let Some(tracking) = fulfillment.tracking_number %}
+                    <div class="text-sm">
+                        {% if let Some(carrier) = fulfillment.carrier %}
+                        <span class="text-gray-600 dark:text-gray-400">{{ carrier }}:</span>
+                        {% endif %}
+                        {% if let Some(url) = fulfillment.tracking_url %}
+                        <a href="{{ url }}" target="_blank" class="text-coral hover:underline">{{ tracking }}</a>
+                        {% else %}
+                        <span class="text-gray-900 dark:text-gray-100">{{ tracking }}</span>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Sidebar -->
+    <div class="space-y-6">
+        <!-- Customer Info -->
+        <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Customer</h3>
+            <div class="space-y-3 text-sm">
+                <p class="font-medium text-gray-900 dark:text-gray-100">{{ order.customer_name }}</p>
+                {% if let Some(email) = order.customer_email %}
+                <p class="text-gray-600 dark:text-gray-400">
+                    <a href="mailto:{{ email }}" class="hover:text-coral">{{ email }}</a>
+                </p>
+                {% endif %}
+                {% if let Some(phone) = order.customer_phone %}
+                <p class="text-gray-600 dark:text-gray-400">{{ phone }}</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Shipping Address -->
+        {% if let Some(addr) = order.shipping_address %}
+        <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Shipping Address</h3>
+            <div class="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                <p class="font-medium text-gray-900 dark:text-gray-100">{{ addr.name }}</p>
+                <p>{{ addr.line1 }}</p>
+                {% if let Some(line2) = addr.line2 %}
+                <p>{{ line2 }}</p>
+                {% endif %}
+                <p>{{ addr.city_state_zip }}</p>
+                <p>{{ addr.country }}</p>
+                {% if let Some(phone) = addr.phone %}
+                <p class="pt-2">{{ phone }}</p>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Billing Address -->
+        {% if let Some(addr) = order.billing_address %}
+        <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Billing Address</h3>
+            <div class="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                <p class="font-medium text-gray-900 dark:text-gray-100">{{ addr.name }}</p>
+                <p>{{ addr.line1 }}</p>
+                {% if let Some(line2) = addr.line2 %}
+                <p>{{ line2 }}</p>
+                {% endif %}
+                <p>{{ addr.city_state_zip }}</p>
+                <p>{{ addr.country }}</p>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Order Note -->
+        <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Note</h3>
+            <form action="/orders/{{ order.id|extract_id }}/note" method="POST">
+                <textarea name="note"
+                          rows="3"
+                          placeholder="Add a note..."
+                          class="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-coral focus:border-coral transition-colors">{{ order.note.as_deref().unwrap_or("") }}</textarea>
+                <button type="submit" class="mt-2 px-4 py-2 bg-coral text-white rounded-lg text-sm font-medium hover:bg-coral/90 transition-colors">
+                    Save Note
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Cancel Order Modal -->
+<div id="cancel-modal" class="hidden fixed inset-0 z-50 overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen px-4">
+        <div class="fixed inset-0 bg-black/50" onclick="document.getElementById('cancel-modal').classList.add('hidden')"></div>
+        <div class="relative bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 max-w-md w-full p-6">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Cancel Order</h3>
+            <form action="/orders/{{ order.id|extract_id }}/cancel" method="POST">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Reason</label>
+                        <select name="reason" class="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm">
+                            <option value="CUSTOMER">Customer request</option>
+                            <option value="FRAUD">Suspected fraud</option>
+                            <option value="INVENTORY">Out of stock</option>
+                            <option value="DECLINED">Payment declined</option>
+                            <option value="OTHER">Other</option>
+                        </select>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                            <input type="checkbox" name="notify_customer" class="rounded border-gray-300">
+                            Notify customer
+                        </label>
+                        <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                            <input type="checkbox" name="refund" class="rounded border-gray-300">
+                            Issue refund
+                        </label>
+                        <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                            <input type="checkbox" name="restock" checked class="rounded border-gray-300">
+                            Restock inventory
+                        </label>
+                    </div>
+                </div>
+                <div class="mt-6 flex items-center justify-end gap-3">
+                    <button type="button"
+                            onclick="document.getElementById('cancel-modal').classList.add('hidden')"
+                            class="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-medium">
+                        Close
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors">
+                        Cancel Order
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

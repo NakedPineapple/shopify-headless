@@ -56,3 +56,16 @@ pub fn humanize_datetime(dt: &DateTime<Utc>, _env: &dyn askama::Values) -> askam
         Ok("just now".to_string())
     }
 }
+
+/// Extract the numeric ID from a Shopify GID.
+///
+/// Examples:
+/// - `gid://shopify/Collection/123` -> `123`
+/// - `gid://shopify/Product/456` -> `456`
+/// - `123` -> `123` (already numeric)
+///
+/// Usage in templates: `{{ id|extract_id }}`
+#[askama::filter_fn]
+pub fn extract_id(gid: &str, _env: &dyn askama::Values) -> askama::Result<String> {
+    Ok(gid.split('/').next_back().unwrap_or(gid).to_string())
+}

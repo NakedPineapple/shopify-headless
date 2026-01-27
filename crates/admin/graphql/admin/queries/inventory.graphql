@@ -94,3 +94,68 @@ mutation InventorySetQuantities($input: InventorySetQuantitiesInput!) {
     }
   }
 }
+
+# Get all locations for inventory management
+query GetLocations($first: Int = 50) {
+  locations(first: $first) {
+    edges {
+      node {
+        id
+        name
+        isActive
+        fulfillsOnlineOrders
+        address {
+          address1
+          city
+          provinceCode
+          countryCode
+          zip
+        }
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}
+
+# Get products with inventory data for the inventory management page
+query GetProductsWithInventory(
+  $first: Int = 50
+  $after: String
+  $query: String
+) {
+  products(first: $first, after: $after, query: $query, sortKey: INVENTORY_TOTAL) {
+    edges {
+      node {
+        id
+        title
+        handle
+        status
+        totalInventory
+        featuredImage {
+          url
+          altText
+        }
+        variants(first: 50) {
+          edges {
+            node {
+              id
+              title
+              sku
+              inventoryQuantity
+              inventoryItem {
+                id
+              }
+            }
+          }
+        }
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}

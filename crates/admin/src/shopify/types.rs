@@ -371,6 +371,83 @@ pub struct Customer {
 }
 
 // =============================================================================
+// Collection Types
+// =============================================================================
+
+/// A product collection.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Collection {
+    /// Collection ID.
+    pub id: String,
+    /// Collection title.
+    pub title: String,
+    /// URL handle.
+    pub handle: String,
+    /// Plain text description.
+    pub description: String,
+    /// HTML description.
+    pub description_html: Option<String>,
+    /// Number of products in the collection.
+    pub products_count: i64,
+    /// Collection image.
+    pub image: Option<Image>,
+    /// Last update timestamp.
+    pub updated_at: Option<String>,
+}
+
+/// Paginated list of collections.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CollectionConnection {
+    /// Collections in this page.
+    pub collections: Vec<Collection>,
+    /// Pagination info.
+    pub page_info: PageInfo,
+}
+
+// =============================================================================
+// Location Types
+// =============================================================================
+
+/// A physical location for inventory storage and fulfillment.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Location {
+    /// Location ID.
+    pub id: String,
+    /// Location name.
+    pub name: String,
+    /// Whether the location is active.
+    pub is_active: bool,
+    /// Whether this location fulfills online orders.
+    pub fulfills_online_orders: bool,
+    /// Location address.
+    pub address: Option<LocationAddress>,
+}
+
+/// Simplified address for a location.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LocationAddress {
+    /// Street address.
+    pub address1: Option<String>,
+    /// City.
+    pub city: Option<String>,
+    /// Province/state code.
+    pub province_code: Option<String>,
+    /// Country code.
+    pub country_code: Option<String>,
+    /// Postal/ZIP code.
+    pub zip: Option<String>,
+}
+
+/// Paginated list of locations.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LocationConnection {
+    /// Locations in this page.
+    pub locations: Vec<Location>,
+    /// Pagination info.
+    pub page_info: PageInfo,
+}
+
+// =============================================================================
 // Inventory Types
 // =============================================================================
 
@@ -519,4 +596,195 @@ pub enum CustomerSortKey {
     UpdatedAt,
     /// Sort by ID.
     Id,
+}
+
+// =============================================================================
+// Gift Card Types
+// =============================================================================
+
+/// A gift card.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GiftCard {
+    /// Gift card ID.
+    pub id: String,
+    /// Last 4 characters of the code.
+    pub last_characters: String,
+    /// Current balance.
+    pub balance: Money,
+    /// Initial value.
+    pub initial_value: Money,
+    /// Expiration date.
+    pub expires_on: Option<String>,
+    /// Whether the gift card is enabled.
+    pub enabled: bool,
+    /// Creation timestamp.
+    pub created_at: String,
+    /// Associated customer email.
+    pub customer_email: Option<String>,
+    /// Associated customer name.
+    pub customer_name: Option<String>,
+    /// Note.
+    pub note: Option<String>,
+}
+
+/// Paginated list of gift cards.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GiftCardConnection {
+    /// Gift cards in this page.
+    pub gift_cards: Vec<GiftCard>,
+    /// Pagination info.
+    pub page_info: PageInfo,
+}
+
+// =============================================================================
+// Discount Types
+// =============================================================================
+
+/// Discount status.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum DiscountStatus {
+    /// Discount is active.
+    Active,
+    /// Discount is expired.
+    Expired,
+    /// Discount is scheduled.
+    Scheduled,
+}
+
+/// Type of discount value.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type")]
+pub enum DiscountValue {
+    /// Percentage discount.
+    Percentage { percentage: f64 },
+    /// Fixed amount discount.
+    FixedAmount { amount: String, currency: String },
+}
+
+/// A discount code.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DiscountCode {
+    /// Discount node ID.
+    pub id: String,
+    /// Discount title.
+    pub title: String,
+    /// The actual code customers enter.
+    pub code: String,
+    /// Discount status.
+    pub status: DiscountStatus,
+    /// Start date.
+    pub starts_at: Option<String>,
+    /// End date.
+    pub ends_at: Option<String>,
+    /// Usage limit.
+    pub usage_limit: Option<i64>,
+    /// Number of times used.
+    pub usage_count: i64,
+    /// Discount value.
+    pub value: Option<DiscountValue>,
+}
+
+/// Paginated list of discount codes.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DiscountCodeConnection {
+    /// Discount codes in this page.
+    pub discount_codes: Vec<DiscountCode>,
+    /// Pagination info.
+    pub page_info: PageInfo,
+}
+
+// =============================================================================
+// Fulfillment Order Types
+// =============================================================================
+
+/// A fulfillment order represents a group of items that can be fulfilled together.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FulfillmentOrder {
+    /// Fulfillment order ID.
+    pub id: String,
+    /// Fulfillment order status.
+    pub status: String,
+    /// Location ID where items will be fulfilled from.
+    pub location_id: Option<String>,
+    /// Location name.
+    pub location_name: Option<String>,
+    /// Line items in this fulfillment order.
+    pub line_items: Vec<FulfillmentOrderLineItem>,
+}
+
+/// A line item in a fulfillment order.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FulfillmentOrderLineItem {
+    /// Line item ID.
+    pub id: String,
+    /// Product title.
+    pub title: String,
+    /// Variant title.
+    pub variant_title: Option<String>,
+    /// SKU.
+    pub sku: Option<String>,
+    /// Total quantity.
+    pub total_quantity: i64,
+    /// Remaining quantity to fulfill.
+    pub remaining_quantity: i64,
+}
+
+// =============================================================================
+// Payout Types
+// =============================================================================
+
+/// Payout status.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum PayoutStatus {
+    /// Payout is scheduled.
+    Scheduled,
+    /// Payout is in transit.
+    InTransit,
+    /// Payout has been paid.
+    Paid,
+    /// Payout failed.
+    Failed,
+    /// Payout was canceled.
+    Canceled,
+}
+
+impl std::fmt::Display for PayoutStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Scheduled => write!(f, "Scheduled"),
+            Self::InTransit => write!(f, "In Transit"),
+            Self::Paid => write!(f, "Paid"),
+            Self::Failed => write!(f, "Failed"),
+            Self::Canceled => write!(f, "Canceled"),
+        }
+    }
+}
+
+/// A Shopify Payments payout.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Payout {
+    /// Payout ID.
+    pub id: String,
+    /// Legacy resource ID.
+    pub legacy_resource_id: Option<String>,
+    /// Payout status.
+    pub status: PayoutStatus,
+    /// Net amount (after fees).
+    pub net: Money,
+    /// Gross amount (before fees).
+    pub gross: Money,
+    /// When the payout was issued.
+    pub issued_at: Option<String>,
+}
+
+/// Connection type for paginated payouts.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PayoutConnection {
+    /// List of payouts.
+    pub payouts: Vec<Payout>,
+    /// Pagination info.
+    pub page_info: PageInfo,
+    /// Current account balance.
+    pub balance: Option<Money>,
 }

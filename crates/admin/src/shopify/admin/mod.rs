@@ -17,8 +17,12 @@ use crate::config::ShopifyAdminConfig;
 use super::{
     AdminShopifyError, GraphQLError, GraphQLErrorLocation,
     types::{
-        AdminProduct, AdminProductConnection, AdminProductVariant, Customer, CustomerConnection,
-        Image, InventoryLevel, InventoryLevelConnection, Money, Order, OrderConnection, PageInfo,
+        AdminProduct, AdminProductConnection, AdminProductVariant, Collection,
+        CollectionConnection, Customer, CustomerConnection, DiscountCode, DiscountCodeConnection,
+        DiscountStatus, DiscountValue, FulfillmentOrder, FulfillmentOrderLineItem, GiftCard,
+        GiftCardConnection, Image, InventoryLevel, InventoryLevelConnection, Location,
+        LocationConnection, Money, Order, OrderConnection, PageInfo, Payout, PayoutConnection,
+        PayoutStatus,
     },
 };
 
@@ -27,11 +31,16 @@ pub mod queries;
 
 use conversions::{
     convert_customer, convert_customer_connection, convert_inventory_level_connection,
-    convert_order, convert_order_connection, convert_product, convert_product_connection,
+    convert_location_connection, convert_order, convert_order_connection, convert_product,
+    convert_product_connection,
 };
 use queries::{
-    GetCustomer, GetCustomers, GetInventoryLevels, GetOrder, GetOrders, GetProduct, GetProducts,
-    InventoryAdjustQuantities, InventorySetQuantities,
+    CollectionCreate, CollectionDelete, CollectionUpdate, DiscountCodeBasicCreate,
+    DiscountCodeBasicUpdate, DiscountCodeDeactivate, GetCollection, GetCollections, GetCustomer,
+    GetCustomers, GetDiscountCode, GetDiscountCodes, GetGiftCards, GetInventoryLevels,
+    GetLocations, GetOrder, GetOrders, GetPayout, GetPayouts, GetProduct, GetProducts,
+    GiftCardCreate, GiftCardUpdate, InventoryAdjustQuantities, InventorySetQuantities, OrderCancel,
+    OrderMarkAsPaid, OrderUpdate, ProductCreate, ProductDelete, ProductUpdate,
 };
 
 /// OAuth token for Admin API access.
@@ -45,6 +54,55 @@ pub struct OAuthToken {
     pub obtained_at: i64,
     /// Associated shop domain
     pub shop: String,
+}
+
+/// Input for updating a product.
+///
+/// All fields are optional - only provided fields will be updated.
+#[derive(Debug, Default)]
+pub struct ProductUpdateInput<'a> {
+    /// New product title.
+    pub title: Option<&'a str>,
+    /// New product description (HTML).
+    pub description_html: Option<&'a str>,
+    /// New vendor name.
+    pub vendor: Option<&'a str>,
+    /// New product type.
+    pub product_type: Option<&'a str>,
+    /// New tags (replaces existing tags).
+    pub tags: Option<Vec<String>>,
+    /// New status ("ACTIVE", "DRAFT", or "ARCHIVED").
+    pub status: Option<&'a str>,
+}
+
+/// Input for creating a discount code.
+#[derive(Debug)]
+pub struct DiscountCreateInput<'a> {
+    /// Internal discount title.
+    pub title: &'a str,
+    /// Customer-facing discount code.
+    pub code: &'a str,
+    /// Discount percentage (0.0-1.0) - mutually exclusive with `amount`.
+    pub percentage: Option<f64>,
+    /// Fixed discount amount (amount, `currency_code`) - mutually exclusive with `percentage`.
+    pub amount: Option<(&'a str, &'a str)>,
+    /// When the discount becomes active (ISO 8601 datetime).
+    pub starts_at: &'a str,
+    /// When the discount expires (optional).
+    pub ends_at: Option<&'a str>,
+    /// Maximum number of uses (optional).
+    pub usage_limit: Option<i64>,
+}
+
+/// Input for updating a discount code.
+#[derive(Debug, Default)]
+pub struct DiscountUpdateInput<'a> {
+    /// New title (optional).
+    pub title: Option<&'a str>,
+    /// New start date (optional).
+    pub starts_at: Option<&'a str>,
+    /// New end date (optional).
+    pub ends_at: Option<&'a str>,
 }
 
 /// Shopify Admin API GraphQL client.
@@ -368,6 +426,474 @@ impl AdminClient {
         Ok(convert_product_connection(response.products))
     }
 
+    /// Create a new product.
+    ///
+    /// # Arguments
+    ///
+    /// * `title` - Product title
+    /// * `description_html` - HTML description
+    /// * `vendor` - Vendor name
+    /// * `product_type` - Product type/category
+    /// * `tags` - Product tags
+    /// * `status` - Product status (ACTIVE, DRAFT, ARCHIVED)
+    ///
+    /// # Returns
+    ///
+    /// Returns the created product's ID on success.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails or returns user errors.
+    #[instrument(skip(self))]
+    pub async fn create_product(
+        &self,
+        title: &str,
+        description_html: Option<&str>,
+        vendor: Option<&str>,
+        product_type: Option<&str>,
+        tags: Vec<String>,
+        status: &str,
+    ) -> Result<String, AdminShopifyError> {
+        use queries::product_create::{ProductInput, ProductStatus, Variables};
+
+        let status_enum = match status.to_uppercase().as_str() {
+            "ACTIVE" => ProductStatus::ACTIVE,
+            "ARCHIVED" => ProductStatus::ARCHIVED,
+            _ => ProductStatus::DRAFT,
+        };
+
+        let variables = Variables {
+            input: ProductInput {
+                title: Some(title.to_string()),
+                description_html: description_html.map(String::from),
+                vendor: vendor.map(String::from),
+                product_type: product_type.map(String::from),
+                tags: Some(tags),
+                status: Some(status_enum),
+                // Other optional fields
+                handle: None,
+                seo: None,
+                category: None,
+                gift_card: None,
+                gift_card_template_suffix: None,
+                requires_selling_plan: None,
+                template_suffix: None,
+                collections_to_join: None,
+                collections_to_leave: None,
+                combined_listing_role: None,
+                id: None,
+                redirect_new_handle: None,
+                claim_ownership: None,
+                metafields: None,
+                product_options: None,
+            },
+        };
+
+        let response = self.execute::<ProductCreate>(variables).await?;
+
+        if let Some(payload) = response.product_create {
+            // Check for user errors
+            if !payload.user_errors.is_empty() {
+                let error_messages: Vec<String> = payload
+                    .user_errors
+                    .iter()
+                    .map(|e| {
+                        let field = e.field.as_ref().map_or_else(String::new, |f| f.join("."));
+                        format!("{}: {}", field, e.message)
+                    })
+                    .collect();
+                return Err(AdminShopifyError::UserError(error_messages.join("; ")));
+            }
+
+            if let Some(product) = payload.product {
+                return Ok(product.id);
+            }
+        }
+
+        Err(AdminShopifyError::GraphQL(vec![GraphQLError {
+            message: "No product returned from create".to_string(),
+            locations: vec![],
+            path: vec![],
+        }]))
+    }
+
+    /// Update an existing product.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - Product ID
+    /// * `title` - Product title
+    /// * `description_html` - HTML description
+    /// * `vendor` - Vendor name
+    /// * `product_type` - Product type/category
+    /// * `tags` - Product tags
+    /// * `status` - Product status (ACTIVE, DRAFT, ARCHIVED)
+    ///
+    /// # Returns
+    ///
+    /// Returns the updated product's ID on success.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails or returns user errors.
+    #[instrument(skip(self, input))]
+    pub async fn update_product(
+        &self,
+        id: &str,
+        input: ProductUpdateInput<'_>,
+    ) -> Result<String, AdminShopifyError> {
+        use queries::product_update::{ProductInput, ProductStatus, Variables};
+
+        let status_enum = input.status.map(|s| match s.to_uppercase().as_str() {
+            "ACTIVE" => ProductStatus::ACTIVE,
+            "ARCHIVED" => ProductStatus::ARCHIVED,
+            _ => ProductStatus::DRAFT,
+        });
+
+        let variables = Variables {
+            input: ProductInput {
+                id: Some(id.to_string()),
+                title: input.title.map(String::from),
+                description_html: input.description_html.map(String::from),
+                vendor: input.vendor.map(String::from),
+                product_type: input.product_type.map(String::from),
+                tags: input.tags,
+                status: status_enum,
+                // Other optional fields
+                handle: None,
+                seo: None,
+                category: None,
+                gift_card: None,
+                gift_card_template_suffix: None,
+                requires_selling_plan: None,
+                template_suffix: None,
+                collections_to_join: None,
+                collections_to_leave: None,
+                combined_listing_role: None,
+                redirect_new_handle: None,
+                claim_ownership: None,
+                metafields: None,
+                product_options: None,
+            },
+        };
+
+        let response = self.execute::<ProductUpdate>(variables).await?;
+
+        if let Some(payload) = response.product_update {
+            // Check for user errors
+            if !payload.user_errors.is_empty() {
+                let error_messages: Vec<String> = payload
+                    .user_errors
+                    .iter()
+                    .map(|e| {
+                        let field = e.field.as_ref().map_or_else(String::new, |f| f.join("."));
+                        format!("{}: {}", field, e.message)
+                    })
+                    .collect();
+                return Err(AdminShopifyError::UserError(error_messages.join("; ")));
+            }
+
+            if let Some(product) = payload.product {
+                return Ok(product.id);
+            }
+        }
+
+        Err(AdminShopifyError::GraphQL(vec![GraphQLError {
+            message: "No product returned from update".to_string(),
+            locations: vec![],
+            path: vec![],
+        }]))
+    }
+
+    /// Delete a product.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - Product ID to delete
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails or returns user errors.
+    #[instrument(skip(self))]
+    pub async fn delete_product(&self, id: &str) -> Result<String, AdminShopifyError> {
+        use queries::product_delete::{ProductDeleteInput, Variables};
+
+        let variables = Variables {
+            input: ProductDeleteInput { id: id.to_string() },
+        };
+
+        let response = self.execute::<ProductDelete>(variables).await?;
+
+        if let Some(payload) = response.product_delete {
+            // Check for user errors
+            if !payload.user_errors.is_empty() {
+                let error_messages: Vec<String> = payload
+                    .user_errors
+                    .iter()
+                    .map(|e| {
+                        let field = e.field.as_ref().map_or_else(String::new, |f| f.join("."));
+                        format!("{}: {}", field, e.message)
+                    })
+                    .collect();
+                return Err(AdminShopifyError::UserError(error_messages.join("; ")));
+            }
+
+            if let Some(deleted_id) = payload.deleted_product_id {
+                return Ok(deleted_id);
+            }
+        }
+
+        Err(AdminShopifyError::GraphQL(vec![GraphQLError {
+            message: "Product deletion failed".to_string(),
+            locations: vec![],
+            path: vec![],
+        }]))
+    }
+
+    // =========================================================================
+    // Collection methods
+    // =========================================================================
+
+    /// Get a collection by ID.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails.
+    #[instrument(skip(self), fields(collection_id = %id))]
+    pub async fn get_collection(&self, id: &str) -> Result<Option<Collection>, AdminShopifyError> {
+        let variables = queries::get_collection::Variables { id: id.to_string() };
+
+        let response = self.execute::<GetCollection>(variables).await?;
+
+        Ok(response.collection.map(|c| Collection {
+            id: c.id,
+            title: c.title,
+            handle: c.handle,
+            description: c.description,
+            description_html: Some(c.description_html),
+            products_count: c.products_count.map_or(0, |pc| pc.count),
+            image: c.image.map(|img| Image {
+                id: img.id,
+                url: img.url,
+                alt_text: img.alt_text,
+                width: None,
+                height: None,
+            }),
+            updated_at: Some(c.updated_at),
+        }))
+    }
+
+    /// Get a paginated list of collections.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails.
+    #[instrument(skip(self))]
+    pub async fn get_collections(
+        &self,
+        first: i64,
+        after: Option<String>,
+        query: Option<String>,
+    ) -> Result<CollectionConnection, AdminShopifyError> {
+        let variables = queries::get_collections::Variables {
+            first: Some(first),
+            after,
+            query,
+        };
+
+        let response = self.execute::<GetCollections>(variables).await?;
+
+        let collections: Vec<Collection> = response
+            .collections
+            .edges
+            .into_iter()
+            .map(|e| {
+                let c = e.node;
+                Collection {
+                    id: c.id,
+                    title: c.title,
+                    handle: c.handle,
+                    description: c.description,
+                    description_html: None,
+                    products_count: c.products_count.map_or(0, |pc| pc.count),
+                    image: c.image.map(|img| Image {
+                        id: img.id,
+                        url: img.url,
+                        alt_text: img.alt_text,
+                        width: None,
+                        height: None,
+                    }),
+                    updated_at: Some(c.updated_at),
+                }
+            })
+            .collect();
+
+        Ok(CollectionConnection {
+            collections,
+            page_info: PageInfo {
+                has_next_page: response.collections.page_info.has_next_page,
+                has_previous_page: false,
+                start_cursor: None,
+                end_cursor: response.collections.page_info.end_cursor,
+            },
+        })
+    }
+
+    /// Create a new collection.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails or returns user errors.
+    #[instrument(skip(self))]
+    pub async fn create_collection(
+        &self,
+        title: &str,
+        description_html: Option<&str>,
+    ) -> Result<String, AdminShopifyError> {
+        use queries::collection_create::{CollectionInput, Variables};
+
+        let variables = Variables {
+            input: CollectionInput {
+                title: Some(title.to_string()),
+                description_html: description_html.map(String::from),
+                handle: None,
+                id: None,
+                image: None,
+                metafields: None,
+                products: None,
+                redirect_new_handle: None,
+                rule_set: None,
+                seo: None,
+                sort_order: None,
+                template_suffix: None,
+            },
+        };
+
+        let response = self.execute::<CollectionCreate>(variables).await?;
+
+        if let Some(payload) = response.collection_create {
+            if !payload.user_errors.is_empty() {
+                let error_messages: Vec<String> = payload
+                    .user_errors
+                    .iter()
+                    .map(|e| {
+                        let field = e.field.as_ref().map_or_else(String::new, |f| f.join("."));
+                        format!("{}: {}", field, e.message)
+                    })
+                    .collect();
+                return Err(AdminShopifyError::UserError(error_messages.join("; ")));
+            }
+
+            if let Some(collection) = payload.collection {
+                return Ok(collection.id);
+            }
+        }
+
+        Err(AdminShopifyError::GraphQL(vec![GraphQLError {
+            message: "No collection returned from create".to_string(),
+            locations: vec![],
+            path: vec![],
+        }]))
+    }
+
+    /// Update an existing collection.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails or returns user errors.
+    #[instrument(skip(self))]
+    pub async fn update_collection(
+        &self,
+        id: &str,
+        title: Option<&str>,
+        description_html: Option<&str>,
+    ) -> Result<String, AdminShopifyError> {
+        use queries::collection_update::{CollectionInput, Variables};
+
+        let variables = Variables {
+            input: CollectionInput {
+                id: Some(id.to_string()),
+                title: title.map(String::from),
+                description_html: description_html.map(String::from),
+                handle: None,
+                image: None,
+                metafields: None,
+                products: None,
+                redirect_new_handle: None,
+                rule_set: None,
+                seo: None,
+                sort_order: None,
+                template_suffix: None,
+            },
+        };
+
+        let response = self.execute::<CollectionUpdate>(variables).await?;
+
+        if let Some(payload) = response.collection_update {
+            if !payload.user_errors.is_empty() {
+                let error_messages: Vec<String> = payload
+                    .user_errors
+                    .iter()
+                    .map(|e| {
+                        let field = e.field.as_ref().map_or_else(String::new, |f| f.join("."));
+                        format!("{}: {}", field, e.message)
+                    })
+                    .collect();
+                return Err(AdminShopifyError::UserError(error_messages.join("; ")));
+            }
+
+            if let Some(collection) = payload.collection {
+                return Ok(collection.id);
+            }
+        }
+
+        Err(AdminShopifyError::GraphQL(vec![GraphQLError {
+            message: "No collection returned from update".to_string(),
+            locations: vec![],
+            path: vec![],
+        }]))
+    }
+
+    /// Delete a collection.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails or returns user errors.
+    #[instrument(skip(self))]
+    pub async fn delete_collection(&self, id: &str) -> Result<String, AdminShopifyError> {
+        use queries::collection_delete::{CollectionDeleteInput, Variables};
+
+        let variables = Variables {
+            input: CollectionDeleteInput { id: id.to_string() },
+        };
+
+        let response = self.execute::<CollectionDelete>(variables).await?;
+
+        if let Some(payload) = response.collection_delete {
+            if !payload.user_errors.is_empty() {
+                let error_messages: Vec<String> = payload
+                    .user_errors
+                    .iter()
+                    .map(|e| {
+                        let field = e.field.as_ref().map_or_else(String::new, |f| f.join("."));
+                        format!("{}: {}", field, e.message)
+                    })
+                    .collect();
+                return Err(AdminShopifyError::UserError(error_messages.join("; ")));
+            }
+
+            if let Some(deleted_id) = payload.deleted_collection_id {
+                return Ok(deleted_id);
+            }
+        }
+
+        Err(AdminShopifyError::GraphQL(vec![GraphQLError {
+            message: "Collection deletion failed".to_string(),
+            locations: vec![],
+            path: vec![],
+        }]))
+    }
+
     // =========================================================================
     // Order methods
     // =========================================================================
@@ -425,6 +951,329 @@ impl AdminClient {
         Ok(convert_order_connection(response.orders))
     }
 
+    /// Update an order's note.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - Shopify order ID
+    /// * `note` - New note content
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails or returns user errors.
+    #[instrument(skip(self), fields(order_id = %id))]
+    pub async fn update_order_note(
+        &self,
+        id: &str,
+        note: Option<&str>,
+    ) -> Result<(), AdminShopifyError> {
+        use queries::order_update::{OrderInput, Variables};
+
+        let variables = Variables {
+            input: OrderInput {
+                id: id.to_string(),
+                note: note.map(String::from),
+                tags: None,
+                custom_attributes: None,
+                email: None,
+                localized_fields: None,
+                metafields: None,
+                phone: None,
+                po_number: None,
+                shipping_address: None,
+            },
+        };
+
+        let response = self.execute::<OrderUpdate>(variables).await?;
+
+        if let Some(payload) = response.order_update
+            && !payload.user_errors.is_empty()
+        {
+            let error_messages: Vec<String> = payload
+                .user_errors
+                .iter()
+                .map(|e| {
+                    let field = e.field.as_ref().map_or_else(String::new, |f| f.join("."));
+                    format!("{}: {}", field, e.message)
+                })
+                .collect();
+            return Err(AdminShopifyError::UserError(error_messages.join("; ")));
+        }
+
+        Ok(())
+    }
+
+    /// Update an order's tags.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - Shopify order ID
+    /// * `tags` - New tags (replaces existing tags)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails or returns user errors.
+    #[instrument(skip(self), fields(order_id = %id))]
+    pub async fn update_order_tags(
+        &self,
+        id: &str,
+        tags: Vec<String>,
+    ) -> Result<(), AdminShopifyError> {
+        use queries::order_update::{OrderInput, Variables};
+
+        let variables = Variables {
+            input: OrderInput {
+                id: id.to_string(),
+                note: None,
+                tags: Some(tags),
+                custom_attributes: None,
+                email: None,
+                localized_fields: None,
+                metafields: None,
+                phone: None,
+                po_number: None,
+                shipping_address: None,
+            },
+        };
+
+        let response = self.execute::<OrderUpdate>(variables).await?;
+
+        if let Some(payload) = response.order_update
+            && !payload.user_errors.is_empty()
+        {
+            let error_messages: Vec<String> = payload
+                .user_errors
+                .iter()
+                .map(|e| {
+                    let field = e.field.as_ref().map_or_else(String::new, |f| f.join("."));
+                    format!("{}: {}", field, e.message)
+                })
+                .collect();
+            return Err(AdminShopifyError::UserError(error_messages.join("; ")));
+        }
+
+        Ok(())
+    }
+
+    /// Mark an order as paid.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - Shopify order ID
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails or returns user errors.
+    #[instrument(skip(self), fields(order_id = %id))]
+    pub async fn mark_order_as_paid(&self, id: &str) -> Result<(), AdminShopifyError> {
+        use queries::order_mark_as_paid::{OrderMarkAsPaidInput, Variables};
+
+        let variables = Variables {
+            input: OrderMarkAsPaidInput { id: id.to_string() },
+        };
+
+        let response = self.execute::<OrderMarkAsPaid>(variables).await?;
+
+        if let Some(payload) = response.order_mark_as_paid
+            && !payload.user_errors.is_empty()
+        {
+            let error_messages: Vec<String> = payload
+                .user_errors
+                .iter()
+                .map(|e| {
+                    let field = e.field.as_ref().map_or_else(String::new, |f| f.join("."));
+                    format!("{}: {}", field, e.message)
+                })
+                .collect();
+            return Err(AdminShopifyError::UserError(error_messages.join("; ")));
+        }
+
+        Ok(())
+    }
+
+    /// Cancel an order.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - Shopify order ID
+    /// * `reason` - Cancellation reason
+    /// * `notify_customer` - Whether to notify the customer
+    /// * `refund` - Whether to refund the order
+    /// * `restock` - Whether to restock inventory
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails or returns user errors.
+    #[instrument(skip(self), fields(order_id = %id))]
+    pub async fn cancel_order(
+        &self,
+        id: &str,
+        reason: Option<&str>,
+        notify_customer: bool,
+        refund: bool,
+        restock: bool,
+    ) -> Result<(), AdminShopifyError> {
+        use queries::order_cancel::{OrderCancelReason, Variables};
+
+        let cancel_reason = reason.map(|r| match r.to_uppercase().as_str() {
+            "CUSTOMER" => OrderCancelReason::CUSTOMER,
+            "FRAUD" => OrderCancelReason::FRAUD,
+            "INVENTORY" => OrderCancelReason::INVENTORY,
+            "DECLINED" => OrderCancelReason::DECLINED,
+            _ => OrderCancelReason::OTHER,
+        });
+
+        let variables = Variables {
+            order_id: id.to_string(),
+            reason: cancel_reason,
+            notify_customer: Some(notify_customer),
+            refund: Some(refund),
+            restock: Some(restock),
+            staff_note: None,
+        };
+
+        let response = self.execute::<OrderCancel>(variables).await?;
+
+        if let Some(payload) = response.order_cancel
+            && !payload.order_cancel_user_errors.is_empty()
+        {
+            let error_messages: Vec<String> = payload
+                .order_cancel_user_errors
+                .iter()
+                .map(|e| {
+                    let field = e.field.as_ref().map_or_else(String::new, |f| f.join("."));
+                    format!("{}: {}", field, e.message)
+                })
+                .collect();
+            return Err(AdminShopifyError::UserError(error_messages.join("; ")));
+        }
+
+        Ok(())
+    }
+
+    // =========================================================================
+    // Fulfillment methods
+    // =========================================================================
+
+    // NOTE: Fulfillment operations require complex GraphQL types that are
+    // auto-generated by graphql_client. These methods are stubbed and will
+    // need to be implemented with the correct types during build verification.
+
+    /// Get fulfillment orders for an order.
+    ///
+    /// # Arguments
+    ///
+    /// * `order_id` - Shopify order ID
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails.
+    #[instrument(skip(self), fields(order_id = %order_id))]
+    pub async fn get_fulfillment_orders(
+        &self,
+        order_id: &str,
+    ) -> Result<Vec<FulfillmentOrder>, AdminShopifyError> {
+        // TODO: Implement with GetFulfillmentOrders query
+        // The auto-generated types for FulfillmentOrderStatus need Display trait
+        let _ = order_id;
+        Ok(vec![])
+    }
+
+    /// Create a fulfillment.
+    ///
+    /// # Arguments
+    ///
+    /// * `fulfillment_order_id` - Fulfillment order ID to fulfill
+    /// * `tracking_company` - Optional shipping carrier
+    /// * `tracking_number` - Optional tracking number
+    /// * `tracking_url` - Optional tracking URL
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails or returns user errors.
+    #[instrument(skip(self), fields(fulfillment_order_id = %fulfillment_order_id))]
+    pub async fn create_fulfillment(
+        &self,
+        fulfillment_order_id: &str,
+        tracking_company: Option<&str>,
+        tracking_number: Option<&str>,
+        tracking_url: Option<&str>,
+    ) -> Result<String, AdminShopifyError> {
+        // TODO: Implement with FulfillmentCreateV2 mutation
+        // Need to map to correct GraphQL input types
+        let _ = (
+            fulfillment_order_id,
+            tracking_company,
+            tracking_number,
+            tracking_url,
+        );
+        Err(AdminShopifyError::UserError(
+            "Fulfillment creation not yet implemented".to_string(),
+        ))
+    }
+
+    /// Update fulfillment tracking info.
+    ///
+    /// # Arguments
+    ///
+    /// * `fulfillment_id` - Fulfillment ID
+    /// * `tracking_company` - Shipping carrier
+    /// * `tracking_number` - Tracking number
+    /// * `tracking_url` - Optional tracking URL
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails or returns user errors.
+    #[instrument(skip(self), fields(fulfillment_id = %fulfillment_id))]
+    pub async fn update_fulfillment_tracking(
+        &self,
+        fulfillment_id: &str,
+        tracking_company: Option<&str>,
+        tracking_number: Option<&str>,
+        tracking_url: Option<&str>,
+    ) -> Result<(), AdminShopifyError> {
+        // TODO: Implement with FulfillmentTrackingInfoUpdateV2 mutation
+        let _ = (
+            fulfillment_id,
+            tracking_company,
+            tracking_number,
+            tracking_url,
+        );
+        Err(AdminShopifyError::UserError(
+            "Tracking update not yet implemented".to_string(),
+        ))
+    }
+
+    // =========================================================================
+    // Refund methods
+    // =========================================================================
+
+    /// Create a refund for an order.
+    ///
+    /// # Arguments
+    ///
+    /// * `order_id` - Shopify order ID
+    /// * `note` - Refund note
+    /// * `notify` - Whether to notify the customer
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails or returns user errors.
+    #[instrument(skip(self), fields(order_id = %order_id))]
+    pub async fn create_refund(
+        &self,
+        order_id: &str,
+        note: Option<&str>,
+        notify: bool,
+    ) -> Result<String, AdminShopifyError> {
+        // TODO: Implement with RefundCreate mutation
+        // RefundInput has many required fields that need proper mapping
+        let _ = (order_id, note, notify);
+        Err(AdminShopifyError::UserError(
+            "Refund creation not yet implemented".to_string(),
+        ))
+    }
+
     // =========================================================================
     // Customer methods
     // =========================================================================
@@ -479,6 +1328,24 @@ impl AdminClient {
         let response = self.execute::<GetCustomers>(variables).await?;
 
         Ok(convert_customer_connection(response.customers))
+    }
+
+    // =========================================================================
+    // Location methods
+    // =========================================================================
+
+    /// Get all locations.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails.
+    #[instrument(skip(self))]
+    pub async fn get_locations(&self) -> Result<LocationConnection, AdminShopifyError> {
+        let variables = queries::get_locations::Variables { first: Some(50) };
+
+        let response = self.execute::<GetLocations>(variables).await?;
+
+        Ok(convert_location_connection(response.locations))
     }
 
     // =========================================================================
@@ -626,6 +1493,716 @@ impl AdminClient {
         }
 
         Ok(())
+    }
+
+    // =========================================================================
+    // Gift Card methods
+    // =========================================================================
+
+    /// Get a paginated list of gift cards.
+    ///
+    /// # Arguments
+    ///
+    /// * `first` - Number of gift cards to return
+    /// * `after` - Cursor for pagination
+    /// * `query` - Optional search query
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails.
+    #[instrument(skip(self))]
+    pub async fn get_gift_cards(
+        &self,
+        first: i64,
+        after: Option<String>,
+        query: Option<String>,
+    ) -> Result<GiftCardConnection, AdminShopifyError> {
+        let variables = queries::get_gift_cards::Variables {
+            first: Some(first),
+            after,
+            query,
+        };
+
+        let response = self.execute::<GetGiftCards>(variables).await?;
+
+        let gift_cards: Vec<GiftCard> = response
+            .gift_cards
+            .edges
+            .into_iter()
+            .map(|e| {
+                let gc = e.node;
+                #[allow(deprecated)]
+                GiftCard {
+                    id: gc.id,
+                    last_characters: gc.last_characters,
+                    balance: Money {
+                        amount: gc.balance.amount,
+                        currency_code: format!("{:?}", gc.balance.currency_code),
+                    },
+                    initial_value: Money {
+                        amount: gc.initial_value.amount,
+                        currency_code: format!("{:?}", gc.initial_value.currency_code),
+                    },
+                    expires_on: gc.expires_on,
+                    enabled: gc.enabled,
+                    created_at: gc.created_at,
+                    customer_email: gc.customer.as_ref().and_then(|c| c.email.clone()),
+                    customer_name: gc.customer.as_ref().map(|c| c.display_name.clone()),
+                    note: None,
+                }
+            })
+            .collect();
+
+        Ok(GiftCardConnection {
+            gift_cards,
+            page_info: PageInfo {
+                has_next_page: response.gift_cards.page_info.has_next_page,
+                has_previous_page: false,
+                start_cursor: None,
+                end_cursor: response.gift_cards.page_info.end_cursor,
+            },
+        })
+    }
+
+    /// Create a new gift card.
+    ///
+    /// # Arguments
+    ///
+    /// * `initial_value` - Initial value amount as decimal string
+    /// * `customer_id` - Optional customer to associate
+    /// * `expires_on` - Optional expiration date (YYYY-MM-DD)
+    /// * `note` - Optional internal note
+    ///
+    /// # Returns
+    ///
+    /// Returns a tuple of (gift card ID, gift card code) on success.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails or returns user errors.
+    #[instrument(skip(self))]
+    pub async fn create_gift_card(
+        &self,
+        initial_value: &str,
+        customer_id: Option<&str>,
+        expires_on: Option<&str>,
+        note: Option<&str>,
+    ) -> Result<(String, String), AdminShopifyError> {
+        use queries::gift_card_create::{GiftCardCreateInput, Variables};
+
+        let variables = Variables {
+            input: GiftCardCreateInput {
+                initial_value: initial_value.to_string(),
+                customer_id: customer_id.map(String::from),
+                expires_on: expires_on.map(String::from),
+                note: note.map(String::from),
+                code: None,
+                template_suffix: None,
+                recipient_attributes: None,
+            },
+        };
+
+        let response = self.execute::<GiftCardCreate>(variables).await?;
+
+        if let Some(payload) = response.gift_card_create {
+            if !payload.user_errors.is_empty() {
+                let error_messages: Vec<String> = payload
+                    .user_errors
+                    .iter()
+                    .map(|e| {
+                        let field = e.field.as_ref().map_or_else(String::new, |f| f.join("."));
+                        format!("{}: {}", field, e.message)
+                    })
+                    .collect();
+                return Err(AdminShopifyError::UserError(error_messages.join("; ")));
+            }
+
+            if let (Some(gc), Some(code)) = (payload.gift_card, payload.gift_card_code) {
+                return Ok((gc.id, code));
+            }
+        }
+
+        Err(AdminShopifyError::GraphQL(vec![GraphQLError {
+            message: "No gift card returned from create".to_string(),
+            locations: vec![],
+            path: vec![],
+        }]))
+    }
+
+    /// Disable a gift card.
+    ///
+    /// Note: Shopify's `GiftCardUpdate` mutation uses the gift card's global ID
+    /// in the mutation itself, not in the input struct.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - Gift card ID to disable
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails or returns user errors.
+    #[instrument(skip(self))]
+    pub async fn disable_gift_card(&self, id: &str) -> Result<(), AdminShopifyError> {
+        use queries::gift_card_update::{GiftCardUpdateInput, Variables};
+
+        let variables = Variables {
+            id: id.to_string(),
+            input: GiftCardUpdateInput {
+                note: None,
+                expires_on: None,
+                customer_id: None,
+                template_suffix: None,
+                recipient_attributes: None,
+            },
+        };
+
+        let response = self.execute::<GiftCardUpdate>(variables).await?;
+
+        if let Some(payload) = response.gift_card_update
+            && !payload.user_errors.is_empty()
+        {
+            let error_messages: Vec<String> = payload
+                .user_errors
+                .iter()
+                .map(|e| {
+                    let field = e.field.as_ref().map_or_else(String::new, |f| f.join("."));
+                    format!("{}: {}", field, e.message)
+                })
+                .collect();
+            return Err(AdminShopifyError::UserError(error_messages.join("; ")));
+        }
+
+        Ok(())
+    }
+
+    // =========================================================================
+    // Discount methods
+    // =========================================================================
+
+    /// Get a paginated list of discount codes.
+    ///
+    /// # Arguments
+    ///
+    /// * `first` - Number of discounts to return
+    /// * `after` - Cursor for pagination
+    /// * `query` - Optional search query
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails.
+    #[instrument(skip(self))]
+    #[allow(deprecated)] // Shopify's API deprecation, still functional
+    pub async fn get_discounts(
+        &self,
+        first: i64,
+        after: Option<String>,
+        query: Option<String>,
+    ) -> Result<DiscountCodeConnection, AdminShopifyError> {
+        let variables = queries::get_discount_codes::Variables {
+            first: Some(first),
+            after,
+            query,
+        };
+
+        let response = self.execute::<GetDiscountCodes>(variables).await?;
+
+        let discount_codes: Vec<DiscountCode> = response
+            .code_discount_nodes
+            .edges
+            .into_iter()
+            .filter_map(|e| {
+                let node = e.node;
+                let cd = node.code_discount;
+
+                // Extract common fields from the union type
+                match cd {
+                    queries::get_discount_codes::GetDiscountCodesCodeDiscountNodesEdgesNodeCodeDiscount::DiscountCodeBasic(basic) => {
+                        // Type alias for the discount value type
+                        use queries::get_discount_codes::GetDiscountCodesCodeDiscountNodesEdgesNodeCodeDiscountOnDiscountCodeBasicCustomerGetsValue as BasicValue;
+                        let code = basic.codes.edges.first().map(|e2| e2.node.code.clone()).unwrap_or_default();
+                        let value = match basic.customer_gets.value {
+                            BasicValue::DiscountPercentage(p) => {
+                                Some(DiscountValue::Percentage { percentage: p.percentage })
+                            }
+                            BasicValue::DiscountAmount(a) => {
+                                Some(DiscountValue::FixedAmount {
+                                    amount: a.amount.amount,
+                                    currency: format!("{:?}", a.amount.currency_code),
+                                })
+                            }
+                            // Quantity-based discounts not yet mapped
+                            BasicValue::DiscountOnQuantity => None,
+                        };
+
+                        Some(DiscountCode {
+                            id: node.id,
+                            title: basic.title,
+                            code,
+                            status: convert_discount_status(&basic.status),
+                            starts_at: Some(basic.starts_at),
+                            ends_at: basic.ends_at,
+                            usage_limit: basic.usage_limit,
+                            usage_count: basic.async_usage_count,
+                            value,
+                        })
+                    }
+                    queries::get_discount_codes::GetDiscountCodesCodeDiscountNodesEdgesNodeCodeDiscount::DiscountCodeBxgy(bxgy) => {
+                        let code = bxgy.codes.edges.first().map(|e2| e2.node.code.clone()).unwrap_or_default();
+                        Some(DiscountCode {
+                            id: node.id,
+                            title: bxgy.title,
+                            code,
+                            status: convert_discount_status(&bxgy.status),
+                            starts_at: Some(bxgy.starts_at),
+                            ends_at: bxgy.ends_at,
+                            usage_limit: bxgy.usage_limit,
+                            usage_count: bxgy.async_usage_count,
+                            value: None,
+                        })
+                    }
+                    queries::get_discount_codes::GetDiscountCodesCodeDiscountNodesEdgesNodeCodeDiscount::DiscountCodeFreeShipping(fs) => {
+                        let code = fs.codes.edges.first().map(|e2| e2.node.code.clone()).unwrap_or_default();
+                        Some(DiscountCode {
+                            id: node.id,
+                            title: fs.title,
+                            code,
+                            status: convert_discount_status(&fs.status),
+                            starts_at: Some(fs.starts_at),
+                            ends_at: fs.ends_at,
+                            usage_limit: fs.usage_limit,
+                            usage_count: fs.async_usage_count,
+                            value: None,
+                        })
+                    }
+                    // Skip app-based discounts (not managed through the Admin UI)
+                    queries::get_discount_codes::GetDiscountCodesCodeDiscountNodesEdgesNodeCodeDiscount::DiscountCodeApp => None,
+                }
+            })
+            .collect();
+
+        Ok(DiscountCodeConnection {
+            discount_codes,
+            page_info: PageInfo {
+                has_next_page: response.code_discount_nodes.page_info.has_next_page,
+                has_previous_page: false,
+                start_cursor: None,
+                end_cursor: response.code_discount_nodes.page_info.end_cursor,
+            },
+        })
+    }
+
+    /// Create a basic discount code (percentage or fixed amount).
+    ///
+    /// # Arguments
+    ///
+    /// * `input` - Discount creation parameters
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails or returns user errors.
+    #[instrument(skip(self, input))]
+    pub async fn create_discount(
+        &self,
+        input: DiscountCreateInput<'_>,
+    ) -> Result<String, AdminShopifyError> {
+        use queries::discount_code_basic_create::{
+            DiscountCodeBasicInput, DiscountCustomerGetsInput, DiscountCustomerGetsValueInput,
+            DiscountItemsInput, Variables,
+        };
+
+        // Build the value input based on percentage or amount
+        let value = if let Some(pct) = input.percentage {
+            DiscountCustomerGetsValueInput {
+                percentage: Some(pct),
+                discount_amount: None,
+                discount_on_quantity: None,
+            }
+        } else if let Some((amt, _currency)) = input.amount {
+            use queries::discount_code_basic_create::DiscountAmountInput;
+            DiscountCustomerGetsValueInput {
+                percentage: None,
+                discount_amount: Some(DiscountAmountInput {
+                    amount: Some(amt.to_string()),
+                    applies_on_each_item: Some(false),
+                }),
+                discount_on_quantity: None,
+            }
+        } else {
+            return Err(AdminShopifyError::UserError(
+                "Must specify either percentage or amount".to_string(),
+            ));
+        };
+
+        let variables = Variables {
+            basic_code_discount: DiscountCodeBasicInput {
+                title: Some(input.title.to_string()),
+                code: Some(input.code.to_string()),
+                starts_at: Some(input.starts_at.to_string()),
+                ends_at: input.ends_at.map(String::from),
+                usage_limit: input.usage_limit,
+                customer_gets: Some(DiscountCustomerGetsInput {
+                    value: Some(value),
+                    items: Some(DiscountItemsInput {
+                        all: Some(true),
+                        collections: None,
+                        products: None,
+                    }),
+                    applies_on_one_time_purchase: None,
+                    applies_on_subscription: None,
+                }),
+                applies_once_per_customer: Some(false),
+                combines_with: None,
+                minimum_requirement: None,
+                recurring_cycle_limit: None,
+                context: None,
+            },
+        };
+
+        let response = self.execute::<DiscountCodeBasicCreate>(variables).await?;
+
+        if let Some(payload) = response.discount_code_basic_create {
+            if !payload.user_errors.is_empty() {
+                let error_messages: Vec<String> = payload
+                    .user_errors
+                    .iter()
+                    .map(|e| {
+                        let field = e.field.as_ref().map_or_else(String::new, |f| f.join("."));
+                        format!("{}: {}", field, e.message)
+                    })
+                    .collect();
+                return Err(AdminShopifyError::UserError(error_messages.join("; ")));
+            }
+
+            if let Some(node) = payload.code_discount_node {
+                return Ok(node.id);
+            }
+        }
+
+        Err(AdminShopifyError::GraphQL(vec![GraphQLError {
+            message: "No discount returned from create".to_string(),
+            locations: vec![],
+            path: vec![],
+        }]))
+    }
+
+    /// Deactivate a discount code.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - Discount node ID to deactivate
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails or returns user errors.
+    #[instrument(skip(self))]
+    pub async fn deactivate_discount(&self, id: &str) -> Result<(), AdminShopifyError> {
+        let variables = queries::discount_code_deactivate::Variables { id: id.to_string() };
+
+        let response = self.execute::<DiscountCodeDeactivate>(variables).await?;
+
+        if let Some(payload) = response.discount_code_deactivate
+            && !payload.user_errors.is_empty()
+        {
+            let error_messages: Vec<String> = payload
+                .user_errors
+                .iter()
+                .map(|e| {
+                    let field = e.field.as_ref().map_or_else(String::new, |f| f.join("."));
+                    format!("{}: {}", field, e.message)
+                })
+                .collect();
+            return Err(AdminShopifyError::UserError(error_messages.join("; ")));
+        }
+
+        Ok(())
+    }
+
+    /// Get a single discount code by ID.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - Discount node ID (e.g., `gid://shopify/DiscountCodeNode/123`)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails or the discount is not found.
+    #[instrument(skip(self), fields(discount_id = %id))]
+    pub async fn get_discount(&self, id: &str) -> Result<DiscountCode, AdminShopifyError> {
+        let variables = queries::get_discount_code::Variables { id: id.to_string() };
+
+        let response = self.execute::<GetDiscountCode>(variables).await?;
+
+        let Some(node) = response.code_discount_node else {
+            return Err(AdminShopifyError::NotFound(format!(
+                "Discount {id} not found"
+            )));
+        };
+
+        // Extract discount details from the union type
+        use queries::get_discount_code::GetDiscountCodeCodeDiscountNodeCodeDiscount as CodeDiscount;
+        match node.code_discount {
+            CodeDiscount::DiscountCodeBasic(basic) => {
+                use queries::get_discount_code::GetDiscountCodeCodeDiscountNodeCodeDiscountOnDiscountCodeBasicCustomerGetsValue as BasicValue;
+                let code = basic
+                    .codes
+                    .edges
+                    .first()
+                    .map(|e| e.node.code.clone())
+                    .unwrap_or_default();
+                let value = match basic.customer_gets.value {
+                    BasicValue::DiscountPercentage(p) => Some(DiscountValue::Percentage {
+                        percentage: p.percentage,
+                    }),
+                    BasicValue::DiscountAmount(a) => Some(DiscountValue::FixedAmount {
+                        amount: a.amount.amount,
+                        currency: format!("{:?}", a.amount.currency_code),
+                    }),
+                    BasicValue::DiscountOnQuantity => None,
+                };
+
+                Ok(DiscountCode {
+                    id: node.id,
+                    title: basic.title,
+                    code,
+                    status: convert_discount_status_single(&basic.status),
+                    starts_at: Some(basic.starts_at),
+                    ends_at: basic.ends_at,
+                    usage_limit: basic.usage_limit,
+                    usage_count: basic.async_usage_count,
+                    value,
+                })
+            }
+            _ => Err(AdminShopifyError::NotFound(format!(
+                "Discount {id} is not a basic discount code (BXGY and Free Shipping discounts cannot be edited here)"
+            ))),
+        }
+    }
+
+    /// Update a basic discount code.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - Discount node ID
+    /// * `input` - Update parameters
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails or returns user errors.
+    #[instrument(skip(self, input), fields(discount_id = %id))]
+    pub async fn update_discount(
+        &self,
+        id: &str,
+        input: DiscountUpdateInput<'_>,
+    ) -> Result<(), AdminShopifyError> {
+        use queries::discount_code_basic_update::{DiscountCodeBasicInput, Variables};
+
+        let variables = Variables {
+            id: id.to_string(),
+            basic_code_discount: DiscountCodeBasicInput {
+                title: input.title.map(String::from),
+                code: None, // Code cannot be changed
+                starts_at: input.starts_at.map(String::from),
+                ends_at: input.ends_at.map(String::from),
+                usage_limit: None,   // Keep existing
+                customer_gets: None, // Keep existing value
+                applies_once_per_customer: None,
+                combines_with: None,
+                minimum_requirement: None,
+                recurring_cycle_limit: None,
+                context: None,
+            },
+        };
+
+        let response = self.execute::<DiscountCodeBasicUpdate>(variables).await?;
+
+        if let Some(payload) = response.discount_code_basic_update
+            && !payload.user_errors.is_empty()
+        {
+            let error_messages: Vec<String> = payload
+                .user_errors
+                .iter()
+                .map(|e| {
+                    let field = e.field.as_ref().map_or_else(String::new, |f| f.join("."));
+                    format!("{}: {}", field, e.message)
+                })
+                .collect();
+            return Err(AdminShopifyError::UserError(error_messages.join("; ")));
+        }
+
+        Ok(())
+    }
+
+    // =========================================================================
+    // Payout methods
+    // =========================================================================
+
+    /// Get a paginated list of payouts from Shopify Payments.
+    ///
+    /// # Arguments
+    ///
+    /// * `first` - Number of payouts to return
+    /// * `after` - Cursor for pagination
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails or Shopify Payments is not enabled.
+    #[instrument(skip(self))]
+    pub async fn get_payouts(
+        &self,
+        first: i64,
+        after: Option<String>,
+    ) -> Result<PayoutConnection, AdminShopifyError> {
+        let variables = queries::get_payouts::Variables {
+            first: Some(first),
+            after,
+        };
+
+        let response = self.execute::<GetPayouts>(variables).await?;
+
+        let Some(account) = response.shopify_payments_account else {
+            return Err(AdminShopifyError::NotFound(
+                "Shopify Payments is not enabled for this store".to_string(),
+            ));
+        };
+
+        // Using deprecated `gross` field - Shopify API deprecation, still functional
+        #[allow(deprecated)]
+        let payouts: Vec<Payout> = account
+            .payouts
+            .edges
+            .into_iter()
+            .map(|e| {
+                let p = e.node;
+                Payout {
+                    id: p.id,
+                    legacy_resource_id: Some(p.legacy_resource_id.clone()),
+                    status: convert_payout_status(&p.status),
+                    net: Money {
+                        amount: p.net.amount,
+                        currency_code: format!("{:?}", p.net.currency_code),
+                    },
+                    gross: Money {
+                        amount: p.gross.amount,
+                        currency_code: format!("{:?}", p.gross.currency_code),
+                    },
+                    issued_at: Some(p.issued_at),
+                }
+            })
+            .collect();
+
+        // balance is a Vec in the schema, take the first one if present
+        let balance = account.balance.into_iter().next().map(|b| Money {
+            amount: b.amount,
+            currency_code: format!("{:?}", b.currency_code),
+        });
+
+        Ok(PayoutConnection {
+            payouts,
+            page_info: PageInfo {
+                has_next_page: account.payouts.page_info.has_next_page,
+                has_previous_page: false,
+                start_cursor: None,
+                end_cursor: account.payouts.page_info.end_cursor,
+            },
+            balance,
+        })
+    }
+
+    /// Get a single payout by ID.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - The payout's global ID (e.g., `gid://shopify/ShopifyPaymentsPayout/123`)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails or the payout is not found.
+    #[instrument(skip(self), fields(payout_id = %id))]
+    #[allow(deprecated)] // Shopify's API deprecation, still functional
+    pub async fn get_payout(&self, id: &str) -> Result<Payout, AdminShopifyError> {
+        let variables = queries::get_payout::Variables { id: id.to_string() };
+
+        let response = self.execute::<GetPayout>(variables).await?;
+
+        let Some(node) = response.node else {
+            return Err(AdminShopifyError::NotFound(format!(
+                "Payout {id} not found"
+            )));
+        };
+
+        // The node query returns a union type, we need to match on ShopifyPaymentsPayout
+        use queries::get_payout::GetPayoutNode;
+        match node {
+            GetPayoutNode::ShopifyPaymentsPayout(p) => Ok(Payout {
+                id: p.id,
+                legacy_resource_id: Some(p.legacy_resource_id.clone()),
+                status: convert_payout_status_single(&p.status),
+                net: Money {
+                    amount: p.net.amount,
+                    currency_code: format!("{:?}", p.net.currency_code),
+                },
+                gross: Money {
+                    amount: p.gross.amount,
+                    currency_code: format!("{:?}", p.gross.currency_code),
+                },
+                issued_at: Some(p.issued_at),
+            }),
+            _ => Err(AdminShopifyError::NotFound(format!(
+                "Node {id} is not a payout"
+            ))),
+        }
+    }
+}
+
+/// Convert GraphQL payout status to domain type (for single payout query).
+const fn convert_payout_status_single(
+    status: &queries::get_payout::ShopifyPaymentsPayoutStatus,
+) -> PayoutStatus {
+    match status {
+        queries::get_payout::ShopifyPaymentsPayoutStatus::SCHEDULED
+        | queries::get_payout::ShopifyPaymentsPayoutStatus::Other(_) => PayoutStatus::Scheduled,
+        queries::get_payout::ShopifyPaymentsPayoutStatus::IN_TRANSIT => PayoutStatus::InTransit,
+        queries::get_payout::ShopifyPaymentsPayoutStatus::PAID => PayoutStatus::Paid,
+        queries::get_payout::ShopifyPaymentsPayoutStatus::FAILED => PayoutStatus::Failed,
+        queries::get_payout::ShopifyPaymentsPayoutStatus::CANCELED => PayoutStatus::Canceled,
+    }
+}
+
+/// Convert GraphQL discount status to domain type.
+const fn convert_discount_status(
+    status: &queries::get_discount_codes::DiscountStatus,
+) -> DiscountStatus {
+    match status {
+        queries::get_discount_codes::DiscountStatus::ACTIVE
+        | queries::get_discount_codes::DiscountStatus::Other(_) => DiscountStatus::Active,
+        queries::get_discount_codes::DiscountStatus::EXPIRED => DiscountStatus::Expired,
+        queries::get_discount_codes::DiscountStatus::SCHEDULED => DiscountStatus::Scheduled,
+    }
+}
+
+/// Convert GraphQL discount status to domain type (for single discount query).
+const fn convert_discount_status_single(
+    status: &queries::get_discount_code::DiscountStatus,
+) -> DiscountStatus {
+    match status {
+        queries::get_discount_code::DiscountStatus::ACTIVE
+        | queries::get_discount_code::DiscountStatus::Other(_) => DiscountStatus::Active,
+        queries::get_discount_code::DiscountStatus::EXPIRED => DiscountStatus::Expired,
+        queries::get_discount_code::DiscountStatus::SCHEDULED => DiscountStatus::Scheduled,
+    }
+}
+
+/// Convert GraphQL payout status to domain type.
+const fn convert_payout_status(
+    status: &queries::get_payouts::ShopifyPaymentsPayoutStatus,
+) -> PayoutStatus {
+    match status {
+        queries::get_payouts::ShopifyPaymentsPayoutStatus::SCHEDULED
+        | queries::get_payouts::ShopifyPaymentsPayoutStatus::Other(_) => PayoutStatus::Scheduled,
+        queries::get_payouts::ShopifyPaymentsPayoutStatus::IN_TRANSIT => PayoutStatus::InTransit,
+        queries::get_payouts::ShopifyPaymentsPayoutStatus::PAID => PayoutStatus::Paid,
+        queries::get_payouts::ShopifyPaymentsPayoutStatus::FAILED => PayoutStatus::Failed,
+        queries::get_payouts::ShopifyPaymentsPayoutStatus::CANCELED => PayoutStatus::Canceled,
     }
 }
 

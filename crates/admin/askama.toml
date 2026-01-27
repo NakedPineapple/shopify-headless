@@ -7,3 +7,13 @@ dirs = ["templates"]
 
 # Default escape mode for templates
 escape = "html"
+
+# Custom filter functions
+[[filter]]
+path = "crate::filters::current_year"
+
+[[filter]]
+path = "crate::filters::humanize_datetime"
+
+[[filter]]
+path = "crate::filters::extract_id"

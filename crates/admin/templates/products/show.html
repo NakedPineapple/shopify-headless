@@ -1,0 +1,188 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}{{ product.title }} - Products{% endblock %}
+
+{% block page_title %}{{ product.title }}{% endblock %}
+
+{% block page_subtitle %}
+<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ product.handle }}</p>
+{% endblock %}
+
+{% block content %}
+<!-- Action Bar -->
+<div class="flex items-center justify-between mb-6">
+    <a href="/products" class="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-coral transition-colors">
+        <i class="ph ph-arrow-left"></i>
+        Back to Products
+    </a>
+    <div class="flex items-center gap-3">
+        <a href="/products/{{ product.id.split("/").last().unwrap_or("") }}/edit"
+           class="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-medium hover:border-coral transition-colors">
+            <i class="ph ph-pencil"></i>
+            Edit
+        </a>
+        <form hx-post="/products/{{ product.id.split("/").last().unwrap_or("") }}/archive"
+              hx-confirm="Are you sure you want to archive this product?"
+              class="inline">
+            <button type="submit"
+                    class="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-medium text-yellow-600 hover:border-yellow-400 transition-colors">
+                <i class="ph ph-archive"></i>
+                Archive
+            </button>
+        </form>
+    </div>
+</div>
+
+<div class="grid lg:grid-cols-3 gap-6">
+    <!-- Main Content -->
+    <div class="lg:col-span-2 space-y-6">
+        <!-- Product Info Card -->
+        <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6">
+            <div class="flex items-start gap-6">
+                {% if let Some(url) = product.image_url %}
+                <img src="{{ url }}" alt="{{ product.title }}" class="w-32 h-32 rounded-xl object-cover">
+                {% else %}
+                <div class="w-32 h-32 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                    <i class="ph ph-image text-4xl text-gray-400"></i>
+                </div>
+                {% endif %}
+                <div class="flex-1">
+                    <div class="flex items-center gap-3 mb-2">
+                        <h3 class="text-xl font-semibold text-gray-900 dark:text-gray-100">{{ product.title }}</h3>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ product.status_class }}">
+                            {{ product.status }}
+                        </span>
+                    </div>
+                    <p class="text-2xl font-bold text-coral mb-3">{{ product.price }}</p>
+                    <div class="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
+                        <span><i class="ph ph-package mr-1"></i>{{ product.inventory }} in stock</span>
+                        {% if !product.vendor.is_empty() %}
+                        <span><i class="ph ph-storefront mr-1"></i>{{ product.vendor }}</span>
+                        {% endif %}
+                        {% if !product.product_type.is_empty() %}
+                        <span><i class="ph ph-tag mr-1"></i>{{ product.product_type }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            {% if !product.description_html.is_empty() %}
+            <div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-800">
+                <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Description</h4>
+                <div class="prose prose-sm dark:prose-invert max-w-none">
+                    {{ product.description_html|safe }}
+                </div>
+            </div>
+            {% endif %}
+
+            {% if !product.tags.is_empty() %}
+            <div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-800">
+                <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tags</h4>
+                <div class="flex flex-wrap gap-2">
+                    {% for tag in product.tags.split(", ") %}
+                    <span class="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded text-sm text-gray-600 dark:text-gray-400">{{ tag }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Variants Table -->
+        {% if !product.variants.is_empty() %}
+        <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800">
+            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-800">
+                <h3 class="font-semibold text-gray-900 dark:text-gray-100">Variants</h3>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-gray-50 dark:bg-gray-800">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Variant</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">SKU</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Price</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Inventory</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
+                        {% for variant in product.variants %}
+                        <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                            <td class="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">{{ variant.title }}</td>
+                            <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{{ variant.sku.as_deref().unwrap_or("-") }}</td>
+                            <td class="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">{{ variant.price }}</td>
+                            <td class="px-6 py-4 text-sm {% if variant.inventory <= 10 %}text-yellow-600 dark:text-yellow-400{% else %}text-gray-900 dark:text-gray-100{% endif %}">
+                                {{ variant.inventory }}
+                                {% if variant.inventory <= 10 %}
+                                <i class="ph ph-warning ml-1 text-yellow-500"></i>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Sidebar -->
+    <div class="space-y-6">
+        <!-- Quick Info -->
+        <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6">
+            <h3 class="font-semibold text-gray-900 dark:text-gray-100 mb-4">Product Details</h3>
+            <dl class="space-y-3 text-sm">
+                <div class="flex justify-between">
+                    <dt class="text-gray-500 dark:text-gray-400">Handle</dt>
+                    <dd class="text-gray-900 dark:text-gray-100 font-mono">{{ product.handle }}</dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt class="text-gray-500 dark:text-gray-400">Status</dt>
+                    <dd><span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium {{ product.status_class }}">{{ product.status }}</span></dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt class="text-gray-500 dark:text-gray-400">Total Inventory</dt>
+                    <dd class="text-gray-900 dark:text-gray-100">{{ product.inventory }}</dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt class="text-gray-500 dark:text-gray-400">Variants</dt>
+                    <dd class="text-gray-900 dark:text-gray-100">{{ product.variants.len() }}</dd>
+                </div>
+            </dl>
+        </div>
+
+        <!-- Timestamps -->
+        <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6">
+            <h3 class="font-semibold text-gray-900 dark:text-gray-100 mb-4">Timeline</h3>
+            <dl class="space-y-3 text-sm">
+                {% if let Some(created) = product.created_at %}
+                <div>
+                    <dt class="text-gray-500 dark:text-gray-400">Created</dt>
+                    <dd class="text-gray-900 dark:text-gray-100">{{ created }}</dd>
+                </div>
+                {% endif %}
+                {% if let Some(updated) = product.updated_at %}
+                <div>
+                    <dt class="text-gray-500 dark:text-gray-400">Last Updated</dt>
+                    <dd class="text-gray-900 dark:text-gray-100">{{ updated }}</dd>
+                </div>
+                {% endif %}
+            </dl>
+        </div>
+
+        <!-- Danger Zone -->
+        <div class="bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800 p-6">
+            <h3 class="font-semibold text-red-800 dark:text-red-200 mb-4">Danger Zone</h3>
+            <p class="text-sm text-red-600 dark:text-red-400 mb-4">
+                Deleting a product is permanent and cannot be undone.
+            </p>
+            <form action="/products/{{ product.id.split("/").last().unwrap_or("") }}/delete" method="POST"
+                  onsubmit="return confirm('Are you sure you want to permanently delete this product? This action cannot be undone.');">
+                <button type="submit"
+                        class="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+                    <i class="ph ph-trash mr-2"></i>
+                    Delete Product
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

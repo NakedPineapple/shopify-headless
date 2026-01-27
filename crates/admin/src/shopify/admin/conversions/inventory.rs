@@ -1,8 +1,11 @@
 //! Inventory type conversion functions.
 
-use crate::shopify::types::{InventoryLevel, InventoryLevelConnection, PageInfo};
+use crate::shopify::types::{
+    InventoryLevel, InventoryLevelConnection, Location, LocationAddress, LocationConnection,
+    PageInfo,
+};
 
-use super::super::queries::get_inventory_levels;
+use super::super::queries::{get_inventory_levels, get_locations};
 
 // =============================================================================
 // GetInventoryLevels conversions
@@ -57,5 +60,44 @@ fn convert_inventory_level(
         on_hand,
         incoming,
         updated_at: Some(level.updated_at),
+    }
+}
+
+// =============================================================================
+// GetLocations conversions
+// =============================================================================
+
+pub fn convert_location_connection(
+    locations: get_locations::GetLocationsLocations,
+) -> LocationConnection {
+    LocationConnection {
+        locations: locations
+            .edges
+            .into_iter()
+            .map(|e| convert_location(e.node))
+            .collect(),
+        page_info: PageInfo {
+            has_next_page: locations.page_info.has_next_page,
+            has_previous_page: false,
+            start_cursor: None,
+            end_cursor: locations.page_info.end_cursor,
+        },
+    }
+}
+
+fn convert_location(location: get_locations::GetLocationsLocationsEdgesNode) -> Location {
+    let address = location.address;
+    Location {
+        id: location.id,
+        name: location.name,
+        is_active: location.is_active,
+        fulfills_online_orders: location.fulfills_online_orders,
+        address: Some(LocationAddress {
+            address1: address.address1,
+            city: address.city,
+            province_code: address.province_code,
+            country_code: address.country_code,
+            zip: address.zip,
+        }),
     }
 }

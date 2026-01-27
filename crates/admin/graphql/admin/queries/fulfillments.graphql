@@ -1,0 +1,75 @@
+# Fulfillment queries and mutations for Shopify Admin API
+
+# Get fulfillment orders for an order (required for V2 fulfillment API)
+query GetFulfillmentOrders($orderId: ID!) {
+  order(id: $orderId) {
+    id
+    name
+    fulfillmentOrders(first: 10) {
+      edges {
+        node {
+          id
+          status
+          assignedLocation {
+            location {
+              id
+              name
+            }
+          }
+          lineItems(first: 50) {
+            edges {
+              node {
+                id
+                totalQuantity
+                remainingQuantity
+                lineItem {
+                  id
+                  title
+                  variantTitle
+                  sku
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+# Create a fulfillment
+mutation FulfillmentCreateV2($fulfillment: FulfillmentV2Input!) {
+  fulfillmentCreateV2(fulfillment: $fulfillment) {
+    fulfillment {
+      id
+      status
+      trackingInfo {
+        company
+        number
+        url
+      }
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
+# Update tracking info
+mutation FulfillmentTrackingInfoUpdateV2($fulfillmentId: ID!, $trackingInfoInput: FulfillmentTrackingInput!) {
+  fulfillmentTrackingInfoUpdateV2(fulfillmentId: $fulfillmentId, trackingInfoInput: $trackingInfoInput) {
+    fulfillment {
+      id
+      trackingInfo {
+        company
+        number
+        url
+      }
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
