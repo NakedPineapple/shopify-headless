@@ -74,7 +74,8 @@ jobs:
     if: ${{ !inputs.promote_to_production }}
     steps:
       - uses: actions/checkout@v6
-        # Note: LFS not needed - images come from pre-built image-assets registry
+        with:
+          lfs: true  # Needed for GraphQL schema files
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
