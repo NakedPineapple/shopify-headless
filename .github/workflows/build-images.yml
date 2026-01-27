@@ -1,13 +1,9 @@
 name: Build and Upload Images to R2
 
 on:
-  push:
-    branches: [main]
-    paths:
-      # Trigger when optimizer script changes
-      - 'scripts/image-optimizer/**'
   workflow_dispatch:
     # Manual trigger for when new images are added to R2
+    # Images are stored in R2, not git, so this must be triggered manually
 
 concurrency:
   group: build-images-${{ github.ref }}
