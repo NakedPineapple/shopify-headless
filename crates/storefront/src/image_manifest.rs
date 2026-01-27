@@ -152,6 +152,7 @@ pub static IMAGE_INFO: LazyLock<HashMap<&'static str, ImageInfo>> = LazyLock::ne
         ("payment/apple-pay", ("8720a7d6", 0)),
         ("payment/google-pay", ("71a6aee7", 0)),
         ("payment/shop-pay", ("b7cf386c", 0)),
+        ("branding/Logo_Horizontal", ("71cba526", 0)),
         ("branding/Pistachio_MarkOnly", ("a8e348cf", 0)),
         ("hero/hero-glow-better", ("c960e8b2", 2400)),
         ("hero/hero-tennis", ("3eeb7c36", 2400)),

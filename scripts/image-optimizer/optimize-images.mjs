@@ -61,6 +61,9 @@ async function discoverUsedImages() {
   // Pattern to match /static/images/original/ paths
   const imagePathRegex = /\/static\/images\/original\/([^"'\s)]+\.(jpg|jpeg|png|webp|svg))/gi;
 
+  // Pattern to match filter-based references like "path/to/image"|image_hash
+  const filterPathRegex = /"([^"]+)"\s*\|\s*image_hash/g;
+
   // Scan HTML templates
   const templateFiles = await fg("crates/storefront/templates/**/*.html", {
     cwd: PROJECT_ROOT,
@@ -79,6 +82,7 @@ async function discoverUsedImages() {
     const content = await readFile(file, "utf-8");
     let match;
 
+    // Find /static/images/original/ paths
     while ((match = imagePathRegex.exec(content)) !== null) {
       // match[1] is the path after /static/images/
       const imagePath = match[1];
@@ -94,6 +98,28 @@ async function discoverUsedImages() {
       }
 
       usedImages.add(imagePath);
+    }
+
+    // Find filter-based references (base path without extension)
+    while ((match = filterPathRegex.exec(content)) !== null) {
+      const basePath = match[1];
+
+      // Skip if it looks like a full path (already handled above)
+      if (basePath.startsWith("/")) {
+        continue;
+      }
+
+      // Try to find the actual file with common extensions
+      for (const ext of [".svg", ".jpg", ".jpeg", ".png", ".webp"]) {
+        const fullPath = join(ORIGINAL_DIR, basePath + ext);
+        try {
+          await stat(fullPath);
+          usedImages.add(basePath + ext);
+          break;
+        } catch {
+          // File doesn't exist with this extension, try next
+        }
+      }
     }
   }
 
