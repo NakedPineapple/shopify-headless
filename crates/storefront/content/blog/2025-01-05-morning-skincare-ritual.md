@@ -3,7 +3,7 @@ title: "Build Your Perfect Morning Skincare Ritual in 5 Minutes"
 description: "Short on time? Learn how to create a powerful morning skincare routine that fits into even the busiest schedule and sets you up for all-day glow."
 author: "Naked Pineapple Team"
 published_at: 2025-01-05
-featured_image: "/static/images/lifestyle/NP_Shoot_-_Jan_2025101.jpg"
+featured_image: "/static/images/original/lifestyle/NP_Shoot_-_Jan_2025101.jpg"
 tags:
   - Skincare Routine
   - Self-Care

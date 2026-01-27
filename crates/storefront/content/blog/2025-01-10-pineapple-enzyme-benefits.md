@@ -3,7 +3,7 @@ title: "The Magic of Pineapple Enzymes: Why Your Skin Loves Bromelain"
 description: "Discover why pineapple enzymes are the secret weapon for radiant, glowing skin. Learn how bromelain gently exfoliates and transforms your complexion."
 author: "Naked Pineapple Team"
 published_at: 2025-01-10
-featured_image: "/static/images/lifestyle/NP_-_Photoshoot_186.jpg"
+featured_image: "/static/images/original/lifestyle/NP_-_Photoshoot_186.jpg"
 tags:
   - Skincare Tips
   - Ingredients

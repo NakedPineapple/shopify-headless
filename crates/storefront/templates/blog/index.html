@@ -1,4 +1,5 @@
 {% extends "layouts/base.html" %}
+{% import "macros/picture.html" as img %}
 
 {% block title %}Blog - Naked Pineapple{% endblock %}
 
@@ -57,10 +58,7 @@
                     {# Featured Image #}
                     <div class="relative aspect-[4/3] lg:aspect-auto lg:h-full overflow-hidden">
                         {% if let Some(image) = featured.featured_image.as_ref() %}
-                        <img src="{{ image }}"
-                             alt="{{ featured.title }}"
-                             class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                             loading="eager">
+                        {{ img::picture(path=image, alt=featured.title, sizes="(max-width: 1024px) 100vw, 50vw", class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500", loading="eager") }}
                         {% else %}
                         <div class="w-full h-full bg-gradient-to-br from-primary/20 via-honey/20 to-terracotta/20 flex items-center justify-center">
                             <i class="ph ph-article text-6xl text-primary/40"></i>
@@ -117,10 +115,7 @@
                     {# Image #}
                     <div class="relative aspect-[16/10] overflow-hidden">
                         {% if let Some(image) = post.featured_image.as_ref() %}
-                        <img src="{{ image }}"
-                             alt="{{ post.title }}"
-                             class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                             loading="lazy">
+                        {{ img::picture(path=image, alt=post.title, sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw", class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500") }}
                         {% else %}
                         <div class="w-full h-full bg-gradient-to-br from-sand via-cream to-honey/30 flex items-center justify-center">
                             <i class="ph ph-article text-4xl text-primary/30"></i>

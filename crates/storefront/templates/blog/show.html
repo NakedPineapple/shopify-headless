@@ -1,4 +1,5 @@
 {% extends "layouts/base.html" %}
+{% import "macros/picture.html" as img %}
 
 {% block title %}{{ post.title }} - Naked Pineapple Blog{% endblock %}
 
@@ -11,10 +12,7 @@
     <header class="relative">
         {% if let Some(image) = post.featured_image.as_ref() %}
         <div class="relative h-[40vh] md:h-[50vh] lg:h-[60vh] overflow-hidden">
-            <img src="{{ image }}"
-                 alt="{{ post.title }}"
-                 class="w-full h-full object-cover"
-                 loading="eager">
+            {{ img::picture(path=image, alt=post.title, sizes="100vw", class="w-full h-full object-cover", loading="eager") }}
             <div class="absolute inset-0 bg-gradient-to-t from-text/80 via-text/30 to-transparent"></div>
         </div>
 
@@ -196,10 +194,7 @@
                                     <article class="flex gap-4">
                                         <div class="w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden bg-sand">
                                             {% if let Some(image) = recent.featured_image.as_ref() %}
-                                            <img src="{{ image }}"
-                                                 alt="{{ recent.title }}"
-                                                 class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                                                 loading="lazy">
+                                            {{ img::picture(path=image, alt=recent.title, sizes="64px", class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300") }}
                                             {% else %}
                                             <div class="w-full h-full flex items-center justify-center">
                                                 <i class="ph ph-article text-xl text-primary/30"></i>
@@ -256,10 +251,7 @@
                 <article class="bg-card rounded-xl shadow-sm border border-border-light overflow-hidden hover:shadow-md transition-all">
                     <div class="aspect-[16/9] overflow-hidden">
                         {% if let Some(image) = recent.featured_image.as_ref() %}
-                        <img src="{{ image }}"
-                             alt="{{ recent.title }}"
-                             class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                             loading="lazy">
+                        {{ img::picture(path=image, alt=recent.title, sizes="(max-width: 640px) 100vw, 50vw", class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300") }}
                         {% else %}
                         <div class="w-full h-full bg-gradient-to-br from-sand to-cream flex items-center justify-center">
                             <i class="ph ph-article text-3xl text-primary/30"></i>
