@@ -304,6 +304,11 @@
 </section>
 
 {# Model Program - Stacked Polaroids Gallery #}
+{# Responsive visibility:
+   - Mobile (<768px):    9 polaroids (1, 2, 4, 5, 6, 7, 9, 10, 12)
+   - Tablet (768-1023px): 12 polaroids (adds 3, 8, 11)
+   - Desktop (1024px+):   13 polaroids (adds 13)
+#}
 <section class="py-24 md:py-32 bg-cream overflow-hidden relative">
     {# Subtle paper texture background #}
     <div class="absolute inset-0 opacity-50 pointer-events-none"
@@ -356,7 +361,7 @@
             </div>
 
             {# Polaroid 5 - Top right #}
-            <div class="polaroid absolute right-[9%] md:right-[12%] top-[5%] w-28 md:w-36 lg:w-40 -rotate-8 hover:rotate-0 hover:scale-105 hover:z-50 transition-all duration-500 cursor-pointer z-18">
+            <div class="polaroid absolute right-[9%] md:right-[12%] top-[16%] sm:top-[5%] md:top-[13%] w-28 md:w-36 lg:w-40 -rotate-8 hover:rotate-0 hover:scale-105 hover:z-50 transition-all duration-500 cursor-pointer z-18">
                 <div class="bg-card p-1.5 pb-8 md:p-2 md:pb-10 shadow-xl rounded-sm">
                     <div class="aspect-[4/5] overflow-hidden">
                         {{ img::picture(path="/static/images/original/products/naked-pineapple-vip-bundle/Model_Program_March_2025_39.jpg", alt="Model Program", sizes="160px", class="w-full h-full object-cover") }}
@@ -374,7 +379,7 @@
             </div>
 
             {# Polaroid 7 - Center focal point (larger) #}
-            <div class="polaroid absolute left-[35%] md:left-[39%] top-[25%] w-32 md:w-40 lg:w-48 -rotate-2 hover:rotate-0 hover:scale-105 hover:z-50 transition-all duration-500 cursor-pointer z-25">
+            <div class="polaroid absolute left-[44%] md:left-[39%] top-[25%] w-32 md:w-40 lg:w-48 -rotate-2 hover:rotate-0 hover:scale-105 hover:z-50 transition-all duration-500 cursor-pointer z-25">
                 <div class="bg-card p-1.5 pb-8 md:p-2 md:pb-10 shadow-xl rounded-sm">
                     <div class="aspect-[4/5] overflow-hidden">
                         {{ img::picture(path="/static/images/original/products/glow-up-bronzing-facial-oil/Model_Program_March_2025_53.jpg", alt="Model Program", sizes="192px", class="w-full h-full object-cover") }}

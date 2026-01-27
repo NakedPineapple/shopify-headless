@@ -350,12 +350,12 @@ tasks:
   css:watch:
     desc: "Tailwind watch mode for storefront development"
     cmds:
-      - tailwindcss -i ./crates/storefront/static/css/input.css -o ./crates/storefront/static/css/main.css --watch
+      - tailwindcss -i ./crates/storefront/static/css/input.css -o ./crates/storefront/static/css/main.css --minify --watch
 
   css:watch:admin:
     desc: "Tailwind watch mode for admin development"
     cmds:
-      - tailwindcss -i ./crates/admin/static/css/input.css -o ./crates/admin/static/css/main.css --watch
+      - tailwindcss -i ./crates/admin/static/css/input.css -o ./crates/admin/static/css/main.css --minify --watch
 
   css:watch:all:
     desc: "Tailwind watch mode for both storefront and admin"
