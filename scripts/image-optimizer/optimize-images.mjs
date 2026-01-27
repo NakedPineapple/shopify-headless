@@ -6,7 +6,12 @@
  * responsive variants in multiple formats (AVIF, WebP, JPEG) with content-based
  * hashing for immutable CDN caching.
  *
- * Usage: node optimize-images.mjs
+ * Usage:
+ *   node optimize-images.mjs                    # Optimize all referenced images
+ *   node optimize-images.mjs path/to/image.jpg  # Optimize a specific image
+ *
+ * The path should be relative to static/images/original/
+ * Example: node optimize-images.mjs lifestyle/DSC_2634.jpg
  *
  * Output:
  *   - crates/storefront/static/images/derived/ (optimized images)
@@ -230,12 +235,51 @@ async function copySvgFile(inputPath, outputDir, relativePath, hash) {
 }
 
 /**
+ * Load existing manifest from Rust file
+ */
+async function loadExistingManifest() {
+  try {
+    const content = await readFile(MANIFEST_PATH, "utf-8");
+    const manifest = {};
+
+    // Parse entries - handles both single-line and multi-line (after rustfmt)
+    // Single-line: ("path", ("hash", 1024)),
+    // Multi-line:  (\n  "path",\n  ("hash", 1024),\n),
+    const entryRegex = /\(\s*"([^"]+)",\s*\("([^"]+)",\s*(\d+)\),?\s*\)/g;
+    let match;
+    while ((match = entryRegex.exec(content)) !== null) {
+      const [, path, hash, maxWidth] = match;
+      manifest[path] = { hash, maxWidth: parseInt(maxWidth, 10) };
+    }
+
+    // Warn if manifest file exists but no entries were parsed
+    const entryCount = Object.keys(manifest).length;
+    if (entryCount === 0 && content.includes("HashMap::from")) {
+      console.error("⚠️  Warning: Manifest file exists but no entries could be parsed!");
+      console.error("   This may indicate a format change. Run full optimization to regenerate.");
+      process.exit(1);
+    }
+
+    return manifest;
+  } catch (err) {
+    if (err.code === "ENOENT") {
+      // Manifest doesn't exist yet - that's fine
+      return {};
+    }
+    // Other errors should be reported
+    console.error(`⚠️  Error reading manifest: ${err.message}`);
+    return {};
+  }
+}
+
+/**
  * Generate Rust manifest file with image hashes and max widths
  *
  * Generates the manifest and runs rustfmt for proper formatting.
  */
 async function generateRustManifest(manifest) {
   const entries = Object.entries(manifest)
+    .sort(([a], [b]) => a.localeCompare(b))
     .map(([path, { hash, maxWidth }]) => `        ("${path}", ("${hash}", ${maxWidth})),`)
     .join("\n");
 
@@ -385,8 +429,78 @@ async function optimize() {
   console.log(`   Output: ${DERIVED_DIR}`);
 }
 
-// Run the optimizer
-optimize().catch((err) => {
-  console.error("❌ Error:", err);
-  process.exit(1);
-});
+/**
+ * Optimize a single image and update the manifest
+ */
+async function optimizeSingle(imagePath) {
+  console.log("🍍 Naked Pineapple Image Optimizer (single image mode)\n");
+
+  const inputPath = join(ORIGINAL_DIR, imagePath);
+  const ext = extname(imagePath).toLowerCase();
+
+  // Check if source file exists
+  try {
+    await stat(inputPath);
+  } catch {
+    console.error(`❌ Image not found: ${inputPath}`);
+    process.exit(1);
+  }
+
+  // Load existing manifest
+  console.log("📋 Loading existing manifest...");
+  const manifest = await loadExistingManifest();
+  console.log(`   Found ${Object.keys(manifest).length} existing entries\n`);
+
+  // Create derived directory
+  await mkdir(DERIVED_DIR, { recursive: true });
+
+  // Generate content hash from source file
+  const hash = await getContentHash(inputPath);
+  const basePath = imagePath.slice(0, -ext.length);
+
+  try {
+    if (ext === SVG_EXTENSION) {
+      const results = await copySvgFile(inputPath, DERIVED_DIR, imagePath, hash);
+      manifest[basePath] = { hash, maxWidth: 0 };
+      console.log(`✓ Copied SVG: ${imagePath} [${hash}]`);
+      console.log(`  Generated ${results.length} file(s)`);
+    } else if (RASTER_EXTENSIONS.has(ext)) {
+      console.log(`🖼️  Processing: ${imagePath} [${hash}]`);
+      const { files, maxWidth } = await processRasterImage(inputPath, DERIVED_DIR, imagePath, hash);
+      if (files.length === 0) {
+        console.error(`❌ Failed to process image`);
+        process.exit(1);
+      }
+      manifest[basePath] = { hash, maxWidth };
+      console.log(`   Generated ${files.length} variants (max: ${maxWidth}px)`);
+    } else {
+      console.error(`❌ Unknown image type: ${ext}`);
+      process.exit(1);
+    }
+  } catch (err) {
+    console.error(`❌ Error processing ${imagePath}: ${err.message}`);
+    process.exit(1);
+  }
+
+  // Update manifest
+  await generateRustManifest(manifest);
+
+  console.log("\n✅ Done!");
+}
+
+// Parse command line arguments and run
+const args = process.argv.slice(2);
+
+if (args.length > 0) {
+  // Single image mode
+  optimizeSingle(args[0]).catch((err) => {
+    console.error("❌ Error:", err);
+    process.exit(1);
+  });
+} else {
+  // Full optimization mode
+  optimize().catch((err) => {
+    console.error("❌ Error:", err);
+    process.exit(1);
+  });
+}

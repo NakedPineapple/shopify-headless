@@ -34,6 +34,8 @@ This makes enzyme exfoliation perfect for:
 
 One of the most beloved benefits of bromelain is its ability to fade dark spots and even out skin tone. By removing the buildup of dead, dull cells, your skin's natural radiance can finally shine through.
 
+{{image "products/pineapple-enzyme-cleanser/NP_-_Photoshoot_210.jpg" alt="Pineapple Enzyme Cleanser in action" sizes="(max-width: 768px) 100vw, 640px" class="rounded-xl"}}
+
 > "After just two weeks of using the Pineapple Enzyme Cleanser, I noticed my skin looked more alive than it had in years." — Sarah, Naked Pineapple Customer
 
 ### 3. Anti-Inflammatory Benefits

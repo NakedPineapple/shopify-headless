@@ -59,6 +59,8 @@ Yes! Contact us to arrange an exchange. We'll help you find the right product fo
 
 ## Products
 
+{{image "about/Team_Photos_Naked_Pineapple45.jpg" alt="The Naked Pineapple team" sizes="100vw" class="rounded-2xl my-8"}}
+
 ### Are your products cruelty-free?
 Yes! We are proudly cruelty-free and never test on animals. We believe in beauty without harm.
 

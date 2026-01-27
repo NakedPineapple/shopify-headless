@@ -17,160 +17,160 @@ pub type ImageInfo = (&'static str, u32);
 pub static IMAGE_INFO: LazyLock<HashMap<&'static str, ImageInfo>> = LazyLock::new(|| {
     HashMap::from([
         (
-            "products/naked-pineapple-vip-bundle/NP_-_Photoshoot_2148",
-            ("49c4b90f", 1024),
-        ),
-        ("lifestyle/DSC_1068", ("78911276", 2400)),
-        (
             "about/DSC_5841_7937b270-76ec-46ca-94be-0d898b03767f",
             ("ae33eb2d", 2400),
         ),
+        ("branding/Logo_Horizontal", ("71cba526", 0)),
+        ("branding/Logo_MarkOnly", ("8264e21e", 0)),
+        ("branding/Pistachio_MarkOnly", ("a8e348cf", 0)),
+        (
+            "events/launch-party/IMG_4106_d384f118-38d8-46a4-b92a-9174ba3d357f",
+            ("f612a03c", 1024),
+        ),
+        (
+            "events/launch-party/Launch_Party_-_NP498",
+            ("5fecdf65", 1600),
+        ),
+        ("hero/hero-glow-better", ("c960e8b2", 2400)),
+        ("hero/hero-holding-product", ("082f339d", 2400)),
+        ("hero/hero-pickleball", ("7cc39015", 2400)),
+        ("hero/hero-self-love", ("990e0213", 2400)),
+        ("hero/hero-tennis", ("3eeb7c36", 2400)),
+        (
+            "lifestyle/374FA1B1-5C0E-442A-83E5-892DB550D7F5",
+            ("d48ba591", 2400),
+        ),
+        (
+            "lifestyle/BBFEF851-7EC3-4A07-A1ED-EF9A15CEA821",
+            ("d2a8a508", 2400),
+        ),
+        ("lifestyle/DSC_1068", ("78911276", 2400)),
+        ("lifestyle/DSC_1594", ("b56282fe", 2400)),
+        ("lifestyle/DSC_2634", ("9748b64b", 2400)),
+        ("lifestyle/DSC_6128", ("1eca42bf", 2400)),
+        ("lifestyle/NP_-_Photoshoot_1156", ("c057707a", 2400)),
+        ("lifestyle/NP_-_Photoshoot_186", ("74e00135", 2400)),
+        ("lifestyle/NP_Shoot_-_Jan_2025101", ("14c9a972", 2400)),
+        ("lifestyle/NP_Shoot_-_Jan_202579", ("1acb170e", 2400)),
+        (
+            "merch/dad-hat/042F576F-1C53-4B61-9B30-10D53B5EBE79",
+            ("8b888190", 2400),
+        ),
+        ("merch/display/Merch_Photos", ("07faeb0a", 1024)),
+        ("merch/hoodie/DSC_5849", ("ebaceb61", 2400)),
+        (
+            "merch/other/10_18172443-bd3f-416a-b2fa-6726ca776c28",
+            ("4313f65c", 1024),
+        ),
+        ("merch/other/DSC_6659", ("568040b5", 1600)),
+        ("merch/other/NP_Shoot_-_Jan_2025133", ("0c3c68a1", 1024)),
+        ("merch/other/NP_Shoot_-_Jan_202547", ("75cdb9f2", 1600)),
         (
             "model-program/Model_Program_Feb_2025_160",
             ("2ef501ba", 2400),
-        ),
-        (
-            "products/pineapple-enzyme-cleanser/Model_Program_March_2025_38",
-            ("03c307ab", 1024),
-        ),
-        (
-            "model-program/Model_Program_March_2025_7",
-            ("aebbf7f1", 2400),
-        ),
-        (
-            "products/pineapple-facial-oil/Model_Program_March_2025_19",
-            ("06579ea4", 1024),
-        ),
-        (
-            "products/naked-pineapple-vip-bundle/Model_Program_March_2025_39",
-            ("2b2a16f6", 1600),
         ),
         (
             "model-program/Model_Program_Feb_2025_22",
             ("896b3531", 2400),
         ),
         (
-            "products/glow-up-bronzing-facial-oil/Model_Program_March_2025_53",
-            ("66770f89", 1024),
-        ),
-        (
-            "products/skin-tight-exotic-cream/Model_Program_March_2025_44",
-            ("ebd7c8a7", 1024),
+            "model-program/Model_Program_Feb_2025_65",
+            ("cedfb559", 2400),
         ),
         (
             "model-program/Model_Program_March_2025_41",
             ("2981f5b5", 2400),
         ),
         (
-            "products/pineapple-enzyme-cleanser/Model_Program_March_2025_16",
-            ("b7b882ab", 1024),
+            "model-program/Model_Program_March_2025_7",
+            ("aebbf7f1", 2400),
+        ),
+        ("payment/amex", ("d89ad285", 0)),
+        ("payment/apple-pay", ("8720a7d6", 0)),
+        ("payment/google-pay", ("71a6aee7", 0)),
+        ("payment/mastercard", ("910f266e", 0)),
+        ("payment/shop-pay", ("b7cf386c", 0)),
+        ("payment/visa", ("1ef276a5", 0)),
+        (
+            "products/bright-tight-super-serum/NP_-_Photoshoot_278",
+            ("11ebcf60", 1024),
+        ),
+        (
+            "products/glow-up-bronzing-facial-oil/Model_Program_March_2025_53",
+            ("66770f89", 1024),
+        ),
+        (
+            "products/naked-pineapple-vip-bundle/DSC_7695",
+            ("bb615259", 2400),
         ),
         (
             "products/naked-pineapple-vip-bundle/Model_Program_Feb_2025_7",
             ("d0c6dc42", 1600),
         ),
         (
-            "model-program/Model_Program_Feb_2025_65",
-            ("cedfb559", 2400),
-        ),
-        (
-            "products/starter-kit/Model_Program_March_2025_14_536fbe04-c22c-496b-837e-4f1ed60c0717",
-            ("367f8dad", 1024),
-        ),
-        (
-            "products/naked-pineapple-vip-bundle/DSC_7695",
-            ("bb615259", 2400),
-        ),
-        ("merch/hoodie/DSC_5849", ("ebaceb61", 2400)),
-        ("lifestyle/DSC_2634", ("9748b64b", 2400)),
-        ("products/pineapple-facial-oil/DSC_7750", ("60df071e", 2400)),
-        ("lifestyle/DSC_6128", ("1eca42bf", 2400)),
-        ("lifestyle/NP_Shoot_-_Jan_202579", ("1acb170e", 2400)),
-        ("merch/other/DSC_6659", ("568040b5", 1600)),
-        (
-            "lifestyle/374FA1B1-5C0E-442A-83E5-892DB550D7F5",
-            ("d48ba591", 2400),
-        ),
-        ("lifestyle/NP_-_Photoshoot_1156", ("c057707a", 2400)),
-        (
-            "lifestyle/BBFEF851-7EC3-4A07-A1ED-EF9A15CEA821",
-            ("d2a8a508", 2400),
-        ),
-        ("merch/other/NP_Shoot_-_Jan_2025133", ("0c3c68a1", 1024)),
-        ("lifestyle/DSC_1594", ("b56282fe", 2400)),
-        ("merch/other/NP_Shoot_-_Jan_202547", ("75cdb9f2", 1600)),
-        ("merch/display/Merch_Photos", ("07faeb0a", 1024)),
-        (
-            "merch/other/10_18172443-bd3f-416a-b2fa-6726ca776c28",
-            ("4313f65c", 1024),
-        ),
-        ("lifestyle/NP_Shoot_-_Jan_2025101", ("14c9a972", 2400)),
-        ("testimonials/Maddie_-_Before_NP", ("27db70ac", 2400)),
-        ("testimonials/Maddie_-_After_NP", ("253c7a46", 2400)),
-        ("hero/hero-self-love", ("990e0213", 2400)),
-        ("branding/Logo_MarkOnly", ("8264e21e", 0)),
-        (
-            "products/pineapple-enzyme-cleanser/NP_-_Photoshoot_268",
-            ("dc7b9bed", 1024),
-        ),
-        ("lifestyle/NP_-_Photoshoot_186", ("74e00135", 2400)),
-        (
-            "products/pineapple-enzyme-cleanser/NP_-_Photoshoot_262",
-            ("efcc5832", 1600),
+            "products/naked-pineapple-vip-bundle/Model_Program_March_2025_39",
+            ("2b2a16f6", 1600),
         ),
         (
             "products/naked-pineapple-vip-bundle/NP_-_Photoshoot_2128",
             ("47f26bc5", 1600),
         ),
         (
-            "events/launch-party/Launch_Party_-_NP498",
-            ("5fecdf65", 1600),
+            "products/naked-pineapple-vip-bundle/NP_-_Photoshoot_2148",
+            ("49c4b90f", 1024),
         ),
         (
-            "products/bright-tight-super-serum/NP_-_Photoshoot_278",
-            ("11ebcf60", 1024),
+            "products/pineapple-enzyme-cleanser/Model_Program_March_2025_16",
+            ("b7b882ab", 1024),
+        ),
+        (
+            "products/pineapple-enzyme-cleanser/Model_Program_March_2025_38",
+            ("03c307ab", 1024),
+        ),
+        (
+            "products/pineapple-enzyme-cleanser/NP_-_Photoshoot_262",
+            ("efcc5832", 1600),
+        ),
+        (
+            "products/pineapple-enzyme-cleanser/NP_-_Photoshoot_268",
+            ("dc7b9bed", 1024),
+        ),
+        (
+            "products/pineapple-enzyme-cleanser/NP_Cleanser_SET",
+            ("d75fd11d", 640),
+        ),
+        ("products/pineapple-facial-oil/DSC_7750", ("60df071e", 2400)),
+        (
+            "products/pineapple-facial-oil/Model_Program_March_2025_19",
+            ("06579ea4", 1024),
+        ),
+        (
+            "products/pineapple-facial-oil/NP_-_Photoshoot_238",
+            ("4e321aba", 1600),
+        ),
+        (
+            "products/pineapple-facial-oil/NP_TropicalOil_SET",
+            ("5aee8581", 640),
+        ),
+        (
+            "products/skin-tight-exotic-cream/Model_Program_March_2025_44",
+            ("ebd7c8a7", 1024),
         ),
         (
             "products/skin-tight-exotic-cream/NP_-_Photoshoot_280",
             ("5370aa9a", 1024),
         ),
         (
-            "merch/dad-hat/042F576F-1C53-4B61-9B30-10D53B5EBE79",
-            ("8b888190", 2400),
-        ),
-        (
-            "events/launch-party/IMG_4106_d384f118-38d8-46a4-b92a-9174ba3d357f",
-            ("f612a03c", 1024),
-        ),
-        (
-            "products/pineapple-facial-oil/NP_-_Photoshoot_238",
-            ("4e321aba", 1600),
-        ),
-        ("payment/visa", ("1ef276a5", 0)),
-        ("payment/mastercard", ("910f266e", 0)),
-        ("payment/amex", ("d89ad285", 0)),
-        ("payment/apple-pay", ("8720a7d6", 0)),
-        ("payment/google-pay", ("71a6aee7", 0)),
-        ("payment/shop-pay", ("b7cf386c", 0)),
-        ("branding/Logo_Horizontal", ("71cba526", 0)),
-        ("branding/Pistachio_MarkOnly", ("a8e348cf", 0)),
-        ("hero/hero-glow-better", ("c960e8b2", 2400)),
-        ("hero/hero-tennis", ("3eeb7c36", 2400)),
-        ("hero/hero-pickleball", ("7cc39015", 2400)),
-        ("hero/hero-holding-product", ("082f339d", 2400)),
-        (
-            "products/pineapple-enzyme-cleanser/NP_Cleanser_SET",
-            ("d75fd11d", 640),
-        ),
-        ("products/starter-kit/StarterKit", ("c9b965a8", 640)),
-        (
             "products/skin-tight-exotic-cream/NP_ExoticCream_SET",
             ("399be851", 640),
         ),
         (
-            "products/pineapple-facial-oil/NP_TropicalOil_SET",
-            ("5aee8581", 640),
+            "products/starter-kit/Model_Program_March_2025_14_536fbe04-c22c-496b-837e-4f1ed60c0717",
+            ("367f8dad", 1024),
         ),
+        ("products/starter-kit/StarterKit", ("c9b965a8", 640)),
+        ("testimonials/Maddie_-_After_NP", ("253c7a46", 2400)),
+        ("testimonials/Maddie_-_Before_NP", ("27db70ac", 2400)),
     ])
 });
 

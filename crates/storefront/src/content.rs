@@ -2,14 +2,27 @@
 //!
 //! This module loads markdown files from the `/content` directory at startup,
 //! parses frontmatter metadata, and renders markdown to HTML.
+//!
+//! # Image Shortcodes
+//!
+//! Use the `{{image}}` shortcode to embed responsive images:
+//!
+//! ```markdown
+//! {{image "lifestyle/photo.jpg" alt="Description" sizes="100vw"}}
+//! ```
+//!
+//! This generates a `<picture>` element with AVIF, WebP, and JPEG sources.
 
 use chrono::NaiveDate;
 use comrak::{Options, markdown_to_html};
 use gray_matter::{Matter, ParsedEntity, engine::YAML};
+use regex::Regex;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::Path;
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
+
+use crate::image_manifest::{get_image_hash, get_image_max_width};
 
 /// Metadata for static pages (terms, privacy, etc.)
 #[derive(Debug, Clone, Deserialize)]
@@ -267,8 +280,13 @@ impl ContentStore {
     }
 }
 
-/// Render markdown to HTML with GitHub Flavored Markdown support
+/// Render markdown to HTML with GitHub Flavored Markdown support.
+///
+/// This first processes image shortcodes, then renders the markdown.
 fn render_markdown(content: &str) -> String {
+    // Process shortcodes before markdown rendering
+    let processed = process_shortcodes(content);
+
     let mut options = Options::default();
 
     // Enable GFM extensions
@@ -283,7 +301,135 @@ fn render_markdown(content: &str) -> String {
     // Render options
     options.render.r#unsafe = true; // Allow raw HTML in markdown
 
-    markdown_to_html(content, &options)
+    markdown_to_html(&processed, &options)
+}
+
+// =============================================================================
+// Shortcode Processing
+// =============================================================================
+
+/// Regex for matching image shortcodes.
+///
+/// Matches: `{{image "path" ...attributes}}`
+/// Example: `{{image "lifestyle/photo.jpg" alt="Beautiful photo" sizes="100vw"}}`
+static IMAGE_SHORTCODE_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r#"\{\{image\s+"([^"]+)"([^}]*)\}\}"#).expect("Invalid regex"));
+
+/// Regex for extracting key="value" attributes.
+static ATTR_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r#"(\w+)="([^"]*)""#).expect("Invalid regex"));
+
+/// Process all shortcodes in the content.
+fn process_shortcodes(content: &str) -> String {
+    IMAGE_SHORTCODE_RE
+        .replace_all(content, |caps: &regex::Captures| {
+            let path = &caps[1];
+            let attrs_str = caps.get(2).map_or("", |m| m.as_str());
+
+            // Parse attributes
+            let mut alt = String::new();
+            let mut sizes = "100vw".to_string();
+            let mut class = String::new();
+            let mut loading = "lazy".to_string();
+
+            for attr_cap in ATTR_RE.captures_iter(attrs_str) {
+                let key = &attr_cap[1];
+                let value = &attr_cap[2];
+                match key {
+                    "alt" => alt = value.to_string(),
+                    "sizes" => sizes = value.to_string(),
+                    "class" => class = value.to_string(),
+                    "loading" => loading = value.to_string(),
+                    _ => {}
+                }
+            }
+
+            render_picture_element(path, &alt, &sizes, &class, &loading)
+        })
+        .into_owned()
+}
+
+/// Render a responsive `<picture>` element for an image path.
+///
+/// Generates AVIF, WebP, and JPEG sources with appropriate srcset.
+fn render_picture_element(
+    path: &str,
+    alt: &str,
+    sizes: &str,
+    class: &str,
+    loading: &str,
+) -> String {
+    // Extract base path (without extension)
+    let base = path
+        .trim_end_matches(".jpg")
+        .trim_end_matches(".jpeg")
+        .trim_end_matches(".png")
+        .trim_end_matches(".webp")
+        .trim_end_matches(".JPG")
+        .trim_end_matches(".JPEG")
+        .trim_end_matches(".PNG");
+
+    let hash = get_image_hash(base);
+    let max_width = get_image_max_width(base);
+
+    // If no hash found, the image isn't in the manifest - log warning and use fallback
+    if hash.is_empty() {
+        tracing::warn!("Image not found in manifest: {path}");
+        // Return a simple img tag as fallback
+        return format!(
+            r#"<img src="/static/images/original/{path}" alt="{alt}" class="{class}" loading="{loading}" decoding="async">"#
+        );
+    }
+
+    // Generate srcset for each format, only including sizes that exist
+    let avif_srcset = generate_srcset(base, hash, "avif", max_width);
+    let webp_srcset = generate_srcset(base, hash, "webp", max_width);
+    let jpg_srcset = generate_srcset(base, hash, "jpg", max_width);
+
+    // Determine default size (largest available)
+    let default_size = get_default_size(max_width);
+
+    let class_attr = if class.is_empty() {
+        String::new()
+    } else {
+        format!(r#" class="{class}""#)
+    };
+
+    format!(
+        r#"<picture>
+  <source type="image/avif" srcset="{avif_srcset}" sizes="{sizes}">
+  <source type="image/webp" srcset="{webp_srcset}" sizes="{sizes}">
+  <img src="/static/images/derived/{base}.{hash}-{default_size}.jpg" srcset="{jpg_srcset}" sizes="{sizes}"{class_attr} loading="{loading}" decoding="async" alt="{alt}">
+</picture>"#
+    )
+}
+
+/// Generate srcset string for a given format, only including sizes up to `max_width`.
+fn generate_srcset(base: &str, hash: &str, format: &str, max_width: u32) -> String {
+    const SIZES: [u32; 5] = [320, 640, 1024, 1600, 2400];
+
+    let effective_max = if max_width == 0 { 2400 } else { max_width };
+
+    SIZES
+        .iter()
+        .filter(|&&size| size <= effective_max)
+        .map(|&size| format!("/static/images/derived/{base}.{hash}-{size}.{format} {size}w"))
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+/// Get the largest available size for an image.
+fn get_default_size(max_width: u32) -> u32 {
+    const SIZES: [u32; 5] = [320, 640, 1024, 1600, 2400];
+
+    let effective_max = if max_width == 0 { 1024 } else { max_width };
+
+    SIZES
+        .iter()
+        .rev()
+        .find(|&&size| size <= effective_max)
+        .copied()
+        .unwrap_or(1024)
 }
 
 /// Content loading errors
