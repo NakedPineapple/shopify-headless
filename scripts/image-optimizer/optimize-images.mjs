@@ -221,15 +221,15 @@ async function generateRustManifest(manifest) {
 use std::collections::HashMap;
 use std::sync::LazyLock;
 
-/// Image metadata: (hash, max_width)
+/// Image metadata: (hash, \`max_width\`)
 /// - hash: 8-character content hash for cache busting
-/// - max_width: largest generated size in pixels (0 for SVGs)
+/// - \`max_width\`: largest generated size in pixels (0 for SVGs)
 pub type ImageInfo = (&'static str, u32);
 
 /// Maps image base paths to their metadata.
 ///
 /// Key: base path without extension (e.g., \`"lifestyle/DSC_1068"\`)
-/// Value: (hash, max_width)
+/// Value: (hash, \`max_width\`)
 pub static IMAGE_INFO: LazyLock<HashMap<&'static str, ImageInfo>> = LazyLock::new(|| {
     HashMap::from([
 ${entries}
@@ -241,7 +241,7 @@ ${entries}
 /// Returns the hash if found, or an empty string if not found.
 #[must_use]
 pub fn get_image_hash(base_path: &str) -> &'static str {
-    IMAGE_INFO.get(base_path).map(|(hash, _)| *hash).unwrap_or("")
+    IMAGE_INFO.get(base_path).map_or("", |(hash, _)| *hash)
 }
 
 /// Look up the maximum generated width for an image path.
@@ -250,7 +250,7 @@ pub fn get_image_hash(base_path: &str) -> &'static str {
 /// SVGs return 0 (they are resolution-independent).
 #[must_use]
 pub fn get_image_max_width(base_path: &str) -> u32 {
-    IMAGE_INFO.get(base_path).map(|(_, width)| *width).unwrap_or(0)
+    IMAGE_INFO.get(base_path).map_or(0, |(_, width)| *width)
 }
 `;
 

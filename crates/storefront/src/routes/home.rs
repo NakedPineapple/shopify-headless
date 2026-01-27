@@ -180,7 +180,7 @@ fn get_featured_reviews() -> Vec<ReviewView> {
             content: "I've been using the Pineapple Enzyme Cleanser for a month and my skin has never looked better! The natural ingredients are so gentle yet effective.".to_string(),
             product_title: "Pineapple Enzyme Cleanser".to_string(),
             product_handle: "pineapple-enzyme-cleanser".to_string(),
-            product_image_path: Some("/static/images/original/products/pineapple-enzyme-cleanser/main.jpg".to_string()),
+            product_image_path: Some("/static/images/original/products/pineapple-enzyme-cleanser/NP_Cleanser_SET.png".to_string()),
         },
         ReviewView {
             reviewer_name: "Jessica T.".to_string(),
@@ -188,7 +188,7 @@ fn get_featured_reviews() -> Vec<ReviewView> {
             content: "The Starter Kit was perfect for trying everything! Now I'm hooked on the entire line. My skin is glowing!".to_string(),
             product_title: "Starter Kit".to_string(),
             product_handle: "starter-kit".to_string(),
-            product_image_path: Some("/static/images/original/products/starter-kit/main.jpg".to_string()),
+            product_image_path: Some("/static/images/original/products/starter-kit/StarterKit.png".to_string()),
         },
         ReviewView {
             reviewer_name: "Amanda K.".to_string(),
@@ -196,7 +196,7 @@ fn get_featured_reviews() -> Vec<ReviewView> {
             content: "Finally found a skincare brand that's both natural AND effective. The results speak for themselves!".to_string(),
             product_title: "Skin Tight Exotic Cream".to_string(),
             product_handle: "skin-tight-exotic-cream".to_string(),
-            product_image_path: Some("/static/images/original/products/skin-tight-exotic-cream/main.jpg".to_string()),
+            product_image_path: Some("/static/images/original/products/skin-tight-exotic-cream/NP_ExoticCream_SET.png".to_string()),
         },
         ReviewView {
             reviewer_name: "Michelle R.".to_string(),
@@ -204,7 +204,7 @@ fn get_featured_reviews() -> Vec<ReviewView> {
             content: "Love how my skin feels after using the facial oil. It's lightweight and absorbs quickly. Perfect for my sensitive skin.".to_string(),
             product_title: "Pineapple Facial Oil".to_string(),
             product_handle: "pineapple-facial-oil".to_string(),
-            product_image_path: Some("/static/images/original/products/pineapple-facial-oil/main.jpg".to_string()),
+            product_image_path: Some("/static/images/original/products/pineapple-facial-oil/NP_TropicalOil_SET.png".to_string()),
         },
     ]
 }

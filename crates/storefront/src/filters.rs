@@ -97,8 +97,8 @@ pub fn image_default_size(
 
 /// Converts an original image path to a derived path with hash and size.
 ///
-/// Input: "/static/images/original/hero/hero.jpg"
-/// Output: "/static/images/derived/hero/hero.{hash}-{size}.jpg"
+/// Input: "/static/images/original/hero/hero-self-love.png"
+/// Output: "/static/images/derived/hero/hero-self-love.{hash}-{size}.jpg"
 ///
 /// Usage in templates: `{{ path|to_derived_image(1600) }}`
 #[allow(clippy::unnecessary_wraps)]

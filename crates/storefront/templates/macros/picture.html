@@ -5,7 +5,7 @@
   Uses content-based hashing for immutable CDN caching.
 
   Parameters:
-    - path: Original image path, e.g., "/static/images/original/lifestyle/photo.jpg"
+    - path: Original image path, e.g., "/static/images/original/lifestyle/DSC_1068.jpg"
     - alt: Alt text for accessibility (required)
     - sizes: Responsive sizes attribute, e.g., "(max-width: 768px) 100vw, 50vw"
     - class: Optional CSS classes for the <img> element
@@ -14,7 +14,7 @@
   Usage:
     {% import "macros/picture.html" as img %}
     {{ img::picture(path="/static/images/original/lifestyle/DSC_1068.jpg", alt="Lifestyle photo", sizes="100vw") }}
-    {{ img::picture(path="/static/images/original/hero/hero.jpg", alt="Hero", sizes="100vw", class="w-full", loading="eager") }}
+    {{ img::picture(path="/static/images/original/hero/hero-self-love.png", alt="Hero", sizes="100vw", class="w-full", loading="eager") }}
 
   Output filenames use content hashes for cache busting:
     /static/images/derived/lifestyle/DSC_1068.a1b2c3d4-320.avif
@@ -51,7 +51,7 @@
   Uses content-based hashing for immutable CDN caching.
 
   Parameters:
-    - path: Original SVG path, e.g., "/static/images/original/branding/logo.svg"
+    - path: Original SVG path, e.g., "/static/images/original/branding/Logo_MarkOnly.svg"
     - alt: Alt text for accessibility
     - class: Optional CSS classes
 #}
