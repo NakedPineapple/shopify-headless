@@ -29,7 +29,7 @@ env:
 
 jobs:
   # ============================================================================
-  # Stage 1: Lint (fast gate before heavier jobs)
+  # Stage 1a: Lint (runs in parallel with test)
   # ============================================================================
   lint:
     name: Lint
@@ -47,7 +47,7 @@ jobs:
         run: cargo clippy --all-targets -- -D warnings
 
   # ============================================================================
-  # Stage 2a: Tests (runs in parallel with build)
+  # Stage 1b: Tests (runs in parallel with lint)
   # ============================================================================
   test:
     name: Test
@@ -65,58 +65,67 @@ jobs:
           SQLX_OFFLINE: true
 
   # ============================================================================
-  # Stage 2b: Build Docker images (runs in parallel with test, skipped if promoting)
+  # Stage 2: Build Docker images (parallel matrix, skipped if promoting)
   # ============================================================================
   build:
-    name: Build Images
+    name: Build ${{ matrix.app }}
     needs: [lint, test]
     runs-on: ubuntu-latest
     if: ${{ !inputs.promote_to_production }}
+    strategy:
+      matrix:
+        app: [storefront, admin]
+        include:
+          - app: storefront
+            dockerfile: docker/Dockerfile.storefront
+            image: nakedpineapple-storefront-staging
+            cache: nakedpineapple-storefront-cache
+          - app: admin
+            dockerfile: docker/Dockerfile.admin
+            image: nakedpineapple-admin-staging
+            cache: nakedpineapple-admin-cache
     steps:
+      - name: Check if should build
+        id: check
+        run: |
+          if [[ "${{ inputs.target }}" == "all" || "${{ inputs.target }}" == "${{ matrix.app }}" || -z "${{ inputs.target }}" ]]; then
+            echo "skip=false" >> $GITHUB_OUTPUT
+          else
+            echo "skip=true" >> $GITHUB_OUTPUT
+          fi
+
       - uses: actions/checkout@v6
+        if: steps.check.outputs.skip != 'true'
         with:
-          lfs: true  # Needed for GraphQL schema files
+          lfs: true
 
       - name: Set up Docker Buildx
+        if: steps.check.outputs.skip != 'true'
         uses: docker/setup-buildx-action@v3
 
       - name: Log in to Fly Registry
+        if: steps.check.outputs.skip != 'true'
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: x
           password: ${{ secrets.FLY_API_TOKEN }}
 
-      # Build and push storefront (registry cache for faster/unlimited caching)
-      - name: Build and push storefront
-        if: inputs.target != 'admin'
+      - name: Build and push
+        if: steps.check.outputs.skip != 'true'
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: docker/Dockerfile.storefront
+          file: ${{ matrix.dockerfile }}
           push: true
           tags: |
-            ${{ env.REGISTRY }}/nakedpineapple-storefront-staging:${{ github.sha }}
-            ${{ env.REGISTRY }}/nakedpineapple-storefront-staging:latest
-          cache-from: type=registry,ref=${{ env.REGISTRY }}/nakedpineapple-storefront-cache:latest
-          cache-to: type=registry,ref=${{ env.REGISTRY }}/nakedpineapple-storefront-cache:latest,mode=max
-
-      # Build and push admin (registry cache for faster/unlimited caching)
-      - name: Build and push admin
-        if: inputs.target != 'storefront'
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: docker/Dockerfile.admin
-          push: true
-          tags: |
-            ${{ env.REGISTRY }}/nakedpineapple-admin-staging:${{ github.sha }}
-            ${{ env.REGISTRY }}/nakedpineapple-admin-staging:latest
-          cache-from: type=registry,ref=${{ env.REGISTRY }}/nakedpineapple-admin-cache:latest
-          cache-to: type=registry,ref=${{ env.REGISTRY }}/nakedpineapple-admin-cache:latest,mode=max
+            ${{ env.REGISTRY }}/${{ matrix.image }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ matrix.image }}:latest
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ matrix.cache }}:latest
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ matrix.cache }}:latest,mode=max
 
   # ============================================================================
-  # Stage 3: Deploy to staging (requires both build and test to pass)
+  # Stage 3: Deploy to staging (after builds complete)
   # ============================================================================
   deploy-staging:
     name: Deploy to Staging

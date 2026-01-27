@@ -43,7 +43,7 @@ jobs:
           file: docker/Dockerfile.images
           push: true
           tags: |
-            ${{ env.REGISTRY }}/nakedpineapple-image-assets:${{ github.sha }}
-            ${{ env.REGISTRY }}/nakedpineapple-image-assets:latest
-          cache-from: type=registry,ref=${{ env.REGISTRY }}/nakedpineapple-image-assets:cache
-          cache-to: type=registry,ref=${{ env.REGISTRY }}/nakedpineapple-image-assets:cache,mode=max
+            ${{ env.REGISTRY }}/nakedpineapple-storefront-image-assets:${{ github.sha }}
+            ${{ env.REGISTRY }}/nakedpineapple-storefront-image-assets:latest
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/nakedpineapple-storefront-image-assets:cache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/nakedpineapple-storefront-image-assets:cache,mode=max

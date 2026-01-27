@@ -49,7 +49,7 @@ COPY . .
 
 # Pull pre-built optimized images from image-assets registry
 # This is built separately by build-images.yml when images change
-COPY --from=registry.fly.io/nakedpineapple-image-assets:latest /derived /app/crates/storefront/static/images/derived
+COPY --from=registry.fly.io/nakedpineapple-storefront-image-assets:latest /derived /app/crates/storefront/static/images/derived
 
 # Build Tailwind CSS
 RUN tailwindcss -i ./crates/storefront/static/css/input.css \

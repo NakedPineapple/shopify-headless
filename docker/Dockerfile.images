@@ -3,7 +3,7 @@
 # =============================================================================
 # This Dockerfile is built separately by the build-images.yml workflow
 # and only runs when images in static/images/original/ change.
-# The output is published to registry.fly.io/nakedpineapple-image-assets:latest
+# The output is published to registry.fly.io/nakedpineapple-storefront-image-assets:latest
 # and consumed by Dockerfile.storefront via COPY --from=
 # =============================================================================
 
