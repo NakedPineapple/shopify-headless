@@ -7,6 +7,7 @@
 //! - `admin_user` - Admin authentication (separate from storefront users)
 //! - `admin_session` - Admin session storage
 //! - `admin_credential` - Admin `WebAuthn` passkeys
+//! - `admin_invite` - Email allowlist for registration
 //! - `chat_session` - Claude AI chat sessions
 //! - `chat_message` - Chat message history (JSONB content)
 //! - `shopify_token` - Encrypted OAuth tokens (if needed)
@@ -19,6 +20,7 @@
 //! cargo run -p naked-pineapple-cli -- migrate admin
 //! ```
 
+pub mod admin_invites;
 pub mod admin_users;
 pub mod chat;
 pub mod shopify;
@@ -30,6 +32,7 @@ use sqlx::PgPool;
 use sqlx::postgres::PgPoolOptions;
 use thiserror::Error;
 
+pub use admin_invites::{AdminInvite, AdminInviteRepository};
 pub use admin_users::AdminUserRepository;
 pub use chat::ChatRepository;
 pub use shopify::ShopifyTokenRepository;

@@ -9,8 +9,15 @@
 //! # Authentication
 //! GET  /auth/login             - Login page (passkey only)
 //! POST /auth/logout            - Logout
+//! GET  /auth/setup             - New admin setup page
 //!
-//! # WebAuthn API
+//! # Setup API (for new admin registration)
+//! POST /api/auth/setup/send-code       - Send verification code to email
+//! POST /api/auth/setup/verify-code     - Verify the code
+//! POST /api/auth/setup/register/start  - Start passkey registration
+//! POST /api/auth/setup/register/finish - Finish registration and create user
+//!
+//! # WebAuthn API (for existing users)
 //! POST /api/auth/webauthn/authenticate/start  - Start passkey login
 //! POST /api/auth/webauthn/authenticate/finish - Finish passkey login
 //! POST /api/auth/webauthn/register/start      - Start passkey registration (auth required)
@@ -45,6 +52,7 @@ pub mod customers;
 pub mod dashboard;
 pub mod orders;
 pub mod products;
+pub mod setup;
 pub mod shopify;
 
 use axum::{Router, routing::get};
@@ -61,6 +69,7 @@ pub fn routes() -> Router<AppState> {
         .route("/customers", get(customers::index))
         // Auth
         .merge(auth::router())
+        .merge(setup::router())
         .merge(api::router())
         .merge(chat::router())
         // Shopify OAuth

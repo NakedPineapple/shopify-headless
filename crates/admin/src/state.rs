@@ -7,6 +7,7 @@ use url::Url;
 use webauthn_rs::prelude::*;
 
 use crate::config::AdminConfig;
+use crate::services::EmailService;
 use crate::shopify::AdminClient;
 
 /// Error that can occur when creating `AppState`.
@@ -19,6 +20,10 @@ pub enum AppStateError {
     /// Invalid URL configuration.
     #[error("invalid base URL: {0}")]
     InvalidUrl(String),
+
+    /// Email service initialization failed.
+    #[error("email service initialization failed: {0}")]
+    Email(String),
 }
 
 /// Application state shared across all handlers.
@@ -35,6 +40,7 @@ struct AppStateInner {
     pool: PgPool,
     shopify: AdminClient,
     webauthn: Webauthn,
+    email_service: Option<EmailService>,
 }
 
 impl AppState {
@@ -65,12 +71,25 @@ impl AppState {
             .allow_subdomains(false)
             .build()?;
 
+        // Initialize email service (optional - dev mode works without it)
+        let email_service = match EmailService::new(&config.email) {
+            Ok(service) => {
+                tracing::info!("Email service initialized");
+                Some(service)
+            }
+            Err(e) => {
+                tracing::warn!(error = %e, "Email service not available - running in dev mode");
+                None
+            }
+        };
+
         Ok(Self {
             inner: Arc::new(AppStateInner {
                 config,
                 pool,
                 shopify,
                 webauthn,
+                email_service,
             }),
         })
     }
@@ -97,5 +116,11 @@ impl AppState {
     #[must_use]
     pub fn webauthn(&self) -> &Webauthn {
         &self.inner.webauthn
+    }
+
+    /// Get a reference to the email service (if configured).
+    #[must_use]
+    pub fn email_service(&self) -> Option<&EmailService> {
+        self.inner.email_service.as_ref()
     }
 }

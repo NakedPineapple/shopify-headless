@@ -637,3 +637,215 @@ tasks:
         msg: "SHOPIFY_CUSTOMER_SHOP_ID environment variable is required (numeric shop ID)"
       - sh: '[ -n "$SHOPIFY_CUSTOMER_ACCESS_TOKEN" ]'
         msg: "SHOPIFY_CUSTOMER_ACCESS_TOKEN is required - obtain via Customer OAuth flow first (token starts with shcat_)"
+
+  # ============================================================================
+  # Fly.io database tasks
+  #
+  # Architecture:
+  #   Physical DBs: nakedpineapple-storefront-db, nakedpineapple-admin-db
+  #   Logical DBs:  np_storefront, np_storefront_staging, np_admin, np_admin_staging
+  #
+  # Database users (8 total):
+  #   nakedpineapple-storefront-db:
+  #     storefront_service         - np_storefront app connections
+  #     storefront_admin           - np_storefront migrations
+  #     storefront_staging_service - np_storefront_staging app connections
+  #     storefront_staging_admin   - np_storefront_staging migrations
+  #
+  #   nakedpineapple-admin-db:
+  #     admin_service              - np_admin app connections
+  #     admin_admin                - np_admin migrations
+  #     admin_staging_service      - np_admin_staging app connections
+  #     admin_staging_admin        - np_admin_staging migrations
+  #
+  # Prerequisites (.env) - URL-encode special characters (/ @ : # %):
+  #   FLY_POSTGRES_STOREFRONT_ADMIN_PASSWORD
+  #   FLY_POSTGRES_STOREFRONT_STAGING_ADMIN_PASSWORD
+  #   FLY_POSTGRES_ADMIN_ADMIN_PASSWORD
+  #   FLY_POSTGRES_ADMIN_STAGING_ADMIN_PASSWORD
+  #
+  # Usage:
+  #   task fly:db:proxy:admin              # Terminal 1: start proxy
+  #   task fly:db:migrate:admin:staging    # Terminal 2: run migrations
+  # ============================================================================
+
+  fly:db:proxy:storefront:
+    desc: "Proxy nakedpineapple-storefront-db to localhost:15432"
+    cmds:
+      - fly proxy 15432:5432 -a nakedpineapple-storefront-db
+
+  fly:db:proxy:admin:
+    desc: "Proxy nakedpineapple-admin-db to localhost:15433"
+    cmds:
+      - fly proxy 15433:5432 -a nakedpineapple-admin-db
+
+  # --- Staging migrations ---
+
+  fly:db:migrate:storefront:staging:
+    desc: "Run storefront staging migrations (requires fly:db:proxy:storefront)"
+    cmds:
+      - task: fly:check:storefront-staging
+      - cargo clean -p naked-pineapple-cli
+      - cargo build -p naked-pineapple-cli
+      - cargo run -p naked-pineapple-cli -- migrate storefront
+    env:
+      STOREFRONT_DATABASE_URL: "postgres://storefront_staging_admin:{{.FLY_POSTGRES_STOREFRONT_STAGING_ADMIN_PASSWORD}}@localhost:15432/np_storefront_staging"
+
+  fly:db:migrate:admin:staging:
+    desc: "Run admin staging migrations (requires fly:db:proxy:admin)"
+    cmds:
+      - task: fly:check:admin-staging
+      - cargo clean -p naked-pineapple-cli
+      - cargo build -p naked-pineapple-cli
+      - cargo run -p naked-pineapple-cli -- migrate admin
+    env:
+      ADMIN_DATABASE_URL: "postgres://admin_staging_admin:{{.FLY_POSTGRES_ADMIN_STAGING_ADMIN_PASSWORD}}@localhost:15433/np_admin_staging"
+
+  fly:db:invite:admin:staging:
+    desc: "Create admin invite on staging (see --summary for usage)"
+    summary: |
+      Create an admin invite on staging.
+
+      Requires fly:db:proxy:admin running in another terminal.
+
+      Usage:
+        task fly:db:invite:admin:staging -- -e user@example.com -n "User Name"
+        task fly:db:invite:admin:staging -- -e user@example.com -n "User Name" -r super_admin
+    cmds:
+      - task: fly:check:admin-staging
+      - cargo run -p naked-pineapple-cli -- admin invite {{.CLI_ARGS}}
+    env:
+      ADMIN_DATABASE_URL: "postgres://admin_staging_admin:{{.FLY_POSTGRES_ADMIN_STAGING_ADMIN_PASSWORD}}@localhost:15433/np_admin_staging"
+      ADMIN_BASE_URL: "https://staging.admin.nakedpineapple.co"
+
+  # --- Production migrations ---
+
+  fly:db:migrate:storefront:prod:
+    desc: "Run storefront production migrations (requires fly:db:proxy:storefront)"
+    cmds:
+      - task: fly:check:storefront-prod
+      - cargo clean -p naked-pineapple-cli
+      - cargo build -p naked-pineapple-cli
+      - cargo run -p naked-pineapple-cli -- migrate storefront
+    env:
+      STOREFRONT_DATABASE_URL: "postgres://storefront_admin:{{.FLY_POSTGRES_STOREFRONT_ADMIN_PASSWORD}}@localhost:15432/np_storefront"
+
+  fly:db:migrate:admin:prod:
+    desc: "Run admin production migrations (requires fly:db:proxy:admin)"
+    cmds:
+      - task: fly:check:admin-prod
+      - cargo clean -p naked-pineapple-cli
+      - cargo build -p naked-pineapple-cli
+      - cargo run -p naked-pineapple-cli -- migrate admin
+    env:
+      ADMIN_DATABASE_URL: "postgres://admin_admin:{{.FLY_POSTGRES_ADMIN_ADMIN_PASSWORD}}@localhost:15433/np_admin"
+
+  fly:db:invite:admin:prod:
+    desc: "Create admin invite on production (see --summary for usage)"
+    summary: |
+      Create an admin invite on production.
+
+      Requires fly:db:proxy:admin running in another terminal.
+
+      Usage:
+        task fly:db:invite:admin:prod -- -e user@example.com -n "User Name"
+        task fly:db:invite:admin:prod -- -e user@example.com -n "User Name" -r super_admin
+    cmds:
+      - task: fly:check:admin-prod
+      - cargo run -p naked-pineapple-cli -- admin invite {{.CLI_ARGS}}
+    env:
+      ADMIN_DATABASE_URL: "postgres://admin_admin:{{.FLY_POSTGRES_ADMIN_ADMIN_PASSWORD}}@localhost:15433/np_admin"
+      ADMIN_BASE_URL: "https://admin.nakedpineapple.co"
+
+  # --- sqlx prepare ---
+
+  fly:db:sqlx:staging:
+    desc: "Generate sqlx cache from staging (requires both proxies)"
+    cmds:
+      - task: fly:check:storefront-staging
+      - task: fly:check:admin-staging
+      - task: fly:db:sqlx:storefront:staging
+      - task: fly:db:sqlx:admin:staging
+      - task: fly:db:sqlx:cli:staging
+
+  fly:db:sqlx:storefront:staging:
+    internal: true
+    dir: crates/storefront
+    cmds:
+      - cargo sqlx prepare
+    env:
+      DATABASE_URL: "postgres://storefront_staging_admin:{{.FLY_POSTGRES_STOREFRONT_STAGING_ADMIN_PASSWORD}}@localhost:15432/np_storefront_staging"
+
+  fly:db:sqlx:admin:staging:
+    internal: true
+    dir: crates/admin
+    cmds:
+      - cargo sqlx prepare
+    env:
+      DATABASE_URL: "postgres://admin_staging_admin:{{.FLY_POSTGRES_ADMIN_STAGING_ADMIN_PASSWORD}}@localhost:15433/np_admin_staging"
+
+  fly:db:sqlx:cli:staging:
+    internal: true
+    dir: crates/cli
+    cmds:
+      - cargo sqlx prepare
+    env:
+      DATABASE_URL: "postgres://admin_staging_admin:{{.FLY_POSTGRES_ADMIN_STAGING_ADMIN_PASSWORD}}@localhost:15433/np_admin_staging"
+
+  # --- Internal checks ---
+
+  fly:check:storefront-staging:
+    internal: true
+    silent: true
+    cmds:
+      - |
+        if [ -z "{{.FLY_POSTGRES_STOREFRONT_STAGING_ADMIN_PASSWORD}}" ]; then
+          echo "Error: FLY_POSTGRES_STOREFRONT_STAGING_ADMIN_PASSWORD not set in .env"
+          exit 1
+        fi
+        if ! nc -z localhost 15432 2>/dev/null; then
+          echo "Error: No proxy on port 15432. Run 'task fly:db:proxy:storefront' first"
+          exit 1
+        fi
+
+  fly:check:storefront-prod:
+    internal: true
+    silent: true
+    cmds:
+      - |
+        if [ -z "{{.FLY_POSTGRES_STOREFRONT_ADMIN_PASSWORD}}" ]; then
+          echo "Error: FLY_POSTGRES_STOREFRONT_ADMIN_PASSWORD not set in .env"
+          exit 1
+        fi
+        if ! nc -z localhost 15432 2>/dev/null; then
+          echo "Error: No proxy on port 15432. Run 'task fly:db:proxy:storefront' first"
+          exit 1
+        fi
+
+  fly:check:admin-staging:
+    internal: true
+    silent: true
+    cmds:
+      - |
+        if [ -z "{{.FLY_POSTGRES_ADMIN_STAGING_ADMIN_PASSWORD}}" ]; then
+          echo "Error: FLY_POSTGRES_ADMIN_STAGING_ADMIN_PASSWORD not set in .env"
+          exit 1
+        fi
+        if ! nc -z localhost 15433 2>/dev/null; then
+          echo "Error: No proxy on port 15433. Run 'task fly:db:proxy:admin' first"
+          exit 1
+        fi
+
+  fly:check:admin-prod:
+    internal: true
+    silent: true
+    cmds:
+      - |
+        if [ -z "{{.FLY_POSTGRES_ADMIN_ADMIN_PASSWORD}}" ]; then
+          echo "Error: FLY_POSTGRES_ADMIN_ADMIN_PASSWORD not set in .env"
+          exit 1
+        fi
+        if ! nc -z localhost 15433 2>/dev/null; then
+          echo "Error: No proxy on port 15433. Run 'task fly:db:proxy:admin' first"
+          exit 1
+        fi

@@ -3,67 +3,522 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Naked Pineapple Admin</title>
+    <title>Sign In - Naked Pineapple Admin</title>
 
     <!-- CSS -->
-    <link rel="stylesheet" href="/static/css/admin.css">
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="/static/fonts/fonts.css">
+
+    <!-- Phosphor Icons -->
+    <link rel="stylesheet" href="/static/vendor/phosphor-icons.css">
+    <link rel="stylesheet" href="/static/vendor/phosphor-icons-fill.css">
+
+    <style>
+        /* Auth-specific styles */
+        .auth-page {
+            min-height: 100vh;
+            display: grid;
+            grid-template-columns: 1fr;
+            background: linear-gradient(135deg, #1a1614 0%, #2d2420 50%, #1a1614 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        @media (min-width: 1024px) {
+            .auth-page {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        /* Noise texture overlay */
+        .auth-page::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+            opacity: 0.03;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* Decorative brand panel */
+        .brand-panel {
+            display: none;
+            position: relative;
+            padding: 3rem;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        @media (min-width: 1024px) {
+            .brand-panel {
+                display: flex;
+            }
+        }
+
+        /* Organic background shapes */
+        .brand-panel::before {
+            content: '';
+            position: absolute;
+            width: 140%;
+            height: 140%;
+            top: -20%;
+            left: -20%;
+            background: radial-gradient(ellipse at 30% 70%, rgba(214, 58, 47, 0.12) 0%, transparent 50%),
+                        radial-gradient(ellipse at 70% 30%, rgba(218, 165, 32, 0.08) 0%, transparent 40%);
+            animation: float 20s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            33% { transform: translate(2%, 3%) rotate(1deg); }
+            66% { transform: translate(-1%, -2%) rotate(-1deg); }
+        }
+
+        /* Pineapple illustration */
+        .pineapple-art {
+            position: relative;
+            z-index: 1;
+            opacity: 0;
+            animation: fadeSlideUp 1s ease-out 0.2s forwards;
+        }
+
+        .pineapple-art svg {
+            width: 280px;
+            height: auto;
+            filter: drop-shadow(0 20px 40px rgba(0, 0, 0, 0.3));
+        }
+
+        /* Brand text */
+        .brand-text {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+            margin-top: 3rem;
+            opacity: 0;
+            animation: fadeSlideUp 1s ease-out 0.4s forwards;
+        }
+
+        .brand-tagline {
+            font-family: 'Playfair Display', serif;
+            font-size: 2rem;
+            font-weight: 500;
+            font-style: italic;
+            color: rgba(255, 255, 255, 0.85);
+            letter-spacing: 0.02em;
+            line-height: 1.3;
+            max-width: 320px;
+        }
+
+        .brand-tagline span {
+            color: #d63a2f;
+        }
+
+        /* Login form panel */
+        .form-panel {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+        }
+
+        .form-container {
+            width: 100%;
+            max-width: 400px;
+        }
+
+        /* Logo */
+        .logo-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 3rem;
+            opacity: 0;
+            animation: fadeSlideUp 0.8s ease-out forwards;
+        }
+
+        .logo-icon {
+            width: 64px;
+            height: 64px;
+            background: linear-gradient(135deg, #d63a2f 0%, #b42f25 100%);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.25rem;
+            box-shadow: 0 8px 24px rgba(214, 58, 47, 0.3),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+        }
+
+        .logo-icon i {
+            font-size: 32px;
+            color: white;
+        }
+
+        .logo-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.75rem;
+            font-weight: 600;
+            color: white;
+            letter-spacing: 0.01em;
+        }
+
+        .logo-subtitle {
+            font-size: 0.875rem;
+            color: rgba(255, 255, 255, 0.5);
+            margin-top: 0.25rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        /* Form card */
+        .form-card {
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 24px;
+            padding: 2.5rem;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.06);
+            opacity: 0;
+            animation: fadeSlideUp 0.8s ease-out 0.1s forwards;
+        }
+
+        .form-header {
+            margin-bottom: 2rem;
+        }
+
+        .form-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.5rem;
+            font-weight: 500;
+            color: white;
+            margin-bottom: 0.5rem;
+        }
+
+        .form-description {
+            font-size: 0.9375rem;
+            color: rgba(255, 255, 255, 0.6);
+            line-height: 1.5;
+        }
+
+        /* Input styles */
+        .input-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .input-label {
+            display: block;
+            font-size: 0.8125rem;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 0.625rem;
+            letter-spacing: 0.02em;
+        }
+
+        .input-field {
+            width: 100%;
+            padding: 0.875rem 1rem;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            font-size: 1rem;
+            color: white;
+            transition: all 0.2s ease;
+            outline: none;
+        }
+
+        .input-field::placeholder {
+            color: rgba(255, 255, 255, 0.3);
+        }
+
+        .input-field:hover {
+            border-color: rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .input-field:focus {
+            border-color: #d63a2f;
+            background: rgba(255, 255, 255, 0.08);
+            box-shadow: 0 0 0 3px rgba(214, 58, 47, 0.15);
+        }
+
+        /* Submit button */
+        .submit-btn {
+            width: 100%;
+            padding: 1rem 1.5rem;
+            background: linear-gradient(135deg, #d63a2f 0%, #b42f25 100%);
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.625rem;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 16px rgba(214, 58, 47, 0.3),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+        }
+
+        .submit-btn:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 24px rgba(214, 58, 47, 0.4),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+        }
+
+        .submit-btn:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .submit-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .submit-btn i {
+            font-size: 1.25rem;
+        }
+
+        /* Loading spinner */
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Messages */
+        .message {
+            padding: 1rem;
+            border-radius: 12px;
+            font-size: 0.875rem;
+            line-height: 1.5;
+            margin-top: 1.25rem;
+            display: none;
+        }
+
+        .message.visible {
+            display: block;
+            animation: fadeSlideUp 0.3s ease-out forwards;
+        }
+
+        .message-error {
+            background: rgba(239, 68, 68, 0.12);
+            border: 1px solid rgba(239, 68, 68, 0.25);
+            color: #fca5a5;
+        }
+
+        .message-info {
+            background: rgba(59, 130, 246, 0.12);
+            border: 1px solid rgba(59, 130, 246, 0.25);
+            color: #93c5fd;
+        }
+
+        .message-warning {
+            background: rgba(245, 158, 11, 0.12);
+            border: 1px solid rgba(245, 158, 11, 0.25);
+            color: #fcd34d;
+        }
+
+        /* Footer notice */
+        .footer-notice {
+            margin-top: 2rem;
+            text-align: center;
+            font-size: 0.8125rem;
+            color: rgba(255, 255, 255, 0.4);
+            line-height: 1.5;
+            opacity: 0;
+            animation: fadeSlideUp 0.8s ease-out 0.3s forwards;
+        }
+
+        .footer-notice a {
+            color: rgba(255, 255, 255, 0.6);
+            text-decoration: underline;
+            text-underline-offset: 2px;
+            transition: color 0.2s ease;
+        }
+
+        .footer-notice a:hover {
+            color: #d63a2f;
+        }
+
+        /* Passkey icon animation */
+        .passkey-glow {
+            position: relative;
+        }
+
+        .passkey-glow::after {
+            content: '';
+            position: absolute;
+            inset: -4px;
+            background: radial-gradient(circle, rgba(218, 165, 32, 0.4) 0%, transparent 70%);
+            border-radius: 50%;
+            opacity: 0;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0; transform: scale(0.8); }
+            50% { opacity: 1; transform: scale(1.2); }
+        }
+
+        /* Animations */
+        @keyframes fadeSlideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Decorative corner elements */
+        .corner-decoration {
+            position: absolute;
+            width: 200px;
+            height: 200px;
+            opacity: 0.04;
+            pointer-events: none;
+        }
+
+        .corner-top-right {
+            top: -50px;
+            right: -50px;
+            background: radial-gradient(circle at center, #d63a2f 0%, transparent 70%);
+        }
+
+        .corner-bottom-left {
+            bottom: -50px;
+            left: -50px;
+            background: radial-gradient(circle at center, #daa520 0%, transparent 70%);
+        }
+    </style>
 </head>
-<body class="min-h-screen bg-gray-100 flex items-center justify-center">
-    <div class="max-w-md w-full mx-4">
-        <div class="bg-white rounded-lg shadow-lg p-8">
-            <!-- Logo/Header -->
-            <div class="text-center mb-8">
-                <h1 class="text-2xl font-bold text-gray-900">Naked Pineapple</h1>
-                <p class="text-gray-500 mt-1">Admin Panel</p>
+<body class="font-sans antialiased">
+    <div class="auth-page">
+        <!-- Decorative Brand Panel (Desktop) -->
+        <div class="brand-panel">
+            <div class="pineapple-art">
+                <svg viewBox="0 0 200 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Crown/Leaves -->
+                    <g opacity="0.9">
+                        <path d="M100 10 L95 60 L100 55 L105 60 Z" fill="#4a7c59"/>
+                        <path d="M85 15 L75 65 L85 58 L92 68 Z" fill="#5a8c69" transform="rotate(-15, 85, 40)"/>
+                        <path d="M115 15 L125 65 L115 58 L108 68 Z" fill="#5a8c69" transform="rotate(15, 115, 40)"/>
+                        <path d="M70 25 L55 70 L70 60 L80 75 Z" fill="#4a7c59" transform="rotate(-25, 70, 50)"/>
+                        <path d="M130 25 L145 70 L130 60 L120 75 Z" fill="#4a7c59" transform="rotate(25, 130, 50)"/>
+                        <path d="M58 40 L40 80 L58 68 L70 85 Z" fill="#3a6c49" transform="rotate(-35, 58, 60)"/>
+                        <path d="M142 40 L160 80 L142 68 L130 85 Z" fill="#3a6c49" transform="rotate(35, 142, 60)"/>
+                    </g>
+
+                    <!-- Pineapple body -->
+                    <ellipse cx="100" cy="180" rx="65" ry="95" fill="url(#pineappleGradient)"/>
+
+                    <!-- Diamond pattern overlay -->
+                    <g opacity="0.3" stroke="#8B4513" stroke-width="1.5">
+                        <path d="M55 120 L100 95 L145 120 L100 145 Z"/>
+                        <path d="M45 155 L100 130 L155 155 L100 180 Z"/>
+                        <path d="M40 190 L100 165 L160 190 L100 215 Z"/>
+                        <path d="M45 225 L100 200 L155 225 L100 250 Z"/>
+                        <path d="M55 255 L100 235 L145 255 L100 275 Z"/>
+                    </g>
+
+                    <!-- Highlight -->
+                    <ellipse cx="75" cy="155" rx="20" ry="35" fill="url(#highlightGradient)" opacity="0.3"/>
+
+                    <defs>
+                        <linearGradient id="pineappleGradient" x1="35" y1="85" x2="165" y2="275" gradientUnits="userSpaceOnUse">
+                            <stop offset="0%" stop-color="#daa520"/>
+                            <stop offset="50%" stop-color="#cd853f"/>
+                            <stop offset="100%" stop-color="#8b4513"/>
+                        </linearGradient>
+                        <linearGradient id="highlightGradient" x1="55" y1="120" x2="95" y2="190" gradientUnits="userSpaceOnUse">
+                            <stop offset="0%" stop-color="#fff"/>
+                            <stop offset="100%" stop-color="#fff" stop-opacity="0"/>
+                        </linearGradient>
+                    </defs>
+                </svg>
             </div>
 
-            <!-- Login Form -->
-            <form id="login-form" class="space-y-6">
-                <div>
-                    <label for="email" class="block text-sm font-medium text-gray-700 mb-1">
-                        Email Address
-                    </label>
-                    <input
-                        type="email"
-                        id="email"
-                        name="email"
-                        required
-                        autocomplete="email"
-                        class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-coral-500 focus:border-transparent"
-                        placeholder="admin@example.com"
-                    >
+            <div class="brand-text">
+                <p class="brand-tagline">
+                    Where <span>tropical luxury</span> meets natural skincare
+                </p>
+            </div>
+        </div>
+
+        <!-- Login Form Panel -->
+        <div class="form-panel">
+            <div class="corner-decoration corner-top-right"></div>
+            <div class="corner-decoration corner-bottom-left"></div>
+
+            <div class="form-container">
+                <!-- Logo -->
+                <div class="logo-wrapper">
+                    <div class="logo-icon">
+                        <i class="ph-fill ph-leaf"></i>
+                    </div>
+                    <h1 class="logo-title">Naked Pineapple</h1>
+                    <p class="logo-subtitle">Admin Portal</p>
                 </div>
 
-                <button
-                    type="submit"
-                    id="login-btn"
-                    class="w-full bg-coral-600 text-white py-3 px-4 rounded-md hover:bg-coral-700 transition-colors font-medium flex items-center justify-center gap-2"
-                >
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                    </svg>
-                    Login with Passkey
-                </button>
-            </form>
+                <!-- Form Card -->
+                <div class="form-card">
+                    <div class="form-header">
+                        <h2 class="form-title">Welcome back</h2>
+                        <p class="form-description">
+                            Sign in with your passkey to access the admin dashboard.
+                        </p>
+                    </div>
 
-            <!-- Error message -->
-            <div id="error-message" class="mt-4 p-3 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm hidden">
+                    <form id="login-form">
+                        <div class="input-group">
+                            <label for="email" class="input-label">Email Address</label>
+                            <input
+                                type="email"
+                                id="email"
+                                name="email"
+                                required
+                                autocomplete="email webauthn"
+                                class="input-field"
+                                placeholder="you@nakedpineapple.co"
+                            >
+                        </div>
+
+                        <button type="submit" id="login-btn" class="submit-btn">
+                            <i class="ph-fill ph-fingerprint"></i>
+                            <span>Sign in with Passkey</span>
+                        </button>
+                    </form>
+
+                    <!-- Messages -->
+                    <div id="error-message" class="message message-error"></div>
+                    <div id="info-message" class="message message-info"></div>
+                    <div id="webauthn-warning" class="message message-warning"></div>
+                </div>
+
+                <!-- Footer -->
+                <p class="footer-notice">
+                    Passkey authentication required for admin access.<br>
+                    Need help? <a href="mailto:support@nakedpineapple.co">Contact support</a>
+                </p>
             </div>
-
-            <!-- Info message -->
-            <div id="info-message" class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md text-blue-700 text-sm hidden">
-            </div>
-
-            <!-- WebAuthn not supported warning -->
-            <div id="webauthn-warning" class="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md text-yellow-700 text-sm hidden">
-                <strong>Warning:</strong> Passkeys are not supported in your browser.
-                Please use a modern browser like Chrome, Safari, or Firefox.
-            </div>
-
-            <!-- Security notice -->
-            <p class="mt-6 text-xs text-gray-500 text-center">
-                Admin access requires a passkey. Contact your administrator if you need access.
-            </p>
         </div>
     </div>
 
@@ -78,47 +533,46 @@
         const infoEl = document.getElementById('info-message');
         const warningEl = document.getElementById('webauthn-warning');
 
-        // Check WebAuthn support
-        if (!window.WebAuthn || !window.WebAuthn.isWebAuthnSupported()) {
-            warningEl.classList.remove('hidden');
-            loginBtn.disabled = true;
-            loginBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        // Check WebAuthn support - use native API check, not window.WebAuthn
+        // This is more reliable across browsers including Firefox
+        function checkWebAuthnSupport() {
+            const supported = window.PublicKeyCredential !== undefined;
+
+            if (!supported) {
+                warningEl.innerHTML = '<strong>Passkeys unavailable:</strong> Your browser does not support WebAuthn. Please use a modern browser like Chrome, Safari, or Firefox.';
+                warningEl.classList.add('visible');
+                loginBtn.disabled = true;
+                return false;
+            }
+            return true;
         }
+
+        // Run check after a small delay to ensure page is ready
+        setTimeout(checkWebAuthnSupport, 100);
 
         function showError(message) {
             errorEl.textContent = message;
-            errorEl.classList.remove('hidden');
-            infoEl.classList.add('hidden');
+            errorEl.classList.add('visible');
+            infoEl.classList.remove('visible');
         }
 
         function showInfo(message) {
             infoEl.textContent = message;
-            infoEl.classList.remove('hidden');
-            errorEl.classList.add('hidden');
+            infoEl.classList.add('visible');
+            errorEl.classList.remove('visible');
         }
 
         function hideMessages() {
-            errorEl.classList.add('hidden');
-            infoEl.classList.add('hidden');
+            errorEl.classList.remove('visible');
+            infoEl.classList.remove('visible');
         }
 
         function setLoading(loading) {
             loginBtn.disabled = loading;
             if (loading) {
-                loginBtn.innerHTML = `
-                    <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Authenticating...
-                `;
+                loginBtn.innerHTML = '<div class="spinner"></div><span>Authenticating...</span>';
             } else {
-                loginBtn.innerHTML = `
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                    </svg>
-                    Login with Passkey
-                `;
+                loginBtn.innerHTML = '<i class="ph-fill ph-fingerprint"></i><span>Sign in with Passkey</span>';
             }
         }
 
@@ -132,13 +586,19 @@
                 return;
             }
 
+            // Double-check WebAuthn support before attempting
+            if (!window.WebAuthn || !window.WebAuthn.isWebAuthnSupported()) {
+                showError('Passkey authentication is not available in your browser');
+                return;
+            }
+
             setLoading(true);
 
             try {
                 const result = await window.WebAuthn.loginWithPasskey(email);
 
                 if (!result.success) {
-                    showError(result.error || 'Authentication failed');
+                    showError(result.error || 'Authentication failed. Please try again.');
                     setLoading(false);
                     return;
                 }
@@ -148,10 +608,13 @@
 
             } catch (error) {
                 console.error('Login error:', error);
-                showError(error.message || 'An error occurred during authentication');
+                showError(error.message || 'An unexpected error occurred');
                 setLoading(false);
             }
         });
+
+        // Focus email input on page load
+        emailInput.focus();
     })();
     </script>
 </body>

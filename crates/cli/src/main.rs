@@ -18,7 +18,10 @@
 //! # Rollback multiple migrations
 //! np-cli migrate rollback storefront --count 3
 //!
-//! # Create admin user
+//! # Create an invite for a new admin (recommended)
+//! np-cli admin invite -e admin@example.com -n "Admin Name" -r super_admin
+//!
+//! # Create admin user directly (no passkey)
 //! np-cli admin create -e admin@example.com -n "Admin Name" -r super_admin
 //! ```
 //!
@@ -26,7 +29,8 @@
 //!
 //! - `migrate` - Run database migrations
 //! - `migrate rollback` - Rollback database migrations
-//! - `admin create` - Create admin users
+//! - `admin invite` - Create invite for new admin (recommended)
+//! - `admin create` - Create admin user directly (no passkey)
 //! - `seed` - Seed database with test data (TODO)
 
 #![cfg_attr(not(test), forbid(unsafe_code))]
@@ -85,7 +89,7 @@ enum RollbackTarget {
 
 #[derive(Subcommand)]
 enum AdminAction {
-    /// Create a new admin user
+    /// Create a new admin user (requires passkey registered separately)
     Create {
         /// Admin email address
         #[arg(short, long)]
@@ -95,9 +99,27 @@ enum AdminAction {
         #[arg(short, long)]
         name: String,
 
-        /// Admin role (`super_admin`, `admin`, `viewer`)
+        /// Admin role (`super_admin`, `admin`)
         #[arg(short, long, default_value = "admin")]
         role: String,
+    },
+    /// Create an invite for a new admin (recommended)
+    Invite {
+        /// Email address to invite
+        #[arg(short, long)]
+        email: String,
+
+        /// Admin display name
+        #[arg(short, long)]
+        name: String,
+
+        /// Admin role (`super_admin`, `admin`)
+        #[arg(short, long, default_value = "admin")]
+        role: String,
+
+        /// Days until invite expires
+        #[arg(short = 'x', long, default_value = "7")]
+        expires_in_days: i32,
     },
 }
 
@@ -137,6 +159,14 @@ async fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         Commands::Admin { action } => match action {
             AdminAction::Create { email, name, role } => {
                 commands::admin::create_user(&email, &name, &role).await?;
+            }
+            AdminAction::Invite {
+                email,
+                name,
+                role,
+                expires_in_days,
+            } => {
+                commands::admin::create_invite(&email, &name, &role, expires_in_days).await?;
             }
         },
     }
