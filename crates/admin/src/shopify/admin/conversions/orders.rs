@@ -613,3 +613,61 @@ fn convert_delivery_category(cat: &str) -> DeliveryCategory {
         _ => DeliveryCategory::None,
     }
 }
+
+// =============================================================================
+// Fulfillment Order conversions
+// =============================================================================
+
+use super::super::queries::get_fulfillment_orders;
+use crate::shopify::types::{FulfillmentOrder, FulfillmentOrderLineItem};
+
+/// Convert `GetFulfillmentOrders` response to `Vec<FulfillmentOrder>`.
+pub fn convert_fulfillment_orders(
+    order: Option<get_fulfillment_orders::GetFulfillmentOrdersOrder>,
+) -> Vec<FulfillmentOrder> {
+    let Some(order) = order else {
+        return vec![];
+    };
+
+    order
+        .fulfillment_orders
+        .edges
+        .into_iter()
+        .map(|e| convert_fulfillment_order(e.node))
+        .collect()
+}
+
+fn convert_fulfillment_order(
+    fo: get_fulfillment_orders::GetFulfillmentOrdersOrderFulfillmentOrdersEdgesNode,
+) -> FulfillmentOrder {
+    let (location_id, location_name) = fo
+        .assigned_location
+        .location
+        .map_or((None, None), |loc| (Some(loc.id), Some(loc.name)));
+
+    FulfillmentOrder {
+        id: fo.id,
+        status: format!("{:?}", fo.status),
+        location_id,
+        location_name,
+        line_items: fo
+            .line_items
+            .edges
+            .into_iter()
+            .map(|e| convert_fulfillment_order_line_item(e.node))
+            .collect(),
+    }
+}
+
+fn convert_fulfillment_order_line_item(
+    item: get_fulfillment_orders::GetFulfillmentOrdersOrderFulfillmentOrdersEdgesNodeLineItemsEdgesNode,
+) -> FulfillmentOrderLineItem {
+    FulfillmentOrderLineItem {
+        id: item.id,
+        title: item.line_item.title,
+        variant_title: item.line_item.variant_title,
+        sku: item.line_item.sku,
+        total_quantity: item.total_quantity,
+        remaining_quantity: item.remaining_quantity,
+    }
+}

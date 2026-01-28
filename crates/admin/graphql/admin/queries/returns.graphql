@@ -1,0 +1,16 @@
+# Return queries and mutations for Shopify Admin API
+
+# Create a return
+mutation ReturnCreate($returnInput: ReturnInput!) {
+  returnCreate(returnInput: $returnInput) {
+    return {
+      id
+      name
+      status
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}

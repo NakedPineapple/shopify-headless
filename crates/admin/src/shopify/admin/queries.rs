@@ -627,7 +627,7 @@ pub struct GetFulfillmentOrders;
     query_path = "graphql/admin/queries/fulfillments.graphql",
     response_derives = "Debug, Clone"
 )]
-pub struct FulfillmentCreateV2;
+pub struct FulfillmentCreate;
 
 #[derive(GraphQLQuery)]
 #[graphql(
@@ -635,7 +635,23 @@ pub struct FulfillmentCreateV2;
     query_path = "graphql/admin/queries/fulfillments.graphql",
     response_derives = "Debug, Clone"
 )]
-pub struct FulfillmentTrackingInfoUpdateV2;
+pub struct FulfillmentTrackingInfoUpdate;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/fulfillments.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct FulfillmentOrderHold;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/fulfillments.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct FulfillmentOrderReleaseHold;
 
 // =============================================================================
 // Refund queries and mutations
@@ -656,6 +672,18 @@ pub struct SuggestedRefund;
     response_derives = "Debug, Clone"
 )]
 pub struct RefundCreate;
+
+// =============================================================================
+// Return queries and mutations
+// =============================================================================
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/returns.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct ReturnCreate;
 
 // =============================================================================
 // Location and inventory queries

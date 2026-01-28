@@ -20,9 +20,11 @@ use super::{
         AdminProduct, AdminProductConnection, AdminProductVariant, Collection,
         CollectionConnection, CollectionProduct, CollectionWithProducts, Customer,
         CustomerConnection, DiscountCode, DiscountCodeConnection, DiscountStatus, DiscountValue,
-        FulfillmentOrder, FulfillmentOrderLineItem, GiftCard, GiftCardConnection, Image,
-        InventoryLevel, InventoryLevelConnection, Location, LocationConnection, Money, Order,
-        OrderConnection, PageInfo, Payout, PayoutConnection, PayoutStatus, StagedUploadTarget,
+        FulfillmentHoldInput, FulfillmentHoldReason, FulfillmentOrder, FulfillmentOrderLineItem,
+        GiftCard, GiftCardConnection, Image, InventoryLevel, InventoryLevelConnection, Location,
+        LocationConnection, Money, Order, OrderConnection, OrderDetail, PageInfo, Payout,
+        PayoutConnection, PayoutStatus, RefundCreateInput, RefundRestockType, ReturnCreateInput,
+        StagedUploadTarget,
     },
 };
 
@@ -30,9 +32,10 @@ mod conversions;
 pub mod queries;
 
 use conversions::{
-    convert_customer, convert_customer_connection, convert_inventory_level_connection,
-    convert_location_connection, convert_order, convert_order_connection,
-    convert_order_list_connection, convert_product, convert_product_connection,
+    convert_customer, convert_customer_connection, convert_fulfillment_orders,
+    convert_inventory_level_connection, convert_location_connection, convert_order,
+    convert_order_connection, convert_order_list_connection, convert_product,
+    convert_product_connection,
 };
 use queries::{
     CollectionAddProductsV2, CollectionCreate, CollectionDelete, CollectionRemoveProducts,
@@ -41,14 +44,16 @@ use queries::{
     CustomerEmailMarketingConsentUpdate, CustomerGenerateAccountActivationUrl, CustomerMerge,
     CustomerSendAccountInviteEmail, CustomerSmsMarketingConsentUpdate, CustomerUpdate,
     CustomerUpdateDefaultAddress, DiscountCodeBasicCreate, DiscountCodeBasicUpdate,
-    DiscountCodeDeactivate, FileDelete, FileUpdate, GetCollection, GetCollectionWithProducts,
-    GetCollections, GetCustomer, GetCustomers, GetDiscountCode, GetDiscountCodes, GetGiftCards,
-    GetInventoryLevels, GetLocations, GetOrder, GetOrders, GetPayout, GetPayouts, GetProduct,
-    GetProducts, GetPublications, GiftCardCreate, GiftCardUpdate, InventoryAdjustQuantities,
+    DiscountCodeDeactivate, FileDelete, FileUpdate, FulfillmentCreate, FulfillmentOrderHold,
+    FulfillmentOrderReleaseHold, FulfillmentTrackingInfoUpdate, GetCollection,
+    GetCollectionWithProducts, GetCollections, GetCustomer, GetCustomers, GetDiscountCode,
+    GetDiscountCodes, GetFulfillmentOrders, GetGiftCards, GetInventoryLevels, GetLocations,
+    GetOrder, GetOrderDetail, GetOrders, GetPayout, GetPayouts, GetProduct, GetProducts,
+    GetPublications, GiftCardCreate, GiftCardUpdate, InventoryAdjustQuantities,
     InventorySetQuantities, OrderCancel, OrderCapture, OrderClose, OrderMarkAsPaid, OrderOpen,
     OrderTagsAdd, OrderTagsRemove, OrderUpdate, ProductCreate, ProductDelete, ProductReorderMedia,
     ProductSetMedia, ProductUpdate, ProductVariantsBulkUpdate, PublishablePublish,
-    PublishableUnpublish, StagedUploadsCreate, TagsAdd, TagsRemove,
+    PublishableUnpublish, RefundCreate, ReturnCreate, StagedUploadsCreate, TagsAdd, TagsRemove,
 };
 
 /// OAuth token for Admin API access.
@@ -2112,6 +2117,36 @@ impl AdminClient {
         Ok(convert_order_connection(response.orders))
     }
 
+    /// Get detailed order information for the order detail page.
+    ///
+    /// Returns extended order data including transactions, fulfillments, refunds,
+    /// returns, timeline events, and customer info.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - Shopify order ID (e.g., `gid://shopify/Order/123`)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails or returns an error response.
+    #[instrument(skip(self), fields(order_id = %id))]
+    pub async fn get_order_detail(
+        &self,
+        id: &str,
+    ) -> Result<Option<queries::get_order_detail::GetOrderDetailOrder>, AdminShopifyError> {
+        let variables = queries::get_order_detail::Variables {
+            id: id.to_string(),
+            line_item_count: Some(100),
+            fulfillment_count: Some(50),
+            transaction_count: Some(50),
+            event_count: Some(100),
+        };
+
+        let response = self.execute::<GetOrderDetail>(variables).await?;
+
+        Ok(response.order)
+    }
+
     /// Get a paginated list of orders with extended fields for data table display.
     ///
     /// # Arguments
@@ -2619,10 +2654,13 @@ impl AdminClient {
         &self,
         order_id: &str,
     ) -> Result<Vec<FulfillmentOrder>, AdminShopifyError> {
-        // TODO: Implement with GetFulfillmentOrders query
-        // The auto-generated types for FulfillmentOrderStatus need Display trait
-        let _ = order_id;
-        Ok(vec![])
+        let variables = queries::get_fulfillment_orders::Variables {
+            order_id: order_id.to_string(),
+        };
+
+        let response = self.execute::<GetFulfillmentOrders>(variables).await?;
+
+        Ok(convert_fulfillment_orders(response.order))
     }
 
     /// Create a fulfillment.
@@ -2645,17 +2683,61 @@ impl AdminClient {
         tracking_number: Option<&str>,
         tracking_url: Option<&str>,
     ) -> Result<String, AdminShopifyError> {
-        // TODO: Implement with FulfillmentCreateV2 mutation
-        // Need to map to correct GraphQL input types
-        let _ = (
-            fulfillment_order_id,
-            tracking_company,
-            tracking_number,
-            tracking_url,
-        );
-        Err(AdminShopifyError::UserError(
-            "Fulfillment creation not yet implemented".to_string(),
-        ))
+        use queries::fulfillment_create::{
+            FulfillmentInput, FulfillmentOrderLineItemsInput, FulfillmentTrackingInput, Variables,
+        };
+
+        // Build tracking info if any tracking details provided
+        let tracking_info =
+            if tracking_company.is_some() || tracking_number.is_some() || tracking_url.is_some() {
+                Some(FulfillmentTrackingInput {
+                    company: tracking_company.map(String::from),
+                    number: tracking_number.map(String::from),
+                    url: tracking_url.map(String::from),
+                    numbers: None,
+                    urls: None,
+                })
+            } else {
+                None
+            };
+
+        let variables = Variables {
+            fulfillment: FulfillmentInput {
+                line_items_by_fulfillment_order: vec![FulfillmentOrderLineItemsInput {
+                    fulfillment_order_id: fulfillment_order_id.to_string(),
+                    fulfillment_order_line_items: None, // Fulfill all items
+                }],
+                tracking_info,
+                notify_customer: Some(true),
+                origin_address: None,
+            },
+        };
+
+        let response = self.execute::<FulfillmentCreate>(variables).await?;
+
+        if let Some(payload) = response.fulfillment_create {
+            if !payload.user_errors.is_empty() {
+                let error_messages: Vec<String> = payload
+                    .user_errors
+                    .iter()
+                    .map(|e| {
+                        let field = e.field.as_ref().map_or_else(String::new, |f| f.join("."));
+                        format!("{}: {}", field, e.message)
+                    })
+                    .collect();
+                return Err(AdminShopifyError::UserError(error_messages.join("; ")));
+            }
+
+            if let Some(fulfillment) = payload.fulfillment {
+                return Ok(fulfillment.id);
+            }
+        }
+
+        Err(AdminShopifyError::GraphQL(vec![GraphQLError {
+            message: "No fulfillment returned from create".to_string(),
+            locations: vec![],
+            path: vec![],
+        }]))
     }
 
     /// Update fulfillment tracking info.
@@ -2678,16 +2760,38 @@ impl AdminClient {
         tracking_number: Option<&str>,
         tracking_url: Option<&str>,
     ) -> Result<(), AdminShopifyError> {
-        // TODO: Implement with FulfillmentTrackingInfoUpdateV2 mutation
-        let _ = (
-            fulfillment_id,
-            tracking_company,
-            tracking_number,
-            tracking_url,
-        );
-        Err(AdminShopifyError::UserError(
-            "Tracking update not yet implemented".to_string(),
-        ))
+        use queries::fulfillment_tracking_info_update::{FulfillmentTrackingInput, Variables};
+
+        let variables = Variables {
+            fulfillment_id: fulfillment_id.to_string(),
+            tracking_info_input: FulfillmentTrackingInput {
+                company: tracking_company.map(String::from),
+                number: tracking_number.map(String::from),
+                url: tracking_url.map(String::from),
+                numbers: None,
+                urls: None,
+            },
+        };
+
+        let response = self
+            .execute::<FulfillmentTrackingInfoUpdate>(variables)
+            .await?;
+
+        if let Some(payload) = response.fulfillment_tracking_info_update
+            && !payload.user_errors.is_empty()
+        {
+            let error_messages: Vec<String> = payload
+                .user_errors
+                .iter()
+                .map(|e| {
+                    let field = e.field.as_ref().map_or_else(String::new, |f| f.join("."));
+                    format!("{}: {}", field, e.message)
+                })
+                .collect();
+            return Err(AdminShopifyError::UserError(error_messages.join("; ")));
+        }
+
+        Ok(())
     }
 
     // =========================================================================
@@ -2705,19 +2809,262 @@ impl AdminClient {
     /// # Errors
     ///
     /// Returns an error if the API request fails or returns user errors.
-    #[instrument(skip(self), fields(order_id = %order_id))]
+    #[instrument(skip(self, input), fields(order_id = %order_id))]
     pub async fn create_refund(
         &self,
         order_id: &str,
-        note: Option<&str>,
-        notify: bool,
+        input: RefundCreateInput,
     ) -> Result<String, AdminShopifyError> {
-        // TODO: Implement with RefundCreate mutation
-        // RefundInput has many required fields that need proper mapping
-        let _ = (order_id, note, notify);
-        Err(AdminShopifyError::UserError(
-            "Refund creation not yet implemented".to_string(),
-        ))
+        use queries::refund_create::{
+            RefundInput, RefundLineItemInput as GqlRefundLineItemInput, RefundLineItemRestockType,
+            ShippingRefundInput, Variables,
+        };
+
+        // Convert line items
+        let refund_line_items: Vec<GqlRefundLineItemInput> = input
+            .line_items
+            .into_iter()
+            .map(|item| GqlRefundLineItemInput {
+                line_item_id: item.line_item_id,
+                quantity: item.quantity,
+                restock_type: Some(match item.restock_type {
+                    RefundRestockType::Return => RefundLineItemRestockType::RETURN,
+                    RefundRestockType::Cancel => RefundLineItemRestockType::CANCEL,
+                    RefundRestockType::NoRestock => RefundLineItemRestockType::NO_RESTOCK,
+                }),
+                location_id: item.location_id,
+            })
+            .collect();
+
+        // Build shipping refund input if needed
+        let shipping = if input.full_shipping_refund || input.shipping_amount.is_some() {
+            Some(ShippingRefundInput {
+                full_refund: Some(input.full_shipping_refund),
+                amount: input.shipping_amount,
+            })
+        } else {
+            None
+        };
+
+        let variables = Variables {
+            input: RefundInput {
+                order_id: order_id.to_string(),
+                note: input.note,
+                notify: Some(input.notify),
+                refund_line_items: Some(refund_line_items),
+                shipping,
+                currency: None,
+                processed_at: None,
+                refund_duties: None,
+                transactions: None,
+                refund_methods: None,
+                discrepancy_reason: None,
+                allow_over_refunding: None,
+            },
+        };
+
+        let response = self.execute::<RefundCreate>(variables).await?;
+
+        if let Some(payload) = response.refund_create {
+            if !payload.user_errors.is_empty() {
+                let error_messages: Vec<String> = payload
+                    .user_errors
+                    .iter()
+                    .map(|e| {
+                        let field = e.field.as_ref().map_or_else(String::new, |f| f.join("."));
+                        format!("{}: {}", field, e.message)
+                    })
+                    .collect();
+                return Err(AdminShopifyError::UserError(error_messages.join("; ")));
+            }
+
+            if let Some(refund) = payload.refund {
+                return Ok(refund.id);
+            }
+        }
+
+        Err(AdminShopifyError::GraphQL(vec![GraphQLError {
+            message: "No refund returned from create".to_string(),
+            locations: vec![],
+            path: vec![],
+        }]))
+    }
+
+    // =========================================================================
+    // Fulfillment hold methods
+    // =========================================================================
+
+    /// Hold a fulfillment order.
+    ///
+    /// Prevents the fulfillment order from being fulfilled until the hold is released.
+    ///
+    /// # Arguments
+    ///
+    /// * `fulfillment_order_id` - Fulfillment order ID to hold
+    /// * `input` - Hold configuration (reason, notes, notify)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails or returns user errors.
+    #[instrument(skip(self, input), fields(fulfillment_order_id = %fulfillment_order_id))]
+    pub async fn hold_fulfillment_order(
+        &self,
+        fulfillment_order_id: &str,
+        input: FulfillmentHoldInput,
+    ) -> Result<(), AdminShopifyError> {
+        use queries::fulfillment_order_hold::{
+            FulfillmentHoldReason as GqlReason, FulfillmentOrderHoldInput, Variables,
+        };
+
+        let reason = match input.reason {
+            FulfillmentHoldReason::AwaitingPayment => GqlReason::AWAITING_PAYMENT,
+            FulfillmentHoldReason::HighRiskOfFraud => GqlReason::HIGH_RISK_OF_FRAUD,
+            FulfillmentHoldReason::IncorrectAddress => GqlReason::INCORRECT_ADDRESS,
+            FulfillmentHoldReason::InventoryOutOfStock => GqlReason::INVENTORY_OUT_OF_STOCK,
+            FulfillmentHoldReason::UnknownDeliveryDate => GqlReason::UNKNOWN_DELIVERY_DATE,
+            FulfillmentHoldReason::AwaitingReturnItems => GqlReason::AWAITING_RETURN_ITEMS,
+            FulfillmentHoldReason::Other => GqlReason::OTHER,
+        };
+
+        let variables = Variables {
+            id: fulfillment_order_id.to_string(),
+            fulfillment_hold: FulfillmentOrderHoldInput {
+                reason,
+                reason_notes: input.reason_notes,
+                notify_merchant: Some(input.notify_merchant),
+                external_id: None,
+                handle: None,
+                fulfillment_order_line_items: None,
+            },
+        };
+
+        let response = self.execute::<FulfillmentOrderHold>(variables).await?;
+
+        if let Some(payload) = response.fulfillment_order_hold
+            && !payload.user_errors.is_empty()
+        {
+            let error_messages: Vec<String> = payload
+                .user_errors
+                .iter()
+                .map(|e| {
+                    let field = e.field.as_ref().map_or_else(String::new, |f| f.join("."));
+                    format!("{}: {}", field, e.message)
+                })
+                .collect();
+            return Err(AdminShopifyError::UserError(error_messages.join("; ")));
+        }
+
+        Ok(())
+    }
+
+    /// Release a hold on a fulfillment order.
+    ///
+    /// # Arguments
+    ///
+    /// * `fulfillment_order_id` - Fulfillment order ID to release
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails or returns user errors.
+    #[instrument(skip(self), fields(fulfillment_order_id = %fulfillment_order_id))]
+    pub async fn release_fulfillment_order_hold(
+        &self,
+        fulfillment_order_id: &str,
+    ) -> Result<(), AdminShopifyError> {
+        let variables = queries::fulfillment_order_release_hold::Variables {
+            id: fulfillment_order_id.to_string(),
+        };
+
+        let response = self
+            .execute::<FulfillmentOrderReleaseHold>(variables)
+            .await?;
+
+        if let Some(payload) = response.fulfillment_order_release_hold
+            && !payload.user_errors.is_empty()
+        {
+            let error_messages: Vec<String> = payload
+                .user_errors
+                .iter()
+                .map(|e| {
+                    let field = e.field.as_ref().map_or_else(String::new, |f| f.join("."));
+                    format!("{}: {}", field, e.message)
+                })
+                .collect();
+            return Err(AdminShopifyError::UserError(error_messages.join("; ")));
+        }
+
+        Ok(())
+    }
+
+    // =========================================================================
+    // Return methods
+    // =========================================================================
+
+    /// Create a return for an order.
+    ///
+    /// # Arguments
+    ///
+    /// * `order_id` - Shopify order ID
+    /// * `input` - Return configuration (line items to return)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails or returns user errors.
+    #[instrument(skip(self, input), fields(order_id = %order_id))]
+    pub async fn create_return(
+        &self,
+        order_id: &str,
+        input: ReturnCreateInput,
+    ) -> Result<String, AdminShopifyError> {
+        use queries::return_create::{ReturnInput, ReturnLineItemInput, Variables};
+
+        let return_line_items: Vec<ReturnLineItemInput> = input
+            .line_items
+            .into_iter()
+            .map(|item| ReturnLineItemInput {
+                fulfillment_line_item_id: item.fulfillment_line_item_id,
+                quantity: item.quantity,
+                return_reason_note: item.return_reason_note,
+                return_reason_definition_id: None,
+                restocking_fee: None,
+            })
+            .collect();
+
+        let variables = Variables {
+            return_input: ReturnInput {
+                order_id: order_id.to_string(),
+                return_line_items,
+                requested_at: input.requested_at,
+                exchange_line_items: None,
+                return_shipping_fee: None,
+            },
+        };
+
+        let response = self.execute::<ReturnCreate>(variables).await?;
+
+        if let Some(payload) = response.return_create {
+            if !payload.user_errors.is_empty() {
+                let error_messages: Vec<String> = payload
+                    .user_errors
+                    .iter()
+                    .map(|e| {
+                        let field = e.field.as_ref().map_or_else(String::new, |f| f.join("."));
+                        format!("{}: {}", field, e.message)
+                    })
+                    .collect();
+                return Err(AdminShopifyError::UserError(error_messages.join("; ")));
+            }
+
+            if let Some(ret) = payload.return_ {
+                return Ok(ret.id);
+            }
+        }
+
+        Err(AdminShopifyError::GraphQL(vec![GraphQLError {
+            message: "No return created".to_string(),
+            locations: vec![],
+            path: vec![],
+        }]))
     }
 
     // =========================================================================

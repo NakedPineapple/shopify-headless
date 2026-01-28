@@ -38,8 +38,8 @@ query GetFulfillmentOrders($orderId: ID!) {
 }
 
 # Create a fulfillment
-mutation FulfillmentCreateV2($fulfillment: FulfillmentV2Input!) {
-  fulfillmentCreateV2(fulfillment: $fulfillment) {
+mutation FulfillmentCreate($fulfillment: FulfillmentInput!) {
+  fulfillmentCreate(fulfillment: $fulfillment) {
     fulfillment {
       id
       status
@@ -57,8 +57,8 @@ mutation FulfillmentCreateV2($fulfillment: FulfillmentV2Input!) {
 }
 
 # Update tracking info
-mutation FulfillmentTrackingInfoUpdateV2($fulfillmentId: ID!, $trackingInfoInput: FulfillmentTrackingInput!) {
-  fulfillmentTrackingInfoUpdateV2(fulfillmentId: $fulfillmentId, trackingInfoInput: $trackingInfoInput) {
+mutation FulfillmentTrackingInfoUpdate($fulfillmentId: ID!, $trackingInfoInput: FulfillmentTrackingInput!) {
+  fulfillmentTrackingInfoUpdate(fulfillmentId: $fulfillmentId, trackingInfoInput: $trackingInfoInput) {
     fulfillment {
       id
       trackingInfo {
@@ -66,6 +66,34 @@ mutation FulfillmentTrackingInfoUpdateV2($fulfillmentId: ID!, $trackingInfoInput
         number
         url
       }
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
+# Hold a fulfillment order
+mutation FulfillmentOrderHold($id: ID!, $fulfillmentHold: FulfillmentOrderHoldInput!) {
+  fulfillmentOrderHold(id: $id, fulfillmentHold: $fulfillmentHold) {
+    fulfillmentOrder {
+      id
+      status
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
+# Release hold on a fulfillment order
+mutation FulfillmentOrderReleaseHold($id: ID!) {
+  fulfillmentOrderReleaseHold(id: $id) {
+    fulfillmentOrder {
+      id
+      status
     }
     userErrors {
       field
