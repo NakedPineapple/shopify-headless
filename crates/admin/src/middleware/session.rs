@@ -1,7 +1,8 @@
 //! Session middleware configuration for admin.
 //!
 //! Sets up `PostgreSQL`-backed sessions using tower-sessions with
-//! stricter security settings (SameSite=Strict, 24hr expiry).
+//! secure settings (SameSite=Lax, 24hr expiry). We use Lax instead of
+//! Strict to support OAuth flows where external providers redirect back.
 
 use sqlx::PgPool;
 use tower_sessions::{Expiry, SessionManagerLayer};
@@ -48,8 +49,9 @@ pub fn create_session_layer(
             tower_sessions::cookie::time::Duration::seconds(SESSION_EXPIRY_SECONDS),
         ))
         .with_secure(is_secure)
-        // SameSite=Strict for admin (stricter than storefront's Lax)
-        .with_same_site(tower_sessions::cookie::SameSite::Strict)
+        // SameSite=Lax to allow OAuth redirects (e.g., Shopify callback)
+        // Strict would block cookies on cross-site navigations
+        .with_same_site(tower_sessions::cookie::SameSite::Lax)
         .with_http_only(true)
         .with_path("/")
 }
