@@ -234,6 +234,12 @@ async fn connect(State(state): State<AppState>, session: Session) -> Response {
         return Redirect::to("/shopify?error=oauth_failed").into_response();
     }
 
+    // Explicitly save session before redirect to ensure state is persisted
+    if let Err(e) = session.save().await {
+        tracing::error!("Failed to save session: {}", e);
+        return Redirect::to("/shopify?error=oauth_failed").into_response();
+    }
+
     // Build redirect URI
     let redirect_uri = format!("{}/shopify/callback", state.config().base_url);
 
@@ -280,7 +286,11 @@ async fn callback(
     // Verify state matches what we stored
     let stored_state: Option<String> = session.get(OAUTH_STATE_KEY).await.ok().flatten();
     if stored_state.as_ref() != Some(callback_state) {
-        tracing::error!("OAuth state mismatch - possible CSRF attack");
+        tracing::error!(
+            stored = ?stored_state,
+            received = %callback_state,
+            "OAuth state mismatch - possible CSRF attack or session not persisted"
+        );
         return Redirect::to("/shopify?error=oauth_invalid_state").into_response();
     }
 
