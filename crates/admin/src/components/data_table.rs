@@ -278,6 +278,92 @@ impl DataTableConfig {
     }
 }
 
+/// Build the orders table configuration.
+#[must_use]
+pub fn orders_table_config() -> DataTableConfig {
+    DataTableConfig::new("orders")
+        .column(TableColumn::sortable("order", "Order"))
+        .column(TableColumn::sortable("customer", "Customer"))
+        .column(TableColumn::new("payment", "Payment"))
+        .column(TableColumn::new("fulfillment", "Fulfillment"))
+        .column(TableColumn::new("return", "Return").visible(false))
+        .column(TableColumn::sortable("items", "Items"))
+        .column(TableColumn::sortable("total", "Total"))
+        .column(TableColumn::new("delivery", "Delivery").visible(false))
+        .column(TableColumn::new("channel", "Channel").visible(false))
+        .column(TableColumn::new("tags", "Tags").visible(false))
+        .column(TableColumn::new("risk", "Risk").visible(false))
+        .column(TableColumn::new("destination", "Destination").visible(false))
+        .filter(TableFilter::multi_select(
+            "financial_status",
+            "Payment Status",
+            vec![
+                FilterOption::new("paid", "Paid"),
+                FilterOption::new("pending", "Pending"),
+                FilterOption::new("authorized", "Authorized"),
+                FilterOption::new("partially_paid", "Partially Paid"),
+                FilterOption::new("partially_refunded", "Partially Refunded"),
+                FilterOption::new("refunded", "Refunded"),
+                FilterOption::new("voided", "Voided"),
+            ],
+        ))
+        .filter(TableFilter::multi_select(
+            "fulfillment_status",
+            "Fulfillment Status",
+            vec![
+                FilterOption::new("unfulfilled", "Unfulfilled"),
+                FilterOption::new("partial", "Partial"),
+                FilterOption::new("fulfilled", "Fulfilled"),
+                FilterOption::new("scheduled", "Scheduled"),
+                FilterOption::new("on_hold", "On Hold"),
+            ],
+        ))
+        .filter(TableFilter::multi_select(
+            "return_status",
+            "Return Status",
+            vec![
+                FilterOption::new("return_requested", "Return Requested"),
+                FilterOption::new("in_progress", "In Progress"),
+                FilterOption::new("returned", "Returned"),
+            ],
+        ))
+        .filter(TableFilter::select(
+            "status",
+            "Order Status",
+            vec![
+                FilterOption::new("open", "Open"),
+                FilterOption::new("closed", "Archived"),
+                FilterOption::new("cancelled", "Cancelled"),
+            ],
+        ))
+        .filter(TableFilter::select(
+            "risk_level",
+            "Risk Level",
+            vec![
+                FilterOption::new("high", "High Risk"),
+                FilterOption::new("medium", "Medium Risk"),
+                FilterOption::new("low", "Low Risk"),
+            ],
+        ))
+        .filter(TableFilter::date_range("created_at", "Created Date"))
+        .filter(TableFilter::text("tag", "Tag", "Enter tag..."))
+        .filter(TableFilter::text(
+            "discount_code",
+            "Discount Code",
+            "Enter code...",
+        ))
+        .bulk_action(BulkAction::new("add_tags", "Add Tags", "ph-tag"))
+        .bulk_action(BulkAction::new("remove_tags", "Remove Tags", "ph-tag"))
+        .bulk_action(BulkAction::new("archive", "Archive", "ph-archive"))
+        .bulk_action(BulkAction::new("cancel", "Cancel", "ph-x-circle").destructive())
+        .search_placeholder("Search orders by number, customer, or email...")
+        .empty_state(
+            "ph-receipt",
+            "No orders found",
+            Some("Try adjusting your search or filters"),
+        )
+}
+
 /// Build the customers table configuration.
 #[must_use]
 pub fn customers_table_config() -> DataTableConfig {

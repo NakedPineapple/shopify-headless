@@ -909,7 +909,7 @@ pub enum ProductSortKey {
 }
 
 /// Sort keys for order queries.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum OrderSortKey {
     /// Sort by order number.
@@ -917,7 +917,10 @@ pub enum OrderSortKey {
     /// Sort by total price.
     TotalPrice,
     /// Sort by creation date.
+    #[default]
     CreatedAt,
+    /// Sort by processed date.
+    ProcessedAt,
     /// Sort by last update.
     UpdatedAt,
     /// Sort by customer name.
@@ -926,8 +929,231 @@ pub enum OrderSortKey {
     FinancialStatus,
     /// Sort by fulfillment status.
     FulfillmentStatus,
+    /// Sort by destination.
+    Destination,
     /// Sort by ID.
     Id,
+}
+
+impl OrderSortKey {
+    /// Parse a sort key from a URL parameter string.
+    #[must_use]
+    pub fn from_str_param(s: &str) -> Option<Self> {
+        match s.to_lowercase().as_str() {
+            "order_number" | "number" => Some(Self::OrderNumber),
+            "total_price" | "total" => Some(Self::TotalPrice),
+            "created_at" | "created" => Some(Self::CreatedAt),
+            "processed_at" | "processed" => Some(Self::ProcessedAt),
+            "updated_at" | "updated" => Some(Self::UpdatedAt),
+            "customer_name" | "customer" => Some(Self::CustomerName),
+            "financial_status" | "payment" => Some(Self::FinancialStatus),
+            "fulfillment_status" | "fulfillment" => Some(Self::FulfillmentStatus),
+            "destination" => Some(Self::Destination),
+            "id" => Some(Self::Id),
+            _ => None,
+        }
+    }
+
+    /// Get the URL parameter string for this sort key.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::OrderNumber => "order_number",
+            Self::TotalPrice => "total_price",
+            Self::CreatedAt => "created_at",
+            Self::ProcessedAt => "processed_at",
+            Self::UpdatedAt => "updated_at",
+            Self::CustomerName => "customer_name",
+            Self::FinancialStatus => "financial_status",
+            Self::FulfillmentStatus => "fulfillment_status",
+            Self::Destination => "destination",
+            Self::Id => "id",
+        }
+    }
+}
+
+/// Order risk level from fraud analysis.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum OrderRiskLevel {
+    /// Low risk order.
+    Low,
+    /// Medium risk order.
+    Medium,
+    /// High risk order.
+    High,
+}
+
+impl std::fmt::Display for OrderRiskLevel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Low => write!(f, "Low"),
+            Self::Medium => write!(f, "Medium"),
+            Self::High => write!(f, "High"),
+        }
+    }
+}
+
+/// Order return status.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum OrderReturnStatus {
+    /// No return.
+    NoReturn,
+    /// Return requested by customer.
+    ReturnRequested,
+    /// Return in progress.
+    InProgress,
+    /// Return completed.
+    Returned,
+}
+
+impl std::fmt::Display for OrderReturnStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::NoReturn => write!(f, "No Return"),
+            Self::ReturnRequested => write!(f, "Return Requested"),
+            Self::InProgress => write!(f, "In Progress"),
+            Self::Returned => write!(f, "Returned"),
+        }
+    }
+}
+
+/// Delivery category for shipping lines.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum DeliveryCategory {
+    /// Standard shipping delivery.
+    Shipping,
+    /// Local delivery.
+    LocalDelivery,
+    /// Store pickup.
+    Pickup,
+    /// Digital delivery (no physical shipping).
+    None,
+}
+
+impl std::fmt::Display for DeliveryCategory {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Shipping => write!(f, "Shipping"),
+            Self::LocalDelivery => write!(f, "Local Delivery"),
+            Self::Pickup => write!(f, "Pickup"),
+            Self::None => write!(f, "Digital"),
+        }
+    }
+}
+
+/// Risk assessment for an order.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OrderRisk {
+    /// Risk level.
+    pub level: OrderRiskLevel,
+    /// Risk message/reason.
+    pub message: Option<String>,
+}
+
+/// Shipping line information for an order.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OrderShippingLine {
+    /// Shipping method title.
+    pub title: String,
+    /// Delivery category.
+    pub delivery_category: Option<DeliveryCategory>,
+}
+
+/// Channel information for an order.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OrderChannelInfo {
+    /// Channel name (e.g., "Online Store", "POS", "Shop").
+    pub channel_name: Option<String>,
+}
+
+/// Extended order with list view fields.
+// Allow: Shopify API Order object has independent boolean properties
+// (fully_paid, cancelled, closed, test) that represent separate order states.
+#[allow(clippy::struct_excessive_bools)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OrderListItem {
+    /// Order ID.
+    pub id: String,
+    /// Order name (e.g., "#1001").
+    pub name: String,
+    /// Order number.
+    pub number: i64,
+    /// Creation timestamp.
+    pub created_at: String,
+    /// Last update timestamp.
+    pub updated_at: String,
+    /// When order was closed/archived.
+    pub closed_at: Option<String>,
+    /// When order was cancelled.
+    pub cancelled_at: Option<String>,
+    /// Financial status.
+    pub financial_status: Option<FinancialStatus>,
+    /// Fulfillment status.
+    pub fulfillment_status: Option<FulfillmentStatus>,
+    /// Return status.
+    pub return_status: Option<OrderReturnStatus>,
+    /// Whether the order is fully paid.
+    pub fully_paid: bool,
+    /// Whether order is cancelled.
+    pub cancelled: bool,
+    /// Whether order is closed/archived.
+    pub closed: bool,
+    /// Whether the order is test mode.
+    pub test: bool,
+    /// Customer email.
+    pub email: Option<String>,
+    /// Customer phone.
+    pub phone: Option<String>,
+    /// Order note.
+    pub note: Option<String>,
+    /// Order tags.
+    pub tags: Vec<String>,
+    /// Subtotal price.
+    pub subtotal_price: Money,
+    /// Total shipping price.
+    pub total_shipping_price: Money,
+    /// Total tax.
+    pub total_tax: Money,
+    /// Total price.
+    pub total_price: Money,
+    /// Total discount amount.
+    pub total_discounts: Money,
+    /// Currency code.
+    pub currency_code: String,
+    /// Line items (limited for list view).
+    pub line_items: Vec<OrderLineItem>,
+    /// Total line item quantity.
+    pub total_items_quantity: i64,
+    /// Fulfillments.
+    pub fulfillments: Vec<Fulfillment>,
+    /// Billing address.
+    pub billing_address: Option<Address>,
+    /// Shipping address.
+    pub shipping_address: Option<Address>,
+    /// Customer ID.
+    pub customer_id: Option<String>,
+    /// Customer display name.
+    pub customer_name: Option<String>,
+    /// Order risk assessments.
+    pub risks: Vec<OrderRisk>,
+    /// Channel information.
+    pub channel_info: Option<OrderChannelInfo>,
+    /// Shipping line.
+    pub shipping_line: Option<OrderShippingLine>,
+    /// Applied discount codes.
+    pub discount_codes: Vec<String>,
+}
+
+/// Paginated list of orders (extended for list view).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OrderListConnection {
+    /// Orders in this page.
+    pub orders: Vec<OrderListItem>,
+    /// Pagination info.
+    pub page_info: PageInfo,
 }
 
 // =============================================================================

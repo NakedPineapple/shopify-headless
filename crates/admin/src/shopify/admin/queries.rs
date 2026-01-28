@@ -285,6 +285,46 @@ pub struct OrderMarkAsPaid;
 )]
 pub struct OrderCancel;
 
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/orders.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct OrderClose;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/orders.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct OrderOpen;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/orders.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct OrderCapture;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/orders.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct OrderTagsAdd;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/orders.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct OrderTagsRemove;
+
 // =============================================================================
 // Customer queries
 // =============================================================================

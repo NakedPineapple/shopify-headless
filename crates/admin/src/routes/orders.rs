@@ -11,26 +11,167 @@ use serde::Deserialize;
 use tracing::instrument;
 
 use crate::{
+    components::data_table::{
+        BulkAction, FilterType, TableColumn, TableFilter, orders_table_config,
+    },
     filters,
     middleware::auth::RequireAdminAuth,
     shopify::types::{
-        Address, FinancialStatus, Fulfillment, FulfillmentStatus, Money, Order, OrderLineItem,
-        TrackingInfo,
+        Address, DeliveryCategory, FinancialStatus, Fulfillment, FulfillmentStatus, Money, Order,
+        OrderLineItem, OrderListItem, OrderReturnStatus, OrderRiskLevel, OrderSortKey,
     },
     state::AppState,
 };
 
 use super::dashboard::AdminUserView;
 
-/// Pagination query parameters.
-#[derive(Debug, Deserialize)]
-pub struct PaginationQuery {
+// =============================================================================
+// Query Parameters
+// =============================================================================
+
+/// Query parameters for orders list with filtering, sorting, and pagination.
+#[derive(Debug, Default, Deserialize)]
+pub struct OrdersQuery {
+    /// Cursor for pagination.
     pub cursor: Option<String>,
+    /// Free-text search query.
     pub query: Option<String>,
+    /// Sort column key.
+    pub sort: Option<String>,
+    /// Sort direction (asc/desc).
+    pub dir: Option<String>,
+    /// Financial status filter.
+    pub financial_status: Option<String>,
+    /// Fulfillment status filter.
+    pub fulfillment_status: Option<String>,
+    /// Return status filter.
+    pub return_status: Option<String>,
+    /// Order status (open/closed/cancelled).
     pub status: Option<String>,
+    /// Risk level filter.
+    pub risk_level: Option<String>,
+    /// Tag filter.
+    pub tag: Option<String>,
+    /// Discount code filter.
+    pub discount_code: Option<String>,
+    /// Created date from.
+    pub created_at_from: Option<String>,
+    /// Created date to.
+    pub created_at_to: Option<String>,
 }
 
-/// Order view for templates.
+/// Column visibility state for orders table.
+// Allow: This struct represents toggleable UI columns - each needs an independent bool.
+#[allow(clippy::struct_excessive_bools)]
+#[derive(Debug, Clone, Default)]
+pub struct OrderColumnVisibility {
+    pub order: bool,
+    pub customer: bool,
+    pub payment: bool,
+    pub fulfillment: bool,
+    pub return_status: bool,
+    pub items: bool,
+    pub total: bool,
+    pub delivery: bool,
+    pub channel: bool,
+    pub tags: bool,
+    pub risk: bool,
+    pub destination: bool,
+}
+
+impl OrderColumnVisibility {
+    /// Create from a list of visible column keys.
+    #[must_use]
+    pub fn from_columns(columns: &[String]) -> Self {
+        Self {
+            order: columns.contains(&"order".to_string()),
+            customer: columns.contains(&"customer".to_string()),
+            payment: columns.contains(&"payment".to_string()),
+            fulfillment: columns.contains(&"fulfillment".to_string()),
+            return_status: columns.contains(&"return".to_string()),
+            items: columns.contains(&"items".to_string()),
+            total: columns.contains(&"total".to_string()),
+            delivery: columns.contains(&"delivery".to_string()),
+            channel: columns.contains(&"channel".to_string()),
+            tags: columns.contains(&"tags".to_string()),
+            risk: columns.contains(&"risk".to_string()),
+            destination: columns.contains(&"destination".to_string()),
+        }
+    }
+
+    /// Check if a column is visible by key.
+    #[must_use]
+    pub fn is_visible(&self, key: &str) -> bool {
+        match key {
+            "order" => self.order,
+            "customer" => self.customer,
+            "payment" => self.payment,
+            "fulfillment" => self.fulfillment,
+            "return" => self.return_status,
+            "items" => self.items,
+            "total" => self.total,
+            "delivery" => self.delivery,
+            "channel" => self.channel,
+            "tags" => self.tags,
+            "risk" => self.risk,
+            "destination" => self.destination,
+            _ => true,
+        }
+    }
+}
+
+/// Order view for data table list display.
+#[derive(Debug, Clone)]
+pub struct OrderTableView {
+    /// Short numeric ID for URLs.
+    pub short_id: String,
+    /// Full Shopify GID.
+    pub id: String,
+    /// Order name (e.g., "#1001").
+    pub name: String,
+    /// Creation date formatted.
+    pub created_at: String,
+    /// Customer display name.
+    pub customer_name: String,
+    /// Customer email.
+    pub customer_email: Option<String>,
+    /// Financial status display text.
+    pub payment_status: String,
+    /// Financial status badge class.
+    pub payment_status_class: String,
+    /// Fulfillment status display text.
+    pub fulfillment_status: String,
+    /// Fulfillment status badge class.
+    pub fulfillment_status_class: String,
+    /// Return status display text.
+    pub return_status: Option<String>,
+    /// Return status badge class.
+    pub return_status_class: String,
+    /// Line item count.
+    pub item_count: i64,
+    /// Total price formatted.
+    pub total: String,
+    /// Delivery method (Shipping, Pickup, etc.).
+    pub delivery_method: Option<String>,
+    /// Sales channel name.
+    pub channel: Option<String>,
+    /// Order tags.
+    pub tags: Vec<String>,
+    /// Risk level display.
+    pub risk_level: Option<String>,
+    /// Risk level badge class.
+    pub risk_class: String,
+    /// Destination (city, country).
+    pub destination: Option<String>,
+    /// Whether order is test mode.
+    pub is_test: bool,
+    /// Whether order is cancelled.
+    pub is_cancelled: bool,
+    /// Whether order is archived/closed.
+    pub is_archived: bool,
+}
+
+/// Legacy order view for templates (kept for backward compatibility).
 #[derive(Debug, Clone)]
 pub struct OrderView {
     pub id: String,
@@ -45,8 +186,13 @@ pub struct OrderView {
 }
 
 // =============================================================================
-// Type Conversions
+// Type Conversions and Helpers
 // =============================================================================
+
+/// Extract numeric ID from Shopify GID.
+fn extract_numeric_id(gid: &str) -> String {
+    gid.split('/').next_back().unwrap_or(gid).to_string()
+}
 
 /// Format a Shopify Money type as a price string.
 fn format_price(money: &Money) -> String {
@@ -56,7 +202,134 @@ fn format_price(money: &Money) -> String {
     )
 }
 
-/// Get customer name from an order.
+/// Format financial status with semantic badge class.
+fn format_financial_status(status: Option<&FinancialStatus>) -> (String, String) {
+    match status {
+        Some(FinancialStatus::Paid) => ("Paid".to_string(), "badge badge-success".to_string()),
+        Some(FinancialStatus::Authorized) => {
+            ("Authorized".to_string(), "badge badge-info".to_string())
+        }
+        Some(FinancialStatus::PartiallyPaid) => (
+            "Partially Paid".to_string(),
+            "badge badge-warning".to_string(),
+        ),
+        Some(FinancialStatus::PartiallyRefunded) => (
+            "Partially Refunded".to_string(),
+            "badge badge-neutral".to_string(),
+        ),
+        Some(FinancialStatus::Refunded) => {
+            ("Refunded".to_string(), "badge badge-neutral".to_string())
+        }
+        Some(FinancialStatus::Voided) => {
+            ("Voided".to_string(), "badge badge-destructive".to_string())
+        }
+        Some(FinancialStatus::Pending | FinancialStatus::Expired) | None => {
+            ("Pending".to_string(), "badge badge-warning".to_string())
+        }
+    }
+}
+
+/// Format fulfillment status with semantic badge class.
+fn format_fulfillment_status(status: Option<&FulfillmentStatus>) -> (String, String) {
+    match status {
+        Some(FulfillmentStatus::Fulfilled) => {
+            ("Fulfilled".to_string(), "badge badge-success".to_string())
+        }
+        Some(FulfillmentStatus::PartiallyFulfilled) => {
+            ("Partial".to_string(), "badge badge-warning".to_string())
+        }
+        Some(FulfillmentStatus::OnHold) => {
+            ("On Hold".to_string(), "badge badge-destructive".to_string())
+        }
+        Some(FulfillmentStatus::InProgress) => {
+            ("In Progress".to_string(), "badge badge-info".to_string())
+        }
+        Some(FulfillmentStatus::Scheduled) => {
+            ("Scheduled".to_string(), "badge badge-info".to_string())
+        }
+        Some(FulfillmentStatus::Unfulfilled) | None => {
+            ("Unfulfilled".to_string(), "badge badge-warning".to_string())
+        }
+        _ => ("Pending".to_string(), "badge badge-neutral".to_string()),
+    }
+}
+
+/// Format return status with semantic badge class.
+fn format_return_status(status: Option<&OrderReturnStatus>) -> (Option<String>, String) {
+    match status {
+        Some(OrderReturnStatus::ReturnRequested) => (
+            Some("Return Requested".to_string()),
+            "badge badge-return".to_string(),
+        ),
+        Some(OrderReturnStatus::InProgress) => (
+            Some("In Progress".to_string()),
+            "badge badge-return".to_string(),
+        ),
+        Some(OrderReturnStatus::Returned) => (
+            Some("Returned".to_string()),
+            "badge badge-neutral".to_string(),
+        ),
+        Some(OrderReturnStatus::NoReturn) | None => (None, String::new()),
+    }
+}
+
+/// Format risk level from order risks.
+fn format_risk_level(risks: &[crate::shopify::types::OrderRisk]) -> (Option<String>, String) {
+    let highest_risk = risks.iter().map(|r| &r.level).max_by_key(|l| match l {
+        OrderRiskLevel::High => 3,
+        OrderRiskLevel::Medium => 2,
+        OrderRiskLevel::Low => 1,
+    });
+
+    match highest_risk {
+        Some(OrderRiskLevel::High) => (
+            Some("High".to_string()),
+            "badge badge-destructive".to_string(),
+        ),
+        Some(OrderRiskLevel::Medium) => (
+            Some("Medium".to_string()),
+            "badge badge-warning".to_string(),
+        ),
+        Some(OrderRiskLevel::Low) => (Some("Low".to_string()), "badge badge-success".to_string()),
+        None => (None, String::new()),
+    }
+}
+
+/// Format destination from shipping address.
+fn format_destination(addr: &Address) -> String {
+    let city = addr.city.as_deref().unwrap_or("");
+    let country = addr.country_code.as_deref().unwrap_or("");
+    if city.is_empty() {
+        country.to_string()
+    } else if country.is_empty() {
+        city.to_string()
+    } else {
+        format!("{city}, {country}")
+    }
+}
+
+/// Get customer name from order list item using addresses.
+fn get_customer_name_from_order(order: &OrderListItem) -> String {
+    if let Some(addr) = &order.shipping_address {
+        let first = addr.first_name.as_deref().unwrap_or("");
+        let last = addr.last_name.as_deref().unwrap_or("");
+        let name = format!("{first} {last}").trim().to_string();
+        if !name.is_empty() {
+            return name;
+        }
+    }
+    if let Some(addr) = &order.billing_address {
+        let first = addr.first_name.as_deref().unwrap_or("");
+        let last = addr.last_name.as_deref().unwrap_or("");
+        let name = format!("{first} {last}").trim().to_string();
+        if !name.is_empty() {
+            return name;
+        }
+    }
+    order.email.clone().unwrap_or_else(|| "Guest".to_string())
+}
+
+/// Get customer name from an order (for detail view).
 fn get_customer_name(order: &Order) -> String {
     if let Some(addr) = &order.shipping_address {
         let first = addr.first_name.as_deref().unwrap_or("");
@@ -76,6 +349,194 @@ fn get_customer_name(order: &Order) -> String {
     }
     order.email.clone().unwrap_or_else(|| "Guest".to_string())
 }
+
+/// Build Shopify query string from filter parameters.
+fn build_shopify_query(query: &OrdersQuery) -> Option<String> {
+    let mut parts: Vec<String> = Vec::new();
+
+    // Add free-text search
+    if let Some(q) = &query.query
+        && !q.is_empty()
+    {
+        parts.push(q.clone());
+    }
+
+    // Financial status filter
+    if let Some(status) = &query.financial_status {
+        for s in status.split(',') {
+            parts.push(format!("financial_status:{s}"));
+        }
+    }
+
+    // Fulfillment status filter
+    if let Some(status) = &query.fulfillment_status {
+        for s in status.split(',') {
+            parts.push(format!("fulfillment_status:{s}"));
+        }
+    }
+
+    // Return status filter
+    if let Some(status) = &query.return_status {
+        for s in status.split(',') {
+            parts.push(format!("return_status:{s}"));
+        }
+    }
+
+    // Order status (open/closed/cancelled)
+    if let Some(status) = &query.status {
+        parts.push(format!("status:{status}"));
+    }
+
+    // Risk level filter
+    if let Some(risk) = &query.risk_level {
+        parts.push(format!("risk_level:{risk}"));
+    }
+
+    // Tag filter
+    if let Some(tag) = &query.tag
+        && !tag.is_empty()
+    {
+        parts.push(format!("tag:{tag}"));
+    }
+
+    // Discount code filter
+    if let Some(code) = &query.discount_code
+        && !code.is_empty()
+    {
+        parts.push(format!("discount_code:{code}"));
+    }
+
+    // Date range
+    if let Some(from) = &query.created_at_from
+        && !from.is_empty()
+    {
+        parts.push(format!("created_at:>={from}"));
+    }
+    if let Some(to) = &query.created_at_to
+        && !to.is_empty()
+    {
+        parts.push(format!("created_at:<={to}"));
+    }
+
+    if parts.is_empty() {
+        None
+    } else {
+        Some(parts.join(" "))
+    }
+}
+
+/// Build URL parameters for preserving filters across pagination.
+fn build_preserve_params(query: &OrdersQuery) -> String {
+    let mut params = Vec::new();
+
+    if let Some(q) = &query.query
+        && !q.is_empty()
+    {
+        params.push(format!("query={}", urlencoding::encode(q)));
+    }
+    if let Some(s) = &query.sort {
+        params.push(format!("sort={s}"));
+    }
+    if let Some(d) = &query.dir {
+        params.push(format!("dir={d}"));
+    }
+    if let Some(fs) = &query.financial_status {
+        params.push(format!("financial_status={fs}"));
+    }
+    if let Some(fs) = &query.fulfillment_status {
+        params.push(format!("fulfillment_status={fs}"));
+    }
+    if let Some(rs) = &query.return_status {
+        params.push(format!("return_status={rs}"));
+    }
+    if let Some(s) = &query.status {
+        params.push(format!("status={s}"));
+    }
+    if let Some(rl) = &query.risk_level {
+        params.push(format!("risk_level={rl}"));
+    }
+    if let Some(t) = &query.tag
+        && !t.is_empty()
+    {
+        params.push(format!("tag={}", urlencoding::encode(t)));
+    }
+    if let Some(dc) = &query.discount_code
+        && !dc.is_empty()
+    {
+        params.push(format!("discount_code={}", urlencoding::encode(dc)));
+    }
+    if let Some(from) = &query.created_at_from
+        && !from.is_empty()
+    {
+        params.push(format!("created_at_from={from}"));
+    }
+    if let Some(to) = &query.created_at_to
+        && !to.is_empty()
+    {
+        params.push(format!("created_at_to={to}"));
+    }
+
+    if params.is_empty() {
+        String::new()
+    } else {
+        format!("&{}", params.join("&"))
+    }
+}
+
+impl From<&OrderListItem> for OrderTableView {
+    fn from(order: &OrderListItem) -> Self {
+        let short_id = extract_numeric_id(&order.id);
+        let (payment_status, payment_status_class) =
+            format_financial_status(order.financial_status.as_ref());
+        let (fulfillment_status, fulfillment_status_class) =
+            format_fulfillment_status(order.fulfillment_status.as_ref());
+        let (return_status, return_status_class) =
+            format_return_status(order.return_status.as_ref());
+        let (risk_level, risk_class) = format_risk_level(&order.risks);
+        let destination = order.shipping_address.as_ref().map(format_destination);
+        let delivery_method = order
+            .shipping_line
+            .as_ref()
+            .and_then(|sl| sl.delivery_category.as_ref())
+            .map(|dc| format!("{dc}"));
+
+        Self {
+            short_id,
+            id: order.id.clone(),
+            name: order.name.clone(),
+            created_at: order.created_at.clone(),
+            customer_name: order
+                .customer_name
+                .clone()
+                .unwrap_or_else(|| get_customer_name_from_order(order)),
+            customer_email: order.email.clone(),
+            payment_status,
+            payment_status_class,
+            fulfillment_status,
+            fulfillment_status_class,
+            return_status,
+            return_status_class,
+            item_count: order.total_items_quantity,
+            total: format_price(&order.total_price),
+            delivery_method,
+            channel: order
+                .channel_info
+                .as_ref()
+                .and_then(|ci| ci.channel_name.clone()),
+            tags: order.tags.clone(),
+            risk_level,
+            risk_class,
+            destination,
+            is_test: order.test,
+            is_cancelled: order.cancelled,
+            is_archived: order.closed,
+        }
+    }
+}
+
+// =============================================================================
+// Legacy Type Conversions (for detail view)
+// =============================================================================
 
 /// Map fulfillment status to display string and CSS class.
 fn fulfillment_status_display(order: &Order) -> (String, String) {
@@ -125,17 +586,40 @@ impl From<&Order> for OrderView {
     }
 }
 
-/// Orders list page template.
+/// Orders list page template with data table support.
 #[derive(Template)]
 #[template(path = "orders/index.html")]
 pub struct OrdersIndexTemplate {
     pub admin_user: AdminUserView,
     pub current_path: String,
-    pub orders: Vec<OrderView>,
+    /// Data table ID.
+    pub table_id: String,
+    /// Column definitions.
+    pub columns: Vec<TableColumn>,
+    /// Filter definitions.
+    pub filters: Vec<TableFilter>,
+    /// Bulk action definitions.
+    pub bulk_actions: Vec<BulkAction>,
+    /// Default visible columns as JSON array.
+    pub default_columns: Vec<String>,
+    /// Column visibility state.
+    pub col_visible: OrderColumnVisibility,
+    /// Orders to display.
+    pub orders: Vec<OrderTableView>,
+    /// Whether there are more pages.
     pub has_next_page: bool,
+    /// Cursor for next page.
     pub next_cursor: Option<String>,
-    pub search_query: Option<String>,
-    pub status_filter: Option<String>,
+    /// Current search query.
+    pub search_value: Option<String>,
+    /// Current sort column.
+    pub sort_column: Option<String>,
+    /// Current sort direction.
+    pub sort_direction: String,
+    /// Parameters to preserve in pagination links.
+    pub preserve_params: String,
+    /// Active filter values for highlighting.
+    pub filter_values: std::collections::HashMap<String, String>,
 }
 
 /// Orders list page handler.
@@ -143,24 +627,31 @@ pub struct OrdersIndexTemplate {
 pub async fn index(
     RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
-    Query(query): Query<PaginationQuery>,
+    Query(query): Query<OrdersQuery>,
 ) -> Html<String> {
-    // Build query string with status filter if provided
-    let search_query = match (&query.query, &query.status) {
-        (Some(q), Some(s)) => Some(format!("{q} fulfillment_status:{s}")),
-        (None, Some(s)) => Some(format!("fulfillment_status:{s}")),
-        (Some(q), None) => Some(q.clone()),
-        (None, None) => None,
-    };
+    // Get table configuration
+    let config = orders_table_config();
 
+    // Build Shopify query from filters
+    let shopify_query = build_shopify_query(&query);
+
+    // Determine sort key and direction
+    let sort_key = query
+        .sort
+        .as_ref()
+        .and_then(|s| OrderSortKey::from_str_param(s));
+    let reverse = query.dir.as_deref() == Some("desc");
+
+    // Fetch orders using the extended list endpoint
     let result = state
         .shopify()
-        .get_orders(25, query.cursor.clone(), search_query)
+        .get_orders_list(25, query.cursor.clone(), shopify_query, sort_key, reverse)
         .await;
 
     let (orders, has_next_page, next_cursor) = match result {
         Ok(conn) => {
-            let orders: Vec<OrderView> = conn.orders.iter().map(OrderView::from).collect();
+            let orders: Vec<OrderTableView> =
+                conn.orders.iter().map(OrderTableView::from).collect();
             (
                 orders,
                 conn.page_info.has_next_page,
@@ -173,14 +664,47 @@ pub async fn index(
         }
     };
 
+    // Build column visibility from defaults
+    let default_columns = config.default_columns();
+    let col_visible = OrderColumnVisibility::from_columns(&default_columns);
+
+    // Build filter values map for highlighting active filters
+    let mut filter_values = std::collections::HashMap::new();
+    if let Some(fs) = &query.financial_status {
+        filter_values.insert("financial_status".to_string(), fs.clone());
+    }
+    if let Some(fs) = &query.fulfillment_status {
+        filter_values.insert("fulfillment_status".to_string(), fs.clone());
+    }
+    if let Some(rs) = &query.return_status {
+        filter_values.insert("return_status".to_string(), rs.clone());
+    }
+    if let Some(s) = &query.status {
+        filter_values.insert("status".to_string(), s.clone());
+    }
+    if let Some(rl) = &query.risk_level {
+        filter_values.insert("risk_level".to_string(), rl.clone());
+    }
+
+    let preserve_params = build_preserve_params(&query);
+
     let template = OrdersIndexTemplate {
         admin_user: AdminUserView::from(&admin),
         current_path: "/orders".to_string(),
+        table_id: config.table_id.clone(),
+        columns: config.columns,
+        filters: config.filters,
+        bulk_actions: config.bulk_actions,
+        default_columns,
+        col_visible,
         orders,
         has_next_page,
         next_cursor,
-        search_query: query.query,
-        status_filter: query.status,
+        search_value: query.query,
+        sort_column: query.sort,
+        sort_direction: query.dir.unwrap_or_else(|| "desc".to_string()),
+        preserve_params,
+        filter_values,
     };
 
     Html(template.render().unwrap_or_else(|e| {

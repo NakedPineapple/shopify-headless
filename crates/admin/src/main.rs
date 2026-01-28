@@ -38,6 +38,7 @@ use secrecy::ExposeSecret;
 use tower_http::services::ServeDir;
 
 mod claude;
+mod components;
 mod config;
 mod db;
 mod error;

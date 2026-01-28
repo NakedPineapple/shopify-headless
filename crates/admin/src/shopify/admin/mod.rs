@@ -31,8 +31,8 @@ pub mod queries;
 
 use conversions::{
     convert_customer, convert_customer_connection, convert_inventory_level_connection,
-    convert_location_connection, convert_order, convert_order_connection, convert_product,
-    convert_product_connection,
+    convert_location_connection, convert_order, convert_order_connection,
+    convert_order_list_connection, convert_product, convert_product_connection,
 };
 use queries::{
     CollectionAddProductsV2, CollectionCreate, CollectionDelete, CollectionRemoveProducts,
@@ -2109,6 +2109,70 @@ impl AdminClient {
         let response = self.execute::<GetOrders>(variables).await?;
 
         Ok(convert_order_connection(response.orders))
+    }
+
+    /// Get a paginated list of orders with extended fields for data table display.
+    ///
+    /// # Arguments
+    ///
+    /// * `first` - Number of orders to return
+    /// * `after` - Cursor for pagination
+    /// * `query` - Optional search query (Shopify query syntax)
+    /// * `sort_key` - Optional sort key
+    /// * `reverse` - Whether to reverse the sort order
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails or returns an error response.
+    #[instrument(skip(self))]
+    pub async fn get_orders_list(
+        &self,
+        first: i64,
+        after: Option<String>,
+        query: Option<String>,
+        sort_key: Option<crate::shopify::types::OrderSortKey>,
+        reverse: bool,
+    ) -> Result<crate::shopify::types::OrderListConnection, AdminShopifyError> {
+        let variables = queries::get_orders::Variables {
+            first: Some(first),
+            after,
+            query,
+            sort_key: sort_key.map(|k| match k {
+                crate::shopify::types::OrderSortKey::OrderNumber => {
+                    queries::get_orders::OrderSortKeys::ORDER_NUMBER
+                }
+                crate::shopify::types::OrderSortKey::TotalPrice => {
+                    queries::get_orders::OrderSortKeys::TOTAL_PRICE
+                }
+                crate::shopify::types::OrderSortKey::CreatedAt => {
+                    queries::get_orders::OrderSortKeys::CREATED_AT
+                }
+                crate::shopify::types::OrderSortKey::ProcessedAt => {
+                    queries::get_orders::OrderSortKeys::PROCESSED_AT
+                }
+                crate::shopify::types::OrderSortKey::UpdatedAt => {
+                    queries::get_orders::OrderSortKeys::UPDATED_AT
+                }
+                crate::shopify::types::OrderSortKey::CustomerName => {
+                    queries::get_orders::OrderSortKeys::CUSTOMER_NAME
+                }
+                crate::shopify::types::OrderSortKey::FinancialStatus => {
+                    queries::get_orders::OrderSortKeys::FINANCIAL_STATUS
+                }
+                crate::shopify::types::OrderSortKey::FulfillmentStatus => {
+                    queries::get_orders::OrderSortKeys::FULFILLMENT_STATUS
+                }
+                crate::shopify::types::OrderSortKey::Destination => {
+                    queries::get_orders::OrderSortKeys::DESTINATION
+                }
+                crate::shopify::types::OrderSortKey::Id => queries::get_orders::OrderSortKeys::ID,
+            }),
+            reverse: Some(reverse),
+        };
+
+        let response = self.execute::<GetOrders>(variables).await?;
+
+        Ok(convert_order_list_connection(response.orders))
     }
 
     /// Update an order's note.

@@ -1,8 +1,9 @@
 //! Order type conversion functions.
 
 use crate::shopify::types::{
-    Address, FinancialStatus, Fulfillment, FulfillmentStatus, Money, Order, OrderConnection,
-    OrderLineItem, PageInfo, TrackingInfo,
+    Address, DeliveryCategory, FinancialStatus, Fulfillment, FulfillmentStatus, Money, Order,
+    OrderChannelInfo, OrderConnection, OrderLineItem, OrderListConnection, OrderListItem,
+    OrderReturnStatus, OrderRisk, OrderRiskLevel, OrderShippingLine, PageInfo, TrackingInfo,
 };
 
 use super::super::queries::{get_order, get_orders};
@@ -467,5 +468,148 @@ fn convert_shipping_list(a: get_orders::GetOrdersOrdersEdgesNodeShippingAddress)
         last_name: a.last_name,
         company: a.company,
         phone: a.phone,
+    }
+}
+
+// =============================================================================
+// Extended OrderListConnection conversions (for data table view)
+// =============================================================================
+
+/// Convert `GetOrders` response to `OrderListConnection` with extended fields.
+pub fn convert_order_list_connection(conn: get_orders::GetOrdersOrders) -> OrderListConnection {
+    OrderListConnection {
+        orders: conn
+            .edges
+            .into_iter()
+            .map(|e| convert_order_list_item(e.node))
+            .collect(),
+        page_info: PageInfo {
+            has_next_page: conn.page_info.has_next_page,
+            has_previous_page: conn.page_info.has_previous_page,
+            start_cursor: conn.page_info.start_cursor,
+            end_cursor: conn.page_info.end_cursor,
+        },
+    }
+}
+
+// Allow deprecated field usage: Shopify risks field is deprecated but we still use it
+// for backwards compatibility until OrderRiskAssessment is fully rolled out.
+#[allow(deprecated)]
+fn convert_order_list_item(order: get_orders::GetOrdersOrdersEdgesNode) -> OrderListItem {
+    let pricing = build_pricing_list(&order);
+
+    // Calculate total items quantity from line items
+    let total_items_quantity: i64 = order.line_items.edges.iter().map(|e| e.node.quantity).sum();
+
+    // Convert risks (using deprecated risks field for now)
+    let risks: Vec<OrderRisk> = order
+        .risks
+        .iter()
+        .filter_map(|r| {
+            r.level.as_ref().map(|level| OrderRisk {
+                level: convert_risk_level(level),
+                message: r.message.clone(),
+            })
+        })
+        .collect();
+
+    // Convert channel info
+    let channel_info = order.channel_information.and_then(|ci| {
+        ci.channel_definition.map(|cd| OrderChannelInfo {
+            channel_name: Some(cd.channel_name),
+        })
+    });
+
+    // Convert shipping line
+    let shipping_line = order.shipping_line.map(|sl| OrderShippingLine {
+        title: sl.title,
+        delivery_category: sl
+            .delivery_category
+            .as_deref()
+            .map(convert_delivery_category),
+    });
+
+    let cancelled = order.cancelled_at.is_some();
+    let closed = order.closed_at.is_some();
+
+    OrderListItem {
+        id: order.id,
+        name: order.name,
+        number: order.number,
+        created_at: order.created_at,
+        updated_at: order.updated_at,
+        closed_at: order.closed_at,
+        cancelled_at: order.cancelled_at,
+        financial_status: order
+            .display_financial_status
+            .as_ref()
+            .map(convert_financial_list),
+        fulfillment_status: Some(convert_fulfillment_list(&order.display_fulfillment_status)),
+        return_status: Some(convert_return_status(&order.return_status)),
+        fully_paid: order.fully_paid,
+        cancelled,
+        closed,
+        test: order.test,
+        email: order.email,
+        phone: order.phone,
+        note: order.note,
+        tags: order.tags,
+        subtotal_price: pricing.subtotal,
+        total_shipping_price: pricing.shipping,
+        total_tax: pricing.tax,
+        total_price: pricing.total,
+        total_discounts: pricing.discounts,
+        currency_code: pricing.currency,
+        line_items: order
+            .line_items
+            .edges
+            .into_iter()
+            .map(|e| convert_line_item_list(e.node))
+            .collect(),
+        total_items_quantity,
+        fulfillments: order
+            .fulfillments
+            .into_iter()
+            .map(convert_fulfillment_obj_list)
+            .collect(),
+        billing_address: order.billing_address.map(convert_billing_list),
+        shipping_address: order.shipping_address.map(convert_shipping_list),
+        customer_id: order.customer.as_ref().map(|c| c.id.clone()),
+        customer_name: order.customer.map(|c| c.display_name),
+        risks,
+        channel_info,
+        shipping_line,
+        discount_codes: order.discount_codes,
+    }
+}
+
+const fn convert_risk_level(level: &get_orders::OrderRiskLevel) -> OrderRiskLevel {
+    match level {
+        get_orders::OrderRiskLevel::MEDIUM => OrderRiskLevel::Medium,
+        get_orders::OrderRiskLevel::HIGH => OrderRiskLevel::High,
+        get_orders::OrderRiskLevel::LOW | get_orders::OrderRiskLevel::Other(_) => {
+            OrderRiskLevel::Low
+        }
+    }
+}
+
+const fn convert_return_status(status: &get_orders::OrderReturnStatus) -> OrderReturnStatus {
+    match status {
+        get_orders::OrderReturnStatus::RETURN_REQUESTED => OrderReturnStatus::ReturnRequested,
+        get_orders::OrderReturnStatus::IN_PROGRESS => OrderReturnStatus::InProgress,
+        get_orders::OrderReturnStatus::RETURNED
+        | get_orders::OrderReturnStatus::INSPECTION_COMPLETE => OrderReturnStatus::Returned,
+        get_orders::OrderReturnStatus::NO_RETURN
+        | get_orders::OrderReturnStatus::RETURN_FAILED
+        | get_orders::OrderReturnStatus::Other(_) => OrderReturnStatus::NoReturn,
+    }
+}
+
+fn convert_delivery_category(cat: &str) -> DeliveryCategory {
+    match cat {
+        "SHIPPING" => DeliveryCategory::Shipping,
+        "LOCAL_DELIVERY" => DeliveryCategory::LocalDelivery,
+        "PICKUP" => DeliveryCategory::Pickup,
+        _ => DeliveryCategory::None,
     }
 }

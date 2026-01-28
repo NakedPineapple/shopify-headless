@@ -147,13 +147,17 @@ query GetOrders(
         number
         createdAt
         updatedAt
+        closedAt
+        cancelledAt
         displayFinancialStatus
         displayFulfillmentStatus
+        returnStatus
         fullyPaid
         test
         email
         phone
         note
+        tags
         subtotalPriceSet {
           shopMoney {
             amount
@@ -187,6 +191,7 @@ query GetOrders(
         currencyCode
         customer {
           id
+          displayName
         }
         billingAddress {
           address1
@@ -211,6 +216,20 @@ query GetOrders(
           lastName
           company
           phone
+        }
+        channelInformation {
+          channelDefinition {
+            channelName
+          }
+        }
+        shippingLine {
+          title
+          deliveryCategory
+        }
+        discountCodes
+        risks(first: 5) {
+          level
+          message
         }
         lineItems(first: 3) {
           edges {
@@ -305,6 +324,90 @@ mutation OrderMarkAsPaid($input: OrderMarkAsPaidInput!) {
 mutation OrderCancel($orderId: ID!, $reason: OrderCancelReason!, $notifyCustomer: Boolean, $refund: Boolean, $restock: Boolean!, $staffNote: String) {
   orderCancel(orderId: $orderId, reason: $reason, notifyCustomer: $notifyCustomer, refund: $refund, restock: $restock, staffNote: $staffNote) {
     orderCancelUserErrors {
+      field
+      message
+    }
+  }
+}
+
+# Archive/Close order
+mutation OrderClose($input: OrderCloseInput!) {
+  orderClose(input: $input) {
+    order {
+      id
+      closed
+      closedAt
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
+# Reopen/Unarchive order
+mutation OrderOpen($input: OrderOpenInput!) {
+  orderOpen(input: $input) {
+    order {
+      id
+      closed
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
+# Capture payment on order
+mutation OrderCapture($input: OrderCaptureInput!) {
+  orderCapture(input: $input) {
+    transaction {
+      id
+      status
+      kind
+      amountSet {
+        shopMoney {
+          amount
+          currencyCode
+        }
+      }
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
+# Add tags to a resource (Order)
+mutation OrderTagsAdd($id: ID!, $tags: [String!]!) {
+  tagsAdd(id: $id, tags: $tags) {
+    node {
+      __typename
+      ... on Order {
+        id
+        tags
+      }
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
+# Remove tags from a resource (Order)
+mutation OrderTagsRemove($id: ID!, $tags: [String!]!) {
+  tagsRemove(id: $id, tags: $tags) {
+    node {
+      __typename
+      ... on Order {
+        id
+        tags
+      }
+    }
+    userErrors {
       field
       message
     }
