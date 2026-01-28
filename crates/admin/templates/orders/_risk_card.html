@@ -1,0 +1,34 @@
+{#
+    Order Risk Assessment Card Partial
+
+    Variables:
+    - order: OrderDetailView with risks
+#}
+
+{% if !order.risks.is_empty() %}
+<div class="bg-card rounded-xl border border-border p-6">
+    <h3 class="text-lg font-semibold text-foreground mb-4">
+        <i class="ph ph-warning-circle mr-2"></i>Risk Assessment
+    </h3>
+    <div class="space-y-3">
+        {% for risk in order.risks %}
+        <div class="flex items-start gap-3 p-3 rounded-lg {% if risk.level == "High" %}bg-destructive/10{% elif risk.level == "Medium" %}bg-warning/10{% else %}bg-success/10{% endif %}">
+            <i class="ph ph-warning-circle text-lg {% if risk.level == "High" %}text-destructive{% elif risk.level == "Medium" %}text-warning{% else %}text-success{% endif %}"></i>
+            <div class="flex-1">
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="badge {% if risk.level == "High" %}badge-destructive{% elif risk.level == "Medium" %}badge-warning{% else %}badge-success{% endif %}">
+                        {{ risk.level }}
+                    </span>
+                    {% if let Some(provider) = risk.provider %}
+                    <span class="text-xs text-muted-foreground">{{ provider }}</span>
+                    {% endif %}
+                </div>
+                {% if let Some(message) = risk.message %}
+                <p class="text-sm text-foreground">{{ message }}</p>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}

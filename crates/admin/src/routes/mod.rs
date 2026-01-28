@@ -193,12 +193,13 @@ pub fn routes() -> Router<AppState> {
         )
         .route(
             "/orders/{id}/calculate-refund",
-            post(orders::calculate_refund),
+            get(orders::calculate_refund),
         )
         .route("/orders/{id}/refund", post(orders::refund))
         .route("/orders/{id}/return", post(orders::create_return))
         .route("/orders/{id}/capture", post(orders::capture))
         .route("/orders/{id}/archive", post(orders::archive))
+        .route("/orders/{id}/print", get(orders::print))
         // Orders bulk actions
         .route("/orders/bulk/add-tags", post(orders::bulk_add_tags))
         .route("/orders/bulk/remove-tags", post(orders::bulk_remove_tags))

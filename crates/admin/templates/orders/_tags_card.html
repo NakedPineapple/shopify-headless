@@ -1,0 +1,46 @@
+{#
+    Order Tags Card Partial (HTMX enabled)
+
+    Variables:
+    - order: OrderDetailView with short_id, tags
+#}
+
+<div class="bg-card rounded-xl border border-border p-6">
+    <h3 class="text-lg font-semibold text-foreground mb-4">Tags</h3>
+
+    <div id="order-tags-container" class="flex flex-wrap gap-2 mb-4">
+        {% for tag in order.tags %}
+        <span class="inline-flex items-center gap-1 px-2 py-1 bg-muted rounded text-sm">
+            {{ tag }}
+            <button type="button"
+                    class="text-muted-foreground hover:text-foreground"
+                    hx-post="/orders/{{ order.short_id }}/tags"
+                    hx-vals='{"tag": "{{ tag }}", "action": "remove"}'
+                    hx-target="#order-tags-container"
+                    hx-swap="innerHTML">
+                <i class="ph ph-x text-xs"></i>
+            </button>
+        </span>
+        {% endfor %}
+
+        {% if order.tags.is_empty() %}
+        <span class="text-sm text-muted-foreground">No tags</span>
+        {% endif %}
+    </div>
+
+    <!-- Add Tag Form -->
+    <form hx-post="/orders/{{ order.short_id }}/tags"
+          hx-target="#order-tags-container"
+          hx-swap="innerHTML"
+          class="flex gap-2">
+        <input type="hidden" name="action" value="add">
+        <input type="text"
+               name="tag"
+               placeholder="Add tag..."
+               class="flex-1 px-3 py-2 bg-input border border-border rounded-lg text-sm focus:ring-2 focus:ring-ring focus:border-ring">
+        <button type="submit"
+                class="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors">
+            Add
+        </button>
+    </form>
+</div>

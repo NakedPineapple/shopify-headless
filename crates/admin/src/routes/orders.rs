@@ -7,6 +7,7 @@ use axum::{
     http::StatusCode,
     response::{Html, IntoResponse, Redirect},
 };
+use chrono::Utc;
 use serde::Deserialize;
 use tracing::instrument;
 
@@ -755,11 +756,18 @@ impl From<&OrderLineItem> for LineItemView {
 #[derive(Debug, Clone)]
 pub struct AddressView {
     pub name: String,
+    pub company: Option<String>,
+    pub address1: String,
+    pub address2: Option<String>,
+    pub city: String,
+    pub province_code: String,
+    pub zip: String,
+    pub country: String,
+    pub phone: Option<String>,
+    // Legacy fields for backward compatibility
     pub line1: String,
     pub line2: Option<String>,
     pub city_state_zip: String,
-    pub country: String,
-    pub phone: Option<String>,
 }
 
 impl From<&Address> for AddressView {
@@ -768,13 +776,13 @@ impl From<&Address> for AddressView {
         let last = addr.last_name.as_deref().unwrap_or("");
         let name = format!("{first} {last}").trim().to_string();
 
-        let line1 = addr.address1.clone().unwrap_or_default();
-        let line2 = addr.address2.clone().filter(|s| !s.is_empty());
+        let address1 = addr.address1.clone().unwrap_or_default();
+        let address2 = addr.address2.clone().filter(|s| !s.is_empty());
 
-        let city = addr.city.as_deref().unwrap_or("");
-        let state = addr.province_code.as_deref().unwrap_or("");
-        let zip = addr.zip.as_deref().unwrap_or("");
-        let city_state_zip = format!("{city}, {state} {zip}").trim().to_string();
+        let city = addr.city.as_deref().unwrap_or("").to_string();
+        let province_code = addr.province_code.as_deref().unwrap_or("").to_string();
+        let zip = addr.zip.as_deref().unwrap_or("").to_string();
+        let city_state_zip = format!("{city}, {province_code} {zip}").trim().to_string();
 
         let country = addr.country_code.clone().unwrap_or_default();
 
@@ -784,13 +792,27 @@ impl From<&Address> for AddressView {
             } else {
                 name
             },
-            line1,
-            line2,
-            city_state_zip,
+            company: addr.company.clone(),
+            address1: address1.clone(),
+            address2: address2.clone(),
+            city,
+            province_code,
+            zip,
             country,
             phone: addr.phone.clone(),
+            // Legacy fields
+            line1: address1,
+            line2: address2,
+            city_state_zip,
         }
     }
+}
+
+/// Fulfilled line item view for templates.
+#[derive(Debug, Clone)]
+pub struct FulfilledLineItemView {
+    pub title: String,
+    pub quantity: i64,
 }
 
 /// Fulfillment view for templates.
@@ -801,7 +823,9 @@ pub struct FulfillmentView {
     pub tracking_number: Option<String>,
     pub tracking_url: Option<String>,
     pub carrier: Option<String>,
+    pub location_name: Option<String>,
     pub created_at: String,
+    pub line_items: Vec<FulfilledLineItemView>,
 }
 
 impl From<&Fulfillment> for FulfillmentView {
@@ -813,34 +837,125 @@ impl From<&Fulfillment> for FulfillmentView {
             tracking_number: tracking.and_then(|t| t.number.clone()),
             tracking_url: tracking.and_then(|t| t.url.clone()),
             carrier: tracking.and_then(|t| t.company.clone()),
+            location_name: None,
             created_at: f.created_at.clone(),
+            line_items: vec![],
         }
     }
 }
 
-/// Order detail view for templates.
+/// Transaction view for templates.
+#[derive(Debug, Clone)]
+pub struct TransactionView {
+    pub id: String,
+    pub kind: String,
+    pub status: String,
+    pub amount: String,
+    pub gateway: Option<String>,
+    pub created_at: String,
+}
+
+/// Fulfillment order line item view for templates.
+#[derive(Debug, Clone)]
+pub struct FulfillmentOrderLineItemView {
+    pub id: String,
+    pub title: String,
+    pub variant_title: Option<String>,
+    pub sku: Option<String>,
+    pub image: Option<String>,
+    pub total_quantity: i64,
+    pub remaining_quantity: i64,
+}
+
+/// Fulfillment order view for templates.
+#[derive(Debug, Clone)]
+pub struct FulfillmentOrderView {
+    pub id: String,
+    pub status: String,
+    pub location_name: Option<String>,
+    pub line_items: Vec<FulfillmentOrderLineItemView>,
+}
+
+/// Risk view for templates.
+#[derive(Debug, Clone)]
+pub struct RiskView {
+    pub level: String,
+    pub message: Option<String>,
+    pub provider: Option<String>,
+}
+
+/// Timeline event view for templates.
+#[derive(Debug, Clone)]
+pub struct TimelineEventView {
+    pub event_type: String,
+    pub message: String,
+    pub created_at: String,
+    pub staff_name: Option<String>,
+}
+
+/// Order detail view for templates with full enhanced data.
+// View structs for templates need multiple bool flags for display logic.
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Clone)]
 pub struct OrderDetailView {
+    // Basic order info
     pub id: String,
+    pub short_id: String,
     pub name: String,
     pub created_at: String,
-    pub customer_name: String,
-    pub customer_email: Option<String>,
-    pub customer_phone: Option<String>,
-    pub note: Option<String>,
-    pub fulfillment_status: String,
-    pub fulfillment_status_class: String,
+
+    // Status fields
     pub financial_status: String,
     pub financial_status_class: String,
+    pub fulfillment_status: String,
+    pub fulfillment_status_class: String,
+    pub return_status: Option<String>,
+    pub return_status_class: String,
+
+    // Flags
     pub is_paid: bool,
     pub is_test: bool,
+    pub is_cancelled: bool,
+    pub is_archived: bool,
+    pub has_capturable: bool,
+    pub capturable_amount: String,
+
+    // Pricing
     pub subtotal: String,
     pub shipping: String,
     pub tax: String,
     pub discount: String,
     pub total: String,
+    pub total_paid: String,
+    pub total_refunded: String,
+    pub net_payment: String,
+    pub total_outstanding: String,
+
+    // Customer
+    pub customer_id: Option<String>,
+    pub customer_name: String,
+    pub customer_email: Option<String>,
+    pub customer_phone: Option<String>,
+    pub orders_count: i64,
+    pub total_spent: String,
+    pub customer_note: Option<String>,
+    pub email_marketing: bool,
+
+    // Note and tags
+    pub note: Option<String>,
+    pub tags: Vec<String>,
+
+    // Items and fulfillments
     pub line_items: Vec<LineItemView>,
+    pub fulfillment_orders: Vec<FulfillmentOrderView>,
     pub fulfillments: Vec<FulfillmentView>,
+
+    // Transactions, risks, timeline
+    pub transactions: Vec<TransactionView>,
+    pub risks: Vec<RiskView>,
+    pub events: Vec<TimelineEventView>,
+
+    // Addresses
     pub shipping_address: Option<AddressView>,
     pub billing_address: Option<AddressView>,
 }
@@ -893,34 +1008,73 @@ fn financial_status_display(order: &Order) -> (String, String, bool) {
 
 impl From<&Order> for OrderDetailView {
     fn from(order: &Order) -> Self {
+        let short_id = extract_numeric_id(&order.id);
         let (fulfillment_status, fulfillment_status_class) = fulfillment_status_display(order);
         let (financial_status, financial_status_class, is_paid) = financial_status_display(order);
+        let total_str = format_price(&order.total_price);
 
         Self {
             id: order.id.clone(),
+            short_id,
             name: order.name.clone(),
             created_at: order.created_at.clone(),
-            customer_name: get_customer_name(order),
-            customer_email: order.email.clone(),
-            customer_phone: order.phone.clone(),
-            note: order.note.clone(),
-            fulfillment_status,
-            fulfillment_status_class,
+
             financial_status,
             financial_status_class,
+            fulfillment_status,
+            fulfillment_status_class,
+            return_status: None,
+            return_status_class: String::new(),
+
             is_paid,
             is_test: order.test,
+            is_cancelled: false,
+            is_archived: false,
+            has_capturable: false,
+            capturable_amount: "$0.00".to_string(),
+
             subtotal: format_price(&order.subtotal_price),
             shipping: format_price(&order.total_shipping_price),
             tax: format_price(&order.total_tax),
             discount: format_price(&order.total_discounts),
-            total: format_price(&order.total_price),
+            total: total_str.clone(),
+            total_paid: if is_paid {
+                total_str
+            } else {
+                "$0.00".to_string()
+            },
+            total_refunded: "$0.00".to_string(),
+            net_payment: format_price(&order.total_price),
+            total_outstanding: if is_paid {
+                "$0.00".to_string()
+            } else {
+                format_price(&order.total_price)
+            },
+
+            customer_id: order.customer_id.as_ref().map(|id| extract_numeric_id(id)),
+            customer_name: get_customer_name(order),
+            customer_email: order.email.clone(),
+            customer_phone: order.phone.clone(),
+            orders_count: 0,
+            total_spent: "$0.00".to_string(),
+            customer_note: None,
+            email_marketing: false,
+
+            note: order.note.clone(),
+            tags: vec![],
+
             line_items: order.line_items.iter().map(LineItemView::from).collect(),
+            fulfillment_orders: vec![],
             fulfillments: order
                 .fulfillments
                 .iter()
                 .map(FulfillmentView::from)
                 .collect(),
+
+            transactions: vec![],
+            risks: vec![],
+            events: vec![],
+
             shipping_address: order.shipping_address.as_ref().map(AddressView::from),
             billing_address: order.billing_address.as_ref().map(AddressView::from),
         }
@@ -1892,4 +2046,160 @@ pub async fn archive(
 pub struct ArchiveParams {
     /// If true, unarchive instead of archive.
     pub unarchive: Option<bool>,
+}
+
+// =============================================================================
+// Print Handlers
+// =============================================================================
+
+/// Query params for print action.
+#[derive(Debug, Deserialize)]
+pub struct PrintQuery {
+    /// Type of document: "invoice" or `packing_slip`.
+    #[serde(rename = "type")]
+    pub doc_type: Option<String>,
+}
+
+/// Print line item view (simpler than full line item view).
+#[derive(Debug, Clone)]
+pub struct PrintLineItemView {
+    pub title: String,
+    pub variant_title: Option<String>,
+    pub sku: Option<String>,
+    pub quantity: i64,
+    pub price: String,
+    pub total: String,
+}
+
+// Precision loss from i64 -> f64 is acceptable for display.
+#[allow(clippy::cast_precision_loss)]
+impl From<&OrderLineItem> for PrintLineItemView {
+    fn from(item: &OrderLineItem) -> Self {
+        let price = format_price(&item.discounted_unit_price);
+        let total = item
+            .discounted_unit_price
+            .amount
+            .parse::<f64>()
+            .unwrap_or(0.0)
+            * item.quantity as f64;
+        Self {
+            title: item.title.clone(),
+            variant_title: item.variant_title.clone(),
+            sku: item.sku.clone(),
+            quantity: item.quantity,
+            price,
+            total: format!("${total:.2}"),
+        }
+    }
+}
+
+/// Order view for print templates.
+#[derive(Debug, Clone)]
+pub struct PrintOrderView {
+    pub name: String,
+    pub created_at: String,
+    pub financial_status: String,
+    pub subtotal: String,
+    pub shipping: String,
+    pub discount: String,
+    pub tax: String,
+    pub total: String,
+    pub note: Option<String>,
+    pub shipping_method: Option<String>,
+    pub shipping_address: Option<AddressView>,
+    pub billing_address: Option<AddressView>,
+}
+
+/// Invoice print template.
+#[derive(Template)]
+#[template(path = "orders/print_invoice.html")]
+pub struct OrderInvoiceTemplate {
+    pub order: PrintOrderView,
+    pub line_items: Vec<PrintLineItemView>,
+    pub printed_at: String,
+}
+
+/// Packing slip print template.
+#[derive(Template)]
+#[template(path = "orders/print_packing_slip.html")]
+pub struct OrderPackingSlipTemplate {
+    pub order: PrintOrderView,
+    pub line_items: Vec<PrintLineItemView>,
+    pub printed_at: String,
+}
+
+/// Print order invoice or packing slip.
+#[instrument(skip(_admin, state))]
+pub async fn print(
+    RequireAdminAuth(_admin): RequireAdminAuth,
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    Query(query): Query<PrintQuery>,
+) -> impl IntoResponse {
+    let order_id = if id.starts_with("gid://") {
+        id
+    } else {
+        format!("gid://shopify/Order/{id}")
+    };
+
+    match state.shopify().get_order(&order_id).await {
+        Ok(Some(order)) => {
+            let printed_at = chrono::Utc::now().format("%Y-%m-%d %H:%M UTC").to_string();
+
+            let print_order = PrintOrderView {
+                name: order.name.clone(),
+                created_at: order.created_at.clone(),
+                financial_status: order
+                    .financial_status
+                    .as_ref()
+                    .map_or_else(|| "Pending".to_string(), |s| format!("{s:?}")),
+                subtotal: format_price(&order.subtotal_price),
+                shipping: format_price(&order.total_shipping_price),
+                discount: format_price(&order.total_discounts),
+                tax: format_price(&order.total_tax),
+                total: format_price(&order.total_price),
+                note: order.note.clone(),
+                shipping_method: None, // Would come from shipping lines
+                shipping_address: order.shipping_address.as_ref().map(AddressView::from),
+                billing_address: order.billing_address.as_ref().map(AddressView::from),
+            };
+
+            let line_items: Vec<PrintLineItemView> = order
+                .line_items
+                .iter()
+                .map(PrintLineItemView::from)
+                .collect();
+
+            let doc_type = query.doc_type.as_deref().unwrap_or("invoice");
+
+            if doc_type == "packing_slip" {
+                let template = OrderPackingSlipTemplate {
+                    order: print_order,
+                    line_items,
+                    printed_at,
+                };
+                Html(template.render().unwrap_or_else(|e| {
+                    tracing::error!("Template render error: {}", e);
+                    "Internal Server Error".to_string()
+                }))
+                .into_response()
+            } else {
+                let template = OrderInvoiceTemplate {
+                    order: print_order,
+                    line_items,
+                    printed_at,
+                };
+                Html(template.render().unwrap_or_else(|e| {
+                    tracing::error!("Template render error: {}", e);
+                    "Internal Server Error".to_string()
+                }))
+                .into_response()
+            }
+        }
+        Ok(None) => (StatusCode::NOT_FOUND, "Order not found").into_response(),
+        Err(e) => {
+            tracing::error!("Failed to fetch order for printing: {e}");
+            (StatusCode::INTERNAL_SERVER_ERROR, "Failed to fetch order").into_response()
+        }
+    }
 }

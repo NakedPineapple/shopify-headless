@@ -1,0 +1,288 @@
+{#
+    Order Invoice Print Template
+
+    Variables:
+    - order: Order details
+    - line_items: List of line items
+    - printed_at: Current date/time
+#}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice - Order {{ order.name }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: 12px;
+            line-height: 1.5;
+            color: #1a1a1a;
+            padding: 20px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #1a1a1a;
+        }
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #d63a2f;
+        }
+        .invoice-title {
+            text-align: right;
+        }
+        .invoice-title h1 {
+            font-size: 28px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        .invoice-title p {
+            color: #666;
+            margin-top: 4px;
+        }
+        .addresses {
+            display: flex;
+            gap: 40px;
+            margin-bottom: 30px;
+        }
+        .address-block {
+            flex: 1;
+        }
+        .address-block h3 {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+        .address-block p {
+            margin-bottom: 2px;
+        }
+        .order-info {
+            display: flex;
+            gap: 40px;
+            margin-bottom: 30px;
+            padding: 15px;
+            background: #f5f5f5;
+        }
+        .info-item label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #666;
+            display: block;
+        }
+        .info-item span {
+            font-weight: 600;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+        th {
+            text-align: left;
+            padding: 10px 8px;
+            border-bottom: 2px solid #1a1a1a;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        th:last-child {
+            text-align: right;
+        }
+        td {
+            padding: 12px 8px;
+            border-bottom: 1px solid #e5e5e5;
+            vertical-align: top;
+        }
+        td:last-child {
+            text-align: right;
+        }
+        .item-name {
+            font-weight: 500;
+        }
+        .item-variant {
+            color: #666;
+            font-size: 11px;
+        }
+        .totals {
+            display: flex;
+            justify-content: flex-end;
+        }
+        .totals-table {
+            width: 250px;
+        }
+        .totals-table td {
+            padding: 6px 0;
+            border: none;
+        }
+        .totals-table td:first-child {
+            color: #666;
+        }
+        .totals-table .total-row td {
+            font-size: 16px;
+            font-weight: bold;
+            padding-top: 12px;
+            border-top: 2px solid #1a1a1a;
+        }
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e5e5;
+            text-align: center;
+            color: #666;
+            font-size: 11px;
+        }
+        @media print {
+            body {
+                padding: 0;
+            }
+            .no-print {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">Naked Pineapple</div>
+        <div class="invoice-title">
+            <h1>Invoice</h1>
+            <p>{{ order.name }}</p>
+        </div>
+    </div>
+
+    <div class="addresses">
+        <div class="address-block">
+            <h3>Bill To</h3>
+            {% if let Some(billing) = order.billing_address %}
+            <p><strong>{{ billing.name }}</strong></p>
+            {% if let Some(company) = billing.company %}
+            <p>{{ company }}</p>
+            {% endif %}
+            <p>{{ billing.address1 }}</p>
+            {% if let Some(address2) = billing.address2 %}
+            <p>{{ address2 }}</p>
+            {% endif %}
+            <p>{{ billing.city }}, {{ billing.province_code }} {{ billing.zip }}</p>
+            <p>{{ billing.country }}</p>
+            {% else %}
+            <p>No billing address</p>
+            {% endif %}
+        </div>
+        <div class="address-block">
+            <h3>Ship To</h3>
+            {% if let Some(shipping) = order.shipping_address %}
+            <p><strong>{{ shipping.name }}</strong></p>
+            {% if let Some(company) = shipping.company %}
+            <p>{{ company }}</p>
+            {% endif %}
+            <p>{{ shipping.address1 }}</p>
+            {% if let Some(address2) = shipping.address2 %}
+            <p>{{ address2 }}</p>
+            {% endif %}
+            <p>{{ shipping.city }}, {{ shipping.province_code }} {{ shipping.zip }}</p>
+            <p>{{ shipping.country }}</p>
+            {% else %}
+            <p>No shipping address</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="order-info">
+        <div class="info-item">
+            <label>Order Date</label>
+            <span>{{ order.created_at }}</span>
+        </div>
+        <div class="info-item">
+            <label>Order Number</label>
+            <span>{{ order.name }}</span>
+        </div>
+        <div class="info-item">
+            <label>Payment Status</label>
+            <span>{{ order.financial_status }}</span>
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 50%">Item</th>
+                <th>Quantity</th>
+                <th>Price</th>
+                <th>Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in line_items %}
+            <tr>
+                <td>
+                    <div class="item-name">{{ item.title }}</div>
+                    {% if let Some(variant) = item.variant_title %}
+                    <div class="item-variant">{{ variant }}</div>
+                    {% endif %}
+                    {% if let Some(sku) = item.sku %}
+                    <div class="item-variant">SKU: {{ sku }}</div>
+                    {% endif %}
+                </td>
+                <td>{{ item.quantity }}</td>
+                <td>{{ item.price }}</td>
+                <td>{{ item.total }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="totals">
+        <table class="totals-table">
+            <tr>
+                <td>Subtotal</td>
+                <td>{{ order.subtotal }}</td>
+            </tr>
+            <tr>
+                <td>Shipping</td>
+                <td>{{ order.shipping }}</td>
+            </tr>
+            {% if order.discount != "$0.00" %}
+            <tr>
+                <td>Discount</td>
+                <td>-{{ order.discount }}</td>
+            </tr>
+            {% endif %}
+            <tr>
+                <td>Tax</td>
+                <td>{{ order.tax }}</td>
+            </tr>
+            <tr class="total-row">
+                <td>Total</td>
+                <td>{{ order.total }}</td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="footer">
+        <p>Thank you for shopping with Naked Pineapple!</p>
+        <p>Questions? Contact us at support@nakedpineapple.com</p>
+        <p class="no-print" style="margin-top: 10px;">Printed on {{ printed_at }}</p>
+    </div>
+
+    <script>
+        window.onload = function() {
+            window.print();
+        };
+    </script>
+</body>
+</html>

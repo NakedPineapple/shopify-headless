@@ -1,0 +1,92 @@
+{#
+    Return Creation Modal Partial
+
+    Variables:
+    - order: OrderDetailView with short_id
+#}
+
+<div id="return-modal" class="hidden fixed inset-0 z-50 overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen px-4">
+        <div class="fixed inset-0 bg-black/50" onclick="document.getElementById('return-modal').classList.add('hidden')"></div>
+        <div class="relative bg-card rounded-xl border border-border max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
+            <h3 class="text-lg font-semibold text-foreground mb-4">
+                <i class="ph ph-arrow-u-up-left mr-2"></i>Create Return
+            </h3>
+
+            <form action="/orders/{{ order.short_id }}/return" method="POST">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-foreground mb-2">Return reason</label>
+                        <select name="reason" required class="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm text-foreground">
+                            <option value="UNKNOWN">Select a reason...</option>
+                            <option value="SIZE_TOO_SMALL">Size too small</option>
+                            <option value="SIZE_TOO_LARGE">Size too large</option>
+                            <option value="UNWANTED">Customer changed mind</option>
+                            <option value="NOT_AS_DESCRIBED">Not as described</option>
+                            <option value="WRONG_ITEM">Wrong item received</option>
+                            <option value="DEFECTIVE">Defective or damaged</option>
+                            <option value="STYLE">Style not as expected</option>
+                            <option value="COLOR">Color not as expected</option>
+                            <option value="OTHER">Other</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-foreground mb-2">Customer note (optional)</label>
+                        <textarea name="customer_note"
+                                  rows="2"
+                                  placeholder="Customer's reason for return..."
+                                  class="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-ring focus:border-ring"></textarea>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-foreground mb-2">Staff note (optional)</label>
+                        <textarea name="staff_note"
+                                  rows="2"
+                                  placeholder="Internal notes about this return..."
+                                  class="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-ring focus:border-ring"></textarea>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-foreground mb-2">
+                            Line items to return
+                            <span class="text-muted-foreground font-normal">(format: id:quantity, comma-separated)</span>
+                        </label>
+                        <input type="text"
+                               name="line_items"
+                               required
+                               placeholder="gid://shopify/FulfillmentLineItem/123:1"
+                               class="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-ring focus:border-ring">
+                        <p class="mt-1 text-xs text-muted-foreground">
+                            Enter the fulfillment line item IDs and quantities to return
+                        </p>
+                    </div>
+
+                    <div class="space-y-2">
+                        <label class="flex items-center gap-2 text-sm text-foreground">
+                            <input type="checkbox" name="notify" value="on" class="rounded border-border">
+                            Send notification to customer
+                        </label>
+                        <label class="flex items-center gap-2 text-sm text-foreground">
+                            <input type="checkbox" name="request_return_label" value="on" class="rounded border-border">
+                            Request return shipping label
+                        </label>
+                    </div>
+                </div>
+
+                <div class="mt-6 flex items-center justify-end gap-3">
+                    <button type="button"
+                            onclick="document.getElementById('return-modal').classList.add('hidden')"
+                            class="px-4 py-2 bg-card border border-border rounded-lg text-sm font-medium text-foreground hover:bg-muted transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit"
+                            class="px-4 py-2 bg-warning text-warning-foreground rounded-lg text-sm font-medium hover:bg-warning/90 transition-colors">
+                        <i class="ph ph-arrow-u-up-left mr-2"></i>
+                        Create return
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

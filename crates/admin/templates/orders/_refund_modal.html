@@ -1,0 +1,87 @@
+{#
+    Refund Creation Modal Partial
+
+    Variables:
+    - order: OrderDetailView with short_id
+#}
+
+<div id="refund-modal" class="hidden fixed inset-0 z-50 overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen px-4">
+        <div class="fixed inset-0 bg-black/50" onclick="document.getElementById('refund-modal').classList.add('hidden')"></div>
+        <div class="relative bg-card rounded-xl border border-border max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
+            <h3 class="text-lg font-semibold text-foreground mb-4">
+                <i class="ph ph-arrow-counter-clockwise mr-2"></i>Create Refund
+            </h3>
+
+            <!-- Refund Calculator (HTMX) -->
+            <div id="refund-calculation" class="mb-4 p-4 bg-muted rounded-lg"
+                 hx-get="/orders/{{ order.short_id }}/calculate-refund"
+                 hx-trigger="load">
+                <div class="flex items-center justify-center py-4">
+                    <i class="ph ph-spinner-gap animate-spin mr-2"></i>
+                    Calculating suggested refund...
+                </div>
+            </div>
+
+            <form action="/orders/{{ order.short_id }}/refund" method="POST">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-foreground mb-2">Refund note (optional)</label>
+                        <textarea name="note"
+                                  rows="2"
+                                  placeholder="Reason for refund..."
+                                  class="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-ring focus:border-ring"></textarea>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-foreground mb-2">
+                            Line items to refund
+                            <span class="text-muted-foreground font-normal">(format: id:quantity, comma-separated)</span>
+                        </label>
+                        <input type="text"
+                               name="line_items"
+                               placeholder="gid://shopify/LineItem/123:1"
+                               class="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-ring focus:border-ring">
+                        <p class="mt-1 text-xs text-muted-foreground">
+                            Leave blank to use suggested refund amounts
+                        </p>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-foreground mb-2">Shipping refund</label>
+                            <input type="text"
+                                   name="shipping_amount"
+                                   placeholder="0.00"
+                                   class="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-ring focus:border-ring">
+                        </div>
+                        <div class="flex items-end pb-2">
+                            <label class="flex items-center gap-2 text-sm text-foreground">
+                                <input type="checkbox" name="full_shipping_refund" value="on" class="rounded border-border">
+                                Full shipping refund
+                            </label>
+                        </div>
+                    </div>
+
+                    <label class="flex items-center gap-2 text-sm text-foreground">
+                        <input type="checkbox" name="notify" value="on" class="rounded border-border">
+                        Send notification to customer
+                    </label>
+                </div>
+
+                <div class="mt-6 flex items-center justify-end gap-3">
+                    <button type="button"
+                            onclick="document.getElementById('refund-modal').classList.add('hidden')"
+                            class="px-4 py-2 bg-card border border-border rounded-lg text-sm font-medium text-foreground hover:bg-muted transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit"
+                            class="px-4 py-2 bg-destructive text-white rounded-lg text-sm font-medium hover:bg-destructive/90 transition-colors">
+                        <i class="ph ph-arrow-counter-clockwise mr-2"></i>
+                        Create refund
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

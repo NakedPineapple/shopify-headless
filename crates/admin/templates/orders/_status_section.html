@@ -1,0 +1,51 @@
+{#
+    Order Status Section Partial
+
+    Variables:
+    - order: OrderDetailView
+#}
+
+<div class="bg-card rounded-xl border border-border p-6">
+    <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-semibold text-foreground">Status</h3>
+        <div class="flex items-center gap-2 flex-wrap">
+            <span class="badge {{ order.financial_status_class }}">{{ order.financial_status }}</span>
+            <span class="badge {{ order.fulfillment_status_class }}">{{ order.fulfillment_status }}</span>
+            {% if let Some(ret_status) = order.return_status %}
+            <span class="badge {{ order.return_status_class }}">{{ ret_status }}</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="flex flex-wrap gap-3">
+        {% if !order.is_paid && !order.is_cancelled %}
+        <form action="/orders/{{ order.short_id }}/mark-paid" method="POST" class="inline">
+            <button type="submit"
+                    class="inline-flex items-center gap-2 px-4 py-2 bg-success text-white rounded-lg text-sm font-medium hover:bg-success/90 transition-colors"
+                    onclick="return confirm('Mark this order as paid?');">
+                <i class="ph ph-check-circle"></i>
+                Mark as Paid
+            </button>
+        </form>
+        {% endif %}
+
+        {% if order.has_capturable %}
+        <button type="button"
+                onclick="document.getElementById('capture-modal').classList.remove('hidden')"
+                class="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors">
+            <i class="ph ph-credit-card"></i>
+            Capture {{ order.capturable_amount }}
+        </button>
+        {% endif %}
+
+        {% if !order.is_cancelled %}
+        <button type="button"
+                onclick="document.getElementById('cancel-modal').classList.remove('hidden')"
+                class="inline-flex items-center gap-2 px-4 py-2 bg-destructive text-white rounded-lg text-sm font-medium hover:bg-destructive/90 transition-colors">
+            <i class="ph ph-x-circle"></i>
+            Cancel Order
+        </button>
+        {% endif %}
+    </div>
+</div>

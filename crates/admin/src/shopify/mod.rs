@@ -43,7 +43,7 @@
 #![allow(dead_code)]
 #![allow(unused_imports)]
 
-mod admin;
+pub mod admin;
 pub mod types;
 
 pub use admin::{

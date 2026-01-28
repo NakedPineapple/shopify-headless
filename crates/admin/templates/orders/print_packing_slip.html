@@ -1,0 +1,293 @@
+{#
+    Order Packing Slip Print Template
+
+    Variables:
+    - order: Order details
+    - line_items: List of line items
+    - printed_at: Current date/time
+#}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Packing Slip - Order {{ order.name }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: 12px;
+            line-height: 1.5;
+            color: #1a1a1a;
+            padding: 20px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #1a1a1a;
+        }
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #d63a2f;
+        }
+        .slip-title {
+            text-align: right;
+        }
+        .slip-title h1 {
+            font-size: 24px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        .slip-title p {
+            color: #666;
+            margin-top: 4px;
+        }
+        .shipping-info {
+            display: flex;
+            gap: 40px;
+            margin-bottom: 30px;
+        }
+        .address-block {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid #1a1a1a;
+        }
+        .address-block h3 {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+        .address-block p {
+            margin-bottom: 2px;
+        }
+        .address-block .name {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        .order-details {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 30px;
+            padding: 15px;
+            background: #f5f5f5;
+        }
+        .detail-item {
+            flex: 1;
+        }
+        .detail-item label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #666;
+            display: block;
+        }
+        .detail-item span {
+            font-weight: 600;
+            font-size: 14px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+        th {
+            text-align: left;
+            padding: 12px 8px;
+            border-bottom: 2px solid #1a1a1a;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        td {
+            padding: 15px 8px;
+            border-bottom: 1px solid #e5e5e5;
+            vertical-align: top;
+        }
+        .item-name {
+            font-weight: 600;
+            font-size: 13px;
+        }
+        .item-variant {
+            color: #666;
+            font-size: 11px;
+            margin-top: 2px;
+        }
+        .item-sku {
+            font-family: monospace;
+            font-size: 11px;
+            color: #666;
+            margin-top: 4px;
+        }
+        .quantity {
+            font-size: 18px;
+            font-weight: bold;
+            text-align: center;
+        }
+        .checkbox {
+            width: 24px;
+            height: 24px;
+            border: 2px solid #1a1a1a;
+            display: inline-block;
+        }
+        .notes-section {
+            margin-top: 30px;
+            padding: 15px;
+            border: 1px dashed #ccc;
+        }
+        .notes-section h3 {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+        .notes-content {
+            min-height: 60px;
+        }
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e5e5;
+            display: flex;
+            justify-content: space-between;
+            color: #666;
+            font-size: 11px;
+        }
+        @media print {
+            body {
+                padding: 0;
+            }
+            .no-print {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">Naked Pineapple</div>
+        <div class="slip-title">
+            <h1>Packing Slip</h1>
+            <p>{{ order.name }}</p>
+        </div>
+    </div>
+
+    <div class="shipping-info">
+        <div class="address-block">
+            <h3>Ship To</h3>
+            {% if let Some(shipping) = order.shipping_address %}
+            <p class="name">{{ shipping.name }}</p>
+            {% if let Some(company) = shipping.company %}
+            <p>{{ company }}</p>
+            {% endif %}
+            <p>{{ shipping.address1 }}</p>
+            {% if let Some(address2) = shipping.address2 %}
+            <p>{{ address2 }}</p>
+            {% endif %}
+            <p>{{ shipping.city }}, {{ shipping.province_code }} {{ shipping.zip }}</p>
+            <p>{{ shipping.country }}</p>
+            {% if let Some(phone) = shipping.phone %}
+            <p style="margin-top: 8px;">Phone: {{ phone }}</p>
+            {% endif %}
+            {% else %}
+            <p>No shipping address</p>
+            {% endif %}
+        </div>
+        <div class="address-block">
+            <h3>From</h3>
+            <p class="name">Naked Pineapple</p>
+            <p>123 Tropical Way</p>
+            <p>Paradise Island, PI 12345</p>
+            <p>United States</p>
+        </div>
+    </div>
+
+    <div class="order-details">
+        <div class="detail-item">
+            <label>Order Number</label>
+            <span>{{ order.name }}</span>
+        </div>
+        <div class="detail-item">
+            <label>Order Date</label>
+            <span>{{ order.created_at }}</span>
+        </div>
+        <div class="detail-item">
+            <label>Shipping Method</label>
+            <span>{% if let Some(method) = order.shipping_method %}{{ method }}{% else %}Standard{% endif %}</span>
+        </div>
+        <div class="detail-item">
+            <label>Total Items</label>
+            <span>{{ line_items.len() }}</span>
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 40px;">✓</th>
+                <th style="width: 50%">Item</th>
+                <th style="width: 120px;">SKU</th>
+                <th style="width: 80px; text-align: center;">Qty</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in line_items %}
+            <tr>
+                <td><span class="checkbox"></span></td>
+                <td>
+                    <div class="item-name">{{ item.title }}</div>
+                    {% if let Some(variant) = item.variant_title %}
+                    <div class="item-variant">{{ variant }}</div>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if let Some(sku) = item.sku %}
+                    <span class="item-sku">{{ sku }}</span>
+                    {% else %}
+                    <span class="item-sku">—</span>
+                    {% endif %}
+                </td>
+                <td class="quantity">{{ item.quantity }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% if let Some(note) = order.note %}
+    <div class="notes-section">
+        <h3>Order Notes</h3>
+        <div class="notes-content">{{ note }}</div>
+    </div>
+    {% endif %}
+
+    <div class="notes-section">
+        <h3>Packing Notes</h3>
+        <div class="notes-content"></div>
+    </div>
+
+    <div class="footer">
+        <span>Packed by: _________________</span>
+        <span>Date: _________________</span>
+        <span class="no-print">Printed on {{ printed_at }}</span>
+    </div>
+
+    <script>
+        window.onload = function() {
+            window.print();
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,177 @@
+{#
+    Unfulfilled Items Section Partial
+
+    Variables:
+    - order: OrderDetailView with short_id, fulfillment_orders
+#}
+
+{% if !order.fulfillment_orders.is_empty() %}
+<div class="bg-card rounded-xl border border-border">
+    <div class="px-6 py-4 border-b border-border flex items-center justify-between">
+        <h3 class="text-lg font-semibold text-foreground">
+            <i class="ph ph-package mr-2"></i>Unfulfilled
+        </h3>
+    </div>
+
+    {% for fo in order.fulfillment_orders %}
+    <div class="border-b border-border last:border-b-0">
+        <!-- Fulfillment Order Header -->
+        <div class="px-6 py-3 bg-muted/50 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <span class="badge {% if fo.status == "ON_HOLD" %}badge-destructive{% else %}badge-warning{% endif %}">
+                    {{ fo.status }}
+                </span>
+                {% if let Some(location) = fo.location_name %}
+                <span class="text-sm text-muted-foreground">
+                    <i class="ph ph-map-pin mr-1"></i>{{ location }}
+                </span>
+                {% endif %}
+            </div>
+            <div class="flex items-center gap-2">
+                {% if fo.status == "ON_HOLD" %}
+                <form action="/orders/{{ order.short_id }}/fulfillment-orders/{{ fo.id }}/release" method="POST" class="inline">
+                    <button type="submit"
+                            class="text-sm text-primary hover:underline">
+                        Release hold
+                    </button>
+                </form>
+                {% else %}
+                <button type="button"
+                        onclick="document.getElementById('hold-modal-{{ fo.id }}').classList.remove('hidden')"
+                        class="text-sm text-muted-foreground hover:text-foreground">
+                    <i class="ph ph-pause-circle mr-1"></i>Hold
+                </button>
+                <button type="button"
+                        onclick="document.getElementById('fulfill-modal-{{ fo.id }}').classList.remove('hidden')"
+                        class="inline-flex items-center gap-2 px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors">
+                    <i class="ph ph-truck"></i>
+                    Fulfill items
+                </button>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Line Items -->
+        <div class="divide-y divide-border">
+            {% for item in fo.line_items %}
+            <div class="px-6 py-4 flex items-center gap-4">
+                {% if let Some(image) = item.image %}
+                <img src="{{ image }}" alt="" class="w-12 h-12 rounded-lg object-cover bg-muted">
+                {% else %}
+                <div class="w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
+                    <i class="ph ph-package text-muted-foreground"></i>
+                </div>
+                {% endif %}
+                <div class="flex-1 min-w-0">
+                    <p class="font-medium text-foreground truncate">{{ item.title }}</p>
+                    {% if let Some(variant) = item.variant_title %}
+                    <p class="text-sm text-muted-foreground">{{ variant }}</p>
+                    {% endif %}
+                    {% if let Some(sku) = item.sku %}
+                    <p class="text-xs text-muted-foreground">SKU: {{ sku }}</p>
+                    {% endif %}
+                </div>
+                <div class="text-right">
+                    <p class="text-sm font-medium text-foreground">
+                        {{ item.remaining_quantity }} of {{ item.total_quantity }}
+                    </p>
+                    <p class="text-xs text-muted-foreground">to fulfill</p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Hold Modal for this FO -->
+    <div id="hold-modal-{{ fo.id }}" class="hidden fixed inset-0 z-50 overflow-y-auto">
+        <div class="flex items-center justify-center min-h-screen px-4">
+            <div class="fixed inset-0 bg-black/50" onclick="document.getElementById('hold-modal-{{ fo.id }}').classList.add('hidden')"></div>
+            <div class="relative bg-card rounded-xl border border-border max-w-md w-full p-6">
+                <h3 class="text-lg font-semibold text-foreground mb-4">
+                    <i class="ph ph-pause-circle mr-2"></i>Hold Fulfillment
+                </h3>
+                <form action="/orders/{{ order.short_id }}/fulfillment-orders/{{ fo.id }}/hold" method="POST">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-foreground mb-2">Reason</label>
+                            <select name="reason" required class="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm text-foreground">
+                                <option value="AWAITING_PAYMENT">Awaiting payment</option>
+                                <option value="HIGH_RISK_OF_FRAUD">High risk of fraud</option>
+                                <option value="INCORRECT_ADDRESS">Incorrect address</option>
+                                <option value="INVENTORY_OUT_OF_STOCK">Inventory out of stock</option>
+                                <option value="UNKNOWN_DELIVERY_DATE">Unknown delivery date</option>
+                                <option value="AWAITING_RETURN_ITEMS">Awaiting return items</option>
+                                <option value="OTHER">Other</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-foreground mb-2">Notes (optional)</label>
+                            <textarea name="reason_notes" rows="3" placeholder="Add details about the hold..."
+                                      class="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-ring focus:border-ring"></textarea>
+                        </div>
+                    </div>
+                    <div class="mt-6 flex items-center justify-end gap-3">
+                        <button type="button" onclick="document.getElementById('hold-modal-{{ fo.id }}').classList.add('hidden')"
+                                class="px-4 py-2 bg-card border border-border rounded-lg text-sm font-medium text-foreground hover:bg-muted transition-colors">
+                            Cancel
+                        </button>
+                        <button type="submit"
+                                class="px-4 py-2 bg-warning text-warning-foreground rounded-lg text-sm font-medium hover:bg-warning/90 transition-colors">
+                            <i class="ph ph-pause-circle mr-2"></i>Hold fulfillment
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Fulfill Modal for this FO -->
+    <div id="fulfill-modal-{{ fo.id }}" class="hidden fixed inset-0 z-50 overflow-y-auto">
+        <div class="flex items-center justify-center min-h-screen px-4">
+            <div class="fixed inset-0 bg-black/50" onclick="document.getElementById('fulfill-modal-{{ fo.id }}').classList.add('hidden')"></div>
+            <div class="relative bg-card rounded-xl border border-border max-w-md w-full p-6">
+                <h3 class="text-lg font-semibold text-foreground mb-4">
+                    <i class="ph ph-truck mr-2"></i>Create Fulfillment
+                </h3>
+                <form action="/orders/{{ order.short_id }}/fulfill" method="POST">
+                    <input type="hidden" name="fulfillment_order_id" value="{{ fo.id }}">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-foreground mb-2">Tracking company</label>
+                            <select name="tracking_company" class="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm text-foreground">
+                                <option value="">None</option>
+                                <option value="USPS">USPS</option>
+                                <option value="UPS">UPS</option>
+                                <option value="FedEx">FedEx</option>
+                                <option value="DHL">DHL</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-foreground mb-2">Tracking number</label>
+                            <input type="text" name="tracking_number" placeholder="Enter tracking number..."
+                                   class="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-ring focus:border-ring">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-foreground mb-2">Tracking URL (optional)</label>
+                            <input type="url" name="tracking_url" placeholder="https://..."
+                                   class="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-ring focus:border-ring">
+                        </div>
+                    </div>
+                    <div class="mt-6 flex items-center justify-end gap-3">
+                        <button type="button" onclick="document.getElementById('fulfill-modal-{{ fo.id }}').classList.add('hidden')"
+                                class="px-4 py-2 bg-card border border-border rounded-lg text-sm font-medium text-foreground hover:bg-muted transition-colors">
+                            Cancel
+                        </button>
+                        <button type="submit"
+                                class="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors">
+                            <i class="ph ph-package mr-2"></i>Fulfill items
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}

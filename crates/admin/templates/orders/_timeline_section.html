@@ -1,0 +1,59 @@
+{#
+    Order Timeline Section Partial
+
+    Variables:
+    - order: OrderDetailView with short_id, events
+#}
+
+<div class="bg-card rounded-xl border border-border">
+    <div class="px-6 py-4 border-b border-border">
+        <h3 class="text-lg font-semibold text-foreground">
+            <i class="ph ph-clock-counter-clockwise mr-2"></i>Timeline
+        </h3>
+    </div>
+
+    <div class="px-6 py-4">
+        {% if order.events.is_empty() %}
+        <p class="text-sm text-muted-foreground text-center py-4">No timeline events yet</p>
+        {% else %}
+        <div class="relative">
+            <!-- Timeline line -->
+            <div class="absolute left-3 top-2 bottom-2 w-px bg-border"></div>
+
+            <div class="space-y-4">
+                {% for event in order.events %}
+                <div class="relative flex gap-4">
+                    <!-- Timeline dot -->
+                    <div class="relative z-10 flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center
+                        {% if event.event_type == "CREATED" %}bg-success/20 text-success
+                        {% elif event.event_type == "PAYMENT" %}bg-primary/20 text-primary
+                        {% elif event.event_type == "FULFILLMENT" %}bg-info/20 text-info
+                        {% elif event.event_type == "REFUND" %}bg-destructive/20 text-destructive
+                        {% elif event.event_type == "COMMENT" %}bg-muted text-muted-foreground
+                        {% else %}bg-muted text-muted-foreground{% endif %}">
+                        <i class="ph text-xs
+                            {% if event.event_type == "CREATED" %}ph-plus
+                            {% elif event.event_type == "PAYMENT" %}ph-credit-card
+                            {% elif event.event_type == "FULFILLMENT" %}ph-package
+                            {% elif event.event_type == "REFUND" %}ph-arrow-counter-clockwise
+                            {% elif event.event_type == "COMMENT" %}ph-chat-dots
+                            {% else %}ph-circle{% endif %}"></i>
+                    </div>
+
+                    <!-- Event content -->
+                    <div class="flex-1 min-w-0 pb-4">
+                        <div class="flex items-start justify-between gap-2">
+                            <p class="text-sm text-foreground">{{ event.message }}</p>
+                            <time class="text-xs text-muted-foreground whitespace-nowrap">{{ event.created_at }}</time>
+                        </div>
+                        {% if let Some(staff) = event.staff_name %}
+                        <p class="text-xs text-muted-foreground mt-1">by {{ staff }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>

@@ -1,0 +1,64 @@
+{#
+    Fulfillment Creation Modal Partial
+
+    Variables:
+    - fo_id: Fulfillment order ID
+    - order_id: Order short ID
+#}
+
+<div id="fulfill-modal-{{ fo_id }}" class="hidden fixed inset-0 z-50 overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen px-4">
+        <div class="fixed inset-0 bg-black/50" onclick="document.getElementById('fulfill-modal-{{ fo_id }}').classList.add('hidden')"></div>
+        <div class="relative bg-card rounded-xl border border-border max-w-md w-full p-6">
+            <h3 class="text-lg font-semibold text-foreground mb-4">
+                <i class="ph ph-truck mr-2"></i>Create Fulfillment
+            </h3>
+            <form action="/orders/{{ order_id }}/fulfill" method="POST">
+                <input type="hidden" name="fulfillment_order_id" value="{{ fo_id }}">
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-foreground mb-2">Tracking company</label>
+                        <select name="tracking_company" class="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm text-foreground">
+                            <option value="">None</option>
+                            <option value="USPS">USPS</option>
+                            <option value="UPS">UPS</option>
+                            <option value="FedEx">FedEx</option>
+                            <option value="DHL">DHL</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-foreground mb-2">Tracking number</label>
+                        <input type="text"
+                               name="tracking_number"
+                               placeholder="Enter tracking number..."
+                               class="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-ring focus:border-ring">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-foreground mb-2">Tracking URL (optional)</label>
+                        <input type="url"
+                               name="tracking_url"
+                               placeholder="https://..."
+                               class="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-ring focus:border-ring">
+                    </div>
+                </div>
+
+                <div class="mt-6 flex items-center justify-end gap-3">
+                    <button type="button"
+                            onclick="document.getElementById('fulfill-modal-{{ fo_id }}').classList.add('hidden')"
+                            class="px-4 py-2 bg-card border border-border rounded-lg text-sm font-medium text-foreground hover:bg-muted transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit"
+                            class="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors">
+                        <i class="ph ph-package mr-2"></i>
+                        Fulfill items
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
