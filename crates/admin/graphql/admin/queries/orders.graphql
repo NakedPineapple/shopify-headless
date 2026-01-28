@@ -1,6 +1,6 @@
 # Order queries for Shopify Admin API (no fragments for simpler type generation)
 
-# Get a single order by ID
+# Get a single order by ID (basic)
 query GetOrder($id: ID!, $lineItemCount: Int = 50, $fulfillmentCount: Int = 10) {
   order(id: $id) {
     id
@@ -120,6 +120,407 @@ query GetOrder($id: ID!, $lineItemCount: Int = 50, $fulfillmentCount: Int = 10) 
       }
       createdAt
       updatedAt
+    }
+  }
+}
+
+# Get detailed order for order detail page
+query GetOrderDetail($id: ID!, $lineItemCount: Int = 100, $fulfillmentCount: Int = 50, $transactionCount: Int = 50, $eventCount: Int = 100) {
+  order(id: $id) {
+    id
+    name
+    number
+    createdAt
+    updatedAt
+    closedAt
+    cancelledAt
+    processedAt
+    displayFinancialStatus
+    displayFulfillmentStatus
+    returnStatus
+    fullyPaid
+    confirmed
+    closed
+    cancelReason
+    test
+    email
+    phone
+    note
+    tags
+    # Financial summaries
+    subtotalPriceSet {
+      shopMoney {
+        amount
+        currencyCode
+      }
+    }
+    totalShippingPriceSet {
+      shopMoney {
+        amount
+        currencyCode
+      }
+    }
+    totalTaxSet {
+      shopMoney {
+        amount
+        currencyCode
+      }
+    }
+    totalPriceSet {
+      shopMoney {
+        amount
+        currencyCode
+      }
+    }
+    totalDiscountsSet {
+      shopMoney {
+        amount
+        currencyCode
+      }
+    }
+    currentTotalPriceSet {
+      shopMoney {
+        amount
+        currencyCode
+      }
+    }
+    totalOutstandingSet {
+      shopMoney {
+        amount
+        currencyCode
+      }
+    }
+    totalRefundedSet {
+      shopMoney {
+        amount
+        currencyCode
+      }
+    }
+    totalCapturableSet {
+      shopMoney {
+        amount
+        currencyCode
+      }
+    }
+    netPaymentSet {
+      shopMoney {
+        amount
+        currencyCode
+      }
+    }
+    currencyCode
+    # Extended customer info
+    customer {
+      id
+      displayName
+      email
+      phone
+      numberOfOrders
+      amountSpent {
+        amount
+        currencyCode
+      }
+      note
+      emailMarketingConsent {
+        marketingState
+        marketingOptInLevel
+        consentUpdatedAt
+      }
+    }
+    billingAddress {
+      address1
+      address2
+      city
+      provinceCode
+      countryCodeV2
+      zip
+      firstName
+      lastName
+      company
+      phone
+    }
+    shippingAddress {
+      address1
+      address2
+      city
+      provinceCode
+      countryCodeV2
+      zip
+      firstName
+      lastName
+      company
+      phone
+    }
+    shippingLine {
+      title
+      deliveryCategory
+      discountedPriceSet {
+        shopMoney {
+          amount
+          currencyCode
+        }
+      }
+    }
+    discountCodes
+    # Extended line items with quantities and images
+    lineItems(first: $lineItemCount) {
+      edges {
+        node {
+          id
+          title
+          variantTitle
+          sku
+          name
+          quantity
+          currentQuantity
+          unfulfilledQuantity
+          refundableQuantity
+          nonFulfillableQuantity
+          originalUnitPriceSet {
+            shopMoney {
+              amount
+              currencyCode
+            }
+          }
+          discountedUnitPriceSet {
+            shopMoney {
+              amount
+              currencyCode
+            }
+          }
+          totalDiscountSet {
+            shopMoney {
+              amount
+              currencyCode
+            }
+          }
+          originalTotalSet {
+            shopMoney {
+              amount
+              currencyCode
+            }
+          }
+          discountedTotalSet {
+            shopMoney {
+              amount
+              currencyCode
+            }
+          }
+          product {
+            id
+          }
+          variant {
+            id
+          }
+          image {
+            url
+            altText
+          }
+          requiresShipping
+          isGiftCard
+          taxable
+        }
+      }
+    }
+    # Fulfillments with line items
+    fulfillments(first: $fulfillmentCount) {
+      id
+      name
+      status
+      displayStatus
+      createdAt
+      updatedAt
+      trackingInfo {
+        company
+        number
+        url
+      }
+      fulfillmentLineItems(first: 50) {
+        edges {
+          node {
+            id
+            quantity
+            lineItem {
+              id
+              title
+              variantTitle
+              sku
+              image {
+                url
+                altText
+              }
+            }
+          }
+        }
+      }
+    }
+    # Fulfillment orders (pending fulfillment groups)
+    fulfillmentOrders(first: 20) {
+      edges {
+        node {
+          id
+          status
+          requestStatus
+          supportedActions {
+            action
+          }
+          assignedLocation {
+            name
+            location {
+              id
+            }
+          }
+          lineItems(first: 50) {
+            edges {
+              node {
+                id
+                totalQuantity
+                remainingQuantity
+                lineItem {
+                  id
+                  title
+                  variantTitle
+                  sku
+                  image {
+                    url
+                    altText
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    # Transactions
+    transactions(first: $transactionCount) {
+      id
+      kind
+      status
+      gateway
+      createdAt
+      processedAt
+      errorCode
+      amountSet {
+        shopMoney {
+          amount
+          currencyCode
+        }
+      }
+      totalUnsettledSet {
+        shopMoney {
+          amount
+          currencyCode
+        }
+      }
+      paymentDetails {
+        __typename
+        ... on CardPaymentDetails {
+          company
+          name
+          number
+          bin
+          expirationMonth
+          expirationYear
+          wallet
+        }
+      }
+    }
+    # Refunds
+    refunds(first: 20) {
+      id
+      createdAt
+      note
+      totalRefundedSet {
+        shopMoney {
+          amount
+          currencyCode
+        }
+      }
+      refundLineItems(first: 50) {
+        edges {
+          node {
+            lineItem {
+              id
+              title
+              variantTitle
+              sku
+            }
+            quantity
+            restocked
+            subtotalSet {
+              shopMoney {
+                amount
+                currencyCode
+              }
+            }
+          }
+        }
+      }
+      transactions(first: 10) {
+        edges {
+          node {
+            id
+            kind
+            status
+            gateway
+            amountSet {
+              shopMoney {
+                amount
+                currencyCode
+              }
+            }
+          }
+        }
+      }
+    }
+    # Returns
+    returns(first: 20) {
+      edges {
+        node {
+          id
+          name
+          status
+          createdAt
+          totalQuantity
+          returnLineItems(first: 50) {
+            edges {
+              node {
+                __typename
+                id
+                quantity
+                returnReason
+                customerNote
+              }
+            }
+          }
+        }
+      }
+    }
+    # Risk assessment
+    risks(first: 10) {
+      level
+      message
+    }
+    # Order events/timeline (basic fields only - inline fragments not used to simplify codegen)
+    events(first: $eventCount, sortKey: CREATED_AT) {
+      edges {
+        node {
+          __typename
+          id
+          createdAt
+          message
+          attributeToApp
+          attributeToUser
+          criticalAlert
+        }
+      }
+    }
+    # Channel info
+    channelInformation {
+      channelDefinition {
+        channelName
+      }
     }
   }
 }

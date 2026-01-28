@@ -31,6 +31,9 @@ type UnsignedInt64 = String;
 /// Date string (YYYY-MM-DD format).
 type Date = String;
 
+/// Formatted string (rich text/HTML).
+type FormattedString = String;
+
 // =============================================================================
 // Product queries
 // =============================================================================
@@ -252,6 +255,14 @@ pub struct PublishableUnpublish;
     response_derives = "Debug, Clone"
 )]
 pub struct GetOrder;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/orders.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct GetOrderDetail;
 
 #[derive(GraphQLQuery)]
 #[graphql(

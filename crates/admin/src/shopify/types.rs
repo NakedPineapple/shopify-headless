@@ -368,6 +368,53 @@ pub struct OrderLineItem {
     pub is_gift_card: bool,
 }
 
+/// Extended line item for order detail view with quantities and image.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OrderDetailLineItem {
+    /// Line item ID.
+    pub id: String,
+    /// Product title.
+    pub title: String,
+    /// Full name (title + variant).
+    pub name: Option<String>,
+    /// Variant title.
+    pub variant_title: Option<String>,
+    /// SKU.
+    pub sku: Option<String>,
+    /// Original quantity ordered.
+    pub quantity: i64,
+    /// Current quantity (after edits).
+    pub current_quantity: i64,
+    /// Quantity not yet fulfilled.
+    pub unfulfilled_quantity: i64,
+    /// Quantity that can be refunded.
+    pub refundable_quantity: i64,
+    /// Quantity that cannot be fulfilled (digital, etc).
+    pub non_fulfillable_quantity: i64,
+    /// Original price per unit.
+    pub original_unit_price: Money,
+    /// Discounted price per unit.
+    pub discounted_unit_price: Money,
+    /// Total discount amount.
+    pub total_discount: Money,
+    /// Original total (quantity × original price).
+    pub original_total: Money,
+    /// Discounted total (quantity × discounted price).
+    pub discounted_total: Money,
+    /// Product ID.
+    pub product_id: Option<String>,
+    /// Variant ID.
+    pub variant_id: Option<String>,
+    /// Line item image.
+    pub image: Option<Image>,
+    /// Whether requires shipping.
+    pub requires_shipping: bool,
+    /// Whether is a gift card.
+    pub is_gift_card: bool,
+    /// Whether taxable.
+    pub taxable: bool,
+}
+
 /// An order in the admin.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Order {
@@ -417,6 +464,512 @@ pub struct Order {
     pub shipping_address: Option<Address>,
     /// Customer ID.
     pub customer_id: Option<String>,
+}
+
+// =============================================================================
+// Order Detail Types (for detail page)
+// =============================================================================
+
+/// Transaction kind for order payments.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum TransactionKind {
+    /// Authorization hold.
+    Authorization,
+    /// Capture of authorized funds.
+    Capture,
+    /// Sale (authorize + capture).
+    Sale,
+    /// Refund to customer.
+    Refund,
+    /// Void of authorization.
+    Void,
+    /// Pending transaction.
+    Pending,
+    /// Chargeback initiated.
+    Chargeback,
+    /// EMV authorization.
+    EmvAuthorization,
+    /// Suggested refund.
+    SuggestedRefund,
+    /// Change (cash payment).
+    Change,
+}
+
+impl std::fmt::Display for TransactionKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Authorization => write!(f, "Authorization"),
+            Self::Capture => write!(f, "Capture"),
+            Self::Sale => write!(f, "Sale"),
+            Self::Refund => write!(f, "Refund"),
+            Self::Void => write!(f, "Void"),
+            Self::Pending => write!(f, "Pending"),
+            Self::Chargeback => write!(f, "Chargeback"),
+            Self::EmvAuthorization => write!(f, "EMV Authorization"),
+            Self::SuggestedRefund => write!(f, "Suggested Refund"),
+            Self::Change => write!(f, "Change"),
+        }
+    }
+}
+
+/// Transaction status.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum TransactionStatus {
+    /// Transaction succeeded.
+    Success,
+    /// Transaction is pending.
+    Pending,
+    /// Transaction failed.
+    Failure,
+    /// Transaction encountered an error.
+    Error,
+    /// Transaction was awaiting response.
+    AwaitingResponse,
+    /// Unknown status.
+    Unknown,
+}
+
+impl std::fmt::Display for TransactionStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Success => write!(f, "Success"),
+            Self::Pending => write!(f, "Pending"),
+            Self::Failure => write!(f, "Failure"),
+            Self::Error => write!(f, "Error"),
+            Self::AwaitingResponse => write!(f, "Awaiting Response"),
+            Self::Unknown => write!(f, "Unknown"),
+        }
+    }
+}
+
+/// Card payment details.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CardPaymentDetails {
+    /// Card brand (Visa, Mastercard, etc.).
+    pub company: Option<String>,
+    /// Cardholder name.
+    pub name: Option<String>,
+    /// Last 4 digits.
+    pub number: Option<String>,
+    /// Card BIN (first 6 digits).
+    pub bin: Option<String>,
+    /// Expiration month.
+    pub expiration_month: Option<i64>,
+    /// Expiration year.
+    pub expiration_year: Option<i64>,
+    /// Digital wallet type (Apple Pay, Google Pay, etc.).
+    pub wallet: Option<String>,
+}
+
+/// A payment transaction on an order.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OrderTransaction {
+    /// Transaction ID.
+    pub id: String,
+    /// Transaction kind.
+    pub kind: TransactionKind,
+    /// Transaction status.
+    pub status: TransactionStatus,
+    /// Payment gateway name.
+    pub gateway: Option<String>,
+    /// When the transaction was created.
+    pub created_at: String,
+    /// When the transaction was processed.
+    pub processed_at: Option<String>,
+    /// Error code if failed.
+    pub error_code: Option<String>,
+    /// Transaction amount.
+    pub amount: Money,
+    /// Unsettled amount.
+    pub total_unsettled: Option<Money>,
+    /// Card payment details (if card payment).
+    pub payment_details: Option<CardPaymentDetails>,
+}
+
+/// A line item in a refund.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RefundLineItem {
+    /// Original line item ID.
+    pub line_item_id: String,
+    /// Product title.
+    pub title: String,
+    /// Variant title.
+    pub variant_title: Option<String>,
+    /// SKU.
+    pub sku: Option<String>,
+    /// Quantity refunded.
+    pub quantity: i64,
+    /// Whether the item was restocked.
+    pub restocked: bool,
+    /// Refund subtotal for this item.
+    pub subtotal: Money,
+}
+
+/// A refund on an order.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OrderRefund {
+    /// Refund ID.
+    pub id: String,
+    /// When the refund was created.
+    pub created_at: String,
+    /// Refund note.
+    pub note: Option<String>,
+    /// Total refunded amount.
+    pub total_refunded: Money,
+    /// Line items included in this refund.
+    pub line_items: Vec<RefundLineItem>,
+    /// Transactions for this refund.
+    pub transactions: Vec<OrderTransaction>,
+}
+
+/// Return status.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum ReturnStatus {
+    /// Return requested by customer.
+    Requested,
+    /// Return is open/in progress.
+    Open,
+    /// Return was canceled.
+    Cancelled,
+    /// Return is closed/completed.
+    Closed,
+    /// Return was declined.
+    Declined,
+}
+
+impl std::fmt::Display for ReturnStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Requested => write!(f, "Requested"),
+            Self::Open => write!(f, "Open"),
+            Self::Cancelled => write!(f, "Cancelled"),
+            Self::Closed => write!(f, "Closed"),
+            Self::Declined => write!(f, "Declined"),
+        }
+    }
+}
+
+/// A line item in a return.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ReturnLineItem {
+    /// Return line item ID.
+    pub id: String,
+    /// Quantity being returned.
+    pub quantity: i64,
+    /// Reason for return.
+    pub return_reason: Option<String>,
+    /// Customer note about the return.
+    pub customer_note: Option<String>,
+}
+
+/// A return on an order.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OrderReturn {
+    /// Return ID.
+    pub id: String,
+    /// Return name (e.g., "Return #1").
+    pub name: Option<String>,
+    /// Return status.
+    pub status: ReturnStatus,
+    /// When the return was created.
+    pub created_at: String,
+    /// Total quantity being returned.
+    pub total_quantity: i64,
+    /// Line items in this return.
+    pub line_items: Vec<ReturnLineItem>,
+}
+
+/// An event in the order timeline.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OrderEvent {
+    /// Event ID.
+    pub id: String,
+    /// When the event occurred.
+    pub created_at: String,
+    /// Event message.
+    pub message: Option<String>,
+    /// Whether attributed to an app.
+    pub attribute_to_app: bool,
+    /// Whether attributed to a user.
+    pub attribute_to_user: bool,
+    /// Whether this is a critical alert.
+    pub critical_alert: bool,
+    /// Author name (for comments).
+    pub author_name: Option<String>,
+}
+
+/// A line item in a fulfillment.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FulfillmentLineItem {
+    /// Fulfillment line item ID.
+    pub id: String,
+    /// Quantity fulfilled.
+    pub quantity: i64,
+    /// Original line item ID.
+    pub line_item_id: String,
+    /// Product title.
+    pub title: String,
+    /// Variant title.
+    pub variant_title: Option<String>,
+    /// SKU.
+    pub sku: Option<String>,
+    /// Image.
+    pub image: Option<Image>,
+}
+
+/// Extended fulfillment for detail view.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FulfillmentDetail {
+    /// Fulfillment ID.
+    pub id: String,
+    /// Fulfillment name.
+    pub name: Option<String>,
+    /// Status (raw string from API).
+    pub status: String,
+    /// Display status.
+    pub display_status: Option<String>,
+    /// Creation timestamp.
+    pub created_at: String,
+    /// Last update timestamp.
+    pub updated_at: String,
+    /// Tracking information.
+    pub tracking_info: Vec<TrackingInfo>,
+    /// Line items in this fulfillment.
+    pub line_items: Vec<FulfillmentLineItem>,
+}
+
+/// Supported actions on a fulfillment order.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum FulfillmentOrderAction {
+    /// Can create fulfillment.
+    CreateFulfillment,
+    /// Can request fulfillment.
+    RequestFulfillment,
+    /// Can cancel fulfillment request.
+    CancelFulfillmentOrder,
+    /// Can move fulfillment order.
+    Move,
+    /// Can hold fulfillment order.
+    Hold,
+    /// Can release hold.
+    ReleaseHold,
+    /// Can open fulfillment order.
+    Open,
+    /// Can close fulfillment order.
+    Close,
+    /// Can mark as open.
+    MarkAsOpen,
+    /// Can external fulfillment cancel.
+    ExternalFulfillmentCancel,
+    /// Can external fulfillment request.
+    ExternalFulfillmentRequest,
+}
+
+/// A line item in a fulfillment order.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FulfillmentOrderLineItemDetail {
+    /// Fulfillment order line item ID.
+    pub id: String,
+    /// Total quantity.
+    pub total_quantity: i64,
+    /// Remaining quantity to fulfill.
+    pub remaining_quantity: i64,
+    /// Original line item ID.
+    pub line_item_id: String,
+    /// Product title.
+    pub title: String,
+    /// Variant title.
+    pub variant_title: Option<String>,
+    /// SKU.
+    pub sku: Option<String>,
+    /// Image.
+    pub image: Option<Image>,
+}
+
+/// A fulfillment order (group of items pending fulfillment).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FulfillmentOrderDetail {
+    /// Fulfillment order ID.
+    pub id: String,
+    /// Status.
+    pub status: String,
+    /// Request status.
+    pub request_status: Option<String>,
+    /// Location ID.
+    pub location_id: Option<String>,
+    /// Location name.
+    pub location_name: Option<String>,
+    /// Supported actions.
+    pub supported_actions: Vec<FulfillmentOrderAction>,
+    /// Line items in this fulfillment order.
+    pub line_items: Vec<FulfillmentOrderLineItemDetail>,
+}
+
+/// Extended customer info for order detail.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OrderDetailCustomer {
+    /// Customer ID.
+    pub id: String,
+    /// Display name.
+    pub display_name: String,
+    /// Email.
+    pub email: Option<String>,
+    /// Phone.
+    pub phone: Option<String>,
+    /// Total orders count.
+    pub orders_count: i64,
+    /// Total amount spent.
+    pub total_spent: Money,
+    /// Customer note.
+    pub note: Option<String>,
+    /// Email marketing consent.
+    pub email_marketing_consent: Option<MarketingConsent>,
+}
+
+/// Extended shipping line for order detail.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ShippingLineDetail {
+    /// Shipping method title.
+    pub title: String,
+    /// Delivery category.
+    pub delivery_category: Option<DeliveryCategory>,
+    /// Discounted shipping price.
+    pub discounted_price: Option<Money>,
+}
+
+/// Order cancel reason.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum OrderCancelReason {
+    /// Customer changed mind.
+    Customer,
+    /// Fraudulent order.
+    Fraud,
+    /// Item out of stock.
+    Inventory,
+    /// Payment declined.
+    Declined,
+    /// Other reason.
+    Other,
+    /// Staff requested.
+    StaffRequest,
+}
+
+impl std::fmt::Display for OrderCancelReason {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Customer => write!(f, "Customer changed/cancelled order"),
+            Self::Fraud => write!(f, "Fraudulent order"),
+            Self::Inventory => write!(f, "Items unavailable"),
+            Self::Declined => write!(f, "Payment declined"),
+            Self::Other => write!(f, "Other"),
+            Self::StaffRequest => write!(f, "Staff request"),
+        }
+    }
+}
+
+/// Comprehensive order detail for the order detail page.
+// Allow: Shopify API Order object has many independent boolean properties
+// representing separate order states (fully_paid, confirmed, closed, test).
+#[allow(clippy::struct_excessive_bools)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OrderDetail {
+    /// Order ID.
+    pub id: String,
+    /// Order name (e.g., "#1001").
+    pub name: String,
+    /// Order number.
+    pub number: i64,
+    /// Creation timestamp.
+    pub created_at: String,
+    /// Last update timestamp.
+    pub updated_at: String,
+    /// When order was closed.
+    pub closed_at: Option<String>,
+    /// When order was cancelled.
+    pub cancelled_at: Option<String>,
+    /// When order was processed.
+    pub processed_at: Option<String>,
+    /// Financial status.
+    pub financial_status: Option<FinancialStatus>,
+    /// Fulfillment status.
+    pub fulfillment_status: Option<FulfillmentStatus>,
+    /// Return status.
+    pub return_status: Option<OrderReturnStatus>,
+    /// Whether fully paid.
+    pub fully_paid: bool,
+    /// Whether order is confirmed.
+    pub confirmed: bool,
+    /// Whether order is closed.
+    pub closed: bool,
+    /// Cancel reason (if cancelled).
+    pub cancel_reason: Option<OrderCancelReason>,
+    /// Whether test order.
+    pub test: bool,
+    /// Customer email.
+    pub email: Option<String>,
+    /// Customer phone.
+    pub phone: Option<String>,
+    /// Order note.
+    pub note: Option<String>,
+    /// Order tags.
+    pub tags: Vec<String>,
+    /// Currency code.
+    pub currency_code: String,
+    // Financial summaries
+    /// Subtotal price.
+    pub subtotal_price: Money,
+    /// Total shipping price.
+    pub total_shipping_price: Money,
+    /// Total tax.
+    pub total_tax: Money,
+    /// Total price.
+    pub total_price: Money,
+    /// Total discounts.
+    pub total_discounts: Money,
+    /// Current total price (after edits).
+    pub current_total_price: Money,
+    /// Outstanding balance.
+    pub total_outstanding: Money,
+    /// Total refunded.
+    pub total_refunded: Money,
+    /// Total capturable (authorized but not captured).
+    pub total_capturable: Money,
+    /// Net payment (paid minus refunded).
+    pub net_payment: Money,
+    // Related data
+    /// Customer info.
+    pub customer: Option<OrderDetailCustomer>,
+    /// Billing address.
+    pub billing_address: Option<Address>,
+    /// Shipping address.
+    pub shipping_address: Option<Address>,
+    /// Shipping line.
+    pub shipping_line: Option<ShippingLineDetail>,
+    /// Applied discount codes.
+    pub discount_codes: Vec<String>,
+    /// Line items.
+    pub line_items: Vec<OrderDetailLineItem>,
+    /// Fulfillments.
+    pub fulfillments: Vec<FulfillmentDetail>,
+    /// Fulfillment orders (pending fulfillment).
+    pub fulfillment_orders: Vec<FulfillmentOrderDetail>,
+    /// Payment transactions.
+    pub transactions: Vec<OrderTransaction>,
+    /// Refunds.
+    pub refunds: Vec<OrderRefund>,
+    /// Returns.
+    pub returns: Vec<OrderReturn>,
+    /// Risk assessments.
+    pub risks: Vec<OrderRisk>,
+    /// Timeline events.
+    pub events: Vec<OrderEvent>,
+    /// Channel info.
+    pub channel_info: Option<OrderChannelInfo>,
 }
 
 // =============================================================================
