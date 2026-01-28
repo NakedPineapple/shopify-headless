@@ -7,11 +7,11 @@
 {% block content %}
 <div class="flex h-[calc(100vh-8rem)]">
     <!-- Session sidebar -->
-    <div class="w-64 bg-white border-r border-gray-200 flex flex-col">
-        <div class="p-4 border-b border-gray-200">
+    <div class="w-64 bg-card border-r border-border flex flex-col">
+        <div class="p-4 border-b border-border">
             <button
                 id="new-session-btn"
-                class="w-full bg-coral-600 text-white py-2 px-4 rounded-md hover:bg-coral-700 transition-colors font-medium"
+                class="w-full bg-primary text-primary-foreground py-2 px-4 rounded-md hover:bg-primary/90 transition-colors font-medium"
             >
                 New Chat
             </button>
@@ -19,15 +19,15 @@
 
         <div id="sessions-list" class="flex-1 overflow-y-auto">
             <!-- Sessions loaded via JS -->
-            <div class="p-4 text-gray-500 text-sm">Loading sessions...</div>
+            <div class="p-4 text-muted-foreground text-sm">Loading sessions...</div>
         </div>
     </div>
 
     <!-- Chat area -->
-    <div class="flex-1 flex flex-col bg-gray-50">
+    <div class="flex-1 flex flex-col bg-muted">
         <!-- Messages container -->
         <div id="messages" class="flex-1 overflow-y-auto p-6 space-y-4">
-            <div id="empty-state" class="flex items-center justify-center h-full text-gray-400">
+            <div id="empty-state" class="flex items-center justify-center h-full text-muted-foreground">
                 <div class="text-center">
                     <svg class="mx-auto h-12 w-12 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
@@ -39,27 +39,27 @@
         </div>
 
         <!-- Input area -->
-        <div class="border-t border-gray-200 bg-white p-4">
+        <div class="border-t border-border bg-card p-4">
             <form id="message-form" class="flex gap-3">
                 <input
                     type="text"
                     id="message-input"
                     name="message"
                     placeholder="Ask about orders, products, customers..."
-                    class="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-coral-500 focus:border-transparent"
+                    class="flex-1 px-4 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent bg-input text-foreground placeholder:text-muted-foreground"
                     autocomplete="off"
                     disabled
                 >
                 <button
                     type="submit"
                     id="send-btn"
-                    class="bg-coral-600 text-white py-2 px-6 rounded-md hover:bg-coral-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    class="bg-primary text-primary-foreground py-2 px-6 rounded-md hover:bg-primary/90 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                     disabled
                 >
                     Send
                 </button>
             </form>
-            <p id="status-message" class="text-sm text-gray-500 mt-2 hidden"></p>
+            <p id="status-message" class="text-sm text-muted-foreground mt-2 hidden"></p>
         </div>
     </div>
 </div>
@@ -95,15 +95,15 @@
             const sessions = await response.json();
 
             if (sessions.length === 0) {
-                sessionsListEl.innerHTML = '<div class="p-4 text-gray-500 text-sm">No chat sessions yet</div>';
+                sessionsListEl.innerHTML = '<div class="p-4 text-muted-foreground text-sm">No chat sessions yet</div>';
             } else {
                 sessionsListEl.innerHTML = sessions.map(session => `
                     <button
-                        class="session-item w-full text-left px-4 py-3 hover:bg-gray-100 border-b border-gray-100"
+                        class="session-item w-full text-left px-4 py-3 hover:bg-accent border-b border-border"
                         data-session-id="${session.id}"
                     >
-                        <div class="font-medium text-sm truncate">${escapeHtml(session.title || 'Untitled')}</div>
-                        <div class="text-xs text-gray-500">${formatDate(session.updated_at)}</div>
+                        <div class="font-medium text-sm truncate text-foreground">${escapeHtml(session.title || 'Untitled')}</div>
+                        <div class="text-xs text-muted-foreground">${formatDate(session.updated_at)}</div>
                     </button>
                 `).join('');
 
@@ -113,7 +113,7 @@
                 });
             }
         } catch (error) {
-            sessionsListEl.innerHTML = '<div class="p-4 text-red-500 text-sm">Failed to load sessions</div>';
+            sessionsListEl.innerHTML = '<div class="p-4 text-destructive text-sm">Failed to load sessions</div>';
         }
     }
 
@@ -140,7 +140,7 @@
 
         // Update UI
         sessionsListEl.querySelectorAll('.session-item').forEach(item => {
-            item.classList.toggle('bg-gray-100', parseInt(item.dataset.sessionId) === sessionId);
+            item.classList.toggle('bg-accent', parseInt(item.dataset.sessionId) === sessionId);
         });
 
         messageInput.disabled = false;
@@ -202,7 +202,7 @@
         const text = msg.content.text || '';
         return `
             <div class="flex ${isUser ? 'justify-end' : 'justify-start'}">
-                <div class="${isUser ? 'bg-coral-600 text-white' : 'bg-white border border-gray-200'} rounded-lg px-4 py-3 max-w-2xl">
+                <div class="${isUser ? 'bg-primary text-primary-foreground' : 'bg-card border border-border text-foreground'} rounded-lg px-4 py-3 max-w-2xl">
                     <div class="whitespace-pre-wrap">${escapeHtml(text)}</div>
                 </div>
             </div>
@@ -314,8 +314,8 @@
 
     function showStatus(message, type) {
         statusMessageEl.textContent = message;
-        statusMessageEl.classList.remove('hidden', 'text-gray-500', 'text-red-500');
-        statusMessageEl.classList.add(type === 'error' ? 'text-red-500' : 'text-gray-500');
+        statusMessageEl.classList.remove('hidden', 'text-muted-foreground', 'text-destructive');
+        statusMessageEl.classList.add(type === 'error' ? 'text-destructive' : 'text-muted-foreground');
     }
 
     function hideStatus() {

@@ -5,7 +5,7 @@
 {% block page_title %}Create Gift Card{% endblock %}
 
 {% block page_subtitle %}
-<p class="text-sm text-gray-500 mt-1">Issue a new gift card</p>
+<p class="text-sm text-muted-foreground mt-1">Issue a new gift card</p>
 {% endblock %}
 
 {% block content %}
@@ -49,15 +49,15 @@
     </div>
 
     <!-- Form Card -->
-    <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+    <div class="bg-card rounded-xl border border-border overflow-hidden">
         <form action="/gift-cards" method="POST" class="p-6 space-y-6">
             <!-- Initial Value -->
             <div>
-                <label for="initial_value" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Initial Value <span class="text-red-500">*</span>
+                <label for="initial_value" class="block text-sm font-medium text-foreground mb-2">
+                    Initial Value <span class="text-destructive">*</span>
                 </label>
                 <div class="relative">
-                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
                     <input type="number"
                            step="0.01"
                            min="1"
@@ -65,66 +65,66 @@
                            name="initial_value"
                            required
                            placeholder="0.00"
-                           class="w-full pl-8 pr-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-coral focus:border-coral transition-colors">
+                           class="w-full pl-8 pr-4 py-2.5 bg-input border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-colors placeholder:text-muted-foreground">
                 </div>
-                <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                <p class="mt-1.5 text-xs text-muted-foreground">
                     The starting balance for this gift card
                 </p>
             </div>
 
             <!-- Customer (optional) -->
             <div>
-                <label for="customer_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label for="customer_id" class="block text-sm font-medium text-foreground mb-2">
                     Customer (optional)
                 </label>
                 <input type="text"
                        id="customer_id"
                        name="customer_id"
                        placeholder="Customer ID (e.g., gid://shopify/Customer/123)"
-                       class="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-coral focus:border-coral transition-colors">
-                <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                       class="w-full px-4 py-2.5 bg-input border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-colors placeholder:text-muted-foreground">
+                <p class="mt-1.5 text-xs text-muted-foreground">
                     Associate this gift card with a specific customer
                 </p>
             </div>
 
             <!-- Expiration Date (optional) -->
             <div>
-                <label for="expires_on" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label for="expires_on" class="block text-sm font-medium text-foreground mb-2">
                     Expiration Date (optional)
                 </label>
                 <input type="date"
                        id="expires_on"
                        name="expires_on"
-                       class="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-coral focus:border-coral transition-colors">
-                <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                       class="w-full px-4 py-2.5 bg-input border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-colors">
+                <p class="mt-1.5 text-xs text-muted-foreground">
                     Leave empty for a gift card that never expires
                 </p>
             </div>
 
             <!-- Note (optional) -->
             <div>
-                <label for="note" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label for="note" class="block text-sm font-medium text-foreground mb-2">
                     Note (optional)
                 </label>
                 <textarea id="note"
                           name="note"
                           rows="3"
                           placeholder="Internal note about this gift card..."
-                          class="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-coral focus:border-coral transition-colors resize-none"></textarea>
-                <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                          class="w-full px-4 py-2.5 bg-input border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-colors placeholder:text-muted-foreground resize-none"></textarea>
+                <p class="mt-1.5 text-xs text-muted-foreground">
                     For internal use only - not visible to customers
                 </p>
             </div>
 
             <!-- Actions -->
-            <div class="flex items-center gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <div class="flex items-center gap-4 pt-4 border-t border-border">
                 <button type="submit"
                         disabled
-                        class="px-6 py-2.5 bg-coral text-white rounded-lg hover:bg-coral/90 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+                        class="px-6 py-2.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed">
                     Create Gift Card
                 </button>
                 <a href="/gift-cards"
-                   class="px-6 py-2.5 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors">
+                   class="px-6 py-2.5 text-muted-foreground hover:text-foreground transition-colors">
                     Cancel
                 </a>
             </div>

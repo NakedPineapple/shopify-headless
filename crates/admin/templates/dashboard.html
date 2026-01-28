@@ -5,7 +5,7 @@
 {% block page_title %}Dashboard{% endblock %}
 
 {% block page_subtitle %}
-<p class="text-sm text-gray-500 mt-1">Welcome back, {{ admin_user.name }}</p>
+<p class="text-sm text-muted-foreground mt-1">Welcome back, {{ admin_user.name }}</p>
 {% endblock %}
 
 {% block content %}
@@ -50,99 +50,99 @@
 <!-- Metrics Cards -->
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
     <!-- Total Orders -->
-    <div class="bg-white rounded-xl p-6 border border-gray-200">
+    <div class="bg-card rounded-xl p-6 border border-border">
         <div class="flex items-center justify-between mb-4">
             <div class="w-12 h-12 rounded-lg bg-coral/10 flex items-center justify-center">
                 <i class="ph ph-receipt text-2xl text-coral"></i>
             </div>
-            <span class="text-sm font-medium text-green-600 flex items-center gap-1">
+            <span class="text-sm font-medium text-success flex items-center gap-1">
                 <i class="ph ph-trend-up text-sm"></i>
                 +12%
             </span>
         </div>
-        <p class="text-2xl font-semibold text-gray-900">{{ metrics.orders }}</p>
-        <p class="text-sm text-gray-500 mt-1">Total Orders</p>
+        <p class="text-2xl font-semibold text-foreground">{{ metrics.orders }}</p>
+        <p class="text-sm text-muted-foreground mt-1">Total Orders</p>
     </div>
 
     <!-- Revenue -->
-    <div class="bg-white rounded-xl p-6 border border-gray-200">
+    <div class="bg-card rounded-xl p-6 border border-border">
         <div class="flex items-center justify-between mb-4">
             <div class="w-12 h-12 rounded-lg bg-honey/20 flex items-center justify-center">
                 <i class="ph ph-currency-dollar text-2xl text-honey"></i>
             </div>
-            <span class="text-sm font-medium text-green-600 flex items-center gap-1">
+            <span class="text-sm font-medium text-success flex items-center gap-1">
                 <i class="ph ph-trend-up text-sm"></i>
                 +8%
             </span>
         </div>
-        <p class="text-2xl font-semibold text-gray-900">{{ metrics.revenue }}</p>
-        <p class="text-sm text-gray-500 mt-1">Total Revenue</p>
+        <p class="text-2xl font-semibold text-foreground">{{ metrics.revenue }}</p>
+        <p class="text-sm text-muted-foreground mt-1">Total Revenue</p>
     </div>
 
     <!-- Total Customers -->
-    <div class="bg-white rounded-xl p-6 border border-gray-200">
+    <div class="bg-card rounded-xl p-6 border border-border">
         <div class="flex items-center justify-between mb-4">
             <div class="w-12 h-12 rounded-lg bg-leaf/10 flex items-center justify-center">
                 <i class="ph ph-users text-2xl text-leaf"></i>
             </div>
-            <span class="text-sm font-medium text-green-600 flex items-center gap-1">
+            <span class="text-sm font-medium text-success flex items-center gap-1">
                 <i class="ph ph-trend-up text-sm"></i>
                 +23%
             </span>
         </div>
-        <p class="text-2xl font-semibold text-gray-900">{{ metrics.customers }}</p>
-        <p class="text-sm text-gray-500 mt-1">Total Customers</p>
+        <p class="text-2xl font-semibold text-foreground">{{ metrics.customers }}</p>
+        <p class="text-sm text-muted-foreground mt-1">Total Customers</p>
     </div>
 
     <!-- Products -->
-    <div class="bg-white rounded-xl p-6 border border-gray-200">
+    <div class="bg-card rounded-xl p-6 border border-border">
         <div class="flex items-center justify-between mb-4">
-            <div class="w-12 h-12 rounded-lg bg-purple-100 flex items-center justify-center">
-                <i class="ph ph-package text-2xl text-purple-600"></i>
+            <div class="w-12 h-12 rounded-lg bg-secondary/20 flex items-center justify-center">
+                <i class="ph ph-package text-2xl text-secondary"></i>
             </div>
-            <span class="text-sm font-medium text-gray-500 flex items-center gap-1">
+            <span class="text-sm font-medium text-muted-foreground flex items-center gap-1">
                 <i class="ph ph-minus text-sm"></i>
                 0%
             </span>
         </div>
-        <p class="text-2xl font-semibold text-gray-900">{{ metrics.products }}</p>
-        <p class="text-sm text-gray-500 mt-1">Active Products</p>
+        <p class="text-2xl font-semibold text-foreground">{{ metrics.products }}</p>
+        <p class="text-sm text-muted-foreground mt-1">Active Products</p>
     </div>
 </div>
 
 <div class="grid lg:grid-cols-3 gap-6">
     <!-- Recent Orders -->
-    <div class="lg:col-span-2 bg-white rounded-xl border border-gray-200">
-        <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-            <h3 class="font-semibold text-gray-900">Recent Orders</h3>
-            <a href="/orders" class="text-sm text-coral hover:underline">View All</a>
+    <div class="lg:col-span-2 bg-card rounded-xl border border-border">
+        <div class="px-6 py-4 border-b border-border flex items-center justify-between">
+            <h3 class="font-semibold text-foreground">Recent Orders</h3>
+            <a href="/orders" class="text-sm text-primary hover:underline">View All</a>
         </div>
-        <div class="divide-y divide-gray-100">
+        <div class="divide-y divide-border">
             {% if recent_orders.is_empty() %}
-            <div class="px-6 py-8 text-center text-gray-500">
+            <div class="px-6 py-8 text-center text-muted-foreground">
                 <i class="ph ph-receipt text-4xl mb-2"></i>
                 <p>No orders yet</p>
             </div>
             {% else %}
             {% for order in recent_orders %}
-            <div class="px-6 py-4 hover:bg-gray-50 transition-colors">
+            <div class="px-6 py-4 hover:bg-accent transition-colors">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-4">
-                        <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
-                            <i class="ph ph-user text-gray-500"></i>
+                        <div class="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                            <i class="ph ph-user text-muted-foreground"></i>
                         </div>
                         <div>
-                            <p class="font-medium text-gray-900">{{ order.customer_name }}</p>
-                            <p class="text-sm text-gray-500">{{ order.number }}</p>
+                            <p class="font-medium text-foreground">{{ order.customer_name }}</p>
+                            <p class="text-sm text-muted-foreground">{{ order.number }}</p>
                         </div>
                     </div>
                     <div class="text-right">
-                        <p class="font-medium text-gray-900">{{ order.total }}</p>
+                        <p class="font-medium text-foreground">{{ order.total }}</p>
                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium
-                            {% if order.status == "fulfilled" %}bg-green-100 text-green-700
-                            {% elif order.status == "pending" %}bg-yellow-100 text-yellow-700
-                            {% elif order.status == "cancelled" %}bg-red-100 text-red-700
-                            {% else %}bg-gray-100 text-gray-700{% endif %}">
+                            {% if order.status == "fulfilled" %}bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400
+                            {% elif order.status == "pending" %}bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400
+                            {% elif order.status == "cancelled" %}bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400
+                            {% else %}bg-muted text-muted-foreground{% endif %}">
                             {{ order.status }}
                         </span>
                     </div>
@@ -154,13 +154,13 @@
     </div>
 
     <!-- Recent Activity -->
-    <div class="bg-white rounded-xl border border-gray-200">
-        <div class="px-6 py-4 border-b border-gray-200">
-            <h3 class="font-semibold text-gray-900">Recent Activity</h3>
+    <div class="bg-card rounded-xl border border-border">
+        <div class="px-6 py-4 border-b border-border">
+            <h3 class="font-semibold text-foreground">Recent Activity</h3>
         </div>
         <div class="p-6">
             {% if recent_activity.is_empty() %}
-            <div class="text-center text-gray-500 py-4">
+            <div class="text-center text-muted-foreground py-4">
                 <i class="ph ph-clock-counter-clockwise text-4xl mb-2"></i>
                 <p>No recent activity</p>
             </div>
@@ -171,13 +171,13 @@
                     <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0
                         {% if activity.activity_type == "order" %}bg-coral/10 text-coral
                         {% elif activity.activity_type == "customer" %}bg-leaf/10 text-leaf
-                        {% elif activity.activity_type == "product" %}bg-purple-100 text-purple-600
-                        {% else %}bg-gray-100 text-gray-500{% endif %}">
+                        {% elif activity.activity_type == "product" %}bg-secondary/20 text-secondary
+                        {% else %}bg-muted text-muted-foreground{% endif %}">
                         <i class="ph ph-{{ activity.icon }} text-sm"></i>
                     </div>
                     <div class="flex-1 min-w-0">
-                        <p class="text-sm text-gray-900">{{ activity.description }}</p>
-                        <p class="text-xs text-gray-500 mt-0.5">{{ activity.time_ago }}</p>
+                        <p class="text-sm text-foreground">{{ activity.description }}</p>
+                        <p class="text-xs text-muted-foreground mt-0.5">{{ activity.time_ago }}</p>
                     </div>
                 </div>
                 {% endfor %}
@@ -189,35 +189,35 @@
 
 <!-- Quick Actions -->
 <div class="mt-8">
-    <h3 class="font-semibold text-gray-900 mb-4">Quick Actions</h3>
+    <h3 class="font-semibold text-foreground mb-4">Quick Actions</h3>
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <a href="/products/new" class="bg-white rounded-xl p-4 border border-gray-200 hover:border-coral hover:shadow-sm transition-all group">
+        <a href="/products/new" class="bg-card rounded-xl p-4 border border-border hover:border-coral hover:shadow-sm transition-all group">
             <div class="w-10 h-10 rounded-lg bg-coral/10 flex items-center justify-center mb-3 group-hover:bg-coral/20 transition-colors">
                 <i class="ph ph-plus text-xl text-coral"></i>
             </div>
-            <p class="font-medium text-gray-900">Add Product</p>
-            <p class="text-sm text-gray-500">Create a new product</p>
+            <p class="font-medium text-foreground">Add Product</p>
+            <p class="text-sm text-muted-foreground">Create a new product</p>
         </a>
-        <a href="/orders" class="bg-white rounded-xl p-4 border border-gray-200 hover:border-honey hover:shadow-sm transition-all group">
+        <a href="/orders" class="bg-card rounded-xl p-4 border border-border hover:border-honey hover:shadow-sm transition-all group">
             <div class="w-10 h-10 rounded-lg bg-honey/20 flex items-center justify-center mb-3 group-hover:bg-honey/30 transition-colors">
                 <i class="ph ph-receipt text-xl text-honey"></i>
             </div>
-            <p class="font-medium text-gray-900">View Orders</p>
-            <p class="text-sm text-gray-500">Manage orders</p>
+            <p class="font-medium text-foreground">View Orders</p>
+            <p class="text-sm text-muted-foreground">Manage orders</p>
         </a>
-        <a href="/customers" class="bg-white rounded-xl p-4 border border-gray-200 hover:border-leaf hover:shadow-sm transition-all group">
+        <a href="/customers" class="bg-card rounded-xl p-4 border border-border hover:border-leaf hover:shadow-sm transition-all group">
             <div class="w-10 h-10 rounded-lg bg-leaf/10 flex items-center justify-center mb-3 group-hover:bg-leaf/20 transition-colors">
                 <i class="ph ph-users text-xl text-leaf"></i>
             </div>
-            <p class="font-medium text-gray-900">Customers</p>
-            <p class="text-sm text-gray-500">View customer list</p>
+            <p class="font-medium text-foreground">Customers</p>
+            <p class="text-sm text-muted-foreground">View customer list</p>
         </a>
-        <a href="/chat" class="bg-white rounded-xl p-4 border border-gray-200 hover:border-purple-500 hover:shadow-sm transition-all group">
-            <div class="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center mb-3 group-hover:bg-purple-200 transition-colors">
-                <i class="ph ph-chats-circle text-xl text-purple-600"></i>
+        <a href="/chat" class="bg-card rounded-xl p-4 border border-border hover:border-secondary hover:shadow-sm transition-all group">
+            <div class="w-10 h-10 rounded-lg bg-secondary/20 flex items-center justify-center mb-3 group-hover:bg-secondary/30 transition-colors">
+                <i class="ph ph-chats-circle text-xl text-secondary"></i>
             </div>
-            <p class="font-medium text-gray-900">AI Assistant</p>
-            <p class="text-sm text-gray-500">Get help with tasks</p>
+            <p class="font-medium text-foreground">AI Assistant</p>
+            <p class="text-sm text-muted-foreground">Get help with tasks</p>
         </a>
     </div>
 </div>

@@ -1,110 +1,254 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/forms";
 
-/* Admin Panel - Tailwind v4 Configuration */
+/* ═══════════════════════════════════════════════════════════════════════════
+   ADMIN PANEL - Tailwind v4 Configuration
+   Design Language: "Midnight Lagoon" (dark) / "Morning Shade" (light)
+   ═══════════════════════════════════════════════════════════════════════════ */
 
 @layer base {
   :root {
-    /* Brand palette */
-    --coral: #d63a2f;
-    --honey: #daa520;
-    --cream: #fdfbf7;
-    --sand: #f5f0e8;
-    --leaf: #4a7c59;
+    /* ─────────────────────────────────────────────────────────────────────────
+       Lagoon Palette (oklch for perceptual uniformity)
+       Deep ocean blues with tropical warmth underneath
+       ───────────────────────────────────────────────────────────────────────── */
+    --lagoon-950: oklch(0.18 0.04 240);   /* #0c1a2b - deep lagoon */
+    --lagoon-900: oklch(0.22 0.045 238);  /* #132638 - moonlit surface */
+    --lagoon-800: oklch(0.28 0.05 235);   /* #1a3352 - deeper water */
+    --lagoon-700: oklch(0.35 0.055 232);  /* #264160 - wave lines */
+    --lagoon-600: oklch(0.45 0.055 228);  /* #3a5a7c - shallows */
+    --lagoon-500: oklch(0.55 0.05 225);   /* #5c7a94 - muted ocean */
+    --lagoon-400: oklch(0.70 0.04 220);   /* #8ba7c4 - distant shore */
+    --lagoon-300: oklch(0.80 0.03 215);   /* #b5cade - morning mist */
+    --lagoon-200: oklch(0.90 0.015 210);  /* #dde7ef - cool border */
+    --lagoon-100: oklch(0.96 0.008 220);  /* #f1f5f9 - soft shade */
+    --lagoon-50: oklch(0.98 0.005 220);   /* #f8fafc - cool white */
 
-    /* Light mode semantic colors */
-    --background: var(--sand);
-    --foreground: #1f2937;
-    --card: #ffffff;
-    --card-foreground: #1f2937;
-    --muted: #f3f4f6;
-    --muted-foreground: #6b7280;
-    --border: #e5e7eb;
-    --input: #e5e7eb;
-    --ring: var(--coral);
-  }
+    /* Brand accents */
+    --coral: oklch(0.58 0.19 29);                /* #d63a2f - torch light */
+    --coral-foreground: oklch(0.98 0.01 80);     /* warm white on coral */
+    --teal: oklch(0.55 0.12 200);                /* #0891b2 - tropical water */
+    --teal-foreground: oklch(0.98 0.01 200);
 
-  /* Dark mode - triggered by .dark class */
-  .dark {
-    --background: #030712;
-    --foreground: #f9fafb;
-    --card: #111827;
-    --card-foreground: #f9fafb;
-    --muted: #1f2937;
-    --muted-foreground: #9ca3af;
-    --border: #1f2937;
-    --input: #1f2937;
+    /* ─────────────────────────────────────────────────────────────────────────
+       Light Mode: "Morning Shade"
+       Cool cabana in early morning - crisp whites, soft grays
+       ───────────────────────────────────────────────────────────────────────── */
+    --background: var(--lagoon-50);
+    --foreground: var(--lagoon-950);
+    --primary: var(--coral);
+    --primary-foreground: var(--coral-foreground);
+    --secondary: var(--teal);
+    --secondary-foreground: var(--teal-foreground);
+    --muted: var(--lagoon-100);
+    --muted-foreground: var(--lagoon-500);
+    --accent: var(--lagoon-100);
+    --accent-foreground: var(--lagoon-900);
+    --destructive: oklch(0.55 0.22 27);
+    --destructive-foreground: oklch(0.98 0.01 95);
+    --success: oklch(0.55 0.15 155);
+    --success-foreground: oklch(0.98 0.01 155);
+    --warning: oklch(0.70 0.15 70);
+    --warning-foreground: oklch(0.25 0.03 70);
+
+    /* UI elements */
+    --card: oklch(1 0 0);              /* pure white cards */
+    --card-foreground: var(--lagoon-950);
+    --border: var(--lagoon-200);
+    --input: var(--lagoon-100);
     --ring: var(--coral);
+    --radius: 0.5rem;
+
+    /* Sidebar */
+    --sidebar: var(--lagoon-100);
+    --sidebar-foreground: var(--lagoon-700);
+    --sidebar-muted: var(--lagoon-500);
+    --sidebar-border: var(--lagoon-200);
+    --sidebar-accent: var(--lagoon-200);
   }
 }
 
-/* Register with Tailwind v4 */
+/* ─────────────────────────────────────────────────────────────────────────────
+   Dark Mode via prefers-color-scheme: "Midnight Lagoon"
+   Deep ocean blues, moonlit surfaces, coral ember glow
+   ───────────────────────────────────────────────────────────────────────────── */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: var(--lagoon-950);
+    --foreground: oklch(0.96 0.015 210);   /* moonlit white */
+    --primary: oklch(0.62 0.17 30);        /* brighter coral for dark bg */
+    --primary-foreground: oklch(0.98 0.01 80);
+    --secondary: oklch(0.60 0.12 200);     /* brighter teal */
+    --secondary-foreground: oklch(0.15 0.02 200);
+    --muted: var(--lagoon-800);
+    --muted-foreground: var(--lagoon-400);
+    --accent: var(--lagoon-800);
+    --accent-foreground: var(--lagoon-100);
+    --destructive: oklch(0.60 0.20 27);
+    --destructive-foreground: oklch(0.98 0.01 95);
+    --success: oklch(0.60 0.15 155);
+    --success-foreground: oklch(0.98 0.01 155);
+    --warning: oklch(0.75 0.14 70);
+    --warning-foreground: oklch(0.20 0.03 70);
+
+    /* UI elements */
+    --card: var(--lagoon-900);
+    --card-foreground: oklch(0.96 0.015 210);
+    --border: var(--lagoon-700);
+    --input: var(--lagoon-800);
+    --ring: oklch(0.62 0.17 30);
+
+    /* Sidebar */
+    --sidebar: var(--lagoon-900);
+    --sidebar-foreground: var(--lagoon-300);
+    --sidebar-muted: var(--lagoon-400);
+    --sidebar-border: var(--lagoon-700);
+    --sidebar-accent: var(--lagoon-800);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Manual Theme Overrides (.dark / .light classes)
+   ───────────────────────────────────────────────────────────────────────────── */
+@layer base {
+  :root.dark {
+    --background: var(--lagoon-950);
+    --foreground: oklch(0.96 0.015 210);
+    --primary: oklch(0.62 0.17 30);
+    --primary-foreground: oklch(0.98 0.01 80);
+    --secondary: oklch(0.60 0.12 200);
+    --secondary-foreground: oklch(0.15 0.02 200);
+    --muted: var(--lagoon-800);
+    --muted-foreground: var(--lagoon-400);
+    --accent: var(--lagoon-800);
+    --accent-foreground: var(--lagoon-100);
+    --destructive: oklch(0.60 0.20 27);
+    --destructive-foreground: oklch(0.98 0.01 95);
+    --success: oklch(0.60 0.15 155);
+    --success-foreground: oklch(0.98 0.01 155);
+    --warning: oklch(0.75 0.14 70);
+    --warning-foreground: oklch(0.20 0.03 70);
+    --card: var(--lagoon-900);
+    --card-foreground: oklch(0.96 0.015 210);
+    --border: var(--lagoon-700);
+    --input: var(--lagoon-800);
+    --ring: oklch(0.62 0.17 30);
+    --sidebar: var(--lagoon-900);
+    --sidebar-foreground: var(--lagoon-300);
+    --sidebar-muted: var(--lagoon-400);
+    --sidebar-border: var(--lagoon-700);
+    --sidebar-accent: var(--lagoon-800);
+  }
+
+  :root.light {
+    --background: var(--lagoon-50);
+    --foreground: var(--lagoon-950);
+    --primary: var(--coral);
+    --primary-foreground: var(--coral-foreground);
+    --secondary: var(--teal);
+    --secondary-foreground: var(--teal-foreground);
+    --muted: var(--lagoon-100);
+    --muted-foreground: var(--lagoon-500);
+    --accent: var(--lagoon-100);
+    --accent-foreground: var(--lagoon-900);
+    --destructive: oklch(0.55 0.22 27);
+    --destructive-foreground: oklch(0.98 0.01 95);
+    --success: oklch(0.55 0.15 155);
+    --success-foreground: oklch(0.98 0.01 155);
+    --warning: oklch(0.70 0.15 70);
+    --warning-foreground: oklch(0.25 0.03 70);
+    --card: oklch(1 0 0);
+    --card-foreground: var(--lagoon-950);
+    --border: var(--lagoon-200);
+    --input: var(--lagoon-100);
+    --ring: var(--coral);
+    --sidebar: var(--lagoon-100);
+    --sidebar-foreground: var(--lagoon-700);
+    --sidebar-muted: var(--lagoon-500);
+    --sidebar-border: var(--lagoon-200);
+    --sidebar-accent: var(--lagoon-200);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Tailwind v4 Theme Registration
+   ═══════════════════════════════════════════════════════════════════════════ */
 @theme inline {
-  /* Breakpoints (Tailwind v4 defaults, explicit for documentation) */
-  --breakpoint-sm: 40rem;   /* 640px */
-  --breakpoint-md: 48rem;   /* 768px */
-  --breakpoint-lg: 64rem;   /* 1024px */
-  --breakpoint-xl: 80rem;   /* 1280px */
-  --breakpoint-2xl: 96rem;  /* 1536px */
+  /* Breakpoints */
+  --breakpoint-sm: 40rem;
+  --breakpoint-md: 48rem;
+  --breakpoint-lg: 64rem;
+  --breakpoint-xl: 80rem;
+  --breakpoint-2xl: 96rem;
 
-  /* Container query breakpoints (Tailwind v4 defaults) */
-  --container-3xs: 16rem;   /* 256px */
-  --container-2xs: 18rem;   /* 288px */
-  --container-xs: 20rem;    /* 320px */
-  --container-sm: 24rem;    /* 384px */
-  --container-md: 28rem;    /* 448px */
-  --container-lg: 32rem;    /* 512px */
-  --container-xl: 36rem;    /* 576px */
-  --container-2xl: 42rem;   /* 672px */
-  --container-3xl: 48rem;   /* 768px */
-  --container-4xl: 56rem;   /* 896px */
-  --container-5xl: 64rem;   /* 1024px */
-  --container-6xl: 72rem;   /* 1152px */
-  --container-7xl: 80rem;   /* 1280px */
-
-  /* Brand colors */
-  --color-coral: var(--coral);
-  --color-honey: var(--honey);
-  --color-cream: var(--cream);
-  --color-sand: var(--sand);
-  --color-leaf: var(--leaf);
-
-  /* Semantic colors */
+  /* Semantic colors (auto-switch with theme) */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
 
-  /* Gray scale for Tailwind compatibility */
-  --color-gray-50: #f9fafb;
-  --color-gray-100: #f3f4f6;
-  --color-gray-200: #e5e7eb;
-  --color-gray-300: #d1d5db;
-  --color-gray-400: #9ca3af;
-  --color-gray-500: #6b7280;
-  --color-gray-600: #4b5563;
-  --color-gray-700: #374151;
-  --color-gray-800: #1f2937;
-  --color-gray-900: #111827;
-  --color-gray-950: #030712;
+  /* Sidebar colors (always dark) */
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-muted: var(--sidebar-muted);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent: var(--sidebar-accent);
 
-  /* White/Black */
-  --color-white: #ffffff;
-  --color-black: #000000;
+  /* Lagoon scale (for direct access when needed) */
+  --color-lagoon-950: var(--lagoon-950);
+  --color-lagoon-900: var(--lagoon-900);
+  --color-lagoon-800: var(--lagoon-800);
+  --color-lagoon-700: var(--lagoon-700);
+  --color-lagoon-600: var(--lagoon-600);
+  --color-lagoon-500: var(--lagoon-500);
+  --color-lagoon-400: var(--lagoon-400);
+  --color-lagoon-300: var(--lagoon-300);
+  --color-lagoon-200: var(--lagoon-200);
+  --color-lagoon-100: var(--lagoon-100);
+  --color-lagoon-50: var(--lagoon-50);
+
+  /* Brand accents */
+  --color-coral: var(--coral);
+  --color-teal: var(--teal);
+
+  /* Radius tokens */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
 
   /* Font families */
   --font-display: "Playfair Display", serif;
   --font-sans: "DM Sans", sans-serif;
+
+  /* Easing */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   Base Styles
+   ═══════════════════════════════════════════════════════════════════════════ */
 @layer base {
   body {
     font-family: var(--font-sans);
+    @apply bg-background text-foreground antialiased;
   }
 
   .font-display {
@@ -112,104 +256,120 @@
   }
 }
 
-@layer base {
-  /* "Midnight Clarity" Admin Design Language - Dark-first palette */
-  :root {
-    --admin-bg: 0 0% 100%;           /* Light mode: white */
-    --admin-surface: 0 0% 98%;       /* Light mode: near-white */
-    --admin-surface-2: 0 0% 96%;     /* Light mode: slight gray */
-    --admin-border: 0 0% 90%;        /* Light mode borders */
-    --admin-border-focus: 0 0% 80%;  /* Light mode focus */
-    --admin-text: 0 0% 9%;           /* Light mode text */
-    --admin-text-muted: 0 0% 45%;    /* Light mode muted */
-    --admin-accent: 6 71% 51%;       /* Coral */
-    --admin-accent-secondary: 239 84% 67%; /* Indigo */
-  }
-
-  .dark {
-    --admin-bg: 240 20% 4%;          /* Near-black with blue undertone: #0a0a0f */
-    --admin-surface: 240 12% 9%;     /* Cards: #141419 */
-    --admin-surface-2: 240 10% 13%;  /* Hover: #1c1c24 */
-    --admin-border: 240 8% 18%;      /* Borders: #2a2a35 */
-    --admin-border-focus: 240 7% 27%; /* Focus: #3d3d4d */
-    --admin-text: 240 5% 90%;        /* Text: #e4e4e7 */
-    --admin-text-muted: 240 4% 46%;  /* Muted: #71717a */
-    --admin-accent: 6 71% 51%;       /* Coral (retained) */
-    --admin-accent-secondary: 239 84% 67%; /* Indigo */
-  }
-}
-
+/* ═══════════════════════════════════════════════════════════════════════════
+   Component Classes
+   ═══════════════════════════════════════════════════════════════════════════ */
 @layer components {
-  /* SortableJS drag states */
-  [data-media-id].sortable-ghost {
-    opacity: 0.3;
+  /* ─────────────────────────────────────────────────────────────────────────
+     Buttons
+     ───────────────────────────────────────────────────────────────────────── */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2;
+    @apply px-4 py-2 rounded-lg;
+    @apply text-sm font-medium;
+    @apply transition-colors duration-200;
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
-  [data-media-id].sortable-drag {
-    cursor: grabbing;
+  .btn-primary {
+    @apply bg-primary text-primary-foreground;
+    @apply hover:opacity-90;
   }
 
-  [data-media-id] img {
-    cursor: grab;
+  .btn-secondary {
+    @apply bg-secondary text-secondary-foreground;
+    @apply hover:opacity-90;
   }
 
-  [data-media-id] img:active {
-    cursor: grabbing;
+  .btn-outline {
+    @apply border border-border bg-transparent text-foreground;
+    @apply hover:bg-accent hover:text-accent-foreground;
   }
 
-  /* Quill Editor Dark Mode */
-  .dark .ql-toolbar.ql-snow,
-  .dark .ql-container.ql-snow {
-    border-color: rgb(55, 65, 81);
-    background-color: rgb(31, 41, 55);
-  }
-  .dark .ql-editor {
-    color: rgb(243, 244, 246);
-  }
-  .dark .ql-editor.ql-blank::before {
-    color: rgb(156, 163, 175);
-  }
-  .dark .ql-snow .ql-stroke {
-    stroke: rgb(156, 163, 175);
-  }
-  .dark .ql-snow .ql-fill {
-    fill: rgb(156, 163, 175);
-  }
-  .dark .ql-snow .ql-picker {
-    color: rgb(156, 163, 175);
-  }
-  .dark .ql-snow .ql-picker-options {
-    background-color: rgb(31, 41, 55);
-    border-color: rgb(55, 65, 81);
-  }
-  .dark .ql-toolbar.ql-snow button:hover .ql-stroke,
-  .dark .ql-toolbar.ql-snow button.ql-active .ql-stroke {
-    stroke: rgb(243, 244, 246);
-  }
-  .dark .ql-toolbar.ql-snow button:hover .ql-fill,
-  .dark .ql-toolbar.ql-snow button.ql-active .ql-fill {
-    fill: rgb(243, 244, 246);
-  }
-  .dark .ql-toolbar.ql-snow .ql-picker-label:hover,
-  .dark .ql-toolbar.ql-snow .ql-picker-label.ql-active {
-    color: rgb(243, 244, 246);
-  }
-  .dark .ql-snow .ql-picker-options .ql-picker-item:hover {
-    color: rgb(243, 244, 246);
+  .btn-ghost {
+    @apply bg-transparent text-foreground;
+    @apply hover:bg-accent hover:text-accent-foreground;
   }
 
-  /* Quill editor rounded corners */
-  .ql-toolbar.ql-snow {
-    border-top-left-radius: 0.5rem;
-    border-top-right-radius: 0.5rem;
-  }
-  .ql-container.ql-snow {
-    border-bottom-left-radius: 0.5rem;
-    border-bottom-right-radius: 0.5rem;
+  .btn-destructive {
+    @apply bg-destructive text-destructive-foreground;
+    @apply hover:opacity-90;
   }
 
-  /* Sidebar styles */
+  .btn-sm {
+    @apply px-3 py-1.5 text-xs;
+  }
+
+  .btn-lg {
+    @apply px-6 py-3 text-base;
+  }
+
+  /* ─────────────────────────────────────────────────────────────────────────
+     Form Inputs
+     ───────────────────────────────────────────────────────────────────────── */
+  .input {
+    @apply w-full rounded-lg border border-border bg-input px-4 py-2;
+    @apply text-foreground placeholder:text-muted-foreground;
+    @apply focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .input-sm {
+    @apply px-3 py-1.5 text-sm;
+  }
+
+  /* ─────────────────────────────────────────────────────────────────────────
+     Cards
+     ───────────────────────────────────────────────────────────────────────── */
+  .card {
+    @apply rounded-lg border border-border bg-card text-card-foreground;
+  }
+
+  .card-header {
+    @apply px-6 py-4 border-b border-border;
+  }
+
+  .card-body {
+    @apply p-6;
+  }
+
+  .card-footer {
+    @apply px-6 py-4 border-t border-border;
+  }
+
+  /* ─────────────────────────────────────────────────────────────────────────
+     Badges
+     ───────────────────────────────────────────────────────────────────────── */
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .badge-default {
+    @apply bg-muted text-muted-foreground;
+  }
+
+  .badge-primary {
+    @apply bg-primary/10 text-primary;
+  }
+
+  .badge-success {
+    @apply bg-success/10 text-success;
+  }
+
+  .badge-warning {
+    @apply bg-warning/10 text-warning;
+  }
+
+  .badge-destructive {
+    @apply bg-destructive/10 text-destructive;
+  }
+
+  /* ─────────────────────────────────────────────────────────────────────────
+     Sidebar
+     ───────────────────────────────────────────────────────────────────────── */
   .sidebar {
+    @apply bg-sidebar text-sidebar-foreground;
     transition: width 0.2s ease-in-out;
   }
 
@@ -235,8 +395,150 @@
     margin-right: 0;
   }
 
+  .nav-item {
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-lg;
+    @apply text-sidebar-foreground transition-colors;
+  }
+
+  .nav-item:hover {
+    @apply bg-sidebar-accent text-white;
+  }
+
+  .nav-item.active {
+    @apply bg-primary text-primary-foreground;
+  }
+
+  .nav-section-label {
+    @apply text-xs font-medium text-sidebar-muted uppercase tracking-wider;
+  }
+
   /* Main content transition */
   .main-content {
     transition: margin-left 0.2s ease-in-out;
+  }
+
+  /* ─────────────────────────────────────────────────────────────────────────
+     Tables
+     ───────────────────────────────────────────────────────────────────────── */
+  .table {
+    @apply w-full text-sm;
+  }
+
+  .table thead {
+    @apply bg-muted;
+  }
+
+  .table th {
+    @apply px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider;
+  }
+
+  .table tbody {
+    @apply divide-y divide-border;
+  }
+
+  .table td {
+    @apply px-4 py-3 text-foreground;
+  }
+
+  .table tbody tr:hover {
+    @apply bg-accent/50;
+  }
+
+  /* ─────────────────────────────────────────────────────────────────────────
+     Quill Editor (Rich Text)
+     ───────────────────────────────────────────────────────────────────────── */
+  .ql-toolbar.ql-snow {
+    @apply border-border bg-muted;
+    border-top-left-radius: var(--radius);
+    border-top-right-radius: var(--radius);
+  }
+
+  .ql-container.ql-snow {
+    @apply border-border bg-card;
+    border-bottom-left-radius: var(--radius);
+    border-bottom-right-radius: var(--radius);
+  }
+
+  .ql-editor {
+    @apply text-foreground;
+  }
+
+  .ql-editor.ql-blank::before {
+    @apply text-muted-foreground;
+  }
+
+  .ql-snow .ql-stroke {
+    stroke: var(--muted-foreground);
+  }
+
+  .ql-snow .ql-fill {
+    fill: var(--muted-foreground);
+  }
+
+  .ql-snow .ql-picker {
+    @apply text-muted-foreground;
+  }
+
+  .ql-snow .ql-picker-options {
+    @apply bg-card border-border;
+  }
+
+  .ql-toolbar.ql-snow button:hover .ql-stroke,
+  .ql-toolbar.ql-snow button.ql-active .ql-stroke {
+    stroke: var(--foreground);
+  }
+
+  .ql-toolbar.ql-snow button:hover .ql-fill,
+  .ql-toolbar.ql-snow button.ql-active .ql-fill {
+    fill: var(--foreground);
+  }
+
+  .ql-toolbar.ql-snow .ql-picker-label:hover,
+  .ql-toolbar.ql-snow .ql-picker-label.ql-active {
+    @apply text-foreground;
+  }
+
+  .ql-snow .ql-picker-options .ql-picker-item:hover {
+    @apply text-foreground;
+  }
+
+  /* ─────────────────────────────────────────────────────────────────────────
+     SortableJS Drag States
+     ───────────────────────────────────────────────────────────────────────── */
+  [data-media-id].sortable-ghost {
+    opacity: 0.3;
+  }
+
+  [data-media-id].sortable-drag {
+    cursor: grabbing;
+  }
+
+  [data-media-id] img {
+    cursor: grab;
+  }
+
+  [data-media-id] img:active {
+    cursor: grabbing;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Utility Classes
+   ═══════════════════════════════════════════════════════════════════════════ */
+@layer utilities {
+  /* Loading spinner */
+  .spinner {
+    @apply animate-spin rounded-full border-2 border-muted border-t-primary;
+  }
+
+  /* Skeleton loading */
+  .skeleton {
+    @apply animate-pulse bg-muted rounded;
+  }
+
+  /* Accessibility */
+  .visually-hidden {
+    @apply absolute w-px h-px p-0 -m-px overflow-hidden whitespace-nowrap border-0;
+    clip: rect(0, 0, 0, 0);
   }
 }
