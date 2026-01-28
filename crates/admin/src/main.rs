@@ -125,7 +125,9 @@ async fn main() {
     let session_layer = create_session_layer(&pool, &config);
 
     // Build application state (includes WebAuthn)
-    let state = AppState::new(config.clone(), pool).expect("Failed to create application state");
+    let state = AppState::new(config.clone(), pool.clone())
+        .await
+        .expect("Failed to create application state");
 
     // Build router
     let app = Router::new()

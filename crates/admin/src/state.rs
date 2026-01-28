@@ -2,13 +2,15 @@
 
 use std::sync::Arc;
 
+use secrecy::ExposeSecret;
 use sqlx::PgPool;
 use url::Url;
 use webauthn_rs::prelude::*;
 
 use crate::config::AdminConfig;
+use crate::db::ShopifyTokenRepository;
 use crate::services::EmailService;
-use crate::shopify::AdminClient;
+use crate::shopify::{AdminClient, OAuthToken};
 
 /// Error that can occur when creating `AppState`.
 #[derive(Debug, thiserror::Error)]
@@ -46,6 +48,8 @@ struct AppStateInner {
 impl AppState {
     /// Create a new application state.
     ///
+    /// Loads any existing Shopify OAuth token from the database.
+    ///
     /// # Arguments
     ///
     /// * `config` - Admin configuration
@@ -54,8 +58,34 @@ impl AppState {
     /// # Errors
     ///
     /// Returns `AppStateError` if `WebAuthn` initialization fails.
-    pub fn new(config: AdminConfig, pool: PgPool) -> Result<Self, AppStateError> {
+    pub async fn new(config: AdminConfig, pool: PgPool) -> Result<Self, AppStateError> {
         let shopify = AdminClient::new(&config.shopify);
+
+        // Load OAuth token from database if available
+        let shop = &config.shopify.store;
+        let repo = ShopifyTokenRepository::new(&pool);
+        match repo.get_by_shop(shop).await {
+            Ok(Some(token)) => {
+                tracing::info!(shop = %shop, "Loaded Shopify OAuth token from database");
+                shopify
+                    .set_token(OAuthToken {
+                        access_token: token.access_token.expose_secret().to_string(),
+                        scope: token.scopes.join(","),
+                        obtained_at: token.obtained_at,
+                        shop: token.shop,
+                    })
+                    .await;
+            }
+            Ok(None) => {
+                tracing::warn!(
+                    shop = %shop,
+                    "No Shopify OAuth token found - authorization required via /settings/shopify"
+                );
+            }
+            Err(e) => {
+                tracing::error!(error = %e, "Failed to load Shopify OAuth token from database");
+            }
+        }
 
         // Initialize WebAuthn
         let base_url =
