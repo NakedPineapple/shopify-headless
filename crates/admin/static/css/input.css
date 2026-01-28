@@ -468,15 +468,15 @@
   }
 
   .ql-snow .ql-stroke {
-    stroke: var(--muted-foreground);
+    stroke: var(--foreground);
   }
 
   .ql-snow .ql-fill {
-    fill: var(--muted-foreground);
+    fill: var(--foreground);
   }
 
   .ql-snow .ql-picker {
-    @apply text-muted-foreground;
+    @apply text-foreground;
   }
 
   .ql-snow .ql-picker-options {
@@ -485,21 +485,21 @@
 
   .ql-toolbar.ql-snow button:hover .ql-stroke,
   .ql-toolbar.ql-snow button.ql-active .ql-stroke {
-    stroke: var(--foreground);
+    stroke: var(--primary);
   }
 
   .ql-toolbar.ql-snow button:hover .ql-fill,
   .ql-toolbar.ql-snow button.ql-active .ql-fill {
-    fill: var(--foreground);
+    fill: var(--primary);
   }
 
   .ql-toolbar.ql-snow .ql-picker-label:hover,
   .ql-toolbar.ql-snow .ql-picker-label.ql-active {
-    @apply text-foreground;
+    @apply text-primary;
   }
 
   .ql-snow .ql-picker-options .ql-picker-item:hover {
-    @apply text-foreground;
+    @apply text-primary;
   }
 
   /* ─────────────────────────────────────────────────────────────────────────
