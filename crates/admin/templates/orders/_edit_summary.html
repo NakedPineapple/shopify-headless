@@ -1,0 +1,111 @@
+{#
+    Edit Summary Partial
+
+    Variables:
+    - edit: OrderEditView with totals, outstanding amounts
+#}
+
+<div class="bg-card rounded-xl border border-border" id="edit-summary">
+    <div class="px-6 py-4 border-b border-border">
+        <h3 class="text-lg font-semibold text-foreground">
+            <i class="ph ph-receipt mr-2"></i>Summary
+        </h3>
+    </div>
+
+    <!-- Order Summary -->
+    <div class="px-6 py-4 space-y-3 text-sm">
+        <div class="flex justify-between">
+            <span class="text-muted-foreground">Items ({{ edit.total_items }})</span>
+            <span class="text-foreground">{{ edit.new_subtotal }}</span>
+        </div>
+
+        {% for line in edit.shipping_lines %}
+        {% if !line.is_removed %}
+        <div class="flex justify-between">
+            <span class="text-muted-foreground">{{ line.title }}</span>
+            <span class="text-foreground">{{ line.price }}</span>
+        </div>
+        {% endif %}
+        {% endfor %}
+
+        <div class="flex justify-between pt-3 border-t border-border font-semibold">
+            <span class="text-foreground">New total</span>
+            <span class="text-foreground">{{ edit.new_total }}</span>
+        </div>
+    </div>
+
+    <!-- Changes Summary -->
+    {% if edit.has_changes %}
+    <div class="px-6 py-4 border-t border-border bg-muted/50">
+        <p class="text-sm font-medium text-foreground mb-3">Changes</p>
+        <div class="space-y-2 text-sm">
+            <div class="flex justify-between">
+                <span class="text-muted-foreground">Original total</span>
+                <span class="text-foreground">{{ edit.original_total }}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-muted-foreground">New total</span>
+                <span class="text-foreground">{{ edit.new_total }}</span>
+            </div>
+
+            {% if edit.customer_owes %}
+            <div class="flex justify-between pt-2 border-t border-border">
+                <span class="text-warning font-medium">Customer owes</span>
+                <span class="text-warning font-medium">{{ edit.total_outstanding }}</span>
+            </div>
+            <p class="text-xs text-muted-foreground mt-1">
+                Payment will be collected when you save changes.
+            </p>
+            {% elif edit.customer_refund %}
+            <div class="flex justify-between pt-2 border-t border-border">
+                <span class="text-success font-medium">Customer refund</span>
+                <span class="text-success font-medium">{{ edit.total_outstanding }}</span>
+            </div>
+            <p class="text-xs text-muted-foreground mt-1">
+                Refund will be processed when you save changes.
+            </p>
+            {% else %}
+            <div class="flex justify-between pt-2 border-t border-border">
+                <span class="text-foreground font-medium">No payment change</span>
+                <span class="text-foreground font-medium">$0.00</span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% else %}
+    <div class="px-6 py-4 border-t border-border bg-muted/50 text-center">
+        <p class="text-sm text-muted-foreground">No changes made yet</p>
+    </div>
+    {% endif %}
+
+    <!-- Notify Customer Option -->
+    <div class="px-6 py-4 border-t border-border">
+        <label class="flex items-center gap-3 cursor-pointer">
+            <input type="checkbox" id="notify-customer-toggle"
+                   onchange="document.querySelector('input[name=notify_customer]').value = this.checked"
+                   class="rounded border-border text-primary focus:ring-primary">
+            <div>
+                <p class="text-sm font-medium text-foreground">Notify customer</p>
+                <p class="text-xs text-muted-foreground">Send invoice email with updated order details</p>
+            </div>
+        </label>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="px-6 py-4 border-t border-border space-y-3">
+        <form action="/orders/{{ edit.order_id|extract_id }}/edit" method="POST" class="w-full">
+            <input type="hidden" name="calculated_order_id" value="{{ edit.calculated_order_id }}">
+            <input type="hidden" name="notify_customer" value="false">
+            <button type="submit"
+                    class="w-full btn btn-primary {% if !edit.has_changes %}opacity-50 cursor-not-allowed{% endif %}"
+                    {% if !edit.has_changes %}disabled{% endif %}>
+                <i class="ph ph-check mr-2"></i>Save changes
+            </button>
+        </form>
+        <form action="/orders/{{ edit.order_id|extract_id }}/edit/discard" method="POST" class="w-full">
+            <button type="submit" class="w-full btn btn-secondary">
+                <i class="ph ph-x mr-2"></i>Discard
+            </button>
+        </form>
+    </div>
+</div>

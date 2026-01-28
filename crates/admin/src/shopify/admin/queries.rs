@@ -337,6 +337,98 @@ pub struct OrderTagsAdd;
 pub struct OrderTagsRemove;
 
 // =============================================================================
+// Order Edit queries
+// =============================================================================
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/order_edit.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct OrderEditBegin;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/order_edit.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct OrderEditAddVariant;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/order_edit.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct OrderEditAddCustomItem;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/order_edit.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct OrderEditSetQuantity;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/order_edit.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct OrderEditAddLineItemDiscount;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/order_edit.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct OrderEditUpdateDiscount;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/order_edit.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct OrderEditRemoveDiscount;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/order_edit.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct OrderEditAddShippingLine;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/order_edit.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct OrderEditUpdateShippingLine;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/order_edit.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct OrderEditRemoveShippingLine;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/order_edit.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct OrderEditCommit;
+
+// =============================================================================
 // Customer queries
 // =============================================================================
 

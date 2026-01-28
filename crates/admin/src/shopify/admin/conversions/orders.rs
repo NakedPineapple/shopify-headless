@@ -671,3 +671,190 @@ fn convert_fulfillment_order_line_item(
         remaining_quantity: item.remaining_quantity,
     }
 }
+
+// =============================================================================
+// Order Edit conversions
+// =============================================================================
+
+use super::super::queries::order_edit_begin;
+use crate::shopify::types::{
+    CalculatedDiscountAllocation, CalculatedLineItem, CalculatedOrder, CalculatedShippingLine,
+    CalculatedShippingLineStagedStatus, Image,
+};
+
+/// Convert `OrderEditBegin` response to `CalculatedOrder`.
+pub fn convert_calculated_order(
+    data: order_edit_begin::OrderEditBeginOrderEditBeginCalculatedOrder,
+) -> CalculatedOrder {
+    CalculatedOrder {
+        id: data.id,
+        original_order_id: data.original_order.id,
+        original_order_name: data.original_order.name,
+        line_items: data
+            .line_items
+            .edges
+            .into_iter()
+            .map(|e| convert_calculated_line_item_begin(e.node))
+            .collect(),
+        added_line_items: data
+            .added_line_items
+            .edges
+            .into_iter()
+            .map(|e| convert_calculated_line_item_added(e.node))
+            .collect(),
+        shipping_lines: data
+            .shipping_lines
+            .into_iter()
+            .map(convert_calculated_shipping_line)
+            .collect(),
+        subtotal_price: data
+            .subtotal_price_set
+            .map_or_else(default_money, |s| Money {
+                amount: s.shop_money.amount,
+                currency_code: currency_code_to_string(s.shop_money.currency_code),
+            }),
+        total_price: Money {
+            amount: data.total_price_set.shop_money.amount,
+            currency_code: currency_code_to_string(data.total_price_set.shop_money.currency_code),
+        },
+        total_outstanding: Money {
+            amount: data.total_outstanding_set.shop_money.amount,
+            currency_code: currency_code_to_string(
+                data.total_outstanding_set.shop_money.currency_code,
+            ),
+        },
+        subtotal_line_items_quantity: data.subtotal_line_items_quantity,
+        notification_preview_title: Some(data.notification_preview_title),
+    }
+}
+
+fn convert_calculated_line_item_begin(
+    item: order_edit_begin::OrderEditBeginOrderEditBeginCalculatedOrderLineItemsEdgesNode,
+) -> CalculatedLineItem {
+    CalculatedLineItem {
+        id: item.id,
+        title: item.title,
+        variant_title: item.variant_title,
+        sku: item.sku,
+        quantity: item.quantity,
+        editable_quantity: item.editable_quantity,
+        editable_quantity_before_changes: item.editable_quantity_before_changes,
+        restockable: item.restockable,
+        restocking: item.restocking,
+        has_staged_line_item_discount: item.has_staged_line_item_discount,
+        original_unit_price: Money {
+            amount: item.original_unit_price_set.shop_money.amount,
+            currency_code: currency_code_to_string(
+                item.original_unit_price_set.shop_money.currency_code,
+            ),
+        },
+        discounted_unit_price: Money {
+            amount: item.discounted_unit_price_set.shop_money.amount,
+            currency_code: currency_code_to_string(
+                item.discounted_unit_price_set.shop_money.currency_code,
+            ),
+        },
+        editable_subtotal: Money {
+            amount: item.editable_subtotal_set.shop_money.amount,
+            currency_code: currency_code_to_string(
+                item.editable_subtotal_set.shop_money.currency_code,
+            ),
+        },
+        image: item.image.map(|img| Image {
+            id: None,
+            url: img.url,
+            alt_text: img.alt_text,
+            width: None,
+            height: None,
+        }),
+        variant_id: item.variant.map(|v| v.id),
+        discount_allocations: item
+            .calculated_discount_allocations
+            .into_iter()
+            .map(|alloc| CalculatedDiscountAllocation {
+                allocated_amount: Money {
+                    amount: alloc.allocated_amount_set.shop_money.amount,
+                    currency_code: currency_code_to_string(
+                        alloc.allocated_amount_set.shop_money.currency_code,
+                    ),
+                },
+                description: None,
+            })
+            .collect(),
+    }
+}
+
+fn convert_calculated_line_item_added(
+    item: order_edit_begin::OrderEditBeginOrderEditBeginCalculatedOrderAddedLineItemsEdgesNode,
+) -> CalculatedLineItem {
+    CalculatedLineItem {
+        id: item.id,
+        title: item.title,
+        variant_title: item.variant_title,
+        sku: item.sku,
+        quantity: item.quantity,
+        editable_quantity: item.editable_quantity,
+        editable_quantity_before_changes: 0, // Added items start at 0
+        restockable: false,
+        restocking: false,
+        has_staged_line_item_discount: false,
+        original_unit_price: Money {
+            amount: item.original_unit_price_set.shop_money.amount,
+            currency_code: currency_code_to_string(
+                item.original_unit_price_set.shop_money.currency_code,
+            ),
+        },
+        discounted_unit_price: Money {
+            amount: item.discounted_unit_price_set.shop_money.amount,
+            currency_code: currency_code_to_string(
+                item.discounted_unit_price_set.shop_money.currency_code,
+            ),
+        },
+        editable_subtotal: Money {
+            amount: item.editable_subtotal_set.shop_money.amount,
+            currency_code: currency_code_to_string(
+                item.editable_subtotal_set.shop_money.currency_code,
+            ),
+        },
+        image: item.image.map(|img| Image {
+            id: None,
+            url: img.url,
+            alt_text: img.alt_text,
+            width: None,
+            height: None,
+        }),
+        variant_id: item.variant.map(|v| v.id),
+        discount_allocations: vec![],
+    }
+}
+
+fn convert_calculated_shipping_line(
+    line: order_edit_begin::OrderEditBeginOrderEditBeginCalculatedOrderShippingLines,
+) -> CalculatedShippingLine {
+    CalculatedShippingLine {
+        id: line.id,
+        title: line.title,
+        price: Money {
+            amount: line.price.shop_money.amount,
+            currency_code: currency_code_to_string(line.price.shop_money.currency_code),
+        },
+        staged_status: convert_shipping_staged_status(&line.staged_status),
+    }
+}
+
+const fn convert_shipping_staged_status(
+    status: &order_edit_begin::CalculatedShippingLineStagedStatus,
+) -> CalculatedShippingLineStagedStatus {
+    match status {
+        order_edit_begin::CalculatedShippingLineStagedStatus::ADDED => {
+            CalculatedShippingLineStagedStatus::Added
+        }
+        order_edit_begin::CalculatedShippingLineStagedStatus::REMOVED => {
+            CalculatedShippingLineStagedStatus::Removed
+        }
+        order_edit_begin::CalculatedShippingLineStagedStatus::NONE
+        | order_edit_begin::CalculatedShippingLineStagedStatus::Other(_) => {
+            CalculatedShippingLineStagedStatus::None
+        }
+    }
+}

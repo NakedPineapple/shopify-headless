@@ -1,0 +1,48 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Edit Order {{ edit.order_name }}{% endblock %}
+
+{% block page_title %}Edit {{ edit.order_name }}{% endblock %}
+
+{% block content %}
+<!-- Warning banner -->
+<div class="bg-warning/10 border border-warning/20 rounded-lg p-4 mb-6">
+    <div class="flex items-center gap-2 text-warning-foreground">
+        <i class="ph ph-warning-circle text-xl"></i>
+        <span class="font-medium">You are editing order {{ edit.order_name }}</span>
+    </div>
+    <p class="text-sm text-muted-foreground mt-1">Changes will not be applied until you commit them.</p>
+</div>
+
+<div class="flex items-center justify-between mb-6">
+    <div class="flex items-center gap-4">
+        <a href="/orders/{{ edit.order_id|extract_id }}" class="text-muted-foreground hover:text-foreground">
+            <i class="ph ph-arrow-left"></i>
+        </a>
+    </div>
+    <div class="flex items-center gap-2">
+        <form action="/orders/{{ edit.order_id|extract_id }}/edit/discard" method="POST">
+            <button type="submit" class="btn btn-secondary">Discard</button>
+        </form>
+        <form action="/orders/{{ edit.order_id|extract_id }}/edit" method="POST">
+            <input type="hidden" name="calculated_order_id" value="{{ edit.calculated_order_id }}">
+            <input type="hidden" name="notify_customer" value="false">
+            <button type="submit" class="btn btn-primary" {% if !edit.has_changes %}disabled{% endif %}>
+                Save changes
+            </button>
+        </form>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6" id="edit-content">
+    <!-- Main content -->
+    <div class="lg:col-span-2 space-y-6">
+        {% include "orders/_edit_line_items.html" %}
+    </div>
+
+    <!-- Sidebar -->
+    <div class="space-y-6">
+        {% include "orders/_edit_summary.html" %}
+    </div>
+</div>
+{% endblock %}

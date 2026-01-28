@@ -1,0 +1,395 @@
+{#
+    Edit Line Items Partial
+
+    Variables:
+    - edit: OrderEditView with line_items, added_line_items, shipping_lines
+#}
+
+<div class="bg-card rounded-xl border border-border" id="edit-line-items">
+    <div class="px-6 py-4 border-b border-border flex items-center justify-between">
+        <h3 class="text-lg font-semibold text-foreground">
+            <i class="ph ph-package mr-2"></i>Line Items
+        </h3>
+        <button type="button"
+                onclick="document.getElementById('add-item-modal').classList.remove('hidden')"
+                class="text-sm text-primary hover:underline">
+            <i class="ph ph-plus mr-1"></i>Add item
+        </button>
+    </div>
+
+    <!-- Existing Line Items -->
+    {% if !edit.line_items.is_empty() %}
+    <div class="divide-y divide-border">
+        {% for item in edit.line_items %}
+        <div class="px-6 py-4 flex items-center gap-4 {% if item.quantity_changed %}bg-warning/5{% endif %}">
+            {% if let Some(image) = item.image_url %}
+            <img src="{{ image }}" alt="" class="w-12 h-12 rounded-lg object-cover bg-muted">
+            {% else %}
+            <div class="w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
+                <i class="ph ph-package text-muted-foreground"></i>
+            </div>
+            {% endif %}
+            <div class="flex-1 min-w-0">
+                <p class="font-medium text-foreground truncate">{{ item.title }}</p>
+                {% if let Some(variant) = item.variant_title %}
+                <p class="text-sm text-muted-foreground">{{ variant }}</p>
+                {% endif %}
+                {% if let Some(sku) = item.sku %}
+                <p class="text-xs text-muted-foreground">SKU: {{ sku }}</p>
+                {% endif %}
+                {% if item.has_discount %}
+                <p class="text-xs text-success">
+                    <i class="ph ph-tag mr-1"></i>Discount applied
+                </p>
+                {% endif %}
+            </div>
+            <div class="flex items-center gap-3">
+                <!-- Quantity controls -->
+                <div class="flex items-center border border-border rounded-lg">
+                    <form action="/orders/{{ edit.order_id|extract_id }}/edit/set-quantity" method="POST"
+                          hx-post="/orders/{{ edit.order_id|extract_id }}/edit/set-quantity"
+                          hx-target="#edit-content"
+                          hx-swap="innerHTML">
+                        <input type="hidden" name="calculated_order_id" value="{{ edit.calculated_order_id }}">
+                        <input type="hidden" name="line_item_id" value="{{ item.id }}">
+                        <input type="hidden" name="quantity" value="{{ item.quantity - 1 }}">
+                        <button type="submit" class="px-2 py-1 text-muted-foreground hover:text-foreground disabled:opacity-50"
+                                {% if item.quantity <= 0 %}disabled{% endif %}>
+                            <i class="ph ph-minus"></i>
+                        </button>
+                    </form>
+                    <span class="px-3 py-1 text-sm font-medium text-foreground min-w-[2rem] text-center">
+                        {{ item.quantity }}
+                    </span>
+                    <form action="/orders/{{ edit.order_id|extract_id }}/edit/set-quantity" method="POST"
+                          hx-post="/orders/{{ edit.order_id|extract_id }}/edit/set-quantity"
+                          hx-target="#edit-content"
+                          hx-swap="innerHTML">
+                        <input type="hidden" name="calculated_order_id" value="{{ edit.calculated_order_id }}">
+                        <input type="hidden" name="line_item_id" value="{{ item.id }}">
+                        <input type="hidden" name="quantity" value="{{ item.quantity + 1 }}">
+                        <button type="submit" class="px-2 py-1 text-muted-foreground hover:text-foreground">
+                            <i class="ph ph-plus"></i>
+                        </button>
+                    </form>
+                </div>
+                <!-- Price -->
+                <div class="text-right min-w-[5rem]">
+                    {% if item.has_discount %}
+                    <p class="text-sm line-through text-muted-foreground">{{ item.original_unit_price }}</p>
+                    <p class="text-sm font-medium text-foreground">{{ item.discounted_unit_price }}</p>
+                    {% else %}
+                    <p class="text-sm font-medium text-foreground">{{ item.original_unit_price }}</p>
+                    {% endif %}
+                </div>
+                <!-- Subtotal -->
+                <div class="text-right min-w-[5rem]">
+                    <p class="text-sm font-semibold text-foreground">{{ item.subtotal }}</p>
+                </div>
+                <!-- Actions -->
+                <div class="flex items-center gap-1">
+                    {% if !item.has_discount %}
+                    <button type="button"
+                            onclick="document.getElementById('discount-modal-{{ loop.index }}').classList.remove('hidden')"
+                            class="p-1 text-muted-foreground hover:text-foreground" title="Add discount">
+                        <i class="ph ph-tag"></i>
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Discount Modal for this item -->
+        <div id="discount-modal-{{ loop.index }}" class="hidden fixed inset-0 z-50 overflow-y-auto">
+            <div class="flex items-center justify-center min-h-screen px-4">
+                <div class="fixed inset-0 bg-black/50" onclick="document.getElementById('discount-modal-{{ loop.index }}').classList.add('hidden')"></div>
+                <div class="relative bg-card rounded-xl border border-border max-w-md w-full p-6">
+                    <h3 class="text-lg font-semibold text-foreground mb-4">
+                        <i class="ph ph-tag mr-2"></i>Add Discount
+                    </h3>
+                    <form action="/orders/{{ edit.order_id|extract_id }}/edit/add-discount" method="POST"
+                          hx-post="/orders/{{ edit.order_id|extract_id }}/edit/add-discount"
+                          hx-target="#edit-content"
+                          hx-swap="innerHTML">
+                        <input type="hidden" name="calculated_order_id" value="{{ edit.calculated_order_id }}">
+                        <input type="hidden" name="line_item_id" value="{{ item.id }}">
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-foreground mb-2">Discount type</label>
+                                <select name="discount_type" required class="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm text-foreground">
+                                    <option value="percentage">Percentage</option>
+                                    <option value="fixed">Fixed amount</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-foreground mb-2">Value</label>
+                                <input type="number" name="value" step="0.01" min="0" required
+                                       placeholder="e.g., 10 for 10% or $10"
+                                       class="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm text-foreground">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-foreground mb-2">Description (optional)</label>
+                                <input type="text" name="description" placeholder="e.g., Loyalty discount"
+                                       class="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm text-foreground">
+                            </div>
+                        </div>
+                        <div class="mt-6 flex items-center justify-end gap-3">
+                            <button type="button" onclick="document.getElementById('discount-modal-{{ loop.index }}').classList.add('hidden')"
+                                    class="px-4 py-2 bg-card border border-border rounded-lg text-sm font-medium text-foreground hover:bg-muted transition-colors">
+                                Cancel
+                            </button>
+                            <button type="submit"
+                                    class="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors">
+                                Apply discount
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Added Line Items -->
+    {% if !edit.added_line_items.is_empty() %}
+    <div class="border-t border-border">
+        <div class="px-6 py-2 bg-success/10">
+            <span class="text-xs font-medium text-success">ADDED ITEMS</span>
+        </div>
+        <div class="divide-y divide-border">
+            {% for item in edit.added_line_items %}
+            <div class="px-6 py-4 flex items-center gap-4 bg-success/5">
+                {% if let Some(image) = item.image_url %}
+                <img src="{{ image }}" alt="" class="w-12 h-12 rounded-lg object-cover bg-muted">
+                {% else %}
+                <div class="w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
+                    <i class="ph ph-package text-muted-foreground"></i>
+                </div>
+                {% endif %}
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2">
+                        <p class="font-medium text-foreground truncate">{{ item.title }}</p>
+                        <span class="badge badge-success text-xs">New</span>
+                    </div>
+                    {% if let Some(variant) = item.variant_title %}
+                    <p class="text-sm text-muted-foreground">{{ variant }}</p>
+                    {% endif %}
+                    {% if let Some(sku) = item.sku %}
+                    <p class="text-xs text-muted-foreground">SKU: {{ sku }}</p>
+                    {% endif %}
+                </div>
+                <div class="flex items-center gap-3">
+                    <div class="flex items-center border border-border rounded-lg">
+                        <form action="/orders/{{ edit.order_id|extract_id }}/edit/set-quantity" method="POST"
+                              hx-post="/orders/{{ edit.order_id|extract_id }}/edit/set-quantity"
+                              hx-target="#edit-content"
+                              hx-swap="innerHTML">
+                            <input type="hidden" name="calculated_order_id" value="{{ edit.calculated_order_id }}">
+                            <input type="hidden" name="line_item_id" value="{{ item.id }}">
+                            <input type="hidden" name="quantity" value="{{ item.quantity - 1 }}">
+                            <button type="submit" class="px-2 py-1 text-muted-foreground hover:text-foreground">
+                                <i class="ph ph-minus"></i>
+                            </button>
+                        </form>
+                        <span class="px-3 py-1 text-sm font-medium text-foreground min-w-[2rem] text-center">
+                            {{ item.quantity }}
+                        </span>
+                        <form action="/orders/{{ edit.order_id|extract_id }}/edit/set-quantity" method="POST"
+                              hx-post="/orders/{{ edit.order_id|extract_id }}/edit/set-quantity"
+                              hx-target="#edit-content"
+                              hx-swap="innerHTML">
+                            <input type="hidden" name="calculated_order_id" value="{{ edit.calculated_order_id }}">
+                            <input type="hidden" name="line_item_id" value="{{ item.id }}">
+                            <input type="hidden" name="quantity" value="{{ item.quantity + 1 }}">
+                            <button type="submit" class="px-2 py-1 text-muted-foreground hover:text-foreground">
+                                <i class="ph ph-plus"></i>
+                            </button>
+                        </form>
+                    </div>
+                    <div class="text-right min-w-[5rem]">
+                        <p class="text-sm font-medium text-foreground">{{ item.original_unit_price }}</p>
+                    </div>
+                    <div class="text-right min-w-[5rem]">
+                        <p class="text-sm font-semibold text-foreground">{{ item.subtotal }}</p>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    {% if edit.line_items.is_empty() && edit.added_line_items.is_empty() %}
+    <div class="px-6 py-8 text-center text-muted-foreground">
+        <i class="ph ph-package text-4xl mb-2"></i>
+        <p>No line items</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Shipping Lines -->
+<div class="bg-card rounded-xl border border-border mt-6">
+    <div class="px-6 py-4 border-b border-border flex items-center justify-between">
+        <h3 class="text-lg font-semibold text-foreground">
+            <i class="ph ph-truck mr-2"></i>Shipping
+        </h3>
+        <button type="button"
+                onclick="document.getElementById('add-shipping-modal').classList.remove('hidden')"
+                class="text-sm text-primary hover:underline">
+            <i class="ph ph-plus mr-1"></i>Add shipping
+        </button>
+    </div>
+
+    {% if !edit.shipping_lines.is_empty() %}
+    <div class="divide-y divide-border">
+        {% for line in edit.shipping_lines %}
+        <div class="px-6 py-4 flex items-center justify-between {% if line.is_new %}bg-success/5{% elif line.is_removed %}bg-destructive/5 opacity-50{% endif %}">
+            <div class="flex items-center gap-3">
+                <i class="ph ph-truck text-muted-foreground"></i>
+                <div>
+                    <p class="font-medium text-foreground">{{ line.title }}</p>
+                    {% if line.is_new %}
+                    <span class="badge badge-success text-xs">New</span>
+                    {% elif line.is_removed %}
+                    <span class="badge badge-destructive text-xs">Removed</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="flex items-center gap-4">
+                <span class="font-medium text-foreground">{{ line.price }}</span>
+                {% if let Some(id) = line.id %}
+                {% if !line.is_removed %}
+                <form action="/orders/{{ edit.order_id|extract_id }}/edit/remove-shipping" method="POST"
+                      hx-post="/orders/{{ edit.order_id|extract_id }}/edit/remove-shipping"
+                      hx-target="#edit-content"
+                      hx-swap="innerHTML">
+                    <input type="hidden" name="calculated_order_id" value="{{ edit.calculated_order_id }}">
+                    <input type="hidden" name="shipping_line_id" value="{{ id }}">
+                    <button type="submit" class="p-1 text-muted-foreground hover:text-destructive" title="Remove">
+                        <i class="ph ph-trash"></i>
+                    </button>
+                </form>
+                {% endif %}
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="px-6 py-8 text-center text-muted-foreground">
+        <i class="ph ph-truck text-4xl mb-2"></i>
+        <p>No shipping</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Add Item Modal -->
+<div id="add-item-modal" class="hidden fixed inset-0 z-50 overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen px-4">
+        <div class="fixed inset-0 bg-black/50" onclick="document.getElementById('add-item-modal').classList.add('hidden')"></div>
+        <div class="relative bg-card rounded-xl border border-border max-w-lg w-full p-6">
+            <h3 class="text-lg font-semibold text-foreground mb-4">
+                <i class="ph ph-plus-circle mr-2"></i>Add Item
+            </h3>
+
+            <!-- Search Products -->
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-foreground mb-2">Search products</label>
+                <input type="text" id="product-search"
+                       placeholder="Search by name or SKU..."
+                       hx-get="/orders/{{ edit.order_id|extract_id }}/edit/search-products"
+                       hx-trigger="keyup changed delay:300ms"
+                       hx-target="#search-results"
+                       hx-swap="innerHTML"
+                       name="query"
+                       class="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm text-foreground">
+            </div>
+            <div id="search-results" class="max-h-60 overflow-y-auto mb-4">
+                <!-- Search results will be loaded here -->
+            </div>
+
+            <hr class="border-border my-4">
+
+            <!-- Custom Item Form -->
+            <p class="text-sm font-medium text-foreground mb-3">Or add a custom item</p>
+            <form action="/orders/{{ edit.order_id|extract_id }}/edit/add-custom-item" method="POST"
+                  hx-post="/orders/{{ edit.order_id|extract_id }}/edit/add-custom-item"
+                  hx-target="#edit-content"
+                  hx-swap="innerHTML">
+                <input type="hidden" name="calculated_order_id" value="{{ edit.calculated_order_id }}">
+                <div class="space-y-3">
+                    <div>
+                        <input type="text" name="title" required placeholder="Item name"
+                               class="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm text-foreground">
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <input type="number" name="quantity" required min="1" value="1" placeholder="Quantity"
+                                   class="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm text-foreground">
+                        </div>
+                        <div>
+                            <input type="number" name="price" required step="0.01" min="0" placeholder="Price"
+                                   class="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm text-foreground">
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <input type="checkbox" name="taxable" id="custom-taxable" checked
+                               class="rounded border-border text-primary focus:ring-primary">
+                        <label for="custom-taxable" class="text-sm text-foreground">Taxable</label>
+                    </div>
+                </div>
+                <div class="mt-4 flex items-center justify-end gap-3">
+                    <button type="button" onclick="document.getElementById('add-item-modal').classList.add('hidden')"
+                            class="px-4 py-2 bg-card border border-border rounded-lg text-sm font-medium text-foreground hover:bg-muted transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit"
+                            class="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors">
+                        Add custom item
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Add Shipping Modal -->
+<div id="add-shipping-modal" class="hidden fixed inset-0 z-50 overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen px-4">
+        <div class="fixed inset-0 bg-black/50" onclick="document.getElementById('add-shipping-modal').classList.add('hidden')"></div>
+        <div class="relative bg-card rounded-xl border border-border max-w-md w-full p-6">
+            <h3 class="text-lg font-semibold text-foreground mb-4">
+                <i class="ph ph-truck mr-2"></i>Add Shipping
+            </h3>
+            <form action="/orders/{{ edit.order_id|extract_id }}/edit/add-shipping" method="POST"
+                  hx-post="/orders/{{ edit.order_id|extract_id }}/edit/add-shipping"
+                  hx-target="#edit-content"
+                  hx-swap="innerHTML">
+                <input type="hidden" name="calculated_order_id" value="{{ edit.calculated_order_id }}">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-foreground mb-2">Shipping method</label>
+                        <input type="text" name="title" required placeholder="e.g., Standard Shipping"
+                               class="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm text-foreground">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-foreground mb-2">Price</label>
+                        <input type="number" name="price" required step="0.01" min="0" placeholder="0.00"
+                               class="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm text-foreground">
+                    </div>
+                </div>
+                <div class="mt-6 flex items-center justify-end gap-3">
+                    <button type="button" onclick="document.getElementById('add-shipping-modal').classList.add('hidden')"
+                            class="px-4 py-2 bg-card border border-border rounded-lg text-sm font-medium text-foreground hover:bg-muted transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit"
+                            class="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors">
+                        Add shipping
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
