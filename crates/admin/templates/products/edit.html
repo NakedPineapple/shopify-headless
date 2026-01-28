@@ -54,7 +54,7 @@
                         <!-- Overlay controls -->
                         <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                             <button type="button"
-                                    onclick="editAltText('{{ image.id.split("/").last().unwrap_or("") }}', '{% if let Some(alt) = image.alt %}{{ alt }}{% endif %}')"
+                                    onclick="editAltText('{{ image.id }}', '{% if let Some(alt) = image.alt %}{{ alt }}{% endif %}')"
                                     class="p-2 bg-white/90 dark:bg-zinc-800/90 rounded-lg text-gray-700 dark:text-zinc-300 hover:bg-white dark:hover:bg-zinc-700"
                                     title="Edit alt text">
                                 <i class="ph ph-text-aa text-lg"></i>
@@ -422,10 +422,17 @@ function toggleVariant(index) {
             }).then(function(response) {
                 if (!response.ok) {
                     console.error('Failed to reorder images');
-                    // Could show an error toast here
+                    showToast('Failed to save image order. Refreshing...', 'error');
+                    setTimeout(function() {
+                        window.location.reload();
+                    }, 1500);
                 }
             }).catch(function(err) {
                 console.error('Error reordering images:', err);
+                showToast('Failed to save image order. Refreshing...', 'error');
+                setTimeout(function() {
+                    window.location.reload();
+                }, 1500);
             });
         }
     });
@@ -537,19 +544,40 @@ function toggleVariant(index) {
     }
 })();
 
+// Toast notification helper
+function showToast(message, type) {
+    var existing = document.getElementById('toast-notification');
+    if (existing) existing.remove();
+
+    var toast = document.createElement('div');
+    toast.id = 'toast-notification';
+    toast.className = 'fixed bottom-4 right-4 px-4 py-3 rounded-lg shadow-lg text-sm font-medium z-50 ' +
+        (type === 'error' ? 'bg-red-600 text-white' : 'bg-emerald-600 text-white');
+    toast.textContent = message;
+    document.body.appendChild(toast);
+
+    setTimeout(function() {
+        toast.remove();
+    }, 4000);
+}
+
 // Alt text modal functions
-var currentMediaId = null;
+var currentMediaId = null;  // Stores the FULL GID
 var productId = document.getElementById('image-grid')?.dataset.productId ||
                 window.location.pathname.match(/\/products\/([^\/]+)/)?.[1];
 
-function editAltText(mediaId, currentAlt) {
-    currentMediaId = mediaId;
+function editAltText(fullMediaId, currentAlt) {
+    // fullMediaId is the complete GID like "gid://shopify/MediaImage/123"
+    currentMediaId = fullMediaId;
+    // Extract numeric ID for the URL
+    var numericId = fullMediaId.split('/').pop();
+
     var modal = document.getElementById('alt-text-modal');
     var textarea = document.getElementById('alt-text-input');
     var form = document.getElementById('alt-text-form');
 
     textarea.value = currentAlt || '';
-    form.action = '/products/' + productId + '/images/' + mediaId + '/alt';
+    form.action = '/products/' + productId + '/images/' + numericId + '/alt';
     modal.classList.remove('hidden');
     textarea.focus();
 }
@@ -569,40 +597,46 @@ document.addEventListener('keydown', function(e) {
     }
 });
 
-// Handle alt text form submission
-document.getElementById('alt-text-form')?.addEventListener('submit', function(e) {
-    e.preventDefault();
-    var form = this;
-    var textarea = document.getElementById('alt-text-input');
-    var altText = textarea.value;
+// Handle alt text form submission (wrapped in DOMContentLoaded to ensure form exists)
+document.addEventListener('DOMContentLoaded', function() {
+    var form = document.getElementById('alt-text-form');
+    if (!form) return;
 
-    fetch(form.action, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: 'alt_text=' + encodeURIComponent(altText)
-    })
-    .then(function(response) {
-        if (!response.ok) {
-            throw new Error('Failed to update alt text');
-        }
-        return response.json();
-    })
-    .then(function(data) {
-        // Update the image alt attribute in the DOM
-        var imageContainer = document.querySelector('[data-media-id="gid://shopify/MediaImage/' + currentMediaId + '"]');
-        if (imageContainer) {
-            var img = imageContainer.querySelector('img');
-            if (img) {
-                img.alt = altText || 'Product image';
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        var textarea = document.getElementById('alt-text-input');
+        var altText = textarea.value;
+
+        fetch(form.action, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: 'alt_text=' + encodeURIComponent(altText)
+        })
+        .then(function(response) {
+            if (!response.ok) {
+                throw new Error('Failed to update alt text');
             }
-        }
-        closeAltModal();
-    })
-    .catch(function(err) {
-        console.error('Error updating alt text:', err);
-        alert('Failed to update alt text. Please try again.');
+            return response.json();
+        })
+        .then(function(data) {
+            // Update the image alt attribute in the DOM
+            // currentMediaId is the full GID, which matches data-media-id
+            var imageContainer = document.querySelector('[data-media-id="' + currentMediaId + '"]');
+            if (imageContainer) {
+                var img = imageContainer.querySelector('img');
+                if (img) {
+                    img.alt = altText || 'Product image';
+                }
+            }
+            closeAltModal();
+            showToast('Alt text updated successfully', 'success');
+        })
+        .catch(function(err) {
+            console.error('Error updating alt text:', err);
+            showToast('Failed to update alt text. Please try again.', 'error');
+        });
     });
 });
 </script>

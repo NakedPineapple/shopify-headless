@@ -374,6 +374,36 @@ pub struct Customer {
 // Collection Types
 // =============================================================================
 
+/// A rule that defines membership in a smart collection.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CollectionRule {
+    /// The attribute column to check (TAG, TITLE, VENDOR, `PRODUCT_TYPE`, etc.).
+    pub column: String,
+    /// The relation operator (EQUALS, `NOT_EQUALS`, CONTAINS, etc.).
+    pub relation: String,
+    /// The value to match against.
+    pub condition: String,
+}
+
+/// A set of rules that define a smart collection.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CollectionRuleSet {
+    /// If true, products matching ANY rule are included (OR logic).
+    /// If false, products must match ALL rules (AND logic).
+    pub applied_disjunctively: bool,
+    /// The individual rules in this set.
+    pub rules: Vec<CollectionRule>,
+}
+
+/// SEO metadata for a collection.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct CollectionSeo {
+    /// SEO title (shown in search results).
+    pub title: Option<String>,
+    /// SEO meta description.
+    pub description: Option<String>,
+}
+
 /// A product collection.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Collection {
@@ -393,6 +423,48 @@ pub struct Collection {
     pub image: Option<Image>,
     /// Last update timestamp.
     pub updated_at: Option<String>,
+    /// Rule set for smart collections (None for manual collections).
+    pub rule_set: Option<CollectionRuleSet>,
+    /// Sort order for products in the collection.
+    pub sort_order: Option<String>,
+    /// SEO metadata.
+    pub seo: Option<CollectionSeo>,
+    /// Whether the collection is published on the current publication.
+    pub published_on_current_publication: Option<bool>,
+}
+
+/// A product within a collection (simplified view).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CollectionProduct {
+    /// Product ID.
+    pub id: String,
+    /// Product title.
+    pub title: String,
+    /// URL handle.
+    pub handle: String,
+    /// Product status (ACTIVE, DRAFT, ARCHIVED).
+    pub status: String,
+    /// Featured image URL.
+    pub image_url: Option<String>,
+    /// Total inventory quantity.
+    pub total_inventory: i64,
+    /// Minimum variant price.
+    pub price: String,
+    /// Currency code.
+    pub currency_code: String,
+}
+
+/// A collection with its products.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CollectionWithProducts {
+    /// The collection.
+    pub collection: Collection,
+    /// Products in this collection.
+    pub products: Vec<CollectionProduct>,
+    /// Whether there are more products to load.
+    pub has_next_page: bool,
+    /// Cursor for loading more products.
+    pub end_cursor: Option<String>,
 }
 
 /// Paginated list of collections.

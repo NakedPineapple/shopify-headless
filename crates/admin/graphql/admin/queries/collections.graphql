@@ -25,6 +25,71 @@ query GetCollection($id: ID!) {
         condition
       }
     }
+    sortOrder
+    seo {
+      title
+      description
+    }
+    publishedOnCurrentPublication
+  }
+}
+
+# Get a collection with paginated products
+query GetCollectionWithProducts($id: ID!, $first: Int = 20, $after: String) {
+  collection(id: $id) {
+    id
+    title
+    handle
+    description
+    descriptionHtml
+    updatedAt
+    productsCount {
+      count
+    }
+    image {
+      id
+      url
+      altText
+    }
+    ruleSet {
+      appliedDisjunctively
+      rules {
+        column
+        relation
+        condition
+      }
+    }
+    sortOrder
+    seo {
+      title
+      description
+    }
+    publishedOnCurrentPublication
+    products(first: $first, after: $after) {
+      edges {
+        node {
+          id
+          title
+          handle
+          status
+          featuredImage {
+            url
+            altText
+          }
+          totalInventory
+          priceRangeV2 {
+            minVariantPrice {
+              amount
+              currencyCode
+            }
+          }
+        }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+    }
   }
 }
 
@@ -94,6 +159,63 @@ mutation CollectionUpdate($input: CollectionInput!) {
 mutation CollectionDelete($input: CollectionDeleteInput!) {
   collectionDelete(input: $input) {
     deletedCollectionId
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
+# Add products to a collection
+mutation CollectionAddProductsV2($id: ID!, $productIds: [ID!]!) {
+  collectionAddProductsV2(id: $id, productIds: $productIds) {
+    job {
+      id
+      done
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
+# Remove products from a collection
+mutation CollectionRemoveProducts($id: ID!, $productIds: [ID!]!) {
+  collectionRemoveProducts(id: $id, productIds: $productIds) {
+    job {
+      id
+      done
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
+# Get the current publication (online store)
+query GetCurrentPublication {
+  currentAppInstallation {
+    publication {
+      id
+    }
+  }
+}
+
+# Publish a resource to publications
+mutation PublishablePublish($id: ID!, $input: [PublicationInput!]!) {
+  publishablePublish(id: $id, input: $input) {
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
+# Unpublish a resource from publications
+mutation PublishableUnpublish($id: ID!, $input: [PublicationInput!]!) {
+  publishableUnpublish(id: $id, input: $input) {
     userErrors {
       field
       message

@@ -175,6 +175,54 @@ pub struct CollectionUpdate;
 )]
 pub struct CollectionDelete;
 
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/collections.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct GetCollectionWithProducts;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/collections.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct CollectionAddProductsV2;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/collections.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct CollectionRemoveProducts;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/collections.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct GetCurrentPublication;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/collections.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct PublishablePublish;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/collections.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct PublishableUnpublish;
+
 // =============================================================================
 // Order queries
 // =============================================================================

@@ -18,11 +18,11 @@ use super::{
     AdminShopifyError, GraphQLError, GraphQLErrorLocation,
     types::{
         AdminProduct, AdminProductConnection, AdminProductVariant, Collection,
-        CollectionConnection, Customer, CustomerConnection, DiscountCode, DiscountCodeConnection,
-        DiscountStatus, DiscountValue, FulfillmentOrder, FulfillmentOrderLineItem, GiftCard,
-        GiftCardConnection, Image, InventoryLevel, InventoryLevelConnection, Location,
-        LocationConnection, Money, Order, OrderConnection, PageInfo, Payout, PayoutConnection,
-        PayoutStatus, StagedUploadTarget,
+        CollectionConnection, CollectionProduct, CollectionWithProducts, Customer,
+        CustomerConnection, DiscountCode, DiscountCodeConnection, DiscountStatus, DiscountValue,
+        FulfillmentOrder, FulfillmentOrderLineItem, GiftCard, GiftCardConnection, Image,
+        InventoryLevel, InventoryLevelConnection, Location, LocationConnection, Money, Order,
+        OrderConnection, PageInfo, Payout, PayoutConnection, PayoutStatus, StagedUploadTarget,
     },
 };
 
@@ -35,13 +35,15 @@ use conversions::{
     convert_product_connection,
 };
 use queries::{
-    CollectionCreate, CollectionDelete, CollectionUpdate, DiscountCodeBasicCreate,
-    DiscountCodeBasicUpdate, DiscountCodeDeactivate, FileDelete, FileUpdate, GetCollection,
-    GetCollections, GetCustomer, GetCustomers, GetDiscountCode, GetDiscountCodes, GetGiftCards,
-    GetInventoryLevels, GetLocations, GetOrder, GetOrders, GetPayout, GetPayouts, GetProduct,
-    GetProducts, GiftCardCreate, GiftCardUpdate, InventoryAdjustQuantities, InventorySetQuantities,
-    OrderCancel, OrderMarkAsPaid, OrderUpdate, ProductCreate, ProductDelete, ProductReorderMedia,
-    ProductSetMedia, ProductUpdate, ProductVariantsBulkUpdate, StagedUploadsCreate,
+    CollectionAddProductsV2, CollectionCreate, CollectionDelete, CollectionRemoveProducts,
+    CollectionUpdate, DiscountCodeBasicCreate, DiscountCodeBasicUpdate, DiscountCodeDeactivate,
+    FileDelete, FileUpdate, GetCollection, GetCollectionWithProducts, GetCollections,
+    GetCurrentPublication, GetCustomer, GetCustomers, GetDiscountCode, GetDiscountCodes,
+    GetGiftCards, GetInventoryLevels, GetLocations, GetOrder, GetOrders, GetPayout, GetPayouts,
+    GetProduct, GetProducts, GiftCardCreate, GiftCardUpdate, InventoryAdjustQuantities,
+    InventorySetQuantities, OrderCancel, OrderMarkAsPaid, OrderUpdate, ProductCreate,
+    ProductDelete, ProductReorderMedia, ProductSetMedia, ProductUpdate, ProductVariantsBulkUpdate,
+    PublishablePublish, PublishableUnpublish, StagedUploadsCreate,
 };
 
 /// OAuth token for Admin API access.
@@ -1112,21 +1114,43 @@ impl AdminClient {
 
         let response = self.execute::<GetCollection>(variables).await?;
 
-        Ok(response.collection.map(|c| Collection {
-            id: c.id,
-            title: c.title,
-            handle: c.handle,
-            description: c.description,
-            description_html: Some(c.description_html),
-            products_count: c.products_count.map_or(0, |pc| pc.count),
-            image: c.image.map(|img| Image {
-                id: img.id,
-                url: img.url,
-                alt_text: img.alt_text,
-                width: None,
-                height: None,
-            }),
-            updated_at: Some(c.updated_at),
+        Ok(response.collection.map(|c| {
+            use super::types::{CollectionRule, CollectionRuleSet, CollectionSeo};
+
+            Collection {
+                id: c.id,
+                title: c.title,
+                handle: c.handle,
+                description: c.description,
+                description_html: Some(c.description_html),
+                products_count: c.products_count.map_or(0, |pc| pc.count),
+                image: c.image.map(|img| Image {
+                    id: img.id,
+                    url: img.url,
+                    alt_text: img.alt_text,
+                    width: None,
+                    height: None,
+                }),
+                updated_at: Some(c.updated_at),
+                rule_set: c.rule_set.map(|rs| CollectionRuleSet {
+                    applied_disjunctively: rs.applied_disjunctively,
+                    rules: rs
+                        .rules
+                        .into_iter()
+                        .map(|r| CollectionRule {
+                            column: format!("{:?}", r.column),
+                            relation: format!("{:?}", r.relation),
+                            condition: r.condition,
+                        })
+                        .collect(),
+                }),
+                sort_order: Some(format!("{:?}", c.sort_order)),
+                seo: Some(CollectionSeo {
+                    title: c.seo.title,
+                    description: c.seo.description,
+                }),
+                published_on_current_publication: Some(c.published_on_current_publication),
+            }
         }))
     }
 
@@ -1171,6 +1195,11 @@ impl AdminClient {
                         height: None,
                     }),
                     updated_at: Some(c.updated_at),
+                    // List view doesn't include these extended fields
+                    rule_set: None,
+                    sort_order: None,
+                    seo: None,
+                    published_on_current_publication: None,
                 }
             })
             .collect();
@@ -1254,8 +1283,34 @@ impl AdminClient {
         id: &str,
         title: Option<&str>,
         description_html: Option<&str>,
+        sort_order: Option<&str>,
+        seo_title: Option<&str>,
+        seo_description: Option<&str>,
     ) -> Result<String, AdminShopifyError> {
-        use queries::collection_update::{CollectionInput, Variables};
+        use queries::collection_update::{CollectionInput, SEOInput, Variables};
+
+        // Build SEO input if any SEO field is provided
+        let seo = if seo_title.is_some() || seo_description.is_some() {
+            Some(SEOInput {
+                title: seo_title.map(String::from),
+                description: seo_description.map(String::from),
+            })
+        } else {
+            None
+        };
+
+        // Convert sort order string to enum
+        let sort_order_enum = sort_order.and_then(|s| match s {
+            "BEST_SELLING" => Some(queries::collection_update::CollectionSortOrder::BEST_SELLING),
+            "ALPHA_ASC" => Some(queries::collection_update::CollectionSortOrder::ALPHA_ASC),
+            "ALPHA_DESC" => Some(queries::collection_update::CollectionSortOrder::ALPHA_DESC),
+            "PRICE_ASC" => Some(queries::collection_update::CollectionSortOrder::PRICE_ASC),
+            "PRICE_DESC" => Some(queries::collection_update::CollectionSortOrder::PRICE_DESC),
+            "CREATED_DESC" => Some(queries::collection_update::CollectionSortOrder::CREATED_DESC),
+            "CREATED" => Some(queries::collection_update::CollectionSortOrder::CREATED),
+            "MANUAL" => Some(queries::collection_update::CollectionSortOrder::MANUAL),
+            _ => None,
+        });
 
         let variables = Variables {
             input: CollectionInput {
@@ -1268,8 +1323,8 @@ impl AdminClient {
                 products: None,
                 redirect_new_handle: None,
                 rule_set: None,
-                seo: None,
-                sort_order: None,
+                seo,
+                sort_order: sort_order_enum,
                 template_suffix: None,
             },
         };
@@ -1339,6 +1394,270 @@ impl AdminClient {
             locations: vec![],
             path: vec![],
         }]))
+    }
+
+    /// Get a collection with its products.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails.
+    #[instrument(skip(self), fields(collection_id = %id))]
+    pub async fn get_collection_with_products(
+        &self,
+        id: &str,
+        first: i64,
+        after: Option<String>,
+    ) -> Result<Option<CollectionWithProducts>, AdminShopifyError> {
+        use super::types::{CollectionRule, CollectionRuleSet, CollectionSeo};
+
+        let variables = queries::get_collection_with_products::Variables {
+            id: id.to_string(),
+            first: Some(first),
+            after,
+        };
+
+        let response = self.execute::<GetCollectionWithProducts>(variables).await?;
+
+        Ok(response.collection.map(|c| {
+            let products: Vec<CollectionProduct> = c
+                .products
+                .edges
+                .into_iter()
+                .map(|e| {
+                    let p = e.node;
+                    let min_price = &p.price_range_v2.min_variant_price;
+                    let price = min_price.amount.clone();
+                    let currency_code = format!("{:?}", min_price.currency_code);
+
+                    #[allow(deprecated)]
+                    CollectionProduct {
+                        id: p.id,
+                        title: p.title,
+                        handle: p.handle,
+                        status: format!("{:?}", p.status),
+                        image_url: p.featured_image.map(|img| img.url),
+                        total_inventory: p.total_inventory,
+                        price,
+                        currency_code,
+                    }
+                })
+                .collect();
+
+            let has_next_page = c.products.page_info.has_next_page;
+            let end_cursor = c.products.page_info.end_cursor;
+
+            let collection = Collection {
+                id: c.id,
+                title: c.title,
+                handle: c.handle,
+                description: c.description,
+                description_html: Some(c.description_html),
+                products_count: c.products_count.map_or(0, |pc| pc.count),
+                image: c.image.map(|img| Image {
+                    id: img.id,
+                    url: img.url,
+                    alt_text: img.alt_text,
+                    width: None,
+                    height: None,
+                }),
+                updated_at: Some(c.updated_at),
+                rule_set: c.rule_set.map(|rs| CollectionRuleSet {
+                    applied_disjunctively: rs.applied_disjunctively,
+                    rules: rs
+                        .rules
+                        .into_iter()
+                        .map(|r| CollectionRule {
+                            column: format!("{:?}", r.column),
+                            relation: format!("{:?}", r.relation),
+                            condition: r.condition,
+                        })
+                        .collect(),
+                }),
+                sort_order: Some(format!("{:?}", c.sort_order)),
+                seo: Some(CollectionSeo {
+                    title: c.seo.title,
+                    description: c.seo.description,
+                }),
+                published_on_current_publication: Some(c.published_on_current_publication),
+            };
+
+            CollectionWithProducts {
+                collection,
+                products,
+                has_next_page,
+                end_cursor,
+            }
+        }))
+    }
+
+    /// Add products to a collection.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails or returns user errors.
+    #[instrument(skip(self))]
+    pub async fn add_products_to_collection(
+        &self,
+        collection_id: &str,
+        product_ids: Vec<String>,
+    ) -> Result<(), AdminShopifyError> {
+        let variables = queries::collection_add_products_v2::Variables {
+            id: collection_id.to_string(),
+            product_ids,
+        };
+
+        let response = self.execute::<CollectionAddProductsV2>(variables).await?;
+
+        if let Some(payload) = response.collection_add_products_v2 {
+            if !payload.user_errors.is_empty() {
+                let error_messages: Vec<String> = payload
+                    .user_errors
+                    .iter()
+                    .map(|e| {
+                        let field = e.field.as_ref().map_or_else(String::new, |f| f.join("."));
+                        format!("{}: {}", field, e.message)
+                    })
+                    .collect();
+                return Err(AdminShopifyError::UserError(error_messages.join("; ")));
+            }
+
+            return Ok(());
+        }
+
+        Err(AdminShopifyError::GraphQL(vec![GraphQLError {
+            message: "Add products to collection failed".to_string(),
+            locations: vec![],
+            path: vec![],
+        }]))
+    }
+
+    /// Remove products from a collection.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails or returns user errors.
+    #[instrument(skip(self))]
+    pub async fn remove_products_from_collection(
+        &self,
+        collection_id: &str,
+        product_ids: Vec<String>,
+    ) -> Result<(), AdminShopifyError> {
+        let variables = queries::collection_remove_products::Variables {
+            id: collection_id.to_string(),
+            product_ids,
+        };
+
+        let response = self.execute::<CollectionRemoveProducts>(variables).await?;
+
+        if let Some(payload) = response.collection_remove_products {
+            if !payload.user_errors.is_empty() {
+                let error_messages: Vec<String> = payload
+                    .user_errors
+                    .iter()
+                    .map(|e| {
+                        let field = e.field.as_ref().map_or_else(String::new, |f| f.join("."));
+                        format!("{}: {}", field, e.message)
+                    })
+                    .collect();
+                return Err(AdminShopifyError::UserError(error_messages.join("; ")));
+            }
+
+            return Ok(());
+        }
+
+        Err(AdminShopifyError::GraphQL(vec![GraphQLError {
+            message: "Remove products from collection failed".to_string(),
+            locations: vec![],
+            path: vec![],
+        }]))
+    }
+
+    /// Get the current publication ID (online store).
+    async fn get_current_publication_id(&self) -> Result<Option<String>, AdminShopifyError> {
+        let variables = queries::get_current_publication::Variables {};
+        let response = self.execute::<GetCurrentPublication>(variables).await?;
+
+        let id = response.current_app_installation.publication.map(|p| p.id);
+
+        Ok(id)
+    }
+
+    /// Publish a collection to the current publication.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails or returns user errors.
+    #[instrument(skip(self))]
+    pub async fn publish_collection(&self, collection_id: &str) -> Result<(), AdminShopifyError> {
+        let publication_id = self
+            .get_current_publication_id()
+            .await?
+            .ok_or_else(|| AdminShopifyError::NotFound("No publication found".to_string()))?;
+
+        let variables = queries::publishable_publish::Variables {
+            id: collection_id.to_string(),
+            input: vec![queries::publishable_publish::PublicationInput {
+                publication_id: Some(publication_id),
+                publish_date: None,
+            }],
+        };
+
+        let response = self.execute::<PublishablePublish>(variables).await?;
+
+        if let Some(payload) = response.publishable_publish
+            && !payload.user_errors.is_empty()
+        {
+            let error_messages: Vec<String> = payload
+                .user_errors
+                .iter()
+                .map(|e| {
+                    let field = e.field.as_ref().map_or_else(String::new, |f| f.join("."));
+                    format!("{}: {}", field, e.message)
+                })
+                .collect();
+            return Err(AdminShopifyError::UserError(error_messages.join("; ")));
+        }
+
+        Ok(())
+    }
+
+    /// Unpublish a collection from the current publication.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails or returns user errors.
+    #[instrument(skip(self))]
+    pub async fn unpublish_collection(&self, collection_id: &str) -> Result<(), AdminShopifyError> {
+        let publication_id = self
+            .get_current_publication_id()
+            .await?
+            .ok_or_else(|| AdminShopifyError::NotFound("No publication found".to_string()))?;
+
+        let variables = queries::publishable_unpublish::Variables {
+            id: collection_id.to_string(),
+            input: vec![queries::publishable_unpublish::PublicationInput {
+                publication_id: Some(publication_id),
+                publish_date: None,
+            }],
+        };
+
+        let response = self.execute::<PublishableUnpublish>(variables).await?;
+
+        if let Some(payload) = response.publishable_unpublish
+            && !payload.user_errors.is_empty()
+        {
+            let error_messages: Vec<String> = payload
+                .user_errors
+                .iter()
+                .map(|e| {
+                    let field = e.field.as_ref().map_or_else(String::new, |f| f.join("."));
+                    format!("{}: {}", field, e.message)
+                })
+                .collect();
+            return Err(AdminShopifyError::UserError(error_messages.join("; ")));
+        }
+
+        Ok(())
     }
 
     // =========================================================================

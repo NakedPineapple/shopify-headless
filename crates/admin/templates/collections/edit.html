@@ -11,9 +11,9 @@
 {% block content %}
 <!-- Back Link -->
 <div class="mb-6">
-    <a href="/collections" class="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors">
+    <a href="/collections/{{ collection.id|extract_id }}" class="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors">
         <i class="ph ph-arrow-left"></i>
-        Back to Collections
+        Back to Collection
     </a>
 </div>
 
@@ -32,12 +32,14 @@
     <div class="bg-card rounded-xl border border-border">
         <div class="p-6 space-y-6">
             <!-- Current Image Preview -->
-            {% if let Some(url) = collection.image_url %}
+            {% if let Some(img) = collection.image %}
             <div class="flex items-center gap-4 p-4 bg-muted rounded-lg">
-                <img src="{{ url }}" alt="{{ collection.title }}" class="w-20 h-20 rounded-lg object-cover">
+                <img src="{{ img.url }}" alt="{{ img.alt_text.as_deref().unwrap_or(collection.title.as_str()) }}" class="w-20 h-20 rounded-lg object-cover">
                 <div>
                     <p class="text-sm font-medium text-foreground">Current Image</p>
-                    <p class="text-xs text-muted-foreground">To change images, use the Shopify admin</p>
+                    {% if let Some(alt) = img.alt_text %}
+                    <p class="text-xs text-muted-foreground">Alt: {{ alt }}</p>
+                    {% endif %}
                 </div>
             </div>
             {% endif %}
@@ -53,20 +55,98 @@
                        required
                        value="{{ collection.title }}"
                        placeholder="Enter collection title"
-                       class="w-full px-4 py-2 bg-input border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-colors placeholder:text-muted-foreground">
+                       class="w-full px-4 py-2 bg-input border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring transition-colors placeholder:text-muted-foreground">
             </div>
 
-            <!-- Description -->
+            <!-- Description (WYSIWYG) -->
             <div>
-                <label for="description_html" class="block text-sm font-medium text-foreground mb-2">
+                <label class="block text-sm font-medium text-foreground mb-2">
                     Description
                 </label>
-                <textarea id="description_html"
-                          name="description_html"
-                          rows="4"
-                          placeholder="Enter collection description (HTML supported)"
-                          class="w-full px-4 py-2 bg-input border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-colors placeholder:text-muted-foreground">{{ description_html }}</textarea>
-                <p class="mt-1 text-xs text-muted-foreground">HTML formatting is supported</p>
+                <div id="editor-container" class="bg-input">{{ description_html|safe }}</div>
+                <input type="hidden" id="description_html" name="description_html" value="">
+                <p class="mt-2 text-xs text-muted-foreground">Use the toolbar above to format your description</p>
+            </div>
+
+            <!-- Visibility -->
+            <div>
+                <label for="published" class="block text-sm font-medium text-foreground mb-2">
+                    Visibility
+                </label>
+                <select id="published"
+                        name="published"
+                        class="w-full px-4 py-2 bg-input border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring transition-colors">
+                    <option value="true" {% if collection.published_on_current_publication %}selected{% endif %}>Published</option>
+                    {% if admin_user.is_super_admin %}
+                    <option value="false" {% if !collection.published_on_current_publication %}selected{% endif %}>Unpublished</option>
+                    {% endif %}
+                </select>
+                <p class="mt-1 text-xs text-muted-foreground">
+                    {% if admin_user.is_super_admin %}
+                    Published collections are visible to customers. Unpublished collections are hidden.
+                    {% else %}
+                    Published collections are visible to customers.
+                    {% endif %}
+                </p>
+            </div>
+
+            <!-- Sort Order -->
+            <div>
+                <label for="sort_order" class="block text-sm font-medium text-foreground mb-2">
+                    Default Sort Order
+                </label>
+                <select id="sort_order"
+                        name="sort_order"
+                        class="w-full px-4 py-2 bg-input border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring transition-colors">
+                    <option value="BEST_SELLING" {% if collection.sort_order == "BEST_SELLING" || collection.sort_order == "BestSelling" %}selected{% endif %}>Best Selling</option>
+                    <option value="ALPHA_ASC" {% if collection.sort_order == "ALPHA_ASC" || collection.sort_order == "AlphaAsc" %}selected{% endif %}>Alphabetically, A-Z</option>
+                    <option value="ALPHA_DESC" {% if collection.sort_order == "ALPHA_DESC" || collection.sort_order == "AlphaDesc" %}selected{% endif %}>Alphabetically, Z-A</option>
+                    <option value="PRICE_ASC" {% if collection.sort_order == "PRICE_ASC" || collection.sort_order == "PriceAsc" %}selected{% endif %}>Price, low to high</option>
+                    <option value="PRICE_DESC" {% if collection.sort_order == "PRICE_DESC" || collection.sort_order == "PriceDesc" %}selected{% endif %}>Price, high to low</option>
+                    <option value="CREATED_DESC" {% if collection.sort_order == "CREATED_DESC" || collection.sort_order == "CreatedDesc" %}selected{% endif %}>Newest first</option>
+                    <option value="CREATED" {% if collection.sort_order == "CREATED" || collection.sort_order == "Created" %}selected{% endif %}>Oldest first</option>
+                    <option value="MANUAL" {% if collection.sort_order == "MANUAL" || collection.sort_order == "Manual" %}selected{% endif %}>Manual</option>
+                </select>
+                <p class="mt-1 text-xs text-muted-foreground">How products are sorted when viewing this collection</p>
+            </div>
+
+            <!-- SEO Section -->
+            <div class="border-t border-border pt-6">
+                <h4 class="text-sm font-medium text-foreground mb-4 flex items-center gap-2">
+                    <i class="ph ph-magnifying-glass"></i>
+                    Search Engine Listing
+                </h4>
+                <div class="space-y-4">
+                    <div>
+                        <label for="seo_title" class="block text-sm font-medium text-foreground mb-2">
+                            SEO Title
+                        </label>
+                        <input type="text"
+                               id="seo_title"
+                               name="seo_title"
+                               value="{% if let Some(t) = collection.seo.title %}{{ t }}{% endif %}"
+                               placeholder="Defaults to collection title"
+                               maxlength="70"
+                               class="w-full px-4 py-2 bg-input border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring transition-colors placeholder:text-muted-foreground">
+                        <p class="mt-1 text-xs text-muted-foreground">
+                            <span id="seo-title-count">{% if let Some(t) = collection.seo.title %}{{ t.len() }}{% else %}0{% endif %}</span>/70 characters
+                        </p>
+                    </div>
+                    <div>
+                        <label for="seo_description" class="block text-sm font-medium text-foreground mb-2">
+                            Meta Description
+                        </label>
+                        <textarea id="seo_description"
+                                  name="seo_description"
+                                  rows="3"
+                                  placeholder="Enter a description for search engines"
+                                  maxlength="320"
+                                  class="w-full px-4 py-2 bg-input border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring transition-colors placeholder:text-muted-foreground">{% if let Some(d) = collection.seo.description %}{{ d }}{% endif %}</textarea>
+                        <p class="mt-1 text-xs text-muted-foreground">
+                            <span id="seo-desc-count">{% if let Some(d) = collection.seo.description %}{{ d.len() }}{% else %}0{% endif %}</span>/320 characters
+                        </p>
+                    </div>
+                </div>
             </div>
 
             <!-- Collection Info -->
@@ -74,7 +154,7 @@
                 <div class="grid grid-cols-2 gap-4 text-sm">
                     <div>
                         <span class="text-muted-foreground">Handle:</span>
-                        <span class="ml-2 text-foreground">{{ collection.handle }}</span>
+                        <span class="ml-2 text-foreground font-mono">{{ collection.handle }}</span>
                     </div>
                     <div>
                         <span class="text-muted-foreground">Products:</span>
@@ -82,23 +162,11 @@
                     </div>
                 </div>
             </div>
-
-            <!-- Info -->
-            <div class="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                <div class="flex items-center gap-3">
-                    <i class="ph ph-info text-xl text-blue-600 dark:text-blue-400"></i>
-                    <div>
-                        <p class="text-sm font-medium text-blue-800 dark:text-blue-200">Managing products</p>
-                        <p class="text-xs text-blue-600 dark:text-blue-400">
-                            To add or remove products from this collection, use the Shopify admin.
-                        </p>
-                    </div>
-                </div>
-            </div>
         </div>
 
         <!-- Form Actions -->
         <div class="px-6 py-4 bg-muted border-t border-border rounded-b-xl flex items-center justify-between">
+            {% if admin_user.is_super_admin %}
             <form action="/collections/{{ collection.id|extract_id }}/delete" method="POST" class="inline"
                   onsubmit="return confirm('Are you sure you want to delete this collection? This action cannot be undone.');">
                 <button type="submit" class="px-4 py-2 text-sm text-destructive hover:text-destructive/80 transition-colors">
@@ -106,8 +174,11 @@
                     Delete Collection
                 </button>
             </form>
+            {% else %}
+            <div></div>
+            {% endif %}
             <div class="flex items-center gap-3">
-                <a href="/collections"
+                <a href="/collections/{{ collection.id|extract_id }}"
                    class="px-4 py-2 bg-card border border-border rounded-lg text-sm font-medium text-foreground hover:bg-accent transition-colors">
                     Cancel
                 </a>
@@ -120,4 +191,58 @@
         </div>
     </div>
 </form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    // WYSIWYG Editor
+    var quill = new Quill('#editor-container', {
+        theme: 'snow',
+        placeholder: 'Enter collection description...',
+        modules: {
+            toolbar: [
+                [{ 'header': [1, 2, 3, false] }],
+                ['bold', 'italic', 'underline', 'strike'],
+                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                ['link']
+            ]
+        }
+    });
+
+    // Sync to hidden input on form submit
+    var form = document.querySelector('form[action^="/collections/"]');
+    var hiddenInput = document.getElementById('description_html');
+
+    if (form && hiddenInput) {
+        form.addEventListener('submit', function(e) {
+            // Get the innerHTML from the editor
+            var html = quill.root.innerHTML;
+            // Don't submit empty paragraphs
+            if (html === '<p><br></p>') {
+                html = '';
+            }
+            hiddenInput.value = html;
+        });
+    }
+
+    // SEO character counters
+    var seoTitleInput = document.getElementById('seo_title');
+    var seoTitleCount = document.getElementById('seo-title-count');
+    var seoDescInput = document.getElementById('seo_description');
+    var seoDescCount = document.getElementById('seo-desc-count');
+
+    if (seoTitleInput && seoTitleCount) {
+        seoTitleInput.addEventListener('input', function() {
+            seoTitleCount.textContent = this.value.length;
+        });
+    }
+
+    if (seoDescInput && seoDescCount) {
+        seoDescInput.addEventListener('input', function() {
+            seoDescCount.textContent = this.value.length;
+        });
+    }
+})();
+</script>
 {% endblock %}

@@ -60,7 +60,10 @@
                             </div>
                             {% endif %}
                             <div>
-                                <p class="font-medium text-foreground">{{ collection.title }}</p>
+                                <a href="/collections/{{ collection.id|extract_id }}"
+                                   class="font-medium text-foreground hover:text-primary transition-colors">
+                                    {{ collection.title }}
+                                </a>
                                 {% if !collection.description.is_empty() %}
                                 <p class="text-sm text-muted-foreground truncate max-w-xs">{{ collection.description }}</p>
                                 {% endif %}
@@ -68,7 +71,7 @@
                         </div>
                     </td>
                     <td class="px-6 py-4">
-                        <span class="text-sm text-muted-foreground">{{ collection.handle }}</span>
+                        <span class="text-sm text-muted-foreground font-mono">{{ collection.handle }}</span>
                     </td>
                     <td class="px-6 py-4">
                         <span class="text-sm text-foreground">{{ collection.products_count }} products</span>
@@ -79,6 +82,7 @@
                                class="text-sm text-primary hover:underline">
                                 Edit
                             </a>
+                            {% if admin_user.is_super_admin %}
                             <span class="text-border">|</span>
                             <form action="/collections/{{ collection.id|extract_id }}/delete" method="POST" class="inline"
                                   onsubmit="return confirm('Are you sure you want to delete this collection?');">
@@ -86,6 +90,7 @@
                                     Delete
                                 </button>
                             </form>
+                            {% endif %}
                         </div>
                     </td>
                 </tr>

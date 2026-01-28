@@ -1,0 +1,330 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}{{ collection.title }} - Collections{% endblock %}
+
+{% block page_title %}{{ collection.title }}{% endblock %}
+
+{% block page_subtitle %}
+<p class="text-sm text-muted-foreground mt-1">{{ collection.handle }}</p>
+{% endblock %}
+
+{% block content %}
+<!-- Action Bar -->
+<div class="flex items-center justify-between mb-6">
+    <a href="/collections" class="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors">
+        <i class="ph ph-arrow-left"></i>
+        Back to Collections
+    </a>
+    <div class="flex items-center gap-3">
+        <a href="/collections/{{ collection.id|extract_id }}/edit"
+           class="inline-flex items-center gap-2 px-4 py-2 bg-card border border-border rounded-lg text-sm font-medium text-foreground hover:border-primary transition-colors">
+            <i class="ph ph-pencil"></i>
+            Edit
+        </a>
+    </div>
+</div>
+
+<div class="grid lg:grid-cols-3 gap-6">
+    <!-- Main Content -->
+    <div class="lg:col-span-2 space-y-6">
+        <!-- Collection Info Card -->
+        <div class="bg-card rounded-xl border border-border p-6">
+            <div class="flex items-start gap-6">
+                {% if let Some(img) = collection.image %}
+                <img src="{{ img.url }}" alt="{{ img.alt_text.as_deref().unwrap_or(collection.title.as_str()) }}" class="w-32 h-32 rounded-xl object-cover">
+                {% else %}
+                <div class="w-32 h-32 rounded-xl bg-muted flex items-center justify-center">
+                    <i class="ph ph-folders text-4xl text-muted-foreground"></i>
+                </div>
+                {% endif %}
+                <div class="flex-1">
+                    <div class="flex items-center gap-3 mb-2">
+                        <h3 class="text-xl font-semibold text-foreground">{{ collection.title }}</h3>
+                        {% if collection.published_on_current_publication %}
+                        <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/20 text-emerald-400">
+                            <span class="w-1.5 h-1.5 rounded-full bg-current opacity-70"></span>
+                            Published
+                        </span>
+                        {% else %}
+                        <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-500/20 text-amber-400">
+                            <span class="w-1.5 h-1.5 rounded-full bg-current opacity-70"></span>
+                            Unpublished
+                        </span>
+                        {% endif %}
+                    </div>
+                    <div class="flex items-center gap-4 text-sm text-muted-foreground">
+                        <span><i class="ph ph-package mr-1"></i>{{ collection.products_count }} products</span>
+                    </div>
+                </div>
+            </div>
+
+            {% if !collection.description_html.is_empty() %}
+            <div class="mt-6 pt-6 border-t border-border">
+                <h4 class="text-sm font-medium text-foreground mb-2">Description</h4>
+                <div class="prose prose-sm dark:prose-invert max-w-none">
+                    {{ collection.description_html|safe }}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Products Table -->
+        <div id="products-section" class="bg-card rounded-xl border border-border">
+            <div class="px-6 py-4 border-b border-border flex items-center justify-between">
+                <h3 class="font-semibold text-foreground">Products</h3>
+                {% if collection.rule_set.is_none() %}
+                <button onclick="openAddProductsModal()"
+                        class="inline-flex items-center gap-2 px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-sm hover:bg-primary/90 transition-colors">
+                    <i class="ph ph-plus"></i> Add Products
+                </button>
+                {% endif %}
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-muted">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Product</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Inventory</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Price</th>
+                            {% if collection.rule_set.is_none() %}
+                            <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
+                            {% endif %}
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-border">
+                        {% if products.is_empty() %}
+                        <tr>
+                            <td colspan="{% if collection.rule_set.is_none() %}5{% else %}4{% endif %}" class="px-6 py-12 text-center text-muted-foreground">
+                                <i class="ph ph-package text-4xl mb-2"></i>
+                                <p>No products in this collection</p>
+                            </td>
+                        </tr>
+                        {% else %}
+                        {% for product in products %}
+                        <tr class="hover:bg-accent transition-colors">
+                            <td class="px-6 py-4">
+                                <div class="flex items-center gap-3">
+                                    {% if let Some(url) = product.image_url %}
+                                    <img src="{{ url }}" alt="{{ product.title }}" class="w-10 h-10 rounded-lg object-cover">
+                                    {% else %}
+                                    <div class="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
+                                        <i class="ph ph-image text-muted-foreground"></i>
+                                    </div>
+                                    {% endif %}
+                                    <div>
+                                        <a href="/products/{{ product.id|extract_id }}" class="font-medium text-foreground hover:text-primary transition-colors">
+                                            {{ product.title }}
+                                        </a>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium {{ product.status_class }}">
+                                    {{ product.status }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 text-sm {% if product.inventory <= 10 %}text-warning{% else %}text-foreground{% endif %}">
+                                {{ product.inventory }}
+                                {% if product.inventory <= 10 %}
+                                <i class="ph ph-warning ml-1 text-warning"></i>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 text-sm text-foreground">{{ product.price }}</td>
+                            {% if collection.rule_set.is_none() %}
+                            <td class="px-6 py-4 text-right">
+                                <button hx-post="/collections/{{ collection.id|extract_id }}/products/remove"
+                                        hx-vals='{"product_ids": ["{{ product.id }}"]}'
+                                        hx-target="#products-section"
+                                        hx-swap="outerHTML"
+                                        hx-confirm="Remove this product from the collection?"
+                                        class="text-sm text-destructive hover:text-destructive/80 transition-colors">
+                                    <i class="ph ph-x"></i> Remove
+                                </button>
+                            </td>
+                            {% endif %}
+                        </tr>
+                        {% endfor %}
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+            {% if has_more_products %}
+            <div class="px-6 py-4 border-t border-border">
+                <a href="?cursor={{ end_cursor.as_deref().unwrap_or("") }}"
+                   class="inline-flex items-center gap-2 text-sm text-primary hover:underline">
+                    Load more products
+                    <i class="ph ph-arrow-right"></i>
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="space-y-6">
+        <!-- Collection Type -->
+        <div class="bg-card rounded-xl border border-border p-6">
+            <h3 class="font-semibold text-foreground mb-4">Collection Type</h3>
+            {% if let Some(rule_set) = collection.rule_set %}
+            <div class="flex items-center gap-2 mb-3">
+                <span class="px-2 py-1 text-xs font-medium rounded-full bg-secondary/20 text-secondary">
+                    <i class="ph ph-magic-wand mr-1"></i> Smart Collection
+                </span>
+            </div>
+            <div class="text-sm text-muted-foreground">
+                <p class="mb-2">Products matching {% if rule_set.applied_disjunctively %}any{% else %}all{% endif %} of:</p>
+                <ul class="space-y-1 ml-4 list-disc">
+                    {% for rule in rule_set.rules %}
+                    <li>{{ rule.column }} {{ rule.relation }} "{{ rule.condition }}"</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% else %}
+            <div class="flex items-center gap-2">
+                <span class="px-2 py-1 text-xs font-medium rounded-full bg-muted text-muted-foreground">
+                    <i class="ph ph-hand mr-1"></i> Manual Collection
+                </span>
+            </div>
+            <p class="text-sm text-muted-foreground mt-2">Products are manually added to this collection.</p>
+            {% endif %}
+        </div>
+
+        <!-- Quick Info -->
+        <div class="bg-card rounded-xl border border-border p-6">
+            <h3 class="font-semibold text-foreground mb-4">Collection Details</h3>
+            <dl class="space-y-3 text-sm">
+                <div class="flex justify-between">
+                    <dt class="text-muted-foreground">Handle</dt>
+                    <dd class="text-foreground font-mono">{{ collection.handle }}</dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt class="text-muted-foreground">Products</dt>
+                    <dd class="text-foreground">{{ collection.products_count }}</dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt class="text-muted-foreground">Sort Order</dt>
+                    <dd class="text-foreground">{{ collection.sort_order }}</dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt class="text-muted-foreground">Published</dt>
+                    <dd>
+                        {% if collection.published_on_current_publication %}
+                        <span class="text-success"><i class="ph ph-check-circle"></i> Yes</span>
+                        {% else %}
+                        <span class="text-warning"><i class="ph ph-minus-circle"></i> No</span>
+                        {% endif %}
+                    </dd>
+                </div>
+            </dl>
+        </div>
+
+        <!-- Timeline -->
+        <div class="bg-card rounded-xl border border-border p-6">
+            <h3 class="font-semibold text-foreground mb-4">Timeline</h3>
+            <dl class="space-y-3 text-sm">
+                {% if let Some(updated) = collection.updated_at %}
+                <div>
+                    <dt class="text-muted-foreground">Last Updated</dt>
+                    <dd class="text-foreground">{{ updated }}</dd>
+                </div>
+                {% endif %}
+            </dl>
+        </div>
+
+        <!-- SEO -->
+        {% if collection.seo.title.is_some() || collection.seo.description.is_some() %}
+        <div class="bg-card rounded-xl border border-border p-6">
+            <h3 class="font-semibold text-foreground mb-4">
+                <i class="ph ph-magnifying-glass mr-2"></i>SEO
+            </h3>
+            <dl class="space-y-3 text-sm">
+                {% if let Some(title) = collection.seo.title %}
+                <div>
+                    <dt class="text-muted-foreground">Title</dt>
+                    <dd class="text-foreground">{{ title }}</dd>
+                </div>
+                {% endif %}
+                {% if let Some(desc) = collection.seo.description %}
+                <div>
+                    <dt class="text-muted-foreground">Description</dt>
+                    <dd class="text-foreground">{{ desc }}</dd>
+                </div>
+                {% endif %}
+            </dl>
+        </div>
+        {% endif %}
+
+        {% if admin_user.is_super_admin %}
+        <!-- Danger Zone -->
+        <div class="bg-red-50/30 dark:bg-red-950/10 rounded-xl border border-red-200/30 dark:border-red-900/20 p-6
+                    hover:bg-red-50 dark:hover:bg-red-950/20 hover:border-red-200 dark:hover:border-red-800/50
+                    transition-all group">
+            <h3 class="font-semibold text-red-800/70 dark:text-red-300/70 group-hover:text-red-800 dark:group-hover:text-red-300 mb-4">Danger Zone</h3>
+            <p class="text-sm text-red-600/70 dark:text-red-400/70 group-hover:text-red-600 dark:group-hover:text-red-400 mb-4">
+                Deleting a collection is permanent and cannot be undone.
+            </p>
+            <form action="/collections/{{ collection.id|extract_id }}/delete" method="POST"
+                  onsubmit="return confirm('Are you sure you want to permanently delete this collection? This action cannot be undone.');">
+                <button type="submit"
+                        class="w-full px-4 py-2 bg-red-600/80 group-hover:bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+                    <i class="ph ph-trash mr-2"></i>
+                    Delete Collection
+                </button>
+            </form>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Add Products Modal (placeholder for future implementation) -->
+<div id="add-products-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+    <div class="bg-card rounded-xl border border-border p-6 w-full max-w-2xl shadow-xl">
+        <div class="flex items-center justify-between mb-4">
+            <h4 class="font-semibold text-foreground">Add Products</h4>
+            <button onclick="closeAddProductsModal()" class="text-muted-foreground hover:text-foreground">
+                <i class="ph ph-x text-xl"></i>
+            </button>
+        </div>
+        <p class="text-sm text-muted-foreground mb-4">
+            Search for products to add to this collection.
+        </p>
+        <div class="mb-4">
+            <input type="text" id="product-search" placeholder="Search products..."
+                   class="w-full px-4 py-2 bg-input border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground">
+        </div>
+        <div id="product-search-results" class="max-h-64 overflow-y-auto border border-border rounded-lg mb-4">
+            <p class="p-4 text-center text-muted-foreground">Type to search for products</p>
+        </div>
+        <div class="flex justify-end gap-3">
+            <button onclick="closeAddProductsModal()"
+                    class="px-4 py-2 text-sm text-muted-foreground hover:text-foreground">
+                Cancel
+            </button>
+            <button id="add-selected-products" disabled
+                    class="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed">
+                Add Selected
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openAddProductsModal() {
+    document.getElementById('add-products-modal').classList.remove('hidden');
+}
+
+function closeAddProductsModal() {
+    document.getElementById('add-products-modal').classList.add('hidden');
+}
+
+// Close modal on escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeAddProductsModal();
+    }
+});
+</script>
+{% endblock %}

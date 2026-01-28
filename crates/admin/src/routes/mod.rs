@@ -110,9 +110,20 @@ pub fn routes() -> Router<AppState> {
             get(collections::index).post(collections::create),
         )
         .route("/collections/new", get(collections::new_collection))
+        .route(
+            "/collections/{id}",
+            get(collections::show).post(collections::update),
+        )
         .route("/collections/{id}/edit", get(collections::edit))
-        .route("/collections/{id}", post(collections::update))
         .route("/collections/{id}/delete", post(collections::delete))
+        .route(
+            "/collections/{id}/products",
+            post(collections::add_products),
+        )
+        .route(
+            "/collections/{id}/products/remove",
+            post(collections::remove_products),
+        )
         // Discounts CRUD
         .route("/discounts", get(discounts::index).post(discounts::create))
         .route("/discounts/new", get(discounts::new_discount))
