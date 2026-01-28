@@ -27,6 +27,9 @@
 </div>
 {% endif %}
 
+<!-- Required Fields Legend -->
+<p class="text-xs text-muted-foreground mb-4"><span class="text-destructive">*</span> Required field</p>
+
 <!-- Form -->
 <form action="/products/{{ product.id.split("/").last().unwrap_or("") }}" method="POST" class="max-w-3xl">
     <div class="bg-card rounded-xl border border-border">
@@ -36,49 +39,106 @@
             <div class="space-y-4">
                 <div class="flex items-center justify-between">
                     <h3 class="font-semibold text-foreground">Images</h3>
-                    <span class="text-xs text-muted-foreground">{{ product.images.len() }} image{% if product.images.len() != 1 %}s{% endif %}</span>
+                    <span class="text-xs text-muted-foreground">Drag to reorder &bull; {{ product.images.len() }} image{% if product.images.len() != 1 %}s{% endif %}</span>
                 </div>
-                <div id="image-grid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                <div id="image-grid"
+                     class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4"
+                     data-product-id="{{ product.id.split("/").last().unwrap_or("") }}">
                     {% for image in product.images %}
-                    <div id="image-{{ loop.index }}" class="relative group bg-card rounded-lg border border-border overflow-hidden">
+                    <div id="image-{{ loop.index }}"
+                         class="relative group bg-card rounded-lg border border-border overflow-hidden cursor-move"
+                         data-media-id="{{ image.id }}"
+                         draggable="true">
                         <img src="{{ image.url }}" alt="{% if let Some(alt) = image.alt %}{{ alt }}{% else %}Product image{% endif %}"
-                             class="w-full aspect-square object-cover">
+                             class="w-full aspect-square object-cover pointer-events-none">
                         <!-- Overlay controls -->
                         <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                            <button type="button"
+                                    onclick="editAltText('{{ image.id.split("/").last().unwrap_or("") }}', '{% if let Some(alt) = image.alt %}{{ alt }}{% endif %}')"
+                                    class="p-2 bg-white/90 dark:bg-zinc-800/90 rounded-lg text-gray-700 dark:text-zinc-300 hover:bg-white dark:hover:bg-zinc-700"
+                                    title="Edit alt text">
+                                <i class="ph ph-text-aa text-lg"></i>
+                            </button>
                             <button type="button"
                                     hx-delete="/products/{{ product.id.split("/").last().unwrap_or("") }}/images/{{ image.id.split("/").last().unwrap_or("") }}"
                                     hx-target="#image-{{ loop.index }}"
                                     hx-swap="outerHTML"
-                                    hx-confirm="Delete this image?"
+                                    hx-confirm="Are you sure you want to permanently delete this image? This action cannot be undone."
                                     class="p-2 bg-red-500/90 rounded-lg text-white hover:bg-red-600"
                                     title="Delete image">
                                 <i class="ph ph-trash text-lg"></i>
                             </button>
                         </div>
                         <!-- Position indicator -->
-                        <div class="absolute bottom-2 left-2 px-1.5 py-0.5 bg-black/50 rounded text-xs text-white font-medium">
+                        <div class="position-indicator absolute bottom-2 left-2 px-1.5 py-0.5 bg-black/50 rounded text-xs text-white font-medium">
                             {{ loop.index }}
                         </div>
-                        {% if loop.first %}
-                        <div class="absolute top-2 left-2 px-2 py-0.5 bg-coral rounded text-xs text-white font-medium">
+                        <!-- Featured badge -->
+                        <div class="featured-badge absolute top-2 left-2 px-2 py-0.5 bg-coral rounded text-xs text-white font-medium {% if !loop.first %}hidden{% endif %}">
                             Featured
                         </div>
-                        {% endif %}
                     </div>
                     {% endfor %}
                 </div>
-            </div>
-            {% else %}
-            <!-- No images placeholder -->
-            {% if let Some(url) = product.image_url %}
-            <div class="flex items-center gap-4 p-4 bg-muted rounded-lg">
-                <img src="{{ url }}" alt="{{ product.title }}" class="w-20 h-20 rounded-lg object-cover">
-                <div>
-                    <p class="text-sm font-medium text-foreground">Current Image</p>
-                    <p class="text-xs text-muted-foreground">To upload new images, use the Shopify admin</p>
+
+                <!-- Upload Zone -->
+                <div id="upload-zone"
+                     class="border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-primary/50 transition-colors">
+                    <i class="ph ph-cloud-arrow-up text-3xl text-muted-foreground mb-2"></i>
+                    <p class="text-sm text-muted-foreground mb-3">
+                        Drag and drop images here, or click to browse
+                    </p>
+                    <input type="file"
+                           id="image-upload"
+                           accept="image/jpeg,image/png,image/webp,image/gif"
+                           multiple
+                           class="hidden">
+                    <label for="image-upload"
+                           class="inline-block px-4 py-2 bg-primary text-primary-foreground rounded-lg cursor-pointer hover:bg-primary/90 transition-colors text-sm">
+                        Choose Files
+                    </label>
+                    <p class="text-xs text-muted-foreground mt-2">
+                        JPEG, PNG, WebP, or GIF. Max 20MB per file.
+                    </p>
+                    <div id="upload-progress" class="hidden mt-4">
+                        <div class="w-full bg-muted rounded-full h-2">
+                            <div id="upload-progress-bar" class="bg-primary h-2 rounded-full transition-all" style="width: 0%"></div>
+                        </div>
+                        <p id="upload-status" class="text-xs text-muted-foreground mt-1">Uploading...</p>
+                    </div>
                 </div>
             </div>
-            {% endif %}
+            {% else %}
+            <!-- No images - show upload zone -->
+            <div class="space-y-4">
+                <h3 class="font-semibold text-foreground">Images</h3>
+                <div id="upload-zone"
+                     class="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary/50 transition-colors"
+                     data-product-id="{{ product.id.split("/").last().unwrap_or("") }}">
+                    <i class="ph ph-cloud-arrow-up text-4xl text-muted-foreground mb-3"></i>
+                    <p class="text-sm text-muted-foreground mb-4">
+                        Drag and drop images here, or click to browse
+                    </p>
+                    <input type="file"
+                           id="image-upload"
+                           accept="image/jpeg,image/png,image/webp,image/gif"
+                           multiple
+                           class="hidden">
+                    <label for="image-upload"
+                           class="inline-block px-4 py-2 bg-primary text-primary-foreground rounded-lg cursor-pointer hover:bg-primary/90 transition-colors text-sm">
+                        Choose Files
+                    </label>
+                    <p class="text-xs text-muted-foreground mt-3">
+                        JPEG, PNG, WebP, or GIF. Max 20MB per file.
+                    </p>
+                    <div id="upload-progress" class="hidden mt-4">
+                        <div class="w-full bg-muted rounded-full h-2">
+                            <div id="upload-progress-bar" class="bg-primary h-2 rounded-full transition-all" style="width: 0%"></div>
+                        </div>
+                        <p id="upload-status" class="text-xs text-muted-foreground mt-1">Uploading...</p>
+                    </div>
+                </div>
+            </div>
             {% endif %}
 
             <!-- Title -->
@@ -158,7 +218,9 @@
                         class="w-full px-4 py-2 bg-input border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring transition-colors">
                     <option value="DRAFT" {% if product.status == "DRAFT" %}selected{% endif %}>Draft</option>
                     <option value="ACTIVE" {% if product.status == "ACTIVE" %}selected{% endif %}>Active</option>
+                    {% if admin_user.is_super_admin %}
                     <option value="ARCHIVED" {% if product.status == "ARCHIVED" %}selected{% endif %}>Archived</option>
+                    {% endif %}
                 </select>
             </div>
 
@@ -245,6 +307,29 @@
         </div>
     </div>
 </form>
+
+<!-- Alt Text Edit Modal -->
+<div id="alt-text-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+    <div class="bg-card rounded-xl border border-border p-6 w-full max-w-md shadow-xl">
+        <h4 class="font-semibold text-foreground mb-4">Edit Alt Text</h4>
+        <p class="text-sm text-muted-foreground mb-4">
+            Alt text describes the image for screen readers and search engines.
+        </p>
+        <form id="alt-text-form" method="post">
+            <textarea id="alt-text-input" name="alt_text" rows="3" placeholder="Describe this image..."
+                      class="w-full px-4 py-2 bg-input border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring/50"></textarea>
+            <div class="flex justify-end gap-3 mt-4">
+                <button type="button" onclick="closeAltModal()"
+                        class="px-4 py-2 text-sm text-muted-foreground hover:text-foreground">
+                    Cancel
+                </button>
+                <button type="submit" class="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm hover:bg-primary/90">
+                    Save
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -259,8 +344,7 @@
                 [{ 'header': [1, 2, 3, false] }],
                 ['bold', 'italic', 'underline', 'strike'],
                 [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                ['link'],
-                ['clean']
+                ['link']
             ]
         }
     });
@@ -289,5 +373,237 @@ function toggleVariant(index) {
         el.classList.toggle('hidden');
     }
 }
+
+// Image reordering with SortableJS
+(function() {
+    var grid = document.getElementById('image-grid');
+    if (!grid || typeof Sortable === 'undefined') return;
+
+    var productId = grid.dataset.productId;
+
+    new Sortable(grid, {
+        animation: 150,
+        ghostClass: 'opacity-30',
+        dragClass: 'shadow-2xl',
+        chosenClass: 'ring-2 ring-primary',
+        onEnd: function(evt) {
+            // Update position indicators and featured badges
+            var items = grid.querySelectorAll('[data-media-id]');
+            items.forEach(function(item, index) {
+                var posIndicator = item.querySelector('.position-indicator');
+                if (posIndicator) posIndicator.textContent = index + 1;
+
+                var featuredBadge = item.querySelector('.featured-badge');
+                if (featuredBadge) {
+                    if (index === 0) {
+                        featuredBadge.classList.remove('hidden');
+                    } else {
+                        featuredBadge.classList.add('hidden');
+                    }
+                }
+            });
+
+            // Collect new order and send to server
+            var moves = Array.from(items).map(function(item, index) {
+                return {
+                    id: item.dataset.mediaId,
+                    newPosition: index
+                };
+            });
+
+            // Send reorder request
+            fetch('/products/' + productId + '/images/reorder', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'HX-Request': 'true'
+                },
+                body: JSON.stringify(moves)
+            }).then(function(response) {
+                if (!response.ok) {
+                    console.error('Failed to reorder images');
+                    // Could show an error toast here
+                }
+            }).catch(function(err) {
+                console.error('Error reordering images:', err);
+            });
+        }
+    });
+})();
+
+// Image upload functionality
+(function() {
+    var uploadInput = document.getElementById('image-upload');
+    var uploadZone = document.getElementById('upload-zone');
+    var progressContainer = document.getElementById('upload-progress');
+    var progressBar = document.getElementById('upload-progress-bar');
+    var statusText = document.getElementById('upload-status');
+
+    if (!uploadInput || !uploadZone) return;
+
+    // Get product ID from image grid or upload zone
+    var grid = document.getElementById('image-grid');
+    var productId = grid ? grid.dataset.productId : uploadZone.dataset.productId;
+
+    if (!productId) {
+        // Extract from URL if not in data attribute
+        var match = window.location.pathname.match(/\/products\/([^\/]+)/);
+        if (match) productId = match[1];
+    }
+
+    // Handle file selection
+    uploadInput.addEventListener('change', function(e) {
+        var files = Array.from(e.target.files);
+        if (files.length > 0) {
+            uploadFiles(files);
+        }
+    });
+
+    // Handle drag and drop
+    uploadZone.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        uploadZone.classList.add('border-primary', 'bg-primary/5');
+    });
+
+    uploadZone.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        uploadZone.classList.remove('border-primary', 'bg-primary/5');
+    });
+
+    uploadZone.addEventListener('drop', function(e) {
+        e.preventDefault();
+        uploadZone.classList.remove('border-primary', 'bg-primary/5');
+
+        var files = Array.from(e.dataTransfer.files).filter(function(f) {
+            return f.type.startsWith('image/');
+        });
+
+        if (files.length > 0) {
+            uploadFiles(files);
+        }
+    });
+
+    function uploadFiles(files) {
+        if (!productId) {
+            alert('Cannot determine product ID');
+            return;
+        }
+
+        progressContainer.classList.remove('hidden');
+        var totalFiles = files.length;
+        var completedFiles = 0;
+
+        files.forEach(function(file, index) {
+            uploadSingleFile(file, function(success) {
+                completedFiles++;
+                var percent = Math.round((completedFiles / totalFiles) * 100);
+                progressBar.style.width = percent + '%';
+                statusText.textContent = 'Uploaded ' + completedFiles + ' of ' + totalFiles + ' files...';
+
+                if (completedFiles === totalFiles) {
+                    statusText.textContent = 'Upload complete! Refreshing...';
+                    setTimeout(function() {
+                        window.location.reload();
+                    }, 1000);
+                }
+            });
+        });
+    }
+
+    function uploadSingleFile(file, callback) {
+        // Create FormData with the file
+        var formData = new FormData();
+        formData.append('file', file);
+
+        fetch('/products/' + productId + '/images', {
+            method: 'POST',
+            body: formData
+        })
+        .then(function(response) {
+            if (!response.ok) {
+                return response.text().then(function(text) {
+                    throw new Error(text || 'Upload failed');
+                });
+            }
+            return response.json();
+        })
+        .then(function(data) {
+            callback(true);
+        })
+        .catch(function(err) {
+            console.error('Upload error:', err);
+            callback(false);
+        });
+    }
+})();
+
+// Alt text modal functions
+var currentMediaId = null;
+var productId = document.getElementById('image-grid')?.dataset.productId ||
+                window.location.pathname.match(/\/products\/([^\/]+)/)?.[1];
+
+function editAltText(mediaId, currentAlt) {
+    currentMediaId = mediaId;
+    var modal = document.getElementById('alt-text-modal');
+    var textarea = document.getElementById('alt-text-input');
+    var form = document.getElementById('alt-text-form');
+
+    textarea.value = currentAlt || '';
+    form.action = '/products/' + productId + '/images/' + mediaId + '/alt';
+    modal.classList.remove('hidden');
+    textarea.focus();
+}
+
+function closeAltModal() {
+    document.getElementById('alt-text-modal').classList.add('hidden');
+    currentMediaId = null;
+}
+
+// Close modal on escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        var modal = document.getElementById('alt-text-modal');
+        if (modal && !modal.classList.contains('hidden')) {
+            closeAltModal();
+        }
+    }
+});
+
+// Handle alt text form submission
+document.getElementById('alt-text-form')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    var form = this;
+    var textarea = document.getElementById('alt-text-input');
+    var altText = textarea.value;
+
+    fetch(form.action, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'alt_text=' + encodeURIComponent(altText)
+    })
+    .then(function(response) {
+        if (!response.ok) {
+            throw new Error('Failed to update alt text');
+        }
+        return response.json();
+    })
+    .then(function(data) {
+        // Update the image alt attribute in the DOM
+        var imageContainer = document.querySelector('[data-media-id="gid://shopify/MediaImage/' + currentMediaId + '"]');
+        if (imageContainer) {
+            var img = imageContainer.querySelector('img');
+            if (img) {
+                img.alt = altText || 'Product image';
+            }
+        }
+        closeAltModal();
+    })
+    .catch(function(err) {
+        console.error('Error updating alt text:', err);
+        alert('Failed to update alt text. Please try again.');
+    });
+});
 </script>
 {% endblock %}

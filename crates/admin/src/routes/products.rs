@@ -2,7 +2,7 @@
 
 use askama::Template;
 use axum::{
-    Form,
+    Form, Json,
     extract::{Path, Query, State},
     http::StatusCode,
     response::{Html, IntoResponse, Redirect},
@@ -727,6 +727,275 @@ pub async fn delete_image(
             let html =
                 format!(r#"<div class="text-red-600 dark:text-red-400 text-sm">Error: {e}</div>"#);
             (StatusCode::BAD_REQUEST, Html(html)).into_response()
+        }
+    }
+}
+
+/// Image move input for reordering.
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ImageMoveInput {
+    /// The media ID (full GID or numeric).
+    pub id: String,
+    /// The new position (0-indexed).
+    pub new_position: i64,
+}
+
+/// Reorder product images handler.
+#[instrument(skip(_admin, state))]
+pub async fn reorder_images(
+    RequireAdminAuth(_admin): RequireAdminAuth,
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    Json(moves): Json<Vec<ImageMoveInput>>,
+) -> impl IntoResponse {
+    let product_id = if id.starts_with("gid://") {
+        id
+    } else {
+        format!("gid://shopify/Product/{id}")
+    };
+
+    // Convert moves to the format expected by the Shopify client
+    let move_tuples: Vec<(String, i64)> = moves
+        .into_iter()
+        .map(|m| {
+            let media_id = if m.id.starts_with("gid://") {
+                m.id
+            } else {
+                format!("gid://shopify/MediaImage/{}", m.id)
+            };
+            (media_id, m.new_position)
+        })
+        .collect();
+
+    match state
+        .shopify()
+        .reorder_product_media(&product_id, move_tuples)
+        .await
+    {
+        Ok(()) => {
+            tracing::info!(product_id = %product_id, "Images reordered");
+            (StatusCode::OK, Json(serde_json::json!({"success": true}))).into_response()
+        }
+        Err(e) => {
+            tracing::error!(product_id = %product_id, error = %e, "Failed to reorder images");
+            (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({"error": e.to_string()})),
+            )
+                .into_response()
+        }
+    }
+}
+
+/// Alt text form input.
+#[derive(Debug, Deserialize)]
+pub struct AltTextInput {
+    /// The alt text for the image.
+    pub alt_text: String,
+}
+
+/// Update image alt text handler.
+#[instrument(skip(_admin, state))]
+pub async fn update_image_alt(
+    RequireAdminAuth(_admin): RequireAdminAuth,
+    State(state): State<AppState>,
+    Path((_, media_id)): Path<(String, String)>,
+    Form(input): Form<AltTextInput>,
+) -> impl IntoResponse {
+    // File IDs use MediaImage prefix
+    let full_media_id = if media_id.starts_with("gid://") {
+        media_id.clone()
+    } else {
+        format!("gid://shopify/MediaImage/{media_id}")
+    };
+
+    match state
+        .shopify()
+        .update_media_alt_text(&full_media_id, &input.alt_text)
+        .await
+    {
+        Ok(()) => {
+            tracing::info!(media_id = %full_media_id, alt = %input.alt_text, "Image alt text updated");
+            (
+                StatusCode::OK,
+                Json(serde_json::json!({
+                    "success": true,
+                    "media_id": full_media_id,
+                    "alt_text": input.alt_text
+                })),
+            )
+                .into_response()
+        }
+        Err(e) => {
+            tracing::error!(media_id = %full_media_id, error = %e, "Failed to update image alt text");
+            (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({"error": e.to_string()})),
+            )
+                .into_response()
+        }
+    }
+}
+
+/// Extracted file data from multipart form.
+struct ExtractedFile {
+    filename: String,
+    content_type: String,
+    bytes: Vec<u8>,
+}
+
+/// Extract file from multipart form data.
+async fn extract_file_from_multipart(
+    mut multipart: axum::extract::Multipart,
+) -> Result<ExtractedFile, &'static str> {
+    while let Ok(Some(field)) = multipart.next_field().await {
+        if field.name() == Some("file") {
+            let filename = field.file_name().unwrap_or("image.jpg").to_string();
+            let content_type = field.content_type().unwrap_or("image/jpeg").to_string();
+
+            match field.bytes().await {
+                Ok(bytes) => {
+                    return Ok(ExtractedFile {
+                        filename,
+                        content_type,
+                        bytes: bytes.to_vec(),
+                    });
+                }
+                Err(e) => {
+                    tracing::error!(error = %e, "Failed to read file bytes");
+                    return Err("Failed to read file");
+                }
+            }
+        }
+    }
+    Err("No file provided")
+}
+
+/// Upload file bytes to Shopify's staged upload target.
+async fn upload_to_staged_target(
+    staged_target: &crate::shopify::StagedUploadTarget,
+    filename: &str,
+    content_type: &str,
+    bytes: Vec<u8>,
+) -> Result<(), String> {
+    let client = reqwest::Client::new();
+    let mut form = reqwest::multipart::Form::new();
+
+    // Add parameters from staged upload
+    for (name, value) in &staged_target.parameters {
+        form = form.text(name.clone(), value.clone());
+    }
+
+    // Add the file
+    let file_part = reqwest::multipart::Part::bytes(bytes)
+        .file_name(filename.to_string())
+        .mime_str(content_type)
+        .unwrap_or_else(|_| {
+            reqwest::multipart::Part::bytes(vec![]).file_name(filename.to_string())
+        });
+    form = form.part("file", file_part);
+
+    match client.post(&staged_target.url).multipart(form).send().await {
+        Ok(response) => {
+            if response.status().is_success() {
+                Ok(())
+            } else {
+                let status = response.status();
+                let body = response.text().await.unwrap_or_default();
+                tracing::error!(status = %status, body = %body, "Staged upload failed");
+                Err("Failed to upload to staging".to_string())
+            }
+        }
+        Err(e) => {
+            tracing::error!(error = %e, "Failed to upload to staged target");
+            Err(format!("Upload failed: {e}"))
+        }
+    }
+}
+
+/// Upload image to product handler.
+#[instrument(skip(_admin, state, multipart))]
+pub async fn upload_image(
+    RequireAdminAuth(_admin): RequireAdminAuth,
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    multipart: axum::extract::Multipart,
+) -> impl IntoResponse {
+    let product_id = if id.starts_with("gid://") {
+        id.clone()
+    } else {
+        format!("gid://shopify/Product/{id}")
+    };
+
+    // Step 1: Extract file from multipart
+    let file = match extract_file_from_multipart(multipart).await {
+        Ok(f) => f,
+        Err(msg) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({"error": msg})),
+            )
+                .into_response();
+        }
+    };
+
+    let file_size = i64::try_from(file.bytes.len()).unwrap_or(i64::MAX);
+
+    // Step 2: Create staged upload target
+    let staged_target = match state
+        .shopify()
+        .create_staged_upload(&file.filename, &file.content_type, file_size, "IMAGE")
+        .await
+    {
+        Ok(target) => target,
+        Err(e) => {
+            tracing::error!(error = %e, "Failed to create staged upload");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": format!("Failed to create upload: {e}")})),
+            )
+                .into_response();
+        }
+    };
+
+    // Step 3: Upload file to staged target
+    if let Err(msg) = upload_to_staged_target(
+        &staged_target,
+        &file.filename,
+        &file.content_type,
+        file.bytes,
+    )
+    .await
+    {
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"error": msg})),
+        )
+            .into_response();
+    }
+
+    // Step 4: Attach media to product
+    match state
+        .shopify()
+        .attach_media_to_product(&product_id, &staged_target.resource_url, None)
+        .await
+    {
+        Ok(()) => {
+            tracing::info!(product_id = %product_id, filename = %file.filename, "Image uploaded");
+            (
+                StatusCode::OK,
+                Json(serde_json::json!({"success": true, "filename": file.filename})),
+            )
+                .into_response()
+        }
+        Err(e) => {
+            tracing::error!(error = %e, "Failed to attach media to product");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": format!("Failed to attach image: {e}")})),
+            )
+                .into_response()
         }
     }
 }

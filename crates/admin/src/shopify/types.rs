@@ -786,3 +786,14 @@ pub struct PayoutConnection {
     /// Current account balance.
     pub balance: Option<Money>,
 }
+
+/// Staged upload target for file uploads.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StagedUploadTarget {
+    /// The URL to upload the file to.
+    pub url: String,
+    /// The resource URL after upload completes.
+    pub resource_url: String,
+    /// Form parameters to include with the upload.
+    pub parameters: Vec<(String, String)>,
+}

@@ -347,3 +347,47 @@ mutation FileDelete($fileIds: [ID!]!) {
     }
   }
 }
+
+# Reorder product media (images)
+mutation ProductReorderMedia($id: ID!, $moves: [MoveInput!]!) {
+  productReorderMedia(id: $id, moves: $moves) {
+    job {
+      id
+      done
+    }
+    mediaUserErrors {
+      field
+      message
+    }
+  }
+}
+
+# Update file (for alt text updates)
+mutation FileUpdate($files: [FileUpdateInput!]!) {
+  fileUpdate(files: $files) {
+    files {
+      __typename
+      ... on MediaImage {
+        id
+        alt
+      }
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
+# Add media to product via productSet (non-deprecated)
+mutation ProductSetMedia($input: ProductSetInput!, $identifier: ProductSetIdentifiers) {
+  productSet(input: $input, identifier: $identifier) {
+    product {
+      id
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
