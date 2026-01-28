@@ -30,7 +30,21 @@ query GetCollection($id: ID!) {
       title
       description
     }
-    publishedOnCurrentPublication
+    resourcePublicationsV2(first: 20) {
+      edges {
+        node {
+          publication {
+            id
+            name
+            catalog {
+              __typename
+              title
+            }
+          }
+          isPublished
+        }
+      }
+    }
   }
 }
 
@@ -64,7 +78,21 @@ query GetCollectionWithProducts($id: ID!, $first: Int = 20, $after: String) {
       title
       description
     }
-    publishedOnCurrentPublication
+    resourcePublicationsV2(first: 20) {
+      edges {
+        node {
+          publication {
+            id
+            name
+            catalog {
+              __typename
+              title
+            }
+          }
+          isPublished
+        }
+      }
+    }
     products(first: $first, after: $after) {
       edges {
         node {
@@ -139,7 +167,9 @@ mutation CollectionCreate($input: CollectionInput!) {
   }
 }
 
-# Update an existing collection
+# Update an existing collection (full update)
+# NOTE: This mutation has issues with graphql_client's skip_none bug.
+# Use CollectionUpdateFields instead for updating title/description/SEO.
 mutation CollectionUpdate($input: CollectionInput!) {
   collectionUpdate(input: $input) {
     collection {
@@ -147,6 +177,57 @@ mutation CollectionUpdate($input: CollectionInput!) {
       title
       handle
       updatedAt
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
+# Update collection fields (focused mutation without products field)
+# This avoids the graphql_client skip_none bug by inlining only the fields we need.
+mutation CollectionUpdateFields(
+  $id: ID!
+  $title: String!
+  $descriptionHtml: String!
+  $sortOrder: CollectionSortOrder!
+  $seoTitle: String!
+  $seoDescription: String!
+) {
+  collectionUpdate(input: {
+    id: $id
+    title: $title
+    descriptionHtml: $descriptionHtml
+    sortOrder: $sortOrder
+    seo: {
+      title: $seoTitle
+      description: $seoDescription
+    }
+  }) {
+    collection {
+      id
+      title
+      handle
+      sortOrder
+      seo {
+        title
+        description
+      }
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
+# Update only collection sort order (minimal mutation)
+mutation CollectionUpdateSortOrder($id: ID!, $sortOrder: CollectionSortOrder!) {
+  collectionUpdate(input: { id: $id, sortOrder: $sortOrder }) {
+    collection {
+      id
+      sortOrder
     }
     userErrors {
       field
@@ -194,11 +275,18 @@ mutation CollectionRemoveProducts($id: ID!, $productIds: [ID!]!) {
   }
 }
 
-# Get the current publication (online store)
-query GetCurrentPublication {
-  currentAppInstallation {
-    publication {
-      id
+# Get all publications (sales channels) for the shop
+query GetPublications {
+  publications(first: 20) {
+    edges {
+      node {
+        id
+        name
+        catalog {
+          __typename
+          title
+        }
+      }
     }
   }
 }
@@ -216,6 +304,20 @@ mutation PublishablePublish($id: ID!, $input: [PublicationInput!]!) {
 # Unpublish a resource from publications
 mutation PublishableUnpublish($id: ID!, $input: [PublicationInput!]!) {
   publishableUnpublish(id: $id, input: $input) {
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
+# Reorder products in a collection (manual sort only)
+mutation CollectionReorderProducts($id: ID!, $moves: [MoveInput!]!) {
+  collectionReorderProducts(id: $id, moves: $moves) {
+    job {
+      id
+      done
+    }
     userErrors {
       field
       message

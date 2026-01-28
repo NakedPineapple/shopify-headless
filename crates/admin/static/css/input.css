@@ -520,6 +520,23 @@
   [data-media-id] img:active {
     cursor: grabbing;
   }
+
+  /* Product row drag states */
+  .product-row.sortable-ghost {
+    opacity: 0.3;
+  }
+
+  .product-row.sortable-drag {
+    @apply bg-card shadow-lg;
+  }
+
+  .drag-handle {
+    cursor: grab;
+  }
+
+  .drag-handle:active {
+    cursor: grabbing;
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -541,4 +558,36 @@
     @apply absolute w-px h-px p-0 -m-px overflow-hidden whitespace-nowrap border-0;
     clip: rect(0, 0, 0, 0);
   }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Quill Editor Dark Mode Overrides
+   These must be un-layered to override Quill's un-layered CSS
+   ═══════════════════════════════════════════════════════════════════════════ */
+html.dark .ql-toolbar.ql-snow .ql-stroke,
+html.dark .ql-toolbar.ql-snow button .ql-stroke {
+  stroke: var(--muted-foreground);
+}
+
+html.dark .ql-toolbar.ql-snow .ql-fill,
+html.dark .ql-toolbar.ql-snow button .ql-fill {
+  fill: var(--muted-foreground);
+}
+
+html.dark .ql-toolbar.ql-snow .ql-picker {
+  color: var(--muted-foreground);
+}
+
+html.dark .ql-toolbar.ql-snow .ql-picker-label {
+  color: var(--muted-foreground);
+}
+
+html.dark .ql-toolbar.ql-snow button:hover .ql-stroke,
+html.dark .ql-toolbar.ql-snow button.ql-active .ql-stroke {
+  stroke: var(--primary);
+}
+
+html.dark .ql-toolbar.ql-snow button:hover .ql-fill,
+html.dark .ql-toolbar.ql-snow button.ql-active .ql-fill {
+  fill: var(--primary);
 }

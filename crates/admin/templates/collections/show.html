@@ -40,10 +40,10 @@
                 <div class="flex-1">
                     <div class="flex items-center gap-3 mb-2">
                         <h3 class="text-xl font-semibold text-foreground">{{ collection.title }}</h3>
-                        {% if collection.published_on_current_publication %}
+                        {% if !collection.publications.is_empty() %}
                         <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/20 text-emerald-400">
                             <span class="w-1.5 h-1.5 rounded-full bg-current opacity-70"></span>
-                            Published
+                            {{ collection.publications.len() }} channel{% if collection.publications.len() != 1 %}s{% endif %}
                         </span>
                         {% else %}
                         <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-500/20 text-amber-400">
@@ -69,9 +69,18 @@
         </div>
 
         <!-- Products Table -->
-        <div id="products-section" class="bg-card rounded-xl border border-border">
+        <div id="products-section" class="bg-card rounded-xl border border-border"
+             data-collection-id="{{ collection.id|extract_id }}"
+             data-sort-order="{{ collection.sort_order }}">
             <div class="px-6 py-4 border-b border-border flex items-center justify-between">
-                <h3 class="font-semibold text-foreground">Products</h3>
+                <div class="flex items-center gap-3">
+                    <h3 class="font-semibold text-foreground">Products</h3>
+                    {% if collection.rule_set.is_none() && (collection.sort_order == "MANUAL" || collection.sort_order == "Manual") %}
+                    <span class="text-xs text-muted-foreground">
+                        <i class="ph ph-arrows-out-cardinal mr-1"></i>Drag to reorder
+                    </span>
+                    {% endif %}
+                </div>
                 {% if collection.rule_set.is_none() %}
                 <button onclick="openAddProductsModal()"
                         class="inline-flex items-center gap-2 px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-sm hover:bg-primary/90 transition-colors">
@@ -83,6 +92,9 @@
                 <table class="w-full">
                     <thead class="bg-muted">
                         <tr>
+                            {% if collection.rule_set.is_none() && (collection.sort_order == "MANUAL" || collection.sort_order == "Manual") %}
+                            <th class="px-2 py-3 w-10"></th>
+                            {% endif %}
                             <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Product</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Inventory</th>
@@ -92,21 +104,26 @@
                             {% endif %}
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-border">
+                    <tbody id="products-tbody" class="divide-y divide-border">
                         {% if products.is_empty() %}
                         <tr>
-                            <td colspan="{% if collection.rule_set.is_none() %}5{% else %}4{% endif %}" class="px-6 py-12 text-center text-muted-foreground">
+                            <td colspan="{% if collection.rule_set.is_none() %}{% if collection.sort_order == "MANUAL" || collection.sort_order == "Manual" %}6{% else %}5{% endif %}{% else %}4{% endif %}" class="px-6 py-12 text-center text-muted-foreground">
                                 <i class="ph ph-package text-4xl mb-2"></i>
                                 <p>No products in this collection</p>
                             </td>
                         </tr>
                         {% else %}
                         {% for product in products %}
-                        <tr class="hover:bg-accent transition-colors">
+                        <tr class="hover:bg-accent transition-colors product-row" data-product-id="{{ product.id }}">
+                            {% if collection.rule_set.is_none() && (collection.sort_order == "MANUAL" || collection.sort_order == "Manual") %}
+                            <td class="px-2 py-4 cursor-move drag-handle">
+                                <i class="ph ph-dots-six-vertical text-muted-foreground hover:text-foreground"></i>
+                            </td>
+                            {% endif %}
                             <td class="px-6 py-4">
                                 <div class="flex items-center gap-3">
                                     {% if let Some(url) = product.image_url %}
-                                    <img src="{{ url }}" alt="{{ product.title }}" class="w-10 h-10 rounded-lg object-cover">
+                                    <img src="{{ url }}" alt="{{ product.title }}" class="w-10 h-10 rounded-lg object-cover pointer-events-none">
                                     {% else %}
                                     <div class="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
                                         <i class="ph ph-image text-muted-foreground"></i>
@@ -202,17 +219,42 @@
                     <dt class="text-muted-foreground">Products</dt>
                     <dd class="text-foreground">{{ collection.products_count }}</dd>
                 </div>
-                <div class="flex justify-between">
-                    <dt class="text-muted-foreground">Sort Order</dt>
-                    <dd class="text-foreground">{{ collection.sort_order }}</dd>
-                </div>
-                <div class="flex justify-between">
-                    <dt class="text-muted-foreground">Published</dt>
+                <div>
+                    <dt class="text-muted-foreground mb-2">Sort Order</dt>
                     <dd>
-                        {% if collection.published_on_current_publication %}
-                        <span class="text-success"><i class="ph ph-check-circle"></i> Yes</span>
-                        {% else %}
-                        <span class="text-warning"><i class="ph ph-minus-circle"></i> No</span>
+                        <select id="sort-order-select"
+                                onchange="updateSortOrder(this.value)"
+                                class="w-full px-3 py-1.5 bg-input border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+                            <option value="BEST_SELLING" {% if collection.sort_order == "BEST_SELLING" || collection.sort_order == "BestSelling" %}selected{% endif %}>Best Selling</option>
+                            <option value="ALPHA_ASC" {% if collection.sort_order == "ALPHA_ASC" || collection.sort_order == "AlphaAsc" %}selected{% endif %}>Alphabetically, A-Z</option>
+                            <option value="ALPHA_DESC" {% if collection.sort_order == "ALPHA_DESC" || collection.sort_order == "AlphaDesc" %}selected{% endif %}>Alphabetically, Z-A</option>
+                            <option value="PRICE_ASC" {% if collection.sort_order == "PRICE_ASC" || collection.sort_order == "PriceAsc" %}selected{% endif %}>Price, low to high</option>
+                            <option value="PRICE_DESC" {% if collection.sort_order == "PRICE_DESC" || collection.sort_order == "PriceDesc" %}selected{% endif %}>Price, high to low</option>
+                            <option value="CREATED_DESC" {% if collection.sort_order == "CREATED_DESC" || collection.sort_order == "CreatedDesc" %}selected{% endif %}>Newest first</option>
+                            <option value="CREATED" {% if collection.sort_order == "CREATED" || collection.sort_order == "Created" %}selected{% endif %}>Oldest first</option>
+                            <option value="MANUAL" {% if collection.sort_order == "MANUAL" || collection.sort_order == "Manual" %}selected{% endif %}>Manual</option>
+                        </select>
+                        {% if collection.sort_order == "MANUAL" || collection.sort_order == "Manual" %}
+                        <p class="text-xs text-muted-foreground mt-1">Drag products to reorder</p>
+                        {% endif %}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="text-muted-foreground mb-2">Sales Channels</dt>
+                    <dd class="space-y-1">
+                        {% for channel in collection.publications %}
+                        <div class="flex items-center gap-2 text-sm">
+                            {% if channel.is_published %}
+                            <i class="ph ph-check-circle text-success"></i>
+                            <span class="text-foreground">{{ channel.publication.name }}</span>
+                            {% else %}
+                            <i class="ph ph-minus-circle text-muted-foreground"></i>
+                            <span class="text-muted-foreground">{{ channel.publication.name }}</span>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                        {% if collection.publications.is_empty() %}
+                        <span class="text-muted-foreground text-sm">No channels configured</span>
                         {% endif %}
                     </dd>
                 </div>
@@ -326,5 +368,130 @@ document.addEventListener('keydown', function(e) {
         closeAddProductsModal();
     }
 });
+
+// Product reordering with SortableJS (only for manual sort)
+(function() {
+    var productsSection = document.getElementById('products-section');
+    var tbody = document.getElementById('products-tbody');
+
+    if (!productsSection || !tbody || typeof Sortable === 'undefined') return;
+
+    var sortOrder = productsSection.dataset.sortOrder;
+    var collectionId = productsSection.dataset.collectionId;
+
+    // Only enable drag-and-drop for manual sort
+    if (sortOrder !== 'MANUAL' && sortOrder !== 'Manual') return;
+
+    new Sortable(tbody, {
+        animation: 150,
+        handle: '.drag-handle',
+        ghostClass: 'opacity-30',
+        dragClass: 'shadow-2xl',
+        onChoose: function(evt) {
+            evt.item.classList.add('ring-2', 'ring-primary');
+        },
+        onUnchoose: function(evt) {
+            evt.item.classList.remove('ring-2', 'ring-primary');
+        },
+        onEnd: function(evt) {
+            console.log('SortableJS onEnd triggered', evt);
+
+            // Collect new order and send to server
+            var rows = tbody.querySelectorAll('.product-row');
+            var moves = Array.from(rows).map(function(row, index) {
+                return {
+                    id: row.dataset.productId,
+                    newPosition: index
+                };
+            });
+
+            console.log('Sending reorder request:', moves);
+
+            // Send reorder request
+            fetch('/collections/' + collectionId + '/products/reorder', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'HX-Request': 'true'
+                },
+                body: JSON.stringify(moves)
+            }).then(function(response) {
+                console.log('Reorder response status:', response.status);
+                if (!response.ok) {
+                    return response.json().then(function(data) {
+                        throw new Error(data.error || 'Reorder failed');
+                    });
+                }
+                showToast('Product order updated', 'success');
+            }).catch(function(err) {
+                console.error('Error reordering products:', err);
+                showToast('Failed to save product order. Refreshing...', 'error');
+                setTimeout(function() {
+                    window.location.reload();
+                }, 1500);
+            });
+        }
+    });
+})();
+
+// Toast notification helper
+function showToast(message, type) {
+    var existing = document.getElementById('toast-notification');
+    if (existing) existing.remove();
+
+    var toast = document.createElement('div');
+    toast.id = 'toast-notification';
+    toast.className = 'fixed bottom-4 right-4 px-4 py-3 rounded-lg shadow-lg text-sm font-medium z-50 ' +
+        (type === 'error' ? 'bg-red-600 text-white' : 'bg-emerald-600 text-white');
+    toast.textContent = message;
+    document.body.appendChild(toast);
+
+    setTimeout(function() {
+        toast.remove();
+    }, 4000);
+}
+
+// Update sort order
+function updateSortOrder(newSortOrder) {
+    var productsSection = document.getElementById('products-section');
+    var collectionId = productsSection ? productsSection.dataset.collectionId : null;
+
+    if (!collectionId) {
+        var match = window.location.pathname.match(/\/collections\/([^\/]+)/);
+        if (match) collectionId = match[1];
+    }
+
+    if (!collectionId) {
+        showToast('Cannot determine collection ID', 'error');
+        return;
+    }
+
+    fetch('/collections/' + collectionId + '/sort-order', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ sort_order: newSortOrder })
+    })
+    .then(function(response) {
+        if (!response.ok) {
+            return response.json().then(function(data) {
+                throw new Error(data.error || 'Update failed');
+            });
+        }
+        return response.json();
+    })
+    .then(function(data) {
+        showToast('Sort order updated', 'success');
+        // Reload to update the drag-and-drop UI
+        setTimeout(function() {
+            window.location.reload();
+        }, 500);
+    })
+    .catch(function(err) {
+        console.error('Sort order update error:', err);
+        showToast('Failed to update sort order: ' + err.message, 'error');
+    });
+}
 </script>
 {% endblock %}

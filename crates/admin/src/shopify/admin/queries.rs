@@ -63,7 +63,8 @@ pub struct ProductCreate;
 #[graphql(
     schema_path = "graphql/admin/schema.json",
     query_path = "graphql/admin/queries/products.graphql",
-    response_derives = "Debug, Clone"
+    response_derives = "Debug, Clone",
+    skip_none
 )]
 pub struct ProductUpdate;
 
@@ -163,9 +164,26 @@ pub struct CollectionCreate;
 #[graphql(
     schema_path = "graphql/admin/schema.json",
     query_path = "graphql/admin/queries/collections.graphql",
-    response_derives = "Debug, Clone"
+    response_derives = "Debug, Clone",
+    skip_none
 )]
 pub struct CollectionUpdate;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/collections.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct CollectionUpdateFields;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/collections.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct CollectionUpdateSortOrder;
 
 #[derive(GraphQLQuery)]
 #[graphql(
@@ -205,7 +223,7 @@ pub struct CollectionRemoveProducts;
     query_path = "graphql/admin/queries/collections.graphql",
     response_derives = "Debug, Clone"
 )]
-pub struct GetCurrentPublication;
+pub struct GetPublications;
 
 #[derive(GraphQLQuery)]
 #[graphql(

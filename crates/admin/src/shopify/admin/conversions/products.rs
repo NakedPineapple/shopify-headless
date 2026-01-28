@@ -51,10 +51,13 @@ pub fn convert_product(product: get_product::GetProductProduct) -> AdminProduct 
             .edges
             .into_iter()
             .filter_map(|e| {
+                // Use the media node's id (MediaImage) not preview.image.id (ImageSource)
+                let media_id = e.node.id;
+                let alt = e.node.alt;
                 e.node.preview.and_then(|p| p.image).map(|i| Image {
-                    id: i.id,
+                    id: Some(media_id),
                     url: i.url,
-                    alt_text: i.alt_text,
+                    alt_text: alt.or(i.alt_text),
                     width: i.width,
                     height: i.height,
                 })
@@ -176,10 +179,13 @@ fn convert_products_list_product(
             .edges
             .into_iter()
             .filter_map(|e| {
+                // Use the media node's id (MediaImage) not preview.image.id (ImageSource)
+                let media_id = e.node.id;
+                let alt = e.node.alt;
                 e.node.preview.and_then(|p| p.image).map(|i| Image {
-                    id: i.id,
+                    id: Some(media_id),
                     url: i.url,
-                    alt_text: i.alt_text,
+                    alt_text: alt.or(i.alt_text),
                     width: i.width,
                     height: i.height,
                 })

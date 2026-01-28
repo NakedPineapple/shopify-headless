@@ -124,6 +124,19 @@ pub fn routes() -> Router<AppState> {
             "/collections/{id}/products/remove",
             post(collections::remove_products),
         )
+        .route(
+            "/collections/{id}/products/reorder",
+            post(collections::reorder_products),
+        )
+        .route(
+            "/collections/{id}/sort-order",
+            post(collections::update_sort_order),
+        )
+        .route("/collections/{id}/image", post(collections::upload_image))
+        .route(
+            "/collections/{id}/image/delete",
+            post(collections::delete_image),
+        )
         // Discounts CRUD
         .route("/discounts", get(discounts::index).post(discounts::create))
         .route("/discounts/new", get(discounts::new_discount))

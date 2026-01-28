@@ -36,14 +36,15 @@ use conversions::{
 };
 use queries::{
     CollectionAddProductsV2, CollectionCreate, CollectionDelete, CollectionRemoveProducts,
-    CollectionUpdate, DiscountCodeBasicCreate, DiscountCodeBasicUpdate, DiscountCodeDeactivate,
-    FileDelete, FileUpdate, GetCollection, GetCollectionWithProducts, GetCollections,
-    GetCurrentPublication, GetCustomer, GetCustomers, GetDiscountCode, GetDiscountCodes,
-    GetGiftCards, GetInventoryLevels, GetLocations, GetOrder, GetOrders, GetPayout, GetPayouts,
-    GetProduct, GetProducts, GiftCardCreate, GiftCardUpdate, InventoryAdjustQuantities,
-    InventorySetQuantities, OrderCancel, OrderMarkAsPaid, OrderUpdate, ProductCreate,
-    ProductDelete, ProductReorderMedia, ProductSetMedia, ProductUpdate, ProductVariantsBulkUpdate,
-    PublishablePublish, PublishableUnpublish, StagedUploadsCreate,
+    CollectionUpdate, CollectionUpdateFields, CollectionUpdateSortOrder, DiscountCodeBasicCreate,
+    DiscountCodeBasicUpdate, DiscountCodeDeactivate, FileDelete, FileUpdate, GetCollection,
+    GetCollectionWithProducts, GetCollections, GetCustomer, GetCustomers, GetDiscountCode,
+    GetDiscountCodes, GetGiftCards, GetInventoryLevels, GetLocations, GetOrder, GetOrders,
+    GetPayout, GetPayouts, GetProduct, GetProducts, GetPublications, GiftCardCreate,
+    GiftCardUpdate, InventoryAdjustQuantities, InventorySetQuantities, OrderCancel,
+    OrderMarkAsPaid, OrderUpdate, ProductCreate, ProductDelete, ProductReorderMedia,
+    ProductSetMedia, ProductUpdate, ProductVariantsBulkUpdate, PublishablePublish,
+    PublishableUnpublish, StagedUploadsCreate,
 };
 
 /// OAuth token for Admin API access.
@@ -532,6 +533,57 @@ impl AdminClient {
     /// * `tags` - Product tags
     /// * `status` - Product status (ACTIVE, DRAFT, ARCHIVED)
     ///
+    /// Execute a raw GraphQL query and return the JSON response.
+    async fn execute_raw_graphql(
+        &self,
+        body: serde_json::Value,
+    ) -> Result<serde_json::Value, AdminShopifyError> {
+        let access_token = self.get_access_token().await?;
+        let endpoint = format!(
+            "https://{}/admin/api/{}/graphql.json",
+            self.inner.store, self.inner.api_version
+        );
+
+        let response: serde_json::Value = self
+            .inner
+            .client
+            .post(&endpoint)
+            .header("X-Shopify-Access-Token", &access_token)
+            .header("Content-Type", "application/json")
+            .json(&body)
+            .send()
+            .await?
+            .json()
+            .await?;
+
+        // Check for GraphQL errors
+        if let Some(errors) = response.get("errors") {
+            let error_messages: Vec<String> = errors
+                .as_array()
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|e| e.get("message").and_then(|m| m.as_str()))
+                        .map(String::from)
+                        .collect()
+                })
+                .unwrap_or_default();
+            if !error_messages.is_empty() {
+                return Err(AdminShopifyError::GraphQL(
+                    error_messages
+                        .into_iter()
+                        .map(|msg| GraphQLError {
+                            message: msg,
+                            locations: vec![],
+                            path: vec![],
+                        })
+                        .collect(),
+                ));
+            }
+        }
+
+        Ok(response)
+    }
+
     /// # Returns
     ///
     /// Returns the updated product's ID on success.
@@ -547,7 +599,8 @@ impl AdminClient {
     ) -> Result<String, AdminShopifyError> {
         use queries::product_update::{ProductInput, ProductStatus, Variables};
 
-        let status_enum = input.status.map(|s| match s.to_uppercase().as_str() {
+        // Convert status string to enum
+        let status = input.status.map(|s| match s.to_uppercase().as_str() {
             "ACTIVE" => ProductStatus::ACTIVE,
             "ARCHIVED" => ProductStatus::ARCHIVED,
             _ => ProductStatus::DRAFT,
@@ -561,29 +614,29 @@ impl AdminClient {
                 vendor: input.vendor.map(String::from),
                 product_type: input.product_type.map(String::from),
                 tags: input.tags,
-                status: status_enum,
-                // Other optional fields
-                handle: None,
-                seo: None,
+                status,
+                // All other fields set to None - skip_none should handle this
+                // but we rely on the caller to provide all values to avoid nulls
                 category: None,
-                gift_card: None,
-                gift_card_template_suffix: None,
-                requires_selling_plan: None,
-                template_suffix: None,
+                claim_ownership: None,
                 collections_to_join: None,
                 collections_to_leave: None,
                 combined_listing_role: None,
-                redirect_new_handle: None,
-                claim_ownership: None,
+                gift_card: None,
+                gift_card_template_suffix: None,
+                handle: None,
                 metafields: None,
                 product_options: None,
+                redirect_new_handle: None,
+                requires_selling_plan: None,
+                seo: None,
+                template_suffix: None,
             },
         };
 
         let response = self.execute::<ProductUpdate>(variables).await?;
 
         if let Some(payload) = response.product_update {
-            // Check for user errors
             if !payload.user_errors.is_empty() {
                 let error_messages: Vec<String> = payload
                     .user_errors
@@ -1115,7 +1168,9 @@ impl AdminClient {
         let response = self.execute::<GetCollection>(variables).await?;
 
         Ok(response.collection.map(|c| {
-            use super::types::{CollectionRule, CollectionRuleSet, CollectionSeo};
+            use super::types::{
+                CollectionRule, CollectionRuleSet, CollectionSeo, Publication, ResourcePublication,
+            };
 
             Collection {
                 id: c.id,
@@ -1149,7 +1204,24 @@ impl AdminClient {
                     title: c.seo.title,
                     description: c.seo.description,
                 }),
-                published_on_current_publication: Some(c.published_on_current_publication),
+                publications: c
+                    .resource_publications_v2
+                    .edges
+                    .into_iter()
+                    .map(|e| ResourcePublication {
+                        publication: Publication {
+                            id: e.node.publication.id.clone(),
+                            #[allow(deprecated)]
+                            name: e
+                                .node
+                                .publication
+                                .catalog
+                                .map(|c| c.title)
+                                .unwrap_or(e.node.publication.name),
+                        },
+                        is_published: e.node.is_published,
+                    })
+                    .collect(),
             }
         }))
     }
@@ -1199,7 +1271,7 @@ impl AdminClient {
                     rule_set: None,
                     sort_order: None,
                     seo: None,
-                    published_on_current_publication: None,
+                    publications: vec![],
                 }
             })
             .collect();
@@ -1287,49 +1359,30 @@ impl AdminClient {
         seo_title: Option<&str>,
         seo_description: Option<&str>,
     ) -> Result<String, AdminShopifyError> {
-        use queries::collection_update::{CollectionInput, SEOInput, Variables};
+        use queries::collection_update_fields::{CollectionSortOrder, Variables};
 
-        // Build SEO input if any SEO field is provided
-        let seo = if seo_title.is_some() || seo_description.is_some() {
-            Some(SEOInput {
-                title: seo_title.map(String::from),
-                description: seo_description.map(String::from),
-            })
-        } else {
-            None
+        // Convert sort order string to enum (default to MANUAL if not provided)
+        let sort_order_enum = match sort_order.unwrap_or("MANUAL") {
+            "BEST_SELLING" => CollectionSortOrder::BEST_SELLING,
+            "ALPHA_ASC" => CollectionSortOrder::ALPHA_ASC,
+            "ALPHA_DESC" => CollectionSortOrder::ALPHA_DESC,
+            "PRICE_ASC" => CollectionSortOrder::PRICE_ASC,
+            "PRICE_DESC" => CollectionSortOrder::PRICE_DESC,
+            "CREATED_DESC" => CollectionSortOrder::CREATED_DESC,
+            "CREATED" => CollectionSortOrder::CREATED,
+            _ => CollectionSortOrder::MANUAL,
         };
-
-        // Convert sort order string to enum
-        let sort_order_enum = sort_order.and_then(|s| match s {
-            "BEST_SELLING" => Some(queries::collection_update::CollectionSortOrder::BEST_SELLING),
-            "ALPHA_ASC" => Some(queries::collection_update::CollectionSortOrder::ALPHA_ASC),
-            "ALPHA_DESC" => Some(queries::collection_update::CollectionSortOrder::ALPHA_DESC),
-            "PRICE_ASC" => Some(queries::collection_update::CollectionSortOrder::PRICE_ASC),
-            "PRICE_DESC" => Some(queries::collection_update::CollectionSortOrder::PRICE_DESC),
-            "CREATED_DESC" => Some(queries::collection_update::CollectionSortOrder::CREATED_DESC),
-            "CREATED" => Some(queries::collection_update::CollectionSortOrder::CREATED),
-            "MANUAL" => Some(queries::collection_update::CollectionSortOrder::MANUAL),
-            _ => None,
-        });
 
         let variables = Variables {
-            input: CollectionInput {
-                id: Some(id.to_string()),
-                title: title.map(String::from),
-                description_html: description_html.map(String::from),
-                handle: None,
-                image: None,
-                metafields: None,
-                products: None,
-                redirect_new_handle: None,
-                rule_set: None,
-                seo,
-                sort_order: sort_order_enum,
-                template_suffix: None,
-            },
+            id: id.to_string(),
+            title: title.unwrap_or("").to_string(),
+            description_html: description_html.unwrap_or("").to_string(),
+            sort_order: sort_order_enum,
+            seo_title: seo_title.unwrap_or("").to_string(),
+            seo_description: seo_description.unwrap_or("").to_string(),
         };
 
-        let response = self.execute::<CollectionUpdate>(variables).await?;
+        let response = self.execute::<CollectionUpdateFields>(variables).await?;
 
         if let Some(payload) = response.collection_update {
             if !payload.user_errors.is_empty() {
@@ -1354,6 +1407,62 @@ impl AdminClient {
             locations: vec![],
             path: vec![],
         }]))
+    }
+
+    /// Update only the sort order of a collection.
+    ///
+    /// This uses a focused mutation that only sends the sort order field,
+    /// avoiding the `graphql_client` `skip_none` bug.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails or returns user errors.
+    #[instrument(skip(self))]
+    pub async fn update_collection_sort_order(
+        &self,
+        id: &str,
+        sort_order: &str,
+    ) -> Result<(), AdminShopifyError> {
+        use queries::collection_update_sort_order::{CollectionSortOrder, Variables};
+
+        let sort_order_enum = match sort_order {
+            "BEST_SELLING" => CollectionSortOrder::BEST_SELLING,
+            "ALPHA_ASC" => CollectionSortOrder::ALPHA_ASC,
+            "ALPHA_DESC" => CollectionSortOrder::ALPHA_DESC,
+            "PRICE_ASC" => CollectionSortOrder::PRICE_ASC,
+            "PRICE_DESC" => CollectionSortOrder::PRICE_DESC,
+            "CREATED_DESC" => CollectionSortOrder::CREATED_DESC,
+            "CREATED" => CollectionSortOrder::CREATED,
+            "MANUAL" => CollectionSortOrder::MANUAL,
+            _ => {
+                return Err(AdminShopifyError::UserError(format!(
+                    "Invalid sort order: {sort_order}"
+                )));
+            }
+        };
+
+        let variables = Variables {
+            id: id.to_string(),
+            sort_order: sort_order_enum,
+        };
+
+        let response = self.execute::<CollectionUpdateSortOrder>(variables).await?;
+
+        if let Some(payload) = response.collection_update
+            && !payload.user_errors.is_empty()
+        {
+            let error_messages: Vec<String> = payload
+                .user_errors
+                .iter()
+                .map(|e| {
+                    let field = e.field.as_ref().map_or_else(String::new, |f| f.join("."));
+                    format!("{}: {}", field, e.message)
+                })
+                .collect();
+            return Err(AdminShopifyError::UserError(error_messages.join("; ")));
+        }
+
+        Ok(())
     }
 
     /// Delete a collection.
@@ -1396,6 +1505,128 @@ impl AdminClient {
         }]))
     }
 
+    /// Update a collection's image.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails.
+    #[instrument(skip(self))]
+    pub async fn update_collection_image(
+        &self,
+        id: &str,
+        image_url: &str,
+        alt_text: Option<&str>,
+    ) -> Result<(), AdminShopifyError> {
+        // Build image input
+        let image_obj = alt_text.map_or_else(
+            || serde_json::json!({ "src": image_url }),
+            |alt| serde_json::json!({ "src": image_url, "altText": alt }),
+        );
+
+        let query = r"
+            mutation CollectionUpdateImage($input: CollectionInput!) {
+                collectionUpdate(input: $input) {
+                    collection {
+                        id
+                        image {
+                            id
+                            url
+                        }
+                    }
+                    userErrors {
+                        field
+                        message
+                    }
+                }
+            }
+        ";
+
+        let body = serde_json::json!({
+            "query": query,
+            "variables": {
+                "input": {
+                    "id": id,
+                    "image": image_obj
+                }
+            }
+        });
+
+        let response = self.execute_raw_graphql(body).await?;
+
+        // Check for user errors
+        if let Some(errors) = response
+            .get("collectionUpdate")
+            .and_then(|p| p.get("userErrors"))
+            .and_then(|e| e.as_array())
+        {
+            let error_messages: Vec<String> = errors
+                .iter()
+                .filter_map(|e| e.get("message").and_then(|m| m.as_str()))
+                .map(String::from)
+                .collect();
+
+            if !error_messages.is_empty() {
+                return Err(AdminShopifyError::UserError(error_messages.join("; ")));
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Delete a collection's image.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails.
+    #[instrument(skip(self))]
+    pub async fn delete_collection_image(&self, id: &str) -> Result<(), AdminShopifyError> {
+        let query = r"
+            mutation CollectionDeleteImage($input: CollectionInput!) {
+                collectionUpdate(input: $input) {
+                    collection {
+                        id
+                    }
+                    userErrors {
+                        field
+                        message
+                    }
+                }
+            }
+        ";
+
+        // Setting image to null removes it
+        let body = serde_json::json!({
+            "query": query,
+            "variables": {
+                "input": {
+                    "id": id,
+                    "image": serde_json::Value::Null
+                }
+            }
+        });
+
+        let response = self.execute_raw_graphql(body).await?;
+
+        // Check for user errors
+        if let Some(errors) = response
+            .get("collectionUpdate")
+            .and_then(|p| p.get("userErrors"))
+            .and_then(|e| e.as_array())
+        {
+            let error_messages: Vec<String> = errors
+                .iter()
+                .filter_map(|e| e.get("message").and_then(|m| m.as_str()))
+                .map(String::from)
+                .collect();
+
+            if !error_messages.is_empty() {
+                return Err(AdminShopifyError::UserError(error_messages.join("; ")));
+            }
+        }
+
+        Ok(())
+    }
+
     /// Get a collection with its products.
     ///
     /// # Errors
@@ -1408,7 +1639,9 @@ impl AdminClient {
         first: i64,
         after: Option<String>,
     ) -> Result<Option<CollectionWithProducts>, AdminShopifyError> {
-        use super::types::{CollectionRule, CollectionRuleSet, CollectionSeo};
+        use super::types::{
+            CollectionRule, CollectionRuleSet, CollectionSeo, Publication, ResourcePublication,
+        };
 
         let variables = queries::get_collection_with_products::Variables {
             id: id.to_string(),
@@ -1478,7 +1711,24 @@ impl AdminClient {
                     title: c.seo.title,
                     description: c.seo.description,
                 }),
-                published_on_current_publication: Some(c.published_on_current_publication),
+                publications: c
+                    .resource_publications_v2
+                    .edges
+                    .into_iter()
+                    .map(|e| ResourcePublication {
+                        publication: Publication {
+                            id: e.node.publication.id.clone(),
+                            #[allow(deprecated)]
+                            name: e
+                                .node
+                                .publication
+                                .catalog
+                                .map(|c| c.title)
+                                .unwrap_or(e.node.publication.name),
+                        },
+                        is_published: e.node.is_published,
+                    })
+                    .collect(),
             };
 
             CollectionWithProducts {
@@ -1572,34 +1822,126 @@ impl AdminClient {
         }]))
     }
 
-    /// Get the current publication ID (online store).
-    async fn get_current_publication_id(&self) -> Result<Option<String>, AdminShopifyError> {
-        let variables = queries::get_current_publication::Variables {};
-        let response = self.execute::<GetCurrentPublication>(variables).await?;
-
-        let id = response.current_app_installation.publication.map(|p| p.id);
-
-        Ok(id)
-    }
-
-    /// Publish a collection to the current publication.
+    /// Reorder products in a collection (manual sort only).
+    ///
+    /// # Arguments
+    ///
+    /// * `collection_id` - The collection GID
+    /// * `moves` - List of (`product_id`, `new_position`) tuples
     ///
     /// # Errors
     ///
     /// Returns an error if the API request fails or returns user errors.
     #[instrument(skip(self))]
-    pub async fn publish_collection(&self, collection_id: &str) -> Result<(), AdminShopifyError> {
-        let publication_id = self
-            .get_current_publication_id()
-            .await?
-            .ok_or_else(|| AdminShopifyError::NotFound("No publication found".to_string()))?;
+    pub async fn reorder_collection_products(
+        &self,
+        collection_id: &str,
+        moves: Vec<(String, i64)>,
+    ) -> Result<(), AdminShopifyError> {
+        let query = r"
+            mutation CollectionReorderProducts($id: ID!, $moves: [MoveInput!]!) {
+                collectionReorderProducts(id: $id, moves: $moves) {
+                    job {
+                        id
+                        done
+                    }
+                    userErrors {
+                        field
+                        message
+                    }
+                }
+            }
+        ";
+
+        let moves_input: Vec<serde_json::Value> = moves
+            .into_iter()
+            .map(|(id, new_position)| {
+                serde_json::json!({
+                    "id": id,
+                    "newPosition": new_position
+                })
+            })
+            .collect();
+
+        let body = serde_json::json!({
+            "query": query,
+            "variables": {
+                "id": collection_id,
+                "moves": moves_input
+            }
+        });
+
+        let response = self.execute_raw_graphql(body).await?;
+
+        // Check for user errors
+        if let Some(errors) = response
+            .get("collectionReorderProducts")
+            .and_then(|p| p.get("userErrors"))
+            .and_then(|e| e.as_array())
+        {
+            let error_messages: Vec<String> = errors
+                .iter()
+                .filter_map(|e| e.get("message").and_then(|m| m.as_str()))
+                .map(String::from)
+                .collect();
+
+            if !error_messages.is_empty() {
+                return Err(AdminShopifyError::UserError(error_messages.join("; ")));
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Get all publications (sales channels) for the shop.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails.
+    #[instrument(skip(self))]
+    pub async fn get_publications(
+        &self,
+    ) -> Result<Vec<super::types::Publication>, AdminShopifyError> {
+        let variables = queries::get_publications::Variables {};
+        let response = self.execute::<GetPublications>(variables).await?;
+
+        Ok(response
+            .publications
+            .edges
+            .into_iter()
+            .map(|e| {
+                let id = e.node.id;
+                #[allow(deprecated)]
+                let name = e.node.catalog.map(|c| c.title).unwrap_or(e.node.name);
+                super::types::Publication { id, name }
+            })
+            .collect())
+    }
+
+    /// Publish a collection to specified publications.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails or returns user errors.
+    #[instrument(skip(self))]
+    pub async fn publish_collection(
+        &self,
+        collection_id: &str,
+        publication_ids: &[String],
+    ) -> Result<(), AdminShopifyError> {
+        if publication_ids.is_empty() {
+            return Ok(());
+        }
 
         let variables = queries::publishable_publish::Variables {
             id: collection_id.to_string(),
-            input: vec![queries::publishable_publish::PublicationInput {
-                publication_id: Some(publication_id),
-                publish_date: None,
-            }],
+            input: publication_ids
+                .iter()
+                .map(|pub_id| queries::publishable_publish::PublicationInput {
+                    publication_id: Some(pub_id.clone()),
+                    publish_date: None,
+                })
+                .collect(),
         };
 
         let response = self.execute::<PublishablePublish>(variables).await?;
@@ -1612,7 +1954,7 @@ impl AdminClient {
                 .iter()
                 .map(|e| {
                     let field = e.field.as_ref().map_or_else(String::new, |f| f.join("."));
-                    format!("{}: {}", field, e.message)
+                    format!("{field}: {}", e.message)
                 })
                 .collect();
             return Err(AdminShopifyError::UserError(error_messages.join("; ")));
@@ -1621,24 +1963,30 @@ impl AdminClient {
         Ok(())
     }
 
-    /// Unpublish a collection from the current publication.
+    /// Unpublish a collection from specified publications.
     ///
     /// # Errors
     ///
     /// Returns an error if the API request fails or returns user errors.
     #[instrument(skip(self))]
-    pub async fn unpublish_collection(&self, collection_id: &str) -> Result<(), AdminShopifyError> {
-        let publication_id = self
-            .get_current_publication_id()
-            .await?
-            .ok_or_else(|| AdminShopifyError::NotFound("No publication found".to_string()))?;
+    pub async fn unpublish_collection(
+        &self,
+        collection_id: &str,
+        publication_ids: &[String],
+    ) -> Result<(), AdminShopifyError> {
+        if publication_ids.is_empty() {
+            return Ok(());
+        }
 
         let variables = queries::publishable_unpublish::Variables {
             id: collection_id.to_string(),
-            input: vec![queries::publishable_unpublish::PublicationInput {
-                publication_id: Some(publication_id),
-                publish_date: None,
-            }],
+            input: publication_ids
+                .iter()
+                .map(|pub_id| queries::publishable_unpublish::PublicationInput {
+                    publication_id: Some(pub_id.clone()),
+                    publish_date: None,
+                })
+                .collect(),
         };
 
         let response = self.execute::<PublishableUnpublish>(variables).await?;
@@ -1651,7 +1999,7 @@ impl AdminClient {
                 .iter()
                 .map(|e| {
                     let field = e.field.as_ref().map_or_else(String::new, |f| f.join("."));
-                    format!("{}: {}", field, e.message)
+                    format!("{field}: {}", e.message)
                 })
                 .collect();
             return Err(AdminShopifyError::UserError(error_messages.join("; ")));
@@ -1881,12 +2229,14 @@ impl AdminClient {
     ) -> Result<(), AdminShopifyError> {
         use queries::order_cancel::{OrderCancelReason, Variables};
 
-        let cancel_reason = reason.map(|r| match r.to_uppercase().as_str() {
-            "CUSTOMER" => OrderCancelReason::CUSTOMER,
-            "FRAUD" => OrderCancelReason::FRAUD,
-            "INVENTORY" => OrderCancelReason::INVENTORY,
-            "DECLINED" => OrderCancelReason::DECLINED,
-            _ => OrderCancelReason::OTHER,
+        let cancel_reason = reason.map_or(OrderCancelReason::OTHER, |r| {
+            match r.to_uppercase().as_str() {
+                "CUSTOMER" => OrderCancelReason::CUSTOMER,
+                "FRAUD" => OrderCancelReason::FRAUD,
+                "INVENTORY" => OrderCancelReason::INVENTORY,
+                "DECLINED" => OrderCancelReason::DECLINED,
+                _ => OrderCancelReason::OTHER,
+            }
         });
 
         let variables = Variables {
@@ -1894,7 +2244,7 @@ impl AdminClient {
             reason: cancel_reason,
             notify_customer: Some(notify_customer),
             refund: Some(refund),
-            restock: Some(restock),
+            restock,
             staff_note: None,
         };
 

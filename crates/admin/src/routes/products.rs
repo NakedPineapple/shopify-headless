@@ -455,27 +455,56 @@ pub async fn update(
         format!("gid://shopify/Product/{id}")
     };
 
-    // Parse tags from comma-separated string
-    let tags: Vec<String> = input
-        .tags
-        .as_deref()
-        .unwrap_or("")
-        .split(',')
-        .map(|s| s.trim().to_string())
-        .filter(|s| !s.is_empty())
-        .collect();
+    // Fetch current product to merge values (workaround for graphql_client skip_none bug)
+    let current_product = match state.shopify().get_product(&product_id).await {
+        Ok(Some(p)) => p,
+        Ok(None) => {
+            return (StatusCode::NOT_FOUND, "Product not found").into_response();
+        }
+        Err(e) => {
+            tracing::error!(product_id = %product_id, error = %e, "Failed to fetch product");
+            return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to fetch product").into_response();
+        }
+    };
+
+    // Parse tags from comma-separated string, fall back to current tags
+    let tags: Vec<String> = if let Some(ref tag_str) = input.tags {
+        tag_str
+            .split(',')
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect()
+    } else {
+        current_product.tags.clone()
+    };
+
+    // Merge form input with current values - always send values, never nulls
+    let title = input.title.clone();
+    let description_html = input
+        .description_html
+        .clone()
+        .unwrap_or_else(|| current_product.description_html.clone());
+    let vendor = input
+        .vendor
+        .clone()
+        .unwrap_or_else(|| current_product.vendor.clone());
+    let product_type = input
+        .product_type
+        .clone()
+        .unwrap_or_else(|| current_product.kind.clone());
+    let status = input.status.clone();
 
     match state
         .shopify()
         .update_product(
             &product_id,
             ProductUpdateInput {
-                title: Some(&input.title),
-                description_html: input.description_html.as_deref(),
-                vendor: input.vendor.as_deref(),
-                product_type: input.product_type.as_deref(),
+                title: Some(&title),
+                description_html: Some(&description_html),
+                vendor: Some(&vendor),
+                product_type: Some(&product_type),
                 tags: Some(tags),
-                status: Some(&input.status),
+                status: Some(&status),
             },
         )
         .await
@@ -487,28 +516,18 @@ pub async fn update(
         }
         Err(e) => {
             tracing::error!(product_id = %product_id, error = %e, "Failed to update product");
-            // Re-fetch product for the form
-            match state.shopify().get_product(&product_id).await {
-                Ok(Some(product)) => {
-                    let template = ProductEditTemplate {
-                        admin_user: AdminUserView::from(&admin),
-                        current_path: "/products".to_string(),
-                        product: ProductDetailView::from(&product),
-                        error: Some(e.to_string()),
-                    };
+            let template = ProductEditTemplate {
+                admin_user: AdminUserView::from(&admin),
+                current_path: "/products".to_string(),
+                product: ProductDetailView::from(&current_product),
+                error: Some(e.to_string()),
+            };
 
-                    Html(template.render().unwrap_or_else(|e| {
-                        tracing::error!("Template render error: {}", e);
-                        "Internal Server Error".to_string()
-                    }))
-                    .into_response()
-                }
-                _ => (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "Failed to update product",
-                )
-                    .into_response(),
-            }
+            Html(template.render().unwrap_or_else(|e| {
+                tracing::error!("Template render error: {}", e);
+                "Internal Server Error".to_string()
+            }))
+            .into_response()
         }
     }
 }
@@ -527,13 +546,32 @@ pub async fn archive(
         format!("gid://shopify/Product/{id}")
     };
 
+    // Fetch current product to merge values (workaround for graphql_client skip_none bug)
+    let current_product = match state.shopify().get_product(&product_id).await {
+        Ok(Some(p)) => p,
+        Ok(None) => {
+            return (StatusCode::NOT_FOUND, Html("Product not found".to_string())).into_response();
+        }
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Html(format!("Failed to fetch product: {e}")),
+            )
+                .into_response();
+        }
+    };
+
     match state
         .shopify()
         .update_product(
             &product_id,
             ProductUpdateInput {
+                title: Some(&current_product.title),
+                description_html: Some(&current_product.description_html),
+                vendor: Some(&current_product.vendor),
+                product_type: Some(&current_product.kind),
+                tags: Some(current_product.tags.clone()),
                 status: Some("ARCHIVED"),
-                ..Default::default()
             },
         )
         .await

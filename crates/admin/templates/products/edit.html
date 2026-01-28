@@ -47,8 +47,7 @@
                     {% for image in product.images %}
                     <div id="image-{{ loop.index }}"
                          class="relative group bg-card rounded-lg border border-border overflow-hidden cursor-move"
-                         data-media-id="{{ image.id }}"
-                         draggable="true">
+                         data-media-id="{{ image.id }}">
                         <img src="{{ image.url }}" alt="{% if let Some(alt) = image.alt %}{{ alt }}{% else %}Product image{% endif %}"
                              class="w-full aspect-square object-cover pointer-events-none">
                         <!-- Overlay controls -->
@@ -385,8 +384,15 @@ function toggleVariant(index) {
         animation: 150,
         ghostClass: 'opacity-30',
         dragClass: 'shadow-2xl',
-        chosenClass: 'ring-2 ring-primary',
+        onChoose: function(evt) {
+            evt.item.classList.add('ring-2', 'ring-primary');
+        },
+        onUnchoose: function(evt) {
+            evt.item.classList.remove('ring-2', 'ring-primary');
+        },
         onEnd: function(evt) {
+            console.log('SortableJS onEnd triggered', evt);
+
             // Update position indicators and featured badges
             var items = grid.querySelectorAll('[data-media-id]');
             items.forEach(function(item, index) {
@@ -411,6 +417,8 @@ function toggleVariant(index) {
                 };
             });
 
+            console.log('Sending reorder request:', moves);
+
             // Send reorder request
             fetch('/products/' + productId + '/images/reorder', {
                 method: 'POST',
@@ -420,13 +428,17 @@ function toggleVariant(index) {
                 },
                 body: JSON.stringify(moves)
             }).then(function(response) {
+                console.log('Reorder response status:', response.status);
                 if (!response.ok) {
-                    console.error('Failed to reorder images');
-                    showToast('Failed to save image order. Refreshing...', 'error');
-                    setTimeout(function() {
-                        window.location.reload();
-                    }, 1500);
+                    return response.text().then(function(text) {
+                        console.error('Failed to reorder images:', text);
+                        showToast('Failed to save image order. Refreshing...', 'error');
+                        setTimeout(function() {
+                            window.location.reload();
+                        }, 1500);
+                    });
                 }
+                console.log('Reorder successful');
             }).catch(function(err) {
                 console.error('Error reordering images:', err);
                 showToast('Failed to save image order. Refreshing...', 'error');

@@ -302,7 +302,7 @@ mutation OrderMarkAsPaid($input: OrderMarkAsPaidInput!) {
 }
 
 # Cancel order
-mutation OrderCancel($orderId: ID!, $reason: OrderCancelReason, $notifyCustomer: Boolean, $refund: Boolean, $restock: Boolean, $staffNote: String) {
+mutation OrderCancel($orderId: ID!, $reason: OrderCancelReason!, $notifyCustomer: Boolean, $refund: Boolean, $restock: Boolean!, $staffNote: String) {
   orderCancel(orderId: $orderId, reason: $reason, notifyCustomer: $notifyCustomer, refund: $refund, restock: $restock, staffNote: $staffNote) {
     orderCancelUserErrors {
       field

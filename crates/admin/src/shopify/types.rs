@@ -404,6 +404,24 @@ pub struct CollectionSeo {
     pub description: Option<String>,
 }
 
+/// A sales channel/publication.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Publication {
+    /// Publication ID.
+    pub id: String,
+    /// Publication name (e.g., "Online Store", "TikTok").
+    pub name: String,
+}
+
+/// Publication status for a resource.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ResourcePublication {
+    /// The publication/sales channel.
+    pub publication: Publication,
+    /// Whether the resource is published on this channel.
+    pub is_published: bool,
+}
+
 /// A product collection.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Collection {
@@ -429,8 +447,8 @@ pub struct Collection {
     pub sort_order: Option<String>,
     /// SEO metadata.
     pub seo: Option<CollectionSeo>,
-    /// Whether the collection is published on the current publication.
-    pub published_on_current_publication: Option<bool>,
+    /// Publication status on each sales channel.
+    pub publications: Vec<ResourcePublication>,
 }
 
 /// A product within a collection (simplified view).
