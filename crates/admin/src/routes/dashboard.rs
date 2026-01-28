@@ -188,7 +188,13 @@ pub async fn dashboard(
     // Fetch data from Shopify Admin API in parallel
     let orders_future = state.shopify().get_orders(50, None, None);
     let products_future = state.shopify().get_products(50, None, None);
-    let customers_future = state.shopify().get_customers(1, None, None);
+    let customers_future =
+        state
+            .shopify()
+            .get_customers(crate::shopify::types::CustomerListParams {
+                first: Some(1),
+                ..Default::default()
+            });
 
     let (orders_result, products_result, customers_result) =
         tokio::join!(orders_future, products_future, customers_future);

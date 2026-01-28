@@ -1,0 +1,41 @@
+{#
+    Data Table Filter Panel Container
+
+    Variables:
+    - table_id: Unique identifier for the table
+    - filters: List of filter definitions to render
+    - filter_values: Current filter values
+    - is_open: Whether panel is initially open
+#}
+
+<div id="{{ table_id }}-filters-panel"
+     class="{% if !is_open %}hidden{% endif %} px-6 py-4 border-b border-border bg-muted/30">
+    <form id="{{ table_id }}-filters-form" method="GET" class="space-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {% for filter in filters %}
+            {% match filter.filter_type %}
+            {% when FilterType::Text %}
+            {% include "components/data_table/filters/text.html" %}
+            {% when FilterType::Select %}
+            {% include "components/data_table/filters/select.html" %}
+            {% when FilterType::MultiSelect %}
+            {% include "components/data_table/filters/multiselect.html" %}
+            {% when FilterType::DateRange %}
+            {% include "components/data_table/filters/date_range.html" %}
+            {% when FilterType::NumberRange %}
+            {% include "components/data_table/filters/number_range.html" %}
+            {% endmatch %}
+            {% endfor %}
+        </div>
+
+        <div class="flex items-center gap-3 pt-2">
+            <button type="submit"
+                    class="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors">
+                Apply Filters
+            </button>
+            <a href="?" class="px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                Clear All
+            </a>
+        </div>
+    </form>
+</div>

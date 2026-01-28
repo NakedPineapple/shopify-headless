@@ -1,0 +1,107 @@
+{#
+    Customer Merge Modal
+
+    Variables:
+    - customer_id: Current customer short ID
+    - customer_name: Current customer display name
+    - error: Error message if merge failed (optional)
+#}
+
+<div id="merge-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+    <div class="bg-card rounded-xl border border-border w-full max-w-lg mx-4">
+        <div class="px-6 py-4 border-b border-border flex items-center justify-between">
+            <h3 class="font-semibold text-foreground">Merge Customers</h3>
+            <button type="button" onclick="closeMergeModal()" class="text-muted-foreground hover:text-foreground">
+                <i class="ph ph-x text-xl"></i>
+            </button>
+        </div>
+
+        <div class="p-6">
+            {% if let Some(err) = error %}
+            <div class="mb-4 p-3 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400 text-sm rounded">
+                {{ err }}
+            </div>
+            {% endif %}
+
+            <div class="mb-4 p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 rounded-lg">
+                <div class="flex items-start gap-2">
+                    <i class="ph ph-warning text-amber-600 dark:text-amber-400 mt-0.5"></i>
+                    <div class="text-sm text-amber-800 dark:text-amber-300">
+                        <p class="font-medium mb-1">This action cannot be undone</p>
+                        <p>Merging will combine all orders, addresses, and data from the selected customer into <strong>{{ customer_name }}</strong>. The other customer will be deleted.</p>
+                    </div>
+                </div>
+            </div>
+
+            <form hx-post="/customers/{{ customer_id }}/merge"
+                  hx-target="body"
+                  hx-swap="innerHTML"
+                  class="space-y-4">
+
+                <div>
+                    <label for="merge_customer_id" class="block text-sm font-medium text-foreground mb-1">
+                        Customer to merge <span class="text-red-500">*</span>
+                    </label>
+                    <p class="text-xs text-muted-foreground mb-2">
+                        Enter the ID or email of the customer you want to merge into {{ customer_name }}
+                    </p>
+                    <input type="text" id="merge_customer_id" name="merge_customer_id" required
+                           placeholder="Customer ID or email"
+                           class="w-full px-3 py-2 bg-input rounded-lg text-foreground border-0 focus:ring-2 focus:ring-ring">
+                </div>
+
+                <div>
+                    <p class="text-sm font-medium text-foreground mb-2">Override fields (optional)</p>
+                    <p class="text-xs text-muted-foreground mb-3">
+                        Select which fields to take from the customer being merged
+                    </p>
+                    <div class="space-y-2">
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" name="override_first_name" value="true"
+                                   class="rounded border-border text-primary focus:ring-primary">
+                            <span class="text-sm text-foreground">First name</span>
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" name="override_last_name" value="true"
+                                   class="rounded border-border text-primary focus:ring-primary">
+                            <span class="text-sm text-foreground">Last name</span>
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" name="override_email" value="true"
+                                   class="rounded border-border text-primary focus:ring-primary">
+                            <span class="text-sm text-foreground">Email</span>
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" name="override_phone" value="true"
+                                   class="rounded border-border text-primary focus:ring-primary">
+                            <span class="text-sm text-foreground">Phone</span>
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" name="override_default_address" value="true"
+                                   class="rounded border-border text-primary focus:ring-primary">
+                            <span class="text-sm text-foreground">Default address</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3 pt-4">
+                    <button type="submit"
+                            class="px-6 py-2.5 bg-destructive text-white rounded-lg font-medium hover:bg-destructive/90 transition-colors">
+                        <i class="ph ph-git-merge mr-2"></i>
+                        Merge Customers
+                    </button>
+                    <button type="button" onclick="closeMergeModal()"
+                            class="px-6 py-2.5 bg-muted text-foreground rounded-lg font-medium hover:bg-accent transition-colors">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function closeMergeModal() {
+    document.getElementById('merge-modal')?.remove();
+}
+</script>

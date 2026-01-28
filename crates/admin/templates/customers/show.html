@@ -1,0 +1,282 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}{{ customer.display_name }} - Customers{% endblock %}
+
+{% block page_title %}{{ customer.display_name }}{% endblock %}
+
+{% block page_subtitle %}
+<p class="text-sm text-muted-foreground mt-1">Customer #{{ customer.short_id }}</p>
+{% endblock %}
+
+{% block content %}
+<!-- Action Bar -->
+<div class="flex items-center justify-between mb-6">
+    <a href="/customers" class="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors">
+        <i class="ph ph-arrow-left"></i>
+        Back to Customers
+    </a>
+    <div class="flex items-center gap-3">
+        <a href="/customers/{{ customer.short_id }}/edit"
+           class="inline-flex items-center gap-2 px-4 py-2 bg-card border border-border rounded-lg text-sm font-medium text-foreground hover:border-primary transition-colors">
+            <i class="ph ph-pencil"></i>
+            Edit
+        </a>
+    </div>
+</div>
+
+<div class="grid lg:grid-cols-3 gap-6">
+    <!-- Main Content -->
+    <div class="lg:col-span-2 space-y-6">
+        <!-- Customer Info Card -->
+        <div class="bg-card rounded-xl border border-border p-6">
+            <div class="flex items-start gap-6">
+                <div class="w-16 h-16 rounded-full bg-muted flex items-center justify-center shrink-0">
+                    <i class="ph ph-user text-2xl text-muted-foreground"></i>
+                </div>
+                <div class="flex-1">
+                    <div class="flex items-center gap-3 mb-2">
+                        <h3 class="text-xl font-semibold text-foreground">{{ customer.display_name }}</h3>
+                        <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium {{ customer.state_class }}">
+                            <span class="w-1.5 h-1.5 rounded-full bg-current opacity-70"></span>
+                            {{ customer.state }}
+                        </span>
+                    </div>
+                    <div class="space-y-1 text-sm text-muted-foreground">
+                        {% if let Some(email) = customer.email %}
+                        <div class="flex items-center gap-2">
+                            <i class="ph ph-envelope"></i>
+                            <a href="mailto:{{ email }}" class="hover:text-primary">{{ email }}</a>
+                            {% if customer.accepts_marketing %}
+                            <span class="px-1.5 py-0.5 text-xs bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 rounded">Subscribed</span>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                        {% if let Some(phone) = customer.phone %}
+                        <div class="flex items-center gap-2">
+                            <i class="ph ph-phone"></i>
+                            <span>{{ phone }}</span>
+                        </div>
+                        {% endif %}
+                        {% if let Some(locale) = customer.locale %}
+                        <div class="flex items-center gap-2">
+                            <i class="ph ph-globe"></i>
+                            <span>{{ locale }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Addresses Card -->
+        {% if !customer.addresses.is_empty() %}
+        <div class="bg-card rounded-xl border border-border">
+            <div class="px-6 py-4 border-b border-border flex items-center justify-between">
+                <h3 class="font-semibold text-foreground">Addresses</h3>
+            </div>
+            <div class="divide-y divide-border">
+                {% for addr in customer.addresses %}
+                <div class="px-6 py-4 flex items-start justify-between">
+                    <div>
+                        {% if addr.is_default %}
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-primary/10 text-primary rounded mb-2">
+                            <i class="ph ph-star text-xs"></i>
+                            Default
+                        </span>
+                        {% endif %}
+                        <p class="text-sm text-foreground">{{ addr.formatted }}</p>
+                        {% if let Some(name) = addr.first_name %}
+                        <p class="text-xs text-muted-foreground mt-1">{{ name }} {% if let Some(last) = addr.last_name %}{{ last }}{% endif %}</p>
+                        {% endif %}
+                        {% if let Some(company) = addr.company %}
+                        <p class="text-xs text-muted-foreground">{{ company }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Order History Card -->
+        {% if !customer.recent_orders.is_empty() %}
+        <div class="bg-card rounded-xl border border-border">
+            <div class="px-6 py-4 border-b border-border flex items-center justify-between">
+                <h3 class="font-semibold text-foreground">Recent Orders</h3>
+                <a href="/orders?customer={{ customer.short_id }}" class="text-sm text-primary hover:underline">View all</a>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-muted">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Order</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Date</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Payment</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Fulfillment</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-border">
+                        {% for order in customer.recent_orders %}
+                        <tr class="hover:bg-accent">
+                            <td class="px-6 py-4">
+                                <a href="/orders/{{ order.short_id }}" class="text-sm font-medium text-primary hover:underline">{{ order.name }}</a>
+                            </td>
+                            <td class="px-6 py-4 text-sm text-muted-foreground">{{ order.created_at|humanize_datetime_str }}</td>
+                            <td class="px-6 py-4">
+                                {% if let Some(status) = order.financial_status %}
+                                <span class="px-2 py-1 text-xs font-medium rounded {{ order.financial_status_class }}">{{ status }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4">
+                                {% if let Some(status) = order.fulfillment_status %}
+                                <span class="px-2 py-1 text-xs font-medium rounded {{ order.fulfillment_status_class }}">{{ status }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 text-sm text-foreground text-right font-medium">{{ order.total }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Sidebar -->
+    <div class="space-y-6">
+        <!-- Statistics Card -->
+        <div class="bg-card rounded-xl border border-border p-6">
+            <h3 class="font-semibold text-foreground mb-4">Customer Stats</h3>
+            <dl class="space-y-3 text-sm">
+                <div class="flex justify-between">
+                    <dt class="text-muted-foreground">Lifetime Value</dt>
+                    <dd class="text-foreground font-medium">{{ customer.total_spent }}</dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt class="text-muted-foreground">Orders</dt>
+                    <dd class="text-foreground">{{ customer.orders_count }}</dd>
+                </div>
+                {% if let Some(duration) = customer.lifetime_duration %}
+                <div class="flex justify-between">
+                    <dt class="text-muted-foreground">Customer For</dt>
+                    <dd class="text-foreground">{{ duration }}</dd>
+                </div>
+                {% endif %}
+                <div class="flex justify-between">
+                    <dt class="text-muted-foreground">Tax Exempt</dt>
+                    <dd class="text-foreground">{% if customer.tax_exempt %}Yes{% else %}No{% endif %}</dd>
+                </div>
+            </dl>
+        </div>
+
+        <!-- Tags Section -->
+        <div class="bg-card rounded-xl border border-border p-6">
+            <h3 class="font-semibold text-foreground mb-4">Tags</h3>
+            <div id="tags-container" class="flex flex-wrap gap-2 mb-3">
+                {% for tag in customer.tags %}
+                <span class="inline-flex items-center gap-1 px-2 py-1 bg-muted rounded text-sm">
+                    {{ tag }}
+                    <button type="button" class="text-muted-foreground hover:text-foreground"
+                            hx-post="/customers/{{ customer.short_id }}/tags"
+                            hx-vals='{"tags": "{{ tag }}", "action": "remove"}'
+                            hx-target="#tags-container"
+                            hx-swap="innerHTML">
+                        <i class="ph ph-x text-xs"></i>
+                    </button>
+                </span>
+                {% endfor %}
+            </div>
+            <form hx-post="/customers/{{ customer.short_id }}/tags"
+                  hx-target="#tags-container"
+                  hx-swap="innerHTML"
+                  class="flex gap-2">
+                <input type="hidden" name="action" value="add">
+                <input type="text" name="tags" placeholder="Add tag..."
+                       class="flex-1 px-3 py-1.5 bg-input rounded-lg text-sm border-0 focus:ring-2 focus:ring-ring">
+                <button type="submit"
+                        class="px-3 py-1.5 bg-primary text-white rounded-lg text-sm hover:bg-primary/90">
+                    Add
+                </button>
+            </form>
+        </div>
+
+        <!-- Note Section -->
+        <div class="bg-card rounded-xl border border-border p-6">
+            <h3 class="font-semibold text-foreground mb-4">Note</h3>
+            <form hx-post="/customers/{{ customer.short_id }}/note"
+                  hx-swap="none">
+                <textarea name="note" rows="4"
+                          class="w-full p-3 bg-input rounded-lg text-sm border-0 focus:ring-2 focus:ring-ring resize-none"
+                          placeholder="Add internal note...">{{ customer.note.as_deref().unwrap_or("") }}</textarea>
+                <button type="submit"
+                        class="mt-2 px-4 py-2 bg-muted text-foreground rounded-lg text-sm hover:bg-accent transition-colors">
+                    Save Note
+                </button>
+            </form>
+        </div>
+
+        <!-- Account Actions -->
+        <div class="bg-card rounded-xl border border-border p-6">
+            <h3 class="font-semibold text-foreground mb-4">Account Actions</h3>
+            <div class="space-y-3">
+                <div id="invite-result">
+                    <button type="button"
+                            hx-post="/customers/{{ customer.short_id }}/send-invite"
+                            hx-target="#invite-result"
+                            hx-swap="innerHTML"
+                            class="w-full px-4 py-2 bg-muted text-foreground rounded-lg text-sm hover:bg-accent transition-colors">
+                        <i class="ph ph-envelope mr-2"></i>
+                        Send Account Invite
+                    </button>
+                </div>
+                <div id="activation-result">
+                    <button type="button"
+                            hx-post="/customers/{{ customer.short_id }}/activation-url"
+                            hx-target="#activation-result"
+                            hx-swap="innerHTML"
+                            class="w-full px-4 py-2 bg-muted text-foreground rounded-lg text-sm hover:bg-accent transition-colors">
+                        <i class="ph ph-link mr-2"></i>
+                        Generate Activation URL
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Timeline -->
+        <div class="bg-card rounded-xl border border-border p-6">
+            <h3 class="font-semibold text-foreground mb-4">Timeline</h3>
+            <dl class="space-y-3 text-sm">
+                <div>
+                    <dt class="text-muted-foreground">Created</dt>
+                    <dd class="text-foreground">{{ customer.created_at|humanize_datetime_str }}</dd>
+                </div>
+                <div>
+                    <dt class="text-muted-foreground">Last Updated</dt>
+                    <dd class="text-foreground">{{ customer.updated_at|humanize_datetime_str }}</dd>
+                </div>
+            </dl>
+        </div>
+
+        {% if admin_user.is_super_admin && customer.can_delete %}
+        <!-- Danger Zone -->
+        <div class="bg-red-50/30 dark:bg-red-950/10 rounded-xl border border-red-200/30 dark:border-red-900/20 p-6
+                    hover:bg-red-50 dark:hover:bg-red-950/20 hover:border-red-200 dark:hover:border-red-800/50
+                    transition-all group">
+            <h3 class="font-semibold text-red-800/70 dark:text-red-300/70 group-hover:text-red-800 dark:group-hover:text-red-300 mb-4">Danger Zone</h3>
+            <p class="text-sm text-red-600/70 dark:text-red-400/70 group-hover:text-red-600 dark:group-hover:text-red-400 mb-4">
+                Deleting a customer is permanent and cannot be undone.
+            </p>
+            <form action="/customers/{{ customer.short_id }}/delete" method="POST"
+                  onsubmit="return confirm('Are you sure you want to permanently delete this customer? This action cannot be undone.');">
+                <button type="submit"
+                        class="w-full px-4 py-2 bg-red-600/80 group-hover:bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+                    <i class="ph ph-trash mr-2"></i>
+                    Delete Customer
+                </button>
+            </form>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

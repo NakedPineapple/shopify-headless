@@ -1,0 +1,96 @@
+{#
+    Customer Table Row Partial
+
+    Variables:
+    - customer: CustomerView object
+#}
+
+<tr class="hover:bg-accent transition-colors" data-row-id="{{ customer.short_id }}">
+    <td class="w-12 px-6 py-4">
+        <input type="checkbox"
+               data-row-id="{{ customer.short_id }}"
+               class="rounded border-border text-primary focus:ring-primary">
+    </td>
+    <td class="px-6 py-4">
+        <a href="/customers/{{ customer.short_id }}" class="flex items-center gap-4 group">
+            <div class="w-10 h-10 rounded-full bg-muted flex items-center justify-center shrink-0">
+                <i class="ph ph-user text-muted-foreground"></i>
+            </div>
+            <div>
+                <p class="font-medium text-foreground group-hover:text-primary transition-colors">{{ customer.name }}</p>
+                {% if let Some(email) = customer.email %}
+                <p class="text-sm text-muted-foreground">{{ email }}</p>
+                {% endif %}
+            </div>
+        </a>
+    </td>
+    <td class="px-6 py-4 text-sm text-muted-foreground" data-column="phone">
+        {% if let Some(phone) = customer.phone %}
+        {{ phone }}
+        {% else %}
+        <span>-</span>
+        {% endif %}
+    </td>
+    <td class="px-6 py-4 text-sm text-muted-foreground" data-column="location">
+        {% if let Some(loc) = customer.location %}
+        <span class="flex items-center gap-1">
+            <i class="ph ph-map-pin text-xs"></i>
+            {{ loc }}
+        </span>
+        {% else %}
+        <span>-</span>
+        {% endif %}
+    </td>
+    <td class="px-6 py-4 text-sm text-foreground" data-column="orders">
+        {{ customer.orders_count }}
+    </td>
+    <td class="px-6 py-4 text-sm font-medium text-foreground" data-column="spent">
+        {{ customer.total_spent }}
+    </td>
+    <td class="px-6 py-4" data-column="state">
+        <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium {{ customer.state_class }}">
+            <span class="w-1.5 h-1.5 rounded-full bg-current opacity-70"></span>
+            {{ customer.state }}
+        </span>
+    </td>
+    <td class="px-6 py-4" data-column="tags">
+        {% if !customer.tags.is_empty() %}
+        <div class="flex flex-wrap gap-1">
+            {% for tag in customer.tags.iter().take(3) %}
+            <span class="px-1.5 py-0.5 text-xs bg-muted rounded">{{ tag }}</span>
+            {% endfor %}
+            {% if customer.tags.len() > 3 %}
+            <span class="px-1.5 py-0.5 text-xs text-muted-foreground">+{{ customer.tags.len() - 3 }}</span>
+            {% endif %}
+        </div>
+        {% else %}
+        <span class="text-muted-foreground">-</span>
+        {% endif %}
+    </td>
+    <td class="px-6 py-4" data-column="marketing">
+        {% if customer.accepts_marketing %}
+        <span class="px-2 py-0.5 text-xs font-medium rounded bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+            Subscribed
+        </span>
+        {% else %}
+        <span class="text-muted-foreground text-sm">-</span>
+        {% endif %}
+    </td>
+    <td class="px-6 py-4 text-sm text-muted-foreground" data-column="created">
+        {{ customer.created_at }}
+    </td>
+    <td class="px-6 py-4 text-right">
+        <div class="flex items-center justify-end gap-2">
+            <a href="/customers/{{ customer.short_id }}"
+               class="p-2 text-muted-foreground hover:text-foreground transition-colors"
+               title="View customer">
+                <i class="ph ph-eye"></i>
+            </a>
+            <a href="/customers/{{ customer.short_id }}/edit"
+               class="p-2 text-muted-foreground hover:text-foreground transition-colors"
+               title="Edit customer">
+                <i class="ph ph-pencil"></i>
+            </a>
+        </div>
+    </td>
+</tr>

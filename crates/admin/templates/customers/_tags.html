@@ -1,0 +1,25 @@
+{#
+    Customer Tags Section Partial (HTMX target)
+
+    Variables:
+    - customer_id: Customer short ID
+    - tags: List of tag strings
+#}
+
+{% for tag in tags %}
+<span class="inline-flex items-center gap-1 px-2 py-1 bg-muted rounded text-sm">
+    {{ tag }}
+    <button type="button"
+            class="text-muted-foreground hover:text-foreground"
+            hx-post="/customers/{{ customer_id }}/tags"
+            hx-vals='{"tags": "{{ tag }}", "action": "remove"}'
+            hx-target="#tags-container"
+            hx-swap="innerHTML">
+        <i class="ph ph-x text-xs"></i>
+    </button>
+</span>
+{% endfor %}
+
+{% if tags.is_empty() %}
+<span class="text-sm text-muted-foreground">No tags</span>
+{% endif %}

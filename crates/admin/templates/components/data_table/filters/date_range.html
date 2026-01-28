@@ -1,0 +1,29 @@
+{#
+    Date Range Filter
+
+    Variables:
+    - filter.key: Filter parameter name (will use key_from and key_to)
+    - filter.label: Display label
+    - filter_values: Map of current filter values
+#}
+
+<div>
+    <label class="block text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
+        {{ filter.label }}
+    </label>
+    <div class="flex items-center gap-2">
+        <input type="date"
+               id="{{ filter.key }}_from"
+               name="{{ filter.key }}_from"
+               value="{{ filter_values.get(&format!("{}_from", filter.key)).map(|v| v.as_str()).unwrap_or("") }}"
+               data-filter="{{ table_id }}"
+               class="flex-1 px-3 py-2 bg-input border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-colors">
+        <span class="text-muted-foreground">to</span>
+        <input type="date"
+               id="{{ filter.key }}_to"
+               name="{{ filter.key }}_to"
+               value="{{ filter_values.get(&format!("{}_to", filter.key)).map(|v| v.as_str()).unwrap_or("") }}"
+               data-filter="{{ table_id }}"
+               class="flex-1 px-3 py-2 bg-input border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-colors">
+    </div>
+</div>

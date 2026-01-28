@@ -44,6 +44,8 @@ pub struct Image {
 /// Mailing address.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Address {
+    /// Address ID (for mutations).
+    pub id: Option<String>,
     /// First line of the address.
     pub address1: Option<String>,
     /// Second line of the address.
@@ -64,6 +66,110 @@ pub struct Address {
     pub company: Option<String>,
     /// Phone number.
     pub phone: Option<String>,
+}
+
+/// Input for creating/updating a mailing address.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct AddressInput {
+    /// First line of the address.
+    pub address1: Option<String>,
+    /// Second line of the address.
+    pub address2: Option<String>,
+    /// City.
+    pub city: Option<String>,
+    /// Province or state code.
+    pub province_code: Option<String>,
+    /// Country code (ISO 3166-1 alpha-2).
+    pub country_code: Option<String>,
+    /// Postal/ZIP code.
+    pub zip: Option<String>,
+    /// First name.
+    pub first_name: Option<String>,
+    /// Last name.
+    pub last_name: Option<String>,
+    /// Company name.
+    pub company: Option<String>,
+    /// Phone number.
+    pub phone: Option<String>,
+}
+
+// =============================================================================
+// Metafield Types
+// =============================================================================
+
+/// A metafield for storing custom data.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Metafield {
+    /// Metafield ID.
+    pub id: Option<String>,
+    /// Namespace for grouping metafields.
+    pub namespace: String,
+    /// Key within the namespace.
+    pub key: String,
+    /// The metafield value.
+    pub value: String,
+}
+
+/// Input for creating/updating metafields.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MetafieldInput {
+    /// Namespace for the metafield.
+    pub namespace: String,
+    /// Key within the namespace.
+    pub key: String,
+    /// The value to store.
+    pub value: String,
+    /// The metafield type (e.g., `single_line_text_field`, `number_integer`).
+    pub type_: String,
+}
+
+/// Parameters for updating a customer.
+#[derive(Debug, Clone, Default)]
+pub struct CustomerUpdateParams {
+    /// Email address.
+    pub email: Option<String>,
+    /// First name.
+    pub first_name: Option<String>,
+    /// Last name.
+    pub last_name: Option<String>,
+    /// Phone number.
+    pub phone: Option<String>,
+    /// Note about the customer.
+    pub note: Option<String>,
+    /// Tags to set on the customer.
+    pub tags: Option<Vec<String>>,
+}
+
+/// Override settings for customer merge operation.
+///
+/// Each field indicates whether to take the value from the source customer
+/// (being merged) instead of the target customer (that remains).
+// Allow: Each boolean represents an independent merge override choice from
+// the Shopify API with no logical grouping into enums or state machines.
+#[allow(clippy::struct_excessive_bools)]
+#[derive(Debug, Clone, Default)]
+pub struct CustomerMergeOverrides {
+    /// Take first name from the source customer.
+    pub first_name: bool,
+    /// Take last name from the source customer.
+    pub last_name: bool,
+    /// Take email from the source customer.
+    pub email: bool,
+    /// Take phone from the source customer.
+    pub phone: bool,
+    /// Take default address from the source customer.
+    pub default_address: bool,
+}
+
+/// Identifier for a metafield (used in delete operations).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MetafieldIdentifier {
+    /// The owner resource ID.
+    pub owner_id: String,
+    /// Namespace of the metafield.
+    pub namespace: String,
+    /// Key of the metafield.
+    pub key: String,
 }
 
 // =============================================================================
@@ -331,7 +437,147 @@ pub enum CustomerState {
     Declined,
 }
 
+/// Sort key for customer lists.
+///
+/// Some keys are supported natively by Shopify API, others require
+/// client-side sorting in Rust after fetching data.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum CustomerSortKey {
+    // === Shopify API supported ===
+    /// Sort by creation date (Shopify native).
+    CreatedAt,
+    /// Sort by ID (Shopify native).
+    Id,
+    /// Sort by location (Shopify native).
+    Location,
+    /// Sort by name (Shopify native).
+    #[default]
+    Name,
+    /// Sort by relevance for search queries (Shopify native).
+    Relevance,
+    /// Sort by last update date (Shopify native).
+    UpdatedAt,
+
+    // === Client-side sorting (Rust) ===
+    /// Sort by total amount spent.
+    AmountSpent,
+    /// Sort by total orders count.
+    OrdersCount,
+}
+
+impl CustomerSortKey {
+    /// Parse a sort key from a URL parameter string.
+    #[must_use]
+    pub fn from_str_param(s: &str) -> Option<Self> {
+        match s.to_lowercase().as_str() {
+            "created_at" | "created" => Some(Self::CreatedAt),
+            "id" => Some(Self::Id),
+            "location" => Some(Self::Location),
+            "name" => Some(Self::Name),
+            "relevance" => Some(Self::Relevance),
+            "updated_at" | "updated" => Some(Self::UpdatedAt),
+            "amount_spent" | "spent" => Some(Self::AmountSpent),
+            "orders_count" | "orders" => Some(Self::OrdersCount),
+            _ => None,
+        }
+    }
+
+    /// Get the URL parameter string for this sort key.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::CreatedAt => "created_at",
+            Self::Id => "id",
+            Self::Location => "location",
+            Self::Name => "name",
+            Self::Relevance => "relevance",
+            Self::UpdatedAt => "updated_at",
+            Self::AmountSpent => "amount_spent",
+            Self::OrdersCount => "orders_count",
+        }
+    }
+
+    /// Whether this sort key is supported natively by Shopify API.
+    #[must_use]
+    pub const fn is_shopify_native(self) -> bool {
+        matches!(
+            self,
+            Self::CreatedAt
+                | Self::Id
+                | Self::Location
+                | Self::Name
+                | Self::Relevance
+                | Self::UpdatedAt
+        )
+    }
+}
+
+/// Parameters for listing customers.
+#[derive(Debug, Clone, Default)]
+pub struct CustomerListParams {
+    /// Maximum number of customers to return.
+    pub first: Option<i64>,
+    /// Cursor for pagination.
+    pub after: Option<String>,
+    /// Search/filter query string (Shopify query syntax).
+    pub query: Option<String>,
+    /// Sort key.
+    pub sort_key: Option<CustomerSortKey>,
+    /// Whether to reverse sort order.
+    pub reverse: bool,
+}
+
+/// Marketing consent state.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum MarketingState {
+    /// Not subscribed to marketing.
+    NotSubscribed,
+    /// Pending confirmation.
+    Pending,
+    /// Subscribed to marketing.
+    Subscribed,
+    /// Unsubscribed from marketing.
+    Unsubscribed,
+    /// Data has been redacted.
+    Redacted,
+    /// Invalid state.
+    Invalid,
+}
+
+/// Marketing consent information.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MarketingConsent {
+    /// Current marketing state.
+    pub state: MarketingState,
+    /// Opt-in level (e.g., `SINGLE_OPT_IN`, `CONFIRMED_OPT_IN`).
+    pub opt_in_level: Option<String>,
+    /// When consent was last updated.
+    pub consent_updated_at: Option<String>,
+}
+
+/// A customer's recent order (for detail view).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CustomerOrder {
+    /// Order ID.
+    pub id: String,
+    /// Order name (e.g., "#1001").
+    pub name: String,
+    /// Creation timestamp.
+    pub created_at: String,
+    /// Financial status display string.
+    pub financial_status: Option<String>,
+    /// Fulfillment status display string.
+    pub fulfillment_status: Option<String>,
+    /// Total price.
+    pub total_price: Money,
+}
+
 /// A customer in the admin.
+// Allow: Shopify API Customer object has independent boolean properties
+// (accepts_marketing, tax_exempt, can_delete, is_mergeable) that cannot be grouped.
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Customer {
     /// Customer ID.
@@ -348,22 +594,40 @@ pub struct Customer {
     pub phone: Option<String>,
     /// Account state.
     pub state: CustomerState,
-    /// Whether marketing is accepted.
+    /// Customer locale (language preference).
+    pub locale: Option<String>,
+    /// Whether email marketing is accepted (legacy field).
     pub accepts_marketing: bool,
-    /// Marketing opt-in level.
+    /// Marketing opt-in timestamp (legacy field).
     pub accepts_marketing_updated_at: Option<String>,
+    /// Email marketing consent details.
+    pub email_marketing_consent: Option<MarketingConsent>,
+    /// SMS marketing consent details.
+    pub sms_marketing_consent: Option<MarketingConsent>,
     /// Total orders count.
     pub orders_count: i64,
     /// Total amount spent.
     pub total_spent: Money,
+    /// Human-readable lifetime duration (e.g., "2 years").
+    pub lifetime_duration: Option<String>,
+    /// Whether customer is tax exempt.
+    pub tax_exempt: bool,
+    /// List of tax exemption codes.
+    pub tax_exemptions: Vec<String>,
     /// Customer note.
     pub note: Option<String>,
     /// Tags.
     pub tags: Vec<String>,
+    /// Whether this customer can be deleted (no orders).
+    pub can_delete: bool,
+    /// Whether this customer can be merged with another.
+    pub is_mergeable: bool,
     /// Default address.
     pub default_address: Option<Address>,
     /// All addresses.
     pub addresses: Vec<Address>,
+    /// Recent orders (populated on detail view).
+    pub recent_orders: Vec<CustomerOrder>,
     /// Creation timestamp.
     pub created_at: String,
     /// Last update timestamp.
@@ -662,28 +926,6 @@ pub enum OrderSortKey {
     FinancialStatus,
     /// Sort by fulfillment status.
     FulfillmentStatus,
-    /// Sort by ID.
-    Id,
-}
-
-/// Sort keys for customer queries.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum CustomerSortKey {
-    /// Sort by name.
-    Name,
-    /// Sort by location.
-    Location,
-    /// Sort by orders count.
-    OrdersCount,
-    /// Sort by total spent.
-    TotalSpent,
-    /// Sort by last order date.
-    LastOrderDate,
-    /// Sort by creation date.
-    CreatedAt,
-    /// Sort by last update.
-    UpdatedAt,
     /// Sort by ID.
     Id,
 }

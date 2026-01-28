@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO admin.settings (key, value, admin_user_id)\n        VALUES ($1, $2, NULL)\n        ON CONFLICT (key, admin_user_id) DO UPDATE SET value = $2, updated_at = NOW()\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Jsonb"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e4f3e99cfeed1b24eb30d716bee0f2d976040f79ae11c6196a687390cc062415"
+}

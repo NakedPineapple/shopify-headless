@@ -23,6 +23,7 @@
 pub mod admin_invites;
 pub mod admin_users;
 pub mod chat;
+pub mod settings;
 pub mod shopify;
 
 use std::time::Duration;

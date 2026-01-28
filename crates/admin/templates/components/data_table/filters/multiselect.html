@@ -1,0 +1,28 @@
+{#
+    Multi-Select Checkbox Filter
+
+    Variables:
+    - filter.key: Filter parameter name
+    - filter.label: Display label
+    - filter.options: List of options with value and label
+    - filter_values: Map of current filter values (comma-separated for multi)
+#}
+
+<div>
+    <label class="block text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
+        {{ filter.label }}
+    </label>
+    <div class="bg-input border border-border rounded-lg p-2 max-h-40 overflow-y-auto">
+        {% for opt in filter.options %}
+        <label class="flex items-center gap-2 px-2 py-1 hover:bg-accent rounded cursor-pointer">
+            <input type="checkbox"
+                   name="{{ filter.key }}"
+                   value="{{ opt.value }}"
+                   data-filter="{{ table_id }}"
+                   {% if filter_values.get(filter.key).map(|v| v.split(',').any(|s| s == opt.value)).unwrap_or(false) %}checked{% endif %}
+                   class="rounded border-border text-primary focus:ring-primary">
+            <span class="text-sm text-foreground">{{ opt.label }}</span>
+        </label>
+        {% endfor %}
+    </div>
+</div>

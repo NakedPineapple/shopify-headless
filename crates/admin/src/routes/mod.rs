@@ -68,11 +68,9 @@ use axum::{
 
 use crate::state::AppState;
 
-/// Build the complete router for the admin application.
-pub fn routes() -> Router<AppState> {
+/// Build product routes.
+fn product_routes() -> Router<AppState> {
     Router::new()
-        .route("/", get(dashboard::dashboard))
-        // Products CRUD
         .route("/products", get(products::index).post(products::create))
         .route("/products/new", get(products::new_product))
         .route("/products/{id}", get(products::show).post(products::update))
@@ -96,15 +94,47 @@ pub fn routes() -> Router<AppState> {
             "/products/{id}/images/{media_id}/alt",
             post(products::update_image_alt),
         )
-        // Orders CRUD
-        .route("/orders", get(orders::index))
-        .route("/orders/{id}", get(orders::show))
-        .route("/orders/{id}/note", post(orders::update_note))
-        .route("/orders/{id}/mark-paid", post(orders::mark_paid))
-        .route("/orders/{id}/cancel", post(orders::cancel))
-        // Customers
-        .route("/customers", get(customers::index))
-        // Collections CRUD
+}
+
+/// Build customer routes.
+fn customer_routes() -> Router<AppState> {
+    Router::new()
+        .route("/customers", get(customers::index).post(customers::create))
+        .route("/customers/new", get(customers::new))
+        .route(
+            "/customers/{id}",
+            get(customers::show).post(customers::update),
+        )
+        .route("/customers/{id}/edit", get(customers::edit))
+        .route("/customers/{id}/delete", post(customers::delete))
+        .route("/customers/{id}/tags", post(customers::update_tags))
+        .route("/customers/{id}/note", post(customers::update_note))
+        .route(
+            "/customers/{id}/marketing",
+            post(customers::update_marketing),
+        )
+        .route("/customers/{id}/send-invite", post(customers::send_invite))
+        .route(
+            "/customers/{id}/activation-url",
+            post(customers::activation_url),
+        )
+        .route("/customers/{id}/addresses", post(customers::address_create))
+        .route(
+            "/customers/{id}/addresses/{address_id}",
+            post(customers::address_update).delete(customers::address_delete),
+        )
+        .route(
+            "/customers/{id}/addresses/{address_id}/default",
+            post(customers::set_default_address),
+        )
+        .route("/customers/{id}/merge", post(customers::merge))
+        .route("/customers/bulk/tags", post(customers::bulk_tags))
+        .route("/customers/bulk/marketing", post(customers::bulk_marketing))
+}
+
+/// Build collection routes.
+fn collection_routes() -> Router<AppState> {
+    Router::new()
         .route(
             "/collections",
             get(collections::index).post(collections::create),
@@ -137,6 +167,21 @@ pub fn routes() -> Router<AppState> {
             "/collections/{id}/image/delete",
             post(collections::delete_image),
         )
+}
+
+/// Build the complete router for the admin application.
+pub fn routes() -> Router<AppState> {
+    Router::new()
+        .route("/", get(dashboard::dashboard))
+        .merge(product_routes())
+        // Orders CRUD
+        .route("/orders", get(orders::index))
+        .route("/orders/{id}", get(orders::show))
+        .route("/orders/{id}/note", post(orders::update_note))
+        .route("/orders/{id}/mark-paid", post(orders::mark_paid))
+        .route("/orders/{id}/cancel", post(orders::cancel))
+        .merge(customer_routes())
+        .merge(collection_routes())
         // Discounts CRUD
         .route("/discounts", get(discounts::index).post(discounts::create))
         .route("/discounts/new", get(discounts::new_discount))

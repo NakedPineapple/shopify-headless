@@ -1,0 +1,74 @@
+{#
+    Data Table Toolbar
+
+    Variables:
+    - table_id: Unique identifier for the table
+    - search_placeholder: Placeholder text for search input
+    - search_value: Current search value
+    - has_filters: Whether to show filters toggle
+    - has_column_picker: Whether to show column visibility picker
+    - columns: Column definitions for picker
+    - visible_columns: Currently visible columns
+    - action_buttons: Optional action buttons HTML
+#}
+
+<div class="px-6 py-4 border-b border-border">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <!-- Search -->
+        <div class="flex-1 max-w-md">
+            <div class="relative">
+                <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"></i>
+                <input type="search"
+                       id="{{ table_id }}-search"
+                       name="query"
+                       value="{{ search_value.as_deref().unwrap_or("") }}"
+                       placeholder="{{ search_placeholder }}"
+                       class="w-full pl-10 pr-4 py-2 bg-input border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-colors placeholder:text-muted-foreground">
+            </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+            {% if has_filters %}
+            <!-- Filters Toggle -->
+            <button type="button"
+                    id="{{ table_id }}-filters-toggle"
+                    class="inline-flex items-center gap-2 px-3 py-2 bg-muted text-foreground rounded-lg text-sm hover:bg-accent transition-colors"
+                    onclick="document.getElementById('{{ table_id }}-filters-panel').classList.toggle('hidden')">
+                <i class="ph ph-funnel"></i>
+                Filters
+            </button>
+            {% endif %}
+
+            {% if has_column_picker %}
+            <!-- Column Picker -->
+            <div class="relative" x-data="{ open: false }">
+                <button type="button"
+                        class="inline-flex items-center gap-2 px-3 py-2 bg-muted text-foreground rounded-lg text-sm hover:bg-accent transition-colors"
+                        onclick="this.nextElementSibling.classList.toggle('hidden')">
+                    <i class="ph ph-columns"></i>
+                    Columns
+                </button>
+                <div class="hidden absolute right-0 mt-2 w-56 bg-card border border-border rounded-lg shadow-lg z-10">
+                    <div class="p-2">
+                        <p class="px-2 py-1 text-xs font-medium text-muted-foreground uppercase">Toggle Columns</p>
+                        {% for col in columns %}
+                        <label class="flex items-center gap-2 px-2 py-1.5 hover:bg-accent rounded cursor-pointer">
+                            <input type="checkbox"
+                                   data-column-toggle="{{ table_id }}"
+                                   data-column="{{ col.key }}"
+                                   {% if visible_columns.contains(col.key) %}checked{% endif %}
+                                   class="rounded border-border text-primary focus:ring-primary">
+                            <span class="text-sm text-foreground">{{ col.label }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if let Some(buttons) = action_buttons %}
+            {{ buttons|safe }}
+            {% endif %}
+        </div>
+    </div>
+</div>

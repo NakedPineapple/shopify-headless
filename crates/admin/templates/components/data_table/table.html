@@ -1,0 +1,61 @@
+{#
+    Data Table Component - Main Wrapper
+
+    Variables:
+    - table_id: Unique identifier for the table (e.g., "customers")
+    - columns: List of column definitions
+    - rows: Data rows to display
+    - has_bulk_actions: Whether to show bulk action bar
+    - has_filters: Whether to show filter panel
+    - empty_icon: Icon class for empty state
+    - empty_title: Title for empty state
+    - empty_description: Description for empty state
+#}
+
+<div data-table="{{ table_id }}"
+     data-table-auto
+     data-table-options='{"defaultColumns": {{ default_columns|json }}}'
+     class="bg-card rounded-xl border border-border overflow-hidden">
+
+    {% block toolbar %}
+    {% include "components/data_table/toolbar.html" %}
+    {% endblock %}
+
+    {% if has_filters %}
+    {% block filters %}
+    {% include "components/data_table/filters/panel.html" %}
+    {% endblock %}
+    {% endif %}
+
+    {% if has_bulk_actions %}
+    {% block bulk_bar %}
+    {% include "components/data_table/bulk_bar.html" %}
+    {% endblock %}
+    {% endif %}
+
+    <div class="overflow-x-auto">
+        <table class="w-full">
+            {% block header %}
+            {% include "components/data_table/header.html" %}
+            {% endblock %}
+
+            <tbody class="divide-y divide-border">
+                {% if rows.is_empty() %}
+                {% block empty %}
+                {% include "components/data_table/empty.html" %}
+                {% endblock %}
+                {% else %}
+                {% block rows %}
+                {% for row in rows %}
+                {{ row|safe }}
+                {% endfor %}
+                {% endblock %}
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    {% block pagination %}
+    {% include "components/data_table/pagination.html" %}
+    {% endblock %}
+</div>

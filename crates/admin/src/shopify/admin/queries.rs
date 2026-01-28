@@ -305,6 +305,151 @@ pub struct GetCustomer;
 )]
 pub struct GetCustomers;
 
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/customers.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct CustomerCreate;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/customers.graphql",
+    response_derives = "Debug, Clone",
+    skip_none
+)]
+pub struct CustomerUpdate;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/customers.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct CustomerDelete;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/customers.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct TagsAdd;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/customers.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct TagsRemove;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/customers.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct CustomerEmailMarketingConsentUpdate;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/customers.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct CustomerSmsMarketingConsentUpdate;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/customers.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct CustomerAddTaxExemptions;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/customers.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct CustomerRemoveTaxExemptions;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/customers.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct CustomerGenerateAccountActivationUrl;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/customers.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct CustomerSendAccountInviteEmail;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/customers.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct CustomerMerge;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/customers.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct MetafieldsSet;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/customers.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct MetafieldsDelete;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/customers.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct CustomerAddressCreate;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/customers.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct CustomerAddressUpdate;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/customers.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct CustomerAddressDelete;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/customers.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct CustomerUpdateDefaultAddress;
+
 // =============================================================================
 // Inventory queries and mutations
 // =============================================================================

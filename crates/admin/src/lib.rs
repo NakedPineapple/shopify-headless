@@ -18,6 +18,7 @@
 #![allow(unused_imports)]
 
 pub mod claude;
+pub mod components;
 pub mod config;
 pub mod db;
 pub mod error;

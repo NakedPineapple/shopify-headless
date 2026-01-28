@@ -1,0 +1,89 @@
+{#
+    Customer Addresses Section Partial (HTMX target)
+
+    Variables:
+    - customer_id: Customer short ID
+    - addresses: List of AddressView objects
+    - success: Whether the last action was successful (optional)
+    - error: Error message if action failed (optional)
+#}
+
+{% if let Some(true) = success %}
+<div class="mb-3 p-2 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400 text-sm rounded">
+    Address updated successfully
+</div>
+{% endif %}
+
+{% if let Some(err) = error %}
+<div class="mb-3 p-2 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400 text-sm rounded">
+    {{ err }}
+</div>
+{% endif %}
+
+<div class="divide-y divide-border">
+    {% for addr in addresses %}
+    <div class="py-4 first:pt-0 last:pb-0">
+        <div class="flex items-start justify-between">
+            <div class="flex-1">
+                {% if addr.is_default %}
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-primary/10 text-primary rounded mb-2">
+                    <i class="ph ph-star text-xs"></i>
+                    Default
+                </span>
+                {% endif %}
+                <p class="text-sm text-foreground">{{ addr.formatted }}</p>
+                {% if let Some(name) = addr.name %}
+                <p class="text-xs text-muted-foreground mt-1">{{ name }}</p>
+                {% endif %}
+                {% if let Some(company) = addr.company %}
+                <p class="text-xs text-muted-foreground">{{ company }}</p>
+                {% endif %}
+                {% if let Some(phone) = addr.phone %}
+                <p class="text-xs text-muted-foreground">{{ phone }}</p>
+                {% endif %}
+            </div>
+            <div class="flex items-center gap-1">
+                {% if !addr.is_default %}
+                <button type="button"
+                        hx-post="/customers/{{ customer_id }}/addresses/{{ addr.id }}/default"
+                        hx-target="#addresses-container"
+                        hx-swap="innerHTML"
+                        class="p-1.5 text-muted-foreground hover:text-foreground transition-colors"
+                        title="Set as default">
+                    <i class="ph ph-star"></i>
+                </button>
+                {% endif %}
+                <button type="button"
+                        onclick="openAddressModal('{{ addr.id }}')"
+                        class="p-1.5 text-muted-foreground hover:text-foreground transition-colors"
+                        title="Edit address">
+                    <i class="ph ph-pencil"></i>
+                </button>
+                <button type="button"
+                        hx-delete="/customers/{{ customer_id }}/addresses/{{ addr.id }}"
+                        hx-target="#addresses-container"
+                        hx-swap="innerHTML"
+                        hx-confirm="Are you sure you want to delete this address?"
+                        class="p-1.5 text-muted-foreground hover:text-destructive transition-colors"
+                        title="Delete address">
+                    <i class="ph ph-trash"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+
+    {% if addresses.is_empty() %}
+    <div class="py-6 text-center">
+        <i class="ph ph-map-pin text-2xl text-muted-foreground mb-2"></i>
+        <p class="text-sm text-muted-foreground">No addresses</p>
+    </div>
+    {% endif %}
+</div>
+
+<button type="button"
+        onclick="openAddressModal(null)"
+        class="mt-4 w-full px-4 py-2 bg-muted text-foreground rounded-lg text-sm hover:bg-accent transition-colors">
+    <i class="ph ph-plus mr-2"></i>
+    Add Address
+</button>

@@ -1,0 +1,27 @@
+{#
+    Dropdown Select Filter
+
+    Variables:
+    - filter.key: Filter parameter name
+    - filter.label: Display label
+    - filter.options: List of options with value and label
+    - filter_values: Map of current filter values
+#}
+
+<div>
+    <label for="{{ filter.key }}" class="block text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
+        {{ filter.label }}
+    </label>
+    <select id="{{ filter.key }}"
+            name="{{ filter.key }}"
+            data-filter="{{ table_id }}"
+            class="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-colors">
+        <option value="">All</option>
+        {% for opt in filter.options %}
+        <option value="{{ opt.value }}"
+                {% if filter_values.get(filter.key).map(|v| v == opt.value).unwrap_or(false) %}selected{% endif %}>
+            {{ opt.label }}
+        </option>
+        {% endfor %}
+    </select>
+</div>

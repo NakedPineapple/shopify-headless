@@ -8,77 +8,352 @@
 <p class="text-sm text-muted-foreground mt-1">View and manage your customer base</p>
 {% endblock %}
 
-{% block content %}
-<!-- Search -->
-<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-    <form method="GET" action="/customers" class="flex-1 max-w-md">
-        <div class="relative">
-            <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"></i>
-            <input type="search"
-                   name="query"
-                   value="{{ search_query.as_deref().unwrap_or("") }}"
-                   placeholder="Search customers by name or email..."
-                   class="w-full pl-10 pr-4 py-2 bg-input border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-colors placeholder:text-muted-foreground">
-        </div>
-    </form>
-</div>
+{% block head %}
+<script src="/static/js/data-table.js" defer></script>
+{% endblock %}
 
-<!-- Customers Table -->
-<div class="bg-card rounded-xl border border-border overflow-hidden">
+{% block content %}
+<div data-table="{{ table_id }}"
+     data-table-auto
+     data-table-options='{"defaultColumns": {{ default_columns|json }}}'
+     class="bg-card rounded-xl border border-border overflow-hidden">
+
+    <!-- Toolbar -->
+    <div class="px-6 py-4 border-b border-border">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <!-- Search -->
+            <div class="flex-1 max-w-md">
+                <div class="relative">
+                    <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"></i>
+                    <input type="search"
+                           id="{{ table_id }}-search"
+                           name="query"
+                           value="{{ search_value.as_deref().unwrap_or("") }}"
+                           placeholder="Search customers by name or email..."
+                           class="w-full pl-10 pr-4 py-2 bg-input border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-colors placeholder:text-muted-foreground">
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <!-- Filters Toggle -->
+                <button type="button"
+                        id="{{ table_id }}-filters-toggle"
+                        class="inline-flex items-center gap-2 px-3 py-2 bg-muted text-foreground rounded-lg text-sm hover:bg-accent transition-colors"
+                        onclick="document.getElementById('{{ table_id }}-filters-panel').classList.toggle('hidden')">
+                    <i class="ph ph-funnel"></i>
+                    Filters
+                </button>
+
+                <!-- Column Picker -->
+                <div class="relative">
+                    <button type="button"
+                            class="inline-flex items-center gap-2 px-3 py-2 bg-muted text-foreground rounded-lg text-sm hover:bg-accent transition-colors"
+                            onclick="this.nextElementSibling.classList.toggle('hidden')">
+                        <i class="ph ph-columns"></i>
+                        Columns
+                    </button>
+                    <div class="hidden absolute right-0 mt-2 w-56 bg-card border border-border rounded-lg shadow-lg z-10">
+                        <div class="p-2">
+                            <p class="px-2 py-1 text-xs font-medium text-muted-foreground uppercase">Toggle Columns</p>
+                            {% for col in columns %}
+                            <label class="flex items-center gap-2 px-2 py-1.5 hover:bg-accent rounded cursor-pointer">
+                                <input type="checkbox"
+                                       data-column-toggle="{{ table_id }}"
+                                       data-column="{{ col.key }}"
+                                       {% if col_visible.is_visible(col.key) %}checked{% endif %}
+                                       class="rounded border-border text-primary focus:ring-primary">
+                                <span class="text-sm text-foreground">{{ col.label }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- New Customer Button -->
+                <a href="/customers/new"
+                   class="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors">
+                    <i class="ph ph-plus"></i>
+                    New Customer
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Panel -->
+    <div id="{{ table_id }}-filters-panel" class="hidden px-6 py-4 border-b border-border bg-muted/30">
+        <form id="{{ table_id }}-filters-form" method="GET" class="space-y-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {% for filter in filters %}
+                {% match filter.filter_type %}
+                {% when FilterType::MultiSelect %}
+                <div>
+                    <label class="block text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
+                        {{ filter.label }}
+                    </label>
+                    <div class="bg-input border border-border rounded-lg p-2 max-h-40 overflow-y-auto">
+                        {% for opt in filter.options %}
+                        <label class="flex items-center gap-2 px-2 py-1 hover:bg-accent rounded cursor-pointer">
+                            <input type="checkbox"
+                                   name="{{ filter.key }}"
+                                   value="{{ opt.value }}"
+                                   data-filter="{{ table_id }}"
+                                   class="rounded border-border text-primary focus:ring-primary">
+                            <span class="text-sm text-foreground">{{ opt.label }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% when FilterType::Select %}
+                <div>
+                    <label for="{{ filter.key }}" class="block text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
+                        {{ filter.label }}
+                    </label>
+                    <select id="{{ filter.key }}"
+                            name="{{ filter.key }}"
+                            data-filter="{{ table_id }}"
+                            class="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-colors">
+                        <option value="">All</option>
+                        {% for opt in filter.options %}
+                        <option value="{{ opt.value }}">
+                            {{ opt.label }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% when FilterType::Text %}
+                <div>
+                    <label for="{{ filter.key }}" class="block text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
+                        {{ filter.label }}
+                    </label>
+                    <input type="text"
+                           id="{{ filter.key }}"
+                           name="{{ filter.key }}"
+                           class="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-colors">
+                </div>
+                {% when FilterType::DateRange %}
+                <div class="space-y-2">
+                    <label class="block text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        {{ filter.label }}
+                    </label>
+                    <div class="flex items-center gap-2">
+                        <input type="date"
+                               name="{{ filter.key }}_from"
+                               class="flex-1 px-3 py-2 bg-input border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-ring focus:border-ring">
+                        <span class="text-muted-foreground">to</span>
+                        <input type="date"
+                               name="{{ filter.key }}_to"
+                               class="flex-1 px-3 py-2 bg-input border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-ring focus:border-ring">
+                    </div>
+                </div>
+                {% endmatch %}
+                {% endfor %}
+            </div>
+
+            <div class="flex items-center gap-3 pt-2">
+                <button type="submit"
+                        class="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors">
+                    Apply Filters
+                </button>
+                <a href="/customers" class="px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                    Clear All
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Bulk Action Bar -->
+    <div id="{{ table_id }}-bulk-bar"
+         class="hidden px-6 py-3 bg-primary/10 border-b border-primary/20">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-4">
+                <span data-selected-count class="text-sm font-medium text-primary">0 selected</span>
+                <button type="button"
+                        onclick="DataTable.get('{{ table_id }}').clearSelection()"
+                        class="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                    Clear selection
+                </button>
+            </div>
+
+            <div class="flex items-center gap-2">
+                {% for action in bulk_actions %}
+                <button type="button"
+                        data-bulk-action="{{ table_id }}"
+                        data-action="{{ action.key }}"
+                        class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
+                               {% if action.destructive %}
+                               bg-destructive/10 text-destructive hover:bg-destructive/20
+                               {% else %}
+                               bg-card text-foreground hover:bg-accent border border-border
+                               {% endif %}">
+                    <i class="ph {{ action.icon }}"></i>
+                    {{ action.label }}
+                </button>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Table -->
     <div class="overflow-x-auto">
         <table class="w-full">
             <thead class="bg-muted">
                 <tr>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Customer</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Location</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Orders</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Total Spent</th>
+                    <!-- Select All Checkbox -->
+                    <th class="w-12 px-6 py-3">
+                        <input type="checkbox"
+                               id="{{ table_id }}-select-all"
+                               class="rounded border-border text-primary focus:ring-primary">
+                    </th>
+
+                    {% for col in columns %}
+                    <th data-column="{{ col.key }}"
+                        class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider {% if !col_visible.is_visible(col.key) %}hidden{% endif %}">
+                        {% if col.sortable %}
+                        <a href="?sort={{ col.sort_key }}&dir={% if sort_column.as_deref() == Some(col.sort_key) && sort_direction == "asc" %}desc{% else %}asc{% endif %}{{ preserve_params }}"
+                           class="inline-flex items-center gap-1 hover:text-foreground transition-colors group">
+                            {{ col.label }}
+                            {% if sort_column.as_deref() == Some(col.sort_key) %}
+                            <i class="ph ph-caret-{% if sort_direction == "asc" %}up{% else %}down{% endif %} text-primary"></i>
+                            {% else %}
+                            <i class="ph ph-caret-up-down text-muted-foreground/50 group-hover:text-muted-foreground"></i>
+                            {% endif %}
+                        </a>
+                        {% else %}
+                        {{ col.label }}
+                        {% endif %}
+                    </th>
+                    {% endfor %}
+
                     <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-border">
                 {% if customers.is_empty() %}
                 <tr>
-                    <td colspan="5" class="px-6 py-12 text-center text-muted-foreground">
-                        <i class="ph ph-users text-4xl mb-2"></i>
+                    <td colspan="{{ columns.len() + 2 }}" class="px-6 py-12 text-center text-muted-foreground">
+                        <i class="ph ph-users text-4xl mb-2 block"></i>
                         <p>No customers found</p>
+                        {% if search_value.is_some() || !filter_values.is_empty() %}
+                        <a href="/customers" class="text-sm text-primary hover:underline mt-2 inline-block">Clear filters</a>
+                        {% endif %}
                     </td>
                 </tr>
                 {% else %}
                 {% for customer in customers %}
-                <tr class="hover:bg-accent transition-colors">
+                <tr class="hover:bg-accent transition-colors" data-row="{{ customer.short_id }}">
+                    <!-- Checkbox -->
                     <td class="px-6 py-4">
-                        <div class="flex items-center gap-4">
-                            <div class="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                        <input type="checkbox"
+                               data-row-id="{{ customer.short_id }}"
+                               class="rounded border-border text-primary focus:ring-primary">
+                    </td>
+
+                    <!-- Customer -->
+                    <td data-column="customer" class="px-6 py-4 {% if !col_visible.customer %}hidden{% endif %}">
+                        <a href="/customers/{{ customer.short_id }}" class="flex items-center gap-4 group">
+                            <div class="w-10 h-10 rounded-full bg-muted flex items-center justify-center shrink-0">
                                 <i class="ph ph-user text-muted-foreground"></i>
                             </div>
                             <div>
-                                <p class="font-medium text-foreground">{{ customer.name }}</p>
+                                <p class="font-medium text-foreground group-hover:text-primary transition-colors">{{ customer.name }}</p>
                                 {% if let Some(email) = customer.email %}
                                 <p class="text-sm text-muted-foreground">{{ email }}</p>
                                 {% endif %}
                             </div>
-                        </div>
+                        </a>
                     </td>
-                    <td class="px-6 py-4 text-sm text-muted-foreground">
-                        {% if let Some(loc) = customer.location %}
-                        {{ loc }}
+
+                    <!-- Phone -->
+                    <td data-column="phone" class="px-6 py-4 text-sm text-muted-foreground {% if !col_visible.phone %}hidden{% endif %}">
+                        {% if let Some(phone) = customer.phone %}
+                        {{ phone }}
                         {% else %}
-                        <span class="text-muted-foreground">-</span>
+                        <span class="text-muted-foreground/50">-</span>
                         {% endif %}
                     </td>
-                    <td class="px-6 py-4 text-sm text-foreground">
-                        {{ customer.orders_count }} orders
+
+                    <!-- Location -->
+                    <td data-column="location" class="px-6 py-4 text-sm text-muted-foreground {% if !col_visible.location %}hidden{% endif %}">
+                        {% if let Some(loc) = customer.location %}
+                        <span class="flex items-center gap-1">
+                            <i class="ph ph-map-pin text-xs"></i>
+                            {{ loc }}
+                        </span>
+                        {% else %}
+                        <span class="text-muted-foreground/50">-</span>
+                        {% endif %}
                     </td>
-                    <td class="px-6 py-4 text-sm font-medium text-foreground">
+
+                    <!-- Orders -->
+                    <td data-column="orders" class="px-6 py-4 text-sm text-foreground {% if !col_visible.orders %}hidden{% endif %}">
+                        {{ customer.orders_count }}
+                    </td>
+
+                    <!-- Spent -->
+                    <td data-column="spent" class="px-6 py-4 text-sm font-medium text-foreground {% if !col_visible.spent %}hidden{% endif %}">
                         {{ customer.total_spent }}
                     </td>
+
+                    <!-- State -->
+                    <td data-column="state" class="px-6 py-4 {% if !col_visible.state %}hidden{% endif %}">
+                        <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium {{ customer.state_class }}">
+                            <span class="w-1.5 h-1.5 rounded-full bg-current opacity-70"></span>
+                            {{ customer.state }}
+                        </span>
+                    </td>
+
+                    <!-- Tags -->
+                    <td data-column="tags" class="px-6 py-4 {% if !col_visible.tags %}hidden{% endif %}">
+                        {% if customer.tags.is_empty() %}
+                        <span class="text-sm text-muted-foreground/50">-</span>
+                        {% else %}
+                        <div class="flex flex-wrap gap-1">
+                            {% for tag in customer.tags.iter().take(3) %}
+                            <span class="px-1.5 py-0.5 bg-muted rounded text-xs text-muted-foreground">{{ tag }}</span>
+                            {% endfor %}
+                            {% if customer.tags.len() > 3 %}
+                            <span class="px-1.5 py-0.5 text-xs text-muted-foreground">+{{ customer.tags.len() - 3 }}</span>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </td>
+
+                    <!-- Marketing -->
+                    <td data-column="marketing" class="px-6 py-4 {% if !col_visible.marketing %}hidden{% endif %}">
+                        {% if customer.accepts_marketing %}
+                        <span class="inline-flex items-center gap-1 text-sm text-green-600 dark:text-green-400">
+                            <i class="ph ph-check-circle"></i>
+                            Subscribed
+                        </span>
+                        {% else %}
+                        <span class="text-sm text-muted-foreground">Not subscribed</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Created -->
+                    <td data-column="created" class="px-6 py-4 text-sm text-muted-foreground {% if !col_visible.created %}hidden{% endif %}">
+                        {{ customer.created_at }}
+                    </td>
+
+                    <!-- Updated -->
+                    <td data-column="updated" class="px-6 py-4 text-sm text-muted-foreground {% if !col_visible.updated %}hidden{% endif %}">
+                        {{ customer.updated_at }}
+                    </td>
+
+                    <!-- Actions -->
                     <td class="px-6 py-4 text-right">
-                        <a href="https://admin.shopify.com/store/YOUR_STORE/customers/{{ customer.id.split("/").last().unwrap_or("") }}"
-                           target="_blank"
-                           class="text-sm text-primary hover:underline">
-                            View in Shopify
-                        </a>
+                        <div class="flex items-center justify-end gap-2">
+                            <a href="/customers/{{ customer.short_id }}"
+                               class="p-2 text-muted-foreground hover:text-foreground transition-colors"
+                               title="View customer">
+                                <i class="ph ph-eye"></i>
+                            </a>
+                            <a href="/customers/{{ customer.short_id }}/edit"
+                               class="p-2 text-muted-foreground hover:text-foreground transition-colors"
+                               title="Edit customer">
+                                <i class="ph ph-pencil"></i>
+                            </a>
+                        </div>
                     </td>
                 </tr>
                 {% endfor %}
@@ -90,7 +365,7 @@
     <!-- Pagination -->
     {% if has_next_page %}
     <div class="px-6 py-4 border-t border-border">
-        <a href="/customers?cursor={{ next_cursor.as_deref().unwrap_or("") }}{% if let Some(q) = search_query %}&query={{ q }}{% endif %}"
+        <a href="/customers?cursor={{ next_cursor.as_deref().unwrap_or("") }}{{ preserve_params }}"
            class="inline-flex items-center gap-2 text-sm text-primary hover:underline">
             Load more
             <i class="ph ph-arrow-right"></i>
@@ -98,4 +373,88 @@
     </div>
     {% endif %}
 </div>
+
+<!-- Bulk Action Modals (for tag operations) -->
+<div id="bulk-tags-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+    <div class="bg-card rounded-xl border border-border p-6 w-full max-w-md shadow-xl">
+        <h3 class="text-lg font-medium text-foreground mb-4" id="bulk-tags-title">Add Tags</h3>
+        <form id="bulk-tags-form" method="POST" action="/customers/bulk/tags">
+            <input type="hidden" name="ids" id="bulk-tags-ids">
+            <input type="hidden" name="action" id="bulk-tags-action" value="add">
+            <div class="mb-4">
+                <label for="bulk-tags-input" class="block text-sm font-medium text-foreground mb-1">Tags (comma-separated)</label>
+                <input type="text"
+                       id="bulk-tags-input"
+                       name="tags"
+                       placeholder="vip, wholesale"
+                       class="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-ring focus:border-ring">
+            </div>
+            <div class="flex justify-end gap-3">
+                <button type="button"
+                        onclick="document.getElementById('bulk-tags-modal').classList.add('hidden')"
+                        class="px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                    Cancel
+                </button>
+                <button type="submit"
+                        class="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors">
+                    Apply
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// Handle bulk actions
+document.addEventListener('dataTableBulkAction', function(e) {
+    const { tableId, action, ids } = e.detail;
+    if (tableId !== '{{ table_id }}') return;
+
+    if (action === 'add_tags' || action === 'remove_tags') {
+        const modal = document.getElementById('bulk-tags-modal');
+        const title = document.getElementById('bulk-tags-title');
+        const idsInput = document.getElementById('bulk-tags-ids');
+        const actionInput = document.getElementById('bulk-tags-action');
+
+        title.textContent = action === 'add_tags' ? 'Add Tags' : 'Remove Tags';
+        idsInput.value = ids.join(',');
+        actionInput.value = action === 'add_tags' ? 'add' : 'remove';
+        modal.classList.remove('hidden');
+    } else if (action === 'subscribe_marketing' || action === 'unsubscribe_marketing') {
+        // Submit marketing form directly
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/customers/bulk/marketing';
+
+        const idsInput = document.createElement('input');
+        idsInput.type = 'hidden';
+        idsInput.name = 'ids';
+        idsInput.value = ids.join(',');
+        form.appendChild(idsInput);
+
+        const subscribedInput = document.createElement('input');
+        subscribedInput.type = 'hidden';
+        subscribedInput.name = 'subscribed';
+        subscribedInput.value = action === 'subscribe_marketing' ? 'true' : 'false';
+        form.appendChild(subscribedInput);
+
+        document.body.appendChild(form);
+        form.submit();
+    }
+});
+
+// Close modal on escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        document.getElementById('bulk-tags-modal').classList.add('hidden');
+    }
+});
+
+// Close modal on backdrop click
+document.getElementById('bulk-tags-modal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        this.classList.add('hidden');
+    }
+});
+</script>
 {% endblock %}

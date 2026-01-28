@@ -1,0 +1,74 @@
+{#
+    Customer Marketing Consent Section Partial (HTMX target)
+
+    Variables:
+    - customer_id: Customer short ID
+    - email_marketing_state: Current email marketing state
+    - sms_marketing_state: Current SMS marketing state (optional)
+    - has_phone: Whether customer has phone number
+    - success: Whether the update was successful (optional)
+#}
+
+{% if let Some(true) = success %}
+<div class="mb-3 p-2 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400 text-sm rounded">
+    Marketing preferences updated
+</div>
+{% endif %}
+
+<div class="space-y-4">
+    <!-- Email Marketing -->
+    <div class="flex items-center justify-between">
+        <div>
+            <p class="text-sm font-medium text-foreground">Email Marketing</p>
+            <p class="text-xs text-muted-foreground">Receive promotional emails</p>
+        </div>
+        <button type="button"
+                hx-post="/customers/{{ customer_id }}/marketing"
+                hx-vals='{"type": "email", "subscribed": "{% if email_marketing_state == "SUBSCRIBED" %}false{% else %}true{% endif %}"}'
+                hx-target="#marketing-container"
+                hx-swap="innerHTML"
+                class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors
+                       {% if email_marketing_state == "SUBSCRIBED" %}bg-primary{% else %}bg-muted{% endif %}">
+            <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform
+                        {% if email_marketing_state == "SUBSCRIBED" %}translate-x-6{% else %}translate-x-1{% endif %}">
+            </span>
+        </button>
+    </div>
+
+    {% if has_phone %}
+    <!-- SMS Marketing -->
+    <div class="flex items-center justify-between">
+        <div>
+            <p class="text-sm font-medium text-foreground">SMS Marketing</p>
+            <p class="text-xs text-muted-foreground">Receive promotional text messages</p>
+        </div>
+        <button type="button"
+                hx-post="/customers/{{ customer_id }}/marketing"
+                hx-vals='{"type": "sms", "subscribed": "{% if sms_marketing_state.as_deref() == Some("SUBSCRIBED") %}false{% else %}true{% endif %}"}'
+                hx-target="#marketing-container"
+                hx-swap="innerHTML"
+                class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors
+                       {% if sms_marketing_state.as_deref() == Some("SUBSCRIBED") %}bg-primary{% else %}bg-muted{% endif %}">
+            <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform
+                        {% if sms_marketing_state.as_deref() == Some("SUBSCRIBED") %}translate-x-6{% else %}translate-x-1{% endif %}">
+            </span>
+        </button>
+    </div>
+    {% endif %}
+
+    <!-- Current Status -->
+    <div class="pt-2 border-t border-border">
+        <dl class="text-sm space-y-1">
+            <div class="flex justify-between">
+                <dt class="text-muted-foreground">Email Status</dt>
+                <dd class="font-medium">{{ email_marketing_state }}</dd>
+            </div>
+            {% if let Some(sms_state) = sms_marketing_state %}
+            <div class="flex justify-between">
+                <dt class="text-muted-foreground">SMS Status</dt>
+                <dd class="font-medium">{{ sms_state }}</dd>
+            </div>
+            {% endif %}
+        </dl>
+    </div>
+</div>

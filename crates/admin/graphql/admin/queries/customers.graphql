@@ -1,29 +1,49 @@
-# Customer queries for Shopify Admin API
+# Customer queries and mutations for Shopify Admin API
 
-# Get a single customer by ID
-query GetCustomer($id: ID!, $addressCount: Int = 10) {
+# Get a single customer by ID with full details
+query GetCustomer($id: ID!, $addressCount: Int = 10, $orderCount: Int = 10) {
   customer(id: $id) {
     id
     defaultEmailAddress {
       emailAddress
       marketingState
+      marketingOptInLevel
       marketingUpdatedAt
     }
     defaultPhoneNumber {
       phoneNumber
     }
+    emailMarketingConsent {
+      marketingState
+      marketingOptInLevel
+      consentUpdatedAt
+    }
+    smsMarketingConsent {
+      marketingState
+      marketingOptInLevel
+      consentUpdatedAt
+    }
     firstName
     lastName
     displayName
     state
+    locale
     numberOfOrders
     amountSpent {
       amount
       currencyCode
     }
+    lifetimeDuration
+    taxExempt
+    taxExemptions
     note
     tags
+    canDelete
+    mergeable {
+      isMergeable
+    }
     defaultAddress {
+      id
       address1
       address2
       city
@@ -38,6 +58,7 @@ query GetCustomer($id: ID!, $addressCount: Int = 10) {
     addressesV2(first: $addressCount) {
       edges {
         node {
+          id
           address1
           address2
           city
@@ -48,6 +69,23 @@ query GetCustomer($id: ID!, $addressCount: Int = 10) {
           lastName
           company
           phone
+        }
+      }
+    }
+    orders(first: $orderCount, sortKey: CREATED_AT, reverse: true) {
+      edges {
+        node {
+          id
+          name
+          createdAt
+          displayFinancialStatus
+          displayFulfillmentStatus
+          totalPriceSet {
+            shopMoney {
+              amount
+              currencyCode
+            }
+          }
         }
       }
     }
@@ -95,6 +133,7 @@ query GetCustomers(
         note
         tags
         defaultAddress {
+          id
           address1
           address2
           city
@@ -109,6 +148,7 @@ query GetCustomers(
         addressesV2(first: 1) {
           edges {
             node {
+              id
               address1
               address2
               city
@@ -131,6 +171,335 @@ query GetCustomers(
       hasPreviousPage
       startCursor
       endCursor
+    }
+  }
+}
+
+# =============================================================================
+# Customer Mutations
+# =============================================================================
+
+# Create a new customer
+mutation CustomerCreate($input: CustomerInput!) {
+  customerCreate(input: $input) {
+    customer {
+      id
+      displayName
+      email
+      state
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
+# Update customer fields
+mutation CustomerUpdate($input: CustomerInput!) {
+  customerUpdate(input: $input) {
+    customer {
+      id
+      displayName
+      email
+      firstName
+      lastName
+      phone
+      locale
+      note
+      tags
+      state
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
+# Delete a customer (only works if no orders)
+mutation CustomerDelete($input: CustomerDeleteInput!) {
+  customerDelete(input: $input) {
+    deletedCustomerId
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
+# =============================================================================
+# Tag Mutations
+# =============================================================================
+
+# Add tags to a customer
+mutation TagsAdd($id: ID!, $tags: [String!]!) {
+  tagsAdd(id: $id, tags: $tags) {
+    node {
+      __typename
+      ... on Customer {
+        id
+        tags
+      }
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
+# Remove tags from a customer
+mutation TagsRemove($id: ID!, $tags: [String!]!) {
+  tagsRemove(id: $id, tags: $tags) {
+    node {
+      __typename
+      ... on Customer {
+        id
+        tags
+      }
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
+# =============================================================================
+# Marketing Consent Mutations
+# =============================================================================
+
+# Update email marketing consent
+mutation CustomerEmailMarketingConsentUpdate($input: CustomerEmailMarketingConsentUpdateInput!) {
+  customerEmailMarketingConsentUpdate(input: $input) {
+    customer {
+      id
+      emailMarketingConsent {
+        marketingState
+        marketingOptInLevel
+        consentUpdatedAt
+      }
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
+# Update SMS marketing consent
+mutation CustomerSmsMarketingConsentUpdate($input: CustomerSmsMarketingConsentUpdateInput!) {
+  customerSmsMarketingConsentUpdate(input: $input) {
+    customer {
+      id
+      smsMarketingConsent {
+        marketingState
+        marketingOptInLevel
+        consentUpdatedAt
+      }
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
+# =============================================================================
+# Tax Exemption Mutations
+# =============================================================================
+
+# Add tax exemptions to customer
+mutation CustomerAddTaxExemptions($customerId: ID!, $taxExemptions: [TaxExemption!]!) {
+  customerAddTaxExemptions(customerId: $customerId, taxExemptions: $taxExemptions) {
+    customer {
+      id
+      taxExempt
+      taxExemptions
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
+# Remove tax exemptions from customer
+mutation CustomerRemoveTaxExemptions($customerId: ID!, $taxExemptions: [TaxExemption!]!) {
+  customerRemoveTaxExemptions(customerId: $customerId, taxExemptions: $taxExemptions) {
+    customer {
+      id
+      taxExempt
+      taxExemptions
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
+# =============================================================================
+# Account Management Mutations
+# =============================================================================
+
+# Generate activation URL for customer to set up their account
+mutation CustomerGenerateAccountActivationUrl($customerId: ID!) {
+  customerGenerateAccountActivationUrl(customerId: $customerId) {
+    accountActivationUrl
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
+# Send account invite email to customer
+mutation CustomerSendAccountInviteEmail($customerId: ID!) {
+  customerSendAccountInviteEmail(customerId: $customerId) {
+    customer {
+      id
+      state
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
+# Merge two customers (async job)
+mutation CustomerMerge(
+  $customerOneId: ID!
+  $customerTwoId: ID!
+  $overrideFields: CustomerMergeOverrideFields
+) {
+  customerMerge(
+    customerOneId: $customerOneId
+    customerTwoId: $customerTwoId
+    overrideFields: $overrideFields
+  ) {
+    resultingCustomerId
+    job {
+      id
+      done
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
+# =============================================================================
+# Metafield Mutations
+# =============================================================================
+
+# Set metafields on a customer (or any resource)
+mutation MetafieldsSet($metafields: [MetafieldsSetInput!]!) {
+  metafieldsSet(metafields: $metafields) {
+    metafields {
+      id
+      namespace
+      key
+      value
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
+# Delete metafields
+mutation MetafieldsDelete($metafields: [MetafieldIdentifierInput!]!) {
+  metafieldsDelete(metafields: $metafields) {
+    deletedMetafields {
+      ownerId
+      namespace
+      key
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
+# =============================================================================
+# Address Mutations
+# =============================================================================
+
+# Create a new address for a customer
+mutation CustomerAddressCreate($customerId: ID!, $address: MailingAddressInput!) {
+  customerAddressCreate(customerId: $customerId, address: $address) {
+    address {
+      id
+      address1
+      address2
+      city
+      provinceCode
+      countryCodeV2
+      zip
+      firstName
+      lastName
+      company
+      phone
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
+# Update an existing customer address
+mutation CustomerAddressUpdate($customerId: ID!, $addressId: ID!, $address: MailingAddressInput!) {
+  customerAddressUpdate(customerId: $customerId, addressId: $addressId, address: $address) {
+    address {
+      id
+      address1
+      address2
+      city
+      provinceCode
+      countryCodeV2
+      zip
+      firstName
+      lastName
+      company
+      phone
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
+# Delete a customer address
+mutation CustomerAddressDelete($customerId: ID!, $addressId: ID!) {
+  customerAddressDelete(customerId: $customerId, addressId: $addressId) {
+    deletedAddressId
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
+# Set a customer's default address
+mutation CustomerUpdateDefaultAddress($customerId: ID!, $addressId: ID!) {
+  customerUpdateDefaultAddress(customerId: $customerId, addressId: $addressId) {
+    customer {
+      id
+      defaultAddress {
+        id
+      }
+    }
+    userErrors {
+      field
+      message
     }
   }
 }

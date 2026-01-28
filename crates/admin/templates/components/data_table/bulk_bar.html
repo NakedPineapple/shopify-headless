@@ -1,0 +1,42 @@
+{#
+    Data Table Bulk Action Bar
+
+    Variables:
+    - table_id: Unique identifier for the table
+    - bulk_actions: List of bulk action definitions with:
+      - key: Action identifier
+      - label: Display label
+      - icon: Phosphor icon class
+      - destructive: Whether this is a destructive action
+#}
+
+<div id="{{ table_id }}-bulk-bar"
+     class="hidden px-6 py-3 bg-primary/10 border-b border-primary/20">
+    <div class="flex items-center justify-between">
+        <div class="flex items-center gap-4">
+            <span data-selected-count class="text-sm font-medium text-primary">0 selected</span>
+            <button type="button"
+                    onclick="DataTable.get('{{ table_id }}').clearSelection()"
+                    class="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                Clear selection
+            </button>
+        </div>
+
+        <div class="flex items-center gap-2">
+            {% for action in bulk_actions %}
+            <button type="button"
+                    data-bulk-action="{{ table_id }}"
+                    data-action="{{ action.key }}"
+                    class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
+                           {% if action.destructive %}
+                           bg-destructive/10 text-destructive hover:bg-destructive/20
+                           {% else %}
+                           bg-card text-foreground hover:bg-accent border border-border
+                           {% endif %}">
+                <i class="ph {{ action.icon }}"></i>
+                {{ action.label }}
+            </button>
+            {% endfor %}
+        </div>
+    </div>
+</div>

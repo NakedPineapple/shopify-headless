@@ -19,8 +19,9 @@ naked-pineapple-core = { workspace = true }
 
 # Testing
 tokio = { workspace = true }
-reqwest = { workspace = true }
+reqwest = { workspace = true, features = ["cookies"] }
 sqlx = { workspace = true }
+uuid = { workspace = true }
 
 # Serialization
 serde = { workspace = true }

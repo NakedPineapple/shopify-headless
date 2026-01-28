@@ -210,6 +210,7 @@ fn convert_fulfillment_obj_single(f: get_order::GetOrderOrderFulfillments) -> Fu
 
 fn convert_billing_single(a: get_order::GetOrderOrderBillingAddress) -> Address {
     Address {
+        id: None, // Order addresses don't have IDs
         address1: a.address1,
         address2: a.address2,
         city: a.city,
@@ -225,6 +226,7 @@ fn convert_billing_single(a: get_order::GetOrderOrderBillingAddress) -> Address 
 
 fn convert_shipping_single(a: get_order::GetOrderOrderShippingAddress) -> Address {
     Address {
+        id: None, // Order addresses don't have IDs
         address1: a.address1,
         address2: a.address2,
         city: a.city,
@@ -438,6 +440,7 @@ fn convert_fulfillment_obj_list(
 
 fn convert_billing_list(a: get_orders::GetOrdersOrdersEdgesNodeBillingAddress) -> Address {
     Address {
+        id: None, // Order addresses don't have IDs
         address1: a.address1,
         address2: a.address2,
         city: a.city,
@@ -453,6 +456,7 @@ fn convert_billing_list(a: get_orders::GetOrdersOrdersEdgesNodeBillingAddress) -
 
 fn convert_shipping_list(a: get_orders::GetOrdersOrdersEdgesNodeShippingAddress) -> Address {
     Address {
+        id: None, // Order addresses don't have IDs
         address1: a.address1,
         address2: a.address2,
         city: a.city,

@@ -1,0 +1,26 @@
+{#
+    Data Table Pagination
+
+    Variables:
+    - has_next_page: Whether there are more results
+    - next_cursor: Cursor for next page
+    - preserve_params: Query params to preserve (e.g., filters)
+    - table_id: Table identifier for HTMX targeting
+#}
+
+{% if has_next_page %}
+<div class="px-6 py-4 border-t border-border">
+    <button type="button"
+            hx-get="?cursor={{ next_cursor.as_deref().unwrap_or("") }}{{ preserve_params }}"
+            hx-target="[data-table='{{ table_id }}'] tbody"
+            hx-swap="beforeend"
+            hx-indicator="#{{ table_id }}-loading"
+            class="inline-flex items-center gap-2 text-sm text-primary hover:underline">
+        <span id="{{ table_id }}-loading" class="htmx-indicator">
+            <i class="ph ph-spinner animate-spin"></i>
+        </span>
+        Load more
+        <i class="ph ph-arrow-right"></i>
+    </button>
+</div>
+{% endif %}

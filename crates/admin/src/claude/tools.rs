@@ -172,9 +172,14 @@ impl<'a> ToolExecutor<'a> {
         let limit = input["limit"].as_i64().unwrap_or(10).clamp(1, 50);
         let query = input["query"].as_str().map(String::from);
 
+        let params = crate::shopify::types::CustomerListParams {
+            first: Some(limit),
+            query,
+            ..Default::default()
+        };
         let result = self
             .shopify
-            .get_customers(limit, None, query)
+            .get_customers(params)
             .await
             .map_err(|e| ClaudeError::ToolExecution(format!("Failed to get customers: {e}")))?;
 
