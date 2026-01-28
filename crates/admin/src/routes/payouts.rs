@@ -32,8 +32,7 @@ pub struct PayoutView {
     pub id: String,
     pub status: String,
     pub status_class: String,
-    pub net_amount: String,
-    pub gross_amount: String,
+    pub amount: String,
     pub issued_at: Option<String>,
 }
 
@@ -66,8 +65,7 @@ impl From<&Payout> for PayoutView {
             id: p.id.clone(),
             status: status.to_string(),
             status_class: status_class.to_string(),
-            net_amount: format!("${}", p.net.amount),
-            gross_amount: format!("${}", p.gross.amount),
+            amount: format!("${}", p.net.amount),
             issued_at: p.issued_at.clone(),
         }
     }

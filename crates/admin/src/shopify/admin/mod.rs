@@ -36,11 +36,12 @@ use conversions::{
 };
 use queries::{
     CollectionCreate, CollectionDelete, CollectionUpdate, DiscountCodeBasicCreate,
-    DiscountCodeBasicUpdate, DiscountCodeDeactivate, GetCollection, GetCollections, GetCustomer,
-    GetCustomers, GetDiscountCode, GetDiscountCodes, GetGiftCards, GetInventoryLevels,
+    DiscountCodeBasicUpdate, DiscountCodeDeactivate, FileDelete, GetCollection, GetCollections,
+    GetCustomer, GetCustomers, GetDiscountCode, GetDiscountCodes, GetGiftCards, GetInventoryLevels,
     GetLocations, GetOrder, GetOrders, GetPayout, GetPayouts, GetProduct, GetProducts,
     GiftCardCreate, GiftCardUpdate, InventoryAdjustQuantities, InventorySetQuantities, OrderCancel,
-    OrderMarkAsPaid, OrderUpdate, ProductCreate, ProductDelete, ProductUpdate,
+    OrderMarkAsPaid, OrderUpdate, ProductCreate, ProductCreateMedia, ProductDelete, ProductUpdate,
+    ProductVariantsBulkUpdate, StagedUploadsCreate,
 };
 
 /// OAuth token for Admin API access.
@@ -645,6 +646,169 @@ impl AdminClient {
 
         Err(AdminShopifyError::GraphQL(vec![GraphQLError {
             message: "Product deletion failed".to_string(),
+            locations: vec![],
+            path: vec![],
+        }]))
+    }
+
+    /// Update a product variant.
+    ///
+    /// # Arguments
+    ///
+    /// * `product_id` - Product ID the variant belongs to
+    /// * `variant_id` - Variant ID to update
+    /// * `price` - Optional new price
+    /// * `compare_at_price` - Optional compare-at price
+    /// * `sku` - Optional SKU (updated through inventory item)
+    /// * `barcode` - Optional barcode
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails or returns user errors.
+    #[instrument(skip(self))]
+    pub async fn update_variant(
+        &self,
+        product_id: &str,
+        variant_id: &str,
+        price: Option<&str>,
+        compare_at_price: Option<&str>,
+        sku: Option<&str>,
+        barcode: Option<&str>,
+    ) -> Result<AdminProductVariant, AdminShopifyError> {
+        use queries::product_variants_bulk_update::{
+            InventoryItemInput, ProductVariantsBulkInput, Variables,
+        };
+
+        // Build inventory item input if SKU is being updated
+        let inventory_item = sku.map(|s| InventoryItemInput {
+            sku: Some(s.to_string()),
+            cost: None,
+            tracked: None,
+            country_code_of_origin: None,
+            harmonized_system_code: None,
+            country_harmonized_system_codes: None,
+            province_code_of_origin: None,
+            measurement: None,
+            requires_shipping: None,
+        });
+
+        let variables = Variables {
+            product_id: product_id.to_string(),
+            variants: vec![ProductVariantsBulkInput {
+                id: Some(variant_id.to_string()),
+                price: price.map(String::from),
+                compare_at_price: compare_at_price.map(String::from),
+                barcode: barcode.map(String::from),
+                inventory_item,
+                inventory_policy: None,
+                inventory_quantities: None,
+                quantity_adjustments: None,
+                media_src: None,
+                media_id: None,
+                metafields: None,
+                option_values: None,
+                requires_components: None,
+                tax_code: None,
+                taxable: None,
+                unit_price_measurement: None,
+                show_unit_price: None,
+            }],
+        };
+
+        let response = self.execute::<ProductVariantsBulkUpdate>(variables).await?;
+
+        if let Some(payload) = response.product_variants_bulk_update {
+            // Check for user errors
+            if !payload.user_errors.is_empty() {
+                let error_messages: Vec<String> = payload
+                    .user_errors
+                    .iter()
+                    .map(|e| {
+                        let field = e.field.as_ref().map_or_else(String::new, |f| f.join("."));
+                        format!("{}: {}", field, e.message)
+                    })
+                    .collect();
+                return Err(AdminShopifyError::UserError(error_messages.join("; ")));
+            }
+
+            // Return the updated variant
+            if let Some(variant) = payload.product_variants.and_then(|v| v.into_iter().next()) {
+                return Ok(AdminProductVariant {
+                    id: variant.id,
+                    title: variant.title,
+                    sku: variant.sku,
+                    barcode: variant.barcode,
+                    price: Money {
+                        amount: variant.price,
+                        currency_code: "USD".to_string(), // Default currency
+                    },
+                    compare_at_price: variant.compare_at_price.map(|p| Money {
+                        amount: p,
+                        currency_code: "USD".to_string(),
+                    }),
+                    inventory_quantity: variant.inventory_quantity.unwrap_or(0),
+                    inventory_item_id: String::new(), // Not returned in this mutation
+                    inventory_management: None,
+                    weight: None,
+                    weight_unit: None,
+                    requires_shipping: true, // Default
+                    image: None,
+                    created_at: None,
+                    updated_at: None,
+                });
+            }
+        }
+
+        Err(AdminShopifyError::GraphQL(vec![GraphQLError {
+            message: "Variant update failed".to_string(),
+            locations: vec![],
+            path: vec![],
+        }]))
+    }
+
+    // =========================================================================
+    // Media methods
+    // =========================================================================
+
+    /// Delete files (images, videos, etc.) from the store.
+    ///
+    /// # Arguments
+    ///
+    /// * `file_ids` - List of file IDs to delete
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails or returns user errors.
+    #[instrument(skip(self))]
+    pub async fn delete_files(
+        &self,
+        file_ids: Vec<String>,
+    ) -> Result<Vec<String>, AdminShopifyError> {
+        use queries::file_delete::Variables;
+
+        let variables = Variables { file_ids };
+
+        let response = self.execute::<FileDelete>(variables).await?;
+
+        if let Some(payload) = response.file_delete {
+            // Check for user errors
+            if !payload.user_errors.is_empty() {
+                let error_messages: Vec<String> = payload
+                    .user_errors
+                    .iter()
+                    .map(|e| {
+                        let field = e.field.as_ref().map_or_else(String::new, |f| f.join("."));
+                        format!("{}: {}", field, e.message)
+                    })
+                    .collect();
+                return Err(AdminShopifyError::UserError(error_messages.join("; ")));
+            }
+
+            return Ok(payload.deleted_file_ids.unwrap_or_default());
+        }
+
+        Err(AdminShopifyError::GraphQL(vec![GraphQLError {
+            message: "File deletion failed".to_string(),
             locations: vec![],
             path: vec![],
         }]))
@@ -1707,18 +1871,19 @@ impl AdminClient {
         let response = self.execute::<GetDiscountCodes>(variables).await?;
 
         let discount_codes: Vec<DiscountCode> = response
-            .code_discount_nodes
+            .discount_nodes
             .edges
             .into_iter()
             .filter_map(|e| {
                 let node = e.node;
-                let cd = node.code_discount;
+                let cd = node.discount;
 
                 // Extract common fields from the union type
+                // Skip automatic discounts - we only handle code-based discounts
                 match cd {
-                    queries::get_discount_codes::GetDiscountCodesCodeDiscountNodesEdgesNodeCodeDiscount::DiscountCodeBasic(basic) => {
+                    queries::get_discount_codes::GetDiscountCodesDiscountNodesEdgesNodeDiscount::DiscountCodeBasic(basic) => {
                         // Type alias for the discount value type
-                        use queries::get_discount_codes::GetDiscountCodesCodeDiscountNodesEdgesNodeCodeDiscountOnDiscountCodeBasicCustomerGetsValue as BasicValue;
+                        use queries::get_discount_codes::GetDiscountCodesDiscountNodesEdgesNodeDiscountOnDiscountCodeBasicCustomerGetsValue as BasicValue;
                         let code = basic.codes.edges.first().map(|e2| e2.node.code.clone()).unwrap_or_default();
                         let value = match basic.customer_gets.value {
                             BasicValue::DiscountPercentage(p) => {
@@ -1746,7 +1911,7 @@ impl AdminClient {
                             value,
                         })
                     }
-                    queries::get_discount_codes::GetDiscountCodesCodeDiscountNodesEdgesNodeCodeDiscount::DiscountCodeBxgy(bxgy) => {
+                    queries::get_discount_codes::GetDiscountCodesDiscountNodesEdgesNodeDiscount::DiscountCodeBxgy(bxgy) => {
                         let code = bxgy.codes.edges.first().map(|e2| e2.node.code.clone()).unwrap_or_default();
                         Some(DiscountCode {
                             id: node.id,
@@ -1760,7 +1925,7 @@ impl AdminClient {
                             value: None,
                         })
                     }
-                    queries::get_discount_codes::GetDiscountCodesCodeDiscountNodesEdgesNodeCodeDiscount::DiscountCodeFreeShipping(fs) => {
+                    queries::get_discount_codes::GetDiscountCodesDiscountNodesEdgesNodeDiscount::DiscountCodeFreeShipping(fs) => {
                         let code = fs.codes.edges.first().map(|e2| e2.node.code.clone()).unwrap_or_default();
                         Some(DiscountCode {
                             id: node.id,
@@ -1774,8 +1939,8 @@ impl AdminClient {
                             value: None,
                         })
                     }
-                    // Skip app-based discounts (not managed through the Admin UI)
-                    queries::get_discount_codes::GetDiscountCodesCodeDiscountNodesEdgesNodeCodeDiscount::DiscountCodeApp => None,
+                    // Skip app-based and automatic discounts (not managed through the Admin UI)
+                    _ => None,
                 }
             })
             .collect();
@@ -1783,10 +1948,10 @@ impl AdminClient {
         Ok(DiscountCodeConnection {
             discount_codes,
             page_info: PageInfo {
-                has_next_page: response.code_discount_nodes.page_info.has_next_page,
+                has_next_page: response.discount_nodes.page_info.has_next_page,
                 has_previous_page: false,
                 start_cursor: None,
-                end_cursor: response.code_discount_nodes.page_info.end_cursor,
+                end_cursor: response.discount_nodes.page_info.end_cursor,
             },
         })
     }
@@ -1932,17 +2097,17 @@ impl AdminClient {
 
         let response = self.execute::<GetDiscountCode>(variables).await?;
 
-        let Some(node) = response.code_discount_node else {
+        let Some(node) = response.discount_node else {
             return Err(AdminShopifyError::NotFound(format!(
                 "Discount {id} not found"
             )));
         };
 
         // Extract discount details from the union type
-        use queries::get_discount_code::GetDiscountCodeCodeDiscountNodeCodeDiscount as CodeDiscount;
-        match node.code_discount {
-            CodeDiscount::DiscountCodeBasic(basic) => {
-                use queries::get_discount_code::GetDiscountCodeCodeDiscountNodeCodeDiscountOnDiscountCodeBasicCustomerGetsValue as BasicValue;
+        use queries::get_discount_code::GetDiscountCodeDiscountNodeDiscount as Discount;
+        match node.discount {
+            Discount::DiscountCodeBasic(basic) => {
+                use queries::get_discount_code::GetDiscountCodeDiscountNodeDiscountOnDiscountCodeBasicCustomerGetsValue as BasicValue;
                 let code = basic
                     .codes
                     .edges
@@ -1973,7 +2138,7 @@ impl AdminClient {
                 })
             }
             _ => Err(AdminShopifyError::NotFound(format!(
-                "Discount {id} is not a basic discount code (BXGY and Free Shipping discounts cannot be edited here)"
+                "Discount {id} is not a basic discount code (BXGY, Free Shipping, and automatic discounts cannot be edited here)"
             ))),
         }
     }
@@ -2081,10 +2246,6 @@ impl AdminClient {
                         amount: p.net.amount,
                         currency_code: format!("{:?}", p.net.currency_code),
                     },
-                    gross: Money {
-                        amount: p.gross.amount,
-                        currency_code: format!("{:?}", p.gross.currency_code),
-                    },
                     issued_at: Some(p.issued_at),
                 }
             })
@@ -2118,7 +2279,6 @@ impl AdminClient {
     ///
     /// Returns an error if the API request fails or the payout is not found.
     #[instrument(skip(self), fields(payout_id = %id))]
-    #[allow(deprecated)] // Shopify's API deprecation, still functional
     pub async fn get_payout(&self, id: &str) -> Result<Payout, AdminShopifyError> {
         let variables = queries::get_payout::Variables { id: id.to_string() };
 
@@ -2140,10 +2300,6 @@ impl AdminClient {
                 net: Money {
                     amount: p.net.amount,
                     currency_code: format!("{:?}", p.net.currency_code),
-                },
-                gross: Money {
-                    amount: p.gross.amount,
-                    currency_code: format!("{:?}", p.gross.currency_code),
                 },
                 issued_at: Some(p.issued_at),
             }),

@@ -79,6 +79,14 @@ pub fn routes() -> Router<AppState> {
         .route("/products/{id}/edit", get(products::edit))
         .route("/products/{id}/archive", post(products::archive))
         .route("/products/{id}/delete", post(products::delete))
+        .route(
+            "/products/{id}/variants/{variant_id}",
+            post(products::update_variant),
+        )
+        .route(
+            "/products/{id}/images/{media_id}",
+            axum::routing::delete(products::delete_image),
+        )
         // Orders CRUD
         .route("/orders", get(orders::index))
         .route("/orders/{id}", get(orders::show))

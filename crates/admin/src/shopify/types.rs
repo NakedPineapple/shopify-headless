@@ -770,10 +770,8 @@ pub struct Payout {
     pub legacy_resource_id: Option<String>,
     /// Payout status.
     pub status: PayoutStatus,
-    /// Net amount (after fees).
+    /// Net amount (the payout amount).
     pub net: Money,
-    /// Gross amount (before fees).
-    pub gross: Money,
     /// When the payout was issued.
     pub issued_at: Option<String>,
 }

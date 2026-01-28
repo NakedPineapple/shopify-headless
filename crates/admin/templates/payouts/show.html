@@ -23,8 +23,8 @@
                         <i class="ph ph-wallet text-2xl text-coral"></i>
                     </div>
                     <div>
-                        <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ payout.net_amount }}</p>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">Net amount</p>
+                        <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ payout.amount }}</p>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Payout amount</p>
                     </div>
                 </div>
                 <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium {{ payout.status_class }}">
@@ -34,21 +34,15 @@
         </div>
 
         <div class="p-6 space-y-4">
-            <div class="grid grid-cols-2 gap-4">
-                <div>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">Gross Amount</p>
-                    <p class="text-lg font-medium text-gray-900 dark:text-gray-100">{{ payout.gross_amount }}</p>
-                </div>
-                <div>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">Date Issued</p>
-                    <p class="text-lg font-medium text-gray-900 dark:text-gray-100">
-                        {% if let Some(issued) = payout.issued_at %}
-                            {{ issued }}
-                        {% else %}
-                            —
-                        {% endif %}
-                    </p>
-                </div>
+            <div>
+                <p class="text-sm text-gray-500 dark:text-gray-400">Date Issued</p>
+                <p class="text-lg font-medium text-gray-900 dark:text-gray-100">
+                    {% if let Some(issued) = payout.issued_at %}
+                        {{ issued }}
+                    {% else %}
+                        —
+                    {% endif %}
+                </p>
             </div>
         </div>
     </div>

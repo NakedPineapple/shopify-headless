@@ -29,7 +29,7 @@
 
 <!-- Form -->
 <form action="/products" method="POST" class="max-w-3xl">
-    <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800">
+    <div class="bg-white dark:bg-[#141419] rounded-xl border border-gray-200 dark:border-[#2a2a35]">
         <div class="p-6 space-y-6">
             <!-- Title -->
             <div>
@@ -41,20 +41,17 @@
                        name="title"
                        required
                        placeholder="Enter product title"
-                       class="w-full px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-coral focus:border-coral transition-colors">
+                       class="w-full px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500/50 dark:focus:border-indigo-500/30 transition-colors">
             </div>
 
-            <!-- Description -->
+            <!-- Description (WYSIWYG) -->
             <div>
-                <label for="description_html" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Description
                 </label>
-                <textarea id="description_html"
-                          name="description_html"
-                          rows="4"
-                          placeholder="Enter product description (HTML supported)"
-                          class="w-full px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-coral focus:border-coral transition-colors"></textarea>
-                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">HTML formatting is supported</p>
+                <div id="editor-container" class="bg-white dark:bg-gray-800"></div>
+                <input type="hidden" id="description_html" name="description_html" value="">
+                <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">Use the toolbar above to format your description</p>
             </div>
 
             <div class="grid md:grid-cols-2 gap-6">
@@ -67,7 +64,7 @@
                            id="vendor"
                            name="vendor"
                            placeholder="e.g., Naked Pineapple"
-                           class="w-full px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-coral focus:border-coral transition-colors">
+                           class="w-full px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500/50 dark:focus:border-indigo-500/30 transition-colors">
                 </div>
 
                 <!-- Product Type -->
@@ -79,7 +76,7 @@
                            id="product_type"
                            name="product_type"
                            placeholder="e.g., Skincare, Wellness"
-                           class="w-full px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-coral focus:border-coral transition-colors">
+                           class="w-full px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500/50 dark:focus:border-indigo-500/30 transition-colors">
                 </div>
             </div>
 
@@ -92,7 +89,7 @@
                        id="tags"
                        name="tags"
                        placeholder="tag1, tag2, tag3"
-                       class="w-full px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-coral focus:border-coral transition-colors">
+                       class="w-full px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500/50 dark:focus:border-indigo-500/30 transition-colors">
                 <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Separate tags with commas</p>
             </div>
 
@@ -104,7 +101,7 @@
                 <select id="status"
                         name="status"
                         required
-                        class="w-full px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-coral focus:border-coral transition-colors">
+                        class="w-full px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500/50 dark:focus:border-indigo-500/30 transition-colors">
                     <option value="DRAFT" selected>Draft</option>
                     <option value="ACTIVE">Active</option>
                     <option value="ARCHIVED">Archived</option>
@@ -127,4 +124,38 @@
         </div>
     </div>
 </form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    var quill = new Quill('#editor-container', {
+        theme: 'snow',
+        placeholder: 'Enter product description...',
+        modules: {
+            toolbar: [
+                [{ 'header': [1, 2, 3, false] }],
+                ['bold', 'italic', 'underline', 'strike'],
+                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                ['link'],
+                ['clean']
+            ]
+        }
+    });
+
+    // Sync to hidden input on form submit
+    var form = document.querySelector('form');
+    var hiddenInput = document.getElementById('description_html');
+
+    form.addEventListener('submit', function(e) {
+        // Get the innerHTML from the editor
+        var html = quill.root.innerHTML;
+        // Don't submit empty paragraphs
+        if (html === '<p><br></p>') {
+            html = '';
+        }
+        hiddenInput.value = html;
+    });
+})();
+</script>
 {% endblock %}

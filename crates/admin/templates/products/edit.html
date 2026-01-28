@@ -29,17 +29,56 @@
 
 <!-- Form -->
 <form action="/products/{{ product.id.split("/").last().unwrap_or("") }}" method="POST" class="max-w-3xl">
-    <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800">
+    <div class="bg-white dark:bg-[#141419] rounded-xl border border-gray-200 dark:border-[#2a2a35]">
         <div class="p-6 space-y-6">
-            <!-- Current Image Preview -->
+            <!-- Images Section -->
+            {% if !product.images.is_empty() %}
+            <div class="space-y-4">
+                <div class="flex items-center justify-between">
+                    <h3 class="font-semibold text-gray-900 dark:text-gray-100">Images</h3>
+                    <span class="text-xs text-gray-500 dark:text-gray-400">{{ product.images.len() }} image{% if product.images.len() != 1 %}s{% endif %}</span>
+                </div>
+                <div id="image-grid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {% for image in product.images %}
+                    <div id="image-{{ loop.index }}" class="relative group bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                        <img src="{{ image.url }}" alt="{% if let Some(alt) = image.alt %}{{ alt }}{% else %}Product image{% endif %}"
+                             class="w-full aspect-square object-cover">
+                        <!-- Overlay controls -->
+                        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                            <button type="button"
+                                    hx-delete="/products/{{ product.id.split("/").last().unwrap_or("") }}/images/{{ image.id.split("/").last().unwrap_or("") }}"
+                                    hx-target="#image-{{ loop.index }}"
+                                    hx-swap="outerHTML"
+                                    hx-confirm="Delete this image?"
+                                    class="p-2 bg-red-500/90 rounded-lg text-white hover:bg-red-600"
+                                    title="Delete image">
+                                <i class="ph ph-trash text-lg"></i>
+                            </button>
+                        </div>
+                        <!-- Position indicator -->
+                        <div class="absolute bottom-2 left-2 px-1.5 py-0.5 bg-black/50 rounded text-xs text-white font-medium">
+                            {{ loop.index }}
+                        </div>
+                        {% if loop.first %}
+                        <div class="absolute top-2 left-2 px-2 py-0.5 bg-coral rounded text-xs text-white font-medium">
+                            Featured
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% else %}
+            <!-- No images placeholder -->
             {% if let Some(url) = product.image_url %}
             <div class="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
                 <img src="{{ url }}" alt="{{ product.title }}" class="w-20 h-20 rounded-lg object-cover">
                 <div>
                     <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Current Image</p>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">To change images, use the Shopify admin</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">To upload new images, use the Shopify admin</p>
                 </div>
             </div>
+            {% endif %}
             {% endif %}
 
             <!-- Title -->
@@ -53,20 +92,17 @@
                        required
                        value="{{ product.title }}"
                        placeholder="Enter product title"
-                       class="w-full px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-coral focus:border-coral transition-colors">
+                       class="w-full px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500/50 dark:focus:border-indigo-500/30 transition-colors">
             </div>
 
-            <!-- Description -->
+            <!-- Description (WYSIWYG) -->
             <div>
-                <label for="description_html" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Description
                 </label>
-                <textarea id="description_html"
-                          name="description_html"
-                          rows="4"
-                          placeholder="Enter product description (HTML supported)"
-                          class="w-full px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-coral focus:border-coral transition-colors">{{ product.description_html }}</textarea>
-                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">HTML formatting is supported</p>
+                <div id="editor-container" class="bg-white dark:bg-gray-800">{{ product.description_html|safe }}</div>
+                <input type="hidden" id="description_html" name="description_html" value="">
+                <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">Use the toolbar above to format your description</p>
             </div>
 
             <div class="grid md:grid-cols-2 gap-6">
@@ -80,7 +116,7 @@
                            name="vendor"
                            value="{{ product.vendor }}"
                            placeholder="e.g., Naked Pineapple"
-                           class="w-full px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-coral focus:border-coral transition-colors">
+                           class="w-full px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500/50 dark:focus:border-indigo-500/30 transition-colors">
                 </div>
 
                 <!-- Product Type -->
@@ -93,7 +129,7 @@
                            name="product_type"
                            value="{{ product.product_type }}"
                            placeholder="e.g., Skincare, Wellness"
-                           class="w-full px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-coral focus:border-coral transition-colors">
+                           class="w-full px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500/50 dark:focus:border-indigo-500/30 transition-colors">
                 </div>
             </div>
 
@@ -107,7 +143,7 @@
                        name="tags"
                        value="{{ product.tags }}"
                        placeholder="tag1, tag2, tag3"
-                       class="w-full px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-coral focus:border-coral transition-colors">
+                       class="w-full px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500/50 dark:focus:border-indigo-500/30 transition-colors">
                 <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Separate tags with commas</p>
             </div>
 
@@ -119,42 +155,139 @@
                 <select id="status"
                         name="status"
                         required
-                        class="w-full px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-coral focus:border-coral transition-colors">
+                        class="w-full px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500/50 dark:focus:border-indigo-500/30 transition-colors">
                     <option value="DRAFT" {% if product.status == "DRAFT" %}selected{% endif %}>Draft</option>
                     <option value="ACTIVE" {% if product.status == "ACTIVE" %}selected{% endif %}>Active</option>
                     <option value="ARCHIVED" {% if product.status == "ARCHIVED" %}selected{% endif %}>Archived</option>
                 </select>
             </div>
 
-            <!-- Variants Info -->
+            <!-- Variants Section -->
             {% if !product.variants.is_empty() %}
-            <div class="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                <div class="flex items-center gap-3">
-                    <i class="ph ph-info text-xl text-blue-600 dark:text-blue-400"></i>
-                    <div>
-                        <p class="text-sm font-medium text-blue-800 dark:text-blue-200">Variants</p>
-                        <p class="text-xs text-blue-600 dark:text-blue-400">
-                            This product has {{ product.variants.len() }} variant{% if product.variants.len() != 1 %}s{% endif %}.
-                            To edit variants, pricing, or images, use the Shopify admin.
-                        </p>
+            <div class="space-y-4">
+                <div class="flex items-center justify-between">
+                    <h3 class="font-semibold text-gray-900 dark:text-gray-100">Variants</h3>
+                    <span class="text-xs text-gray-500 dark:text-gray-400">{{ product.variants.len() }} variant{% if product.variants.len() != 1 %}s{% endif %}</span>
+                </div>
+                {% for variant in product.variants %}
+                <div class="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="font-medium text-gray-900 dark:text-gray-100">{{ variant.title }}</span>
+                        <button type="button"
+                                onclick="toggleVariant('{{ loop.index }}')"
+                                class="text-sm text-coral hover:underline">
+                            Edit
+                        </button>
+                    </div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                        <span class="mr-4">Price: ${{ variant.price }}</span>
+                        {% if let Some(sku) = variant.sku %}<span class="mr-4">SKU: {{ sku }}</span>{% endif %}
+                        <span>Inventory: {{ variant.inventory_quantity }}</span>
+                    </div>
+                    <div id="variant-{{ loop.index }}" class="hidden mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                        <div id="variant-response-{{ loop.index }}"></div>
+                        <form hx-post="/products/{{ product.id.split("/").last().unwrap_or("") }}/variants/{{ variant.id.split("/").last().unwrap_or("") }}"
+                              hx-target="#variant-response-{{ loop.index }}"
+                              hx-swap="innerHTML"
+                              class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Price</label>
+                                <input type="text" name="price" value="{{ variant.price }}"
+                                       class="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500/50 dark:focus:border-indigo-500/30 transition-colors">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Compare at Price</label>
+                                <input type="text" name="compare_at_price" value="{% if let Some(cap) = variant.compare_at_price %}{{ cap }}{% endif %}"
+                                       placeholder="Optional"
+                                       class="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500/50 dark:focus:border-indigo-500/30 transition-colors">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">SKU</label>
+                                <input type="text" name="sku" value="{% if let Some(s) = variant.sku %}{{ s }}{% endif %}"
+                                       placeholder="Stock Keeping Unit"
+                                       class="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500/50 dark:focus:border-indigo-500/30 transition-colors">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Barcode</label>
+                                <input type="text" name="barcode" value="{% if let Some(b) = variant.barcode %}{{ b }}{% endif %}"
+                                       placeholder="UPC, EAN, ISBN, etc."
+                                       class="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500/50 dark:focus:border-indigo-500/30 transition-colors">
+                            </div>
+                            <div class="col-span-2 flex justify-end gap-2">
+                                <button type="button"
+                                        onclick="toggleVariant('{{ loop.index }}')"
+                                        class="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200">
+                                    Cancel
+                                </button>
+                                <button type="submit" class="px-4 py-2 bg-coral text-white rounded-lg text-sm hover:bg-coral/90 transition-colors">
+                                    Save Variant
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
+                {% endfor %}
             </div>
             {% endif %}
         </div>
 
         <!-- Form Actions -->
-        <div class="px-6 py-4 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-800 rounded-b-xl flex items-center justify-end gap-3">
+        <div class="px-6 py-4 bg-gray-50 dark:bg-[#0a0a0f] border-t border-gray-200 dark:border-[#2a2a35] rounded-b-xl flex items-center justify-end gap-3">
             <a href="/products/{{ product.id.split("/").last().unwrap_or("") }}"
-               class="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-medium hover:border-gray-300 dark:hover:border-gray-600 transition-colors">
+               class="px-4 py-2 bg-white dark:bg-transparent border border-gray-200 dark:border-[#2a2a35] rounded-lg text-sm font-medium text-gray-700 dark:text-zinc-300 hover:border-gray-300 dark:hover:border-[#3d3d4d] hover:bg-gray-100 dark:hover:bg-[#1c1c24] transition-colors">
                 Cancel
             </a>
             <button type="submit"
-                    class="px-6 py-2 bg-coral text-white rounded-lg text-sm font-medium hover:bg-coral/90 transition-colors">
+                    class="px-6 py-2 bg-coral text-white rounded-lg text-sm font-medium shadow-sm hover:bg-coral/90 hover:shadow transition-all">
                 <i class="ph ph-check mr-2"></i>
                 Save Changes
             </button>
         </div>
     </div>
 </form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    // WYSIWYG Editor
+    var quill = new Quill('#editor-container', {
+        theme: 'snow',
+        placeholder: 'Enter product description...',
+        modules: {
+            toolbar: [
+                [{ 'header': [1, 2, 3, false] }],
+                ['bold', 'italic', 'underline', 'strike'],
+                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                ['link'],
+                ['clean']
+            ]
+        }
+    });
+
+    // Sync to hidden input on form submit
+    var form = document.querySelector('form[action^="/products/"]');
+    var hiddenInput = document.getElementById('description_html');
+
+    if (form && hiddenInput) {
+        form.addEventListener('submit', function(e) {
+            // Get the innerHTML from the editor
+            var html = quill.root.innerHTML;
+            // Don't submit empty paragraphs
+            if (html === '<p><br></p>') {
+                html = '';
+            }
+            hiddenInput.value = html;
+        });
+    }
+})();
+
+// Variant toggle function
+function toggleVariant(index) {
+    var el = document.getElementById('variant-' + index);
+    if (el) {
+        el.classList.toggle('hidden');
+    }
+}
+</script>
 {% endblock %}

@@ -112,7 +112,102 @@
   }
 }
 
+@layer base {
+  /* "Midnight Clarity" Admin Design Language - Dark-first palette */
+  :root {
+    --admin-bg: 0 0% 100%;           /* Light mode: white */
+    --admin-surface: 0 0% 98%;       /* Light mode: near-white */
+    --admin-surface-2: 0 0% 96%;     /* Light mode: slight gray */
+    --admin-border: 0 0% 90%;        /* Light mode borders */
+    --admin-border-focus: 0 0% 80%;  /* Light mode focus */
+    --admin-text: 0 0% 9%;           /* Light mode text */
+    --admin-text-muted: 0 0% 45%;    /* Light mode muted */
+    --admin-accent: 6 71% 51%;       /* Coral */
+    --admin-accent-secondary: 239 84% 67%; /* Indigo */
+  }
+
+  .dark {
+    --admin-bg: 240 20% 4%;          /* Near-black with blue undertone: #0a0a0f */
+    --admin-surface: 240 12% 9%;     /* Cards: #141419 */
+    --admin-surface-2: 240 10% 13%;  /* Hover: #1c1c24 */
+    --admin-border: 240 8% 18%;      /* Borders: #2a2a35 */
+    --admin-border-focus: 240 7% 27%; /* Focus: #3d3d4d */
+    --admin-text: 240 5% 90%;        /* Text: #e4e4e7 */
+    --admin-text-muted: 240 4% 46%;  /* Muted: #71717a */
+    --admin-accent: 6 71% 51%;       /* Coral (retained) */
+    --admin-accent-secondary: 239 84% 67%; /* Indigo */
+  }
+}
+
 @layer components {
+  /* SortableJS drag states */
+  [data-media-id].sortable-ghost {
+    opacity: 0.3;
+  }
+
+  [data-media-id].sortable-drag {
+    cursor: grabbing;
+  }
+
+  [data-media-id] img {
+    cursor: grab;
+  }
+
+  [data-media-id] img:active {
+    cursor: grabbing;
+  }
+
+  /* Quill Editor Dark Mode */
+  .dark .ql-toolbar.ql-snow,
+  .dark .ql-container.ql-snow {
+    border-color: rgb(55, 65, 81);
+    background-color: rgb(31, 41, 55);
+  }
+  .dark .ql-editor {
+    color: rgb(243, 244, 246);
+  }
+  .dark .ql-editor.ql-blank::before {
+    color: rgb(156, 163, 175);
+  }
+  .dark .ql-snow .ql-stroke {
+    stroke: rgb(156, 163, 175);
+  }
+  .dark .ql-snow .ql-fill {
+    fill: rgb(156, 163, 175);
+  }
+  .dark .ql-snow .ql-picker {
+    color: rgb(156, 163, 175);
+  }
+  .dark .ql-snow .ql-picker-options {
+    background-color: rgb(31, 41, 55);
+    border-color: rgb(55, 65, 81);
+  }
+  .dark .ql-toolbar.ql-snow button:hover .ql-stroke,
+  .dark .ql-toolbar.ql-snow button.ql-active .ql-stroke {
+    stroke: rgb(243, 244, 246);
+  }
+  .dark .ql-toolbar.ql-snow button:hover .ql-fill,
+  .dark .ql-toolbar.ql-snow button.ql-active .ql-fill {
+    fill: rgb(243, 244, 246);
+  }
+  .dark .ql-toolbar.ql-snow .ql-picker-label:hover,
+  .dark .ql-toolbar.ql-snow .ql-picker-label.ql-active {
+    color: rgb(243, 244, 246);
+  }
+  .dark .ql-snow .ql-picker-options .ql-picker-item:hover {
+    color: rgb(243, 244, 246);
+  }
+
+  /* Quill editor rounded corners */
+  .ql-toolbar.ql-snow {
+    border-top-left-radius: 0.5rem;
+    border-top-right-radius: 0.5rem;
+  }
+  .ql-container.ql-snow {
+    border-bottom-left-radius: 0.5rem;
+    border-bottom-right-radius: 0.5rem;
+  }
+
   /* Sidebar styles */
   .sidebar {
     transition: width 0.2s ease-in-out;

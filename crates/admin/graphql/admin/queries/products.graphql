@@ -277,3 +277,73 @@ mutation ProductDelete($input: ProductDeleteInput!) {
     }
   }
 }
+
+# Update product variants in bulk (can update single variant too)
+mutation ProductVariantsBulkUpdate($productId: ID!, $variants: [ProductVariantsBulkInput!]!) {
+  productVariantsBulkUpdate(productId: $productId, variants: $variants) {
+    productVariants {
+      id
+      title
+      sku
+      barcode
+      price
+      compareAtPrice
+      inventoryQuantity
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
+# Staged uploads for file upload to Shopify CDN
+mutation StagedUploadsCreate($input: [StagedUploadInput!]!) {
+  stagedUploadsCreate(input: $input) {
+    stagedTargets {
+      url
+      resourceUrl
+      parameters {
+        name
+        value
+      }
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
+# Attach uploaded media to product
+mutation ProductCreateMedia($productId: ID!, $media: [CreateMediaInput!]!) {
+  productCreateMedia(productId: $productId, media: $media) {
+    media {
+      __typename
+      ... on MediaImage {
+        id
+        alt
+        preview {
+          image {
+            url
+          }
+        }
+      }
+    }
+    mediaUserErrors {
+      field
+      message
+    }
+  }
+}
+
+# Delete files (images, videos, etc.)
+mutation FileDelete($fileIds: [ID!]!) {
+  fileDelete(fileIds: $fileIds) {
+    deletedFileIds
+    userErrors {
+      field
+      message
+    }
+  }
+}

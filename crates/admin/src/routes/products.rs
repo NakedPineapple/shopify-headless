@@ -12,7 +12,7 @@ use tracing::instrument;
 
 use crate::{
     filters,
-    middleware::auth::RequireAdminAuth,
+    middleware::auth::{RequireAdminAuth, RequireSuperAdmin},
     models::CurrentAdmin,
     shopify::{
         ProductUpdateInput,
@@ -60,10 +60,22 @@ fn format_price(money: &Money) -> String {
 impl From<&AdminProduct> for ProductView {
     fn from(product: &AdminProduct) -> Self {
         let (status, status_class) = match product.status {
-            ProductStatus::Active => ("Active", "bg-green-100 text-green-700"),
-            ProductStatus::Draft => ("Draft", "bg-yellow-100 text-yellow-700"),
-            ProductStatus::Archived => ("Archived", "bg-gray-100 text-gray-700"),
-            ProductStatus::Unlisted => ("Unlisted", "bg-blue-100 text-blue-700"),
+            ProductStatus::Active => (
+                "Active",
+                "bg-green-500/10 text-green-600 dark:text-green-400 ring-1 ring-inset ring-green-500/20",
+            ),
+            ProductStatus::Draft => (
+                "Draft",
+                "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 ring-1 ring-inset ring-yellow-500/20",
+            ),
+            ProductStatus::Archived => (
+                "Archived",
+                "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 ring-1 ring-inset ring-zinc-500/20",
+            ),
+            ProductStatus::Unlisted => (
+                "Unlisted",
+                "bg-blue-500/10 text-blue-600 dark:text-blue-400 ring-1 ring-inset ring-blue-500/20",
+            ),
         };
 
         // Get price from first variant
@@ -150,10 +162,19 @@ pub struct ProductDetailView {
     pub inventory: i64,
     pub price: String,
     pub image_url: Option<String>,
+    pub images: Vec<ImageView>,
     pub handle: String,
     pub variants: Vec<VariantView>,
     pub created_at: Option<String>,
     pub updated_at: Option<String>,
+}
+
+/// Image view for templates.
+#[derive(Debug, Clone)]
+pub struct ImageView {
+    pub id: String,
+    pub url: String,
+    pub alt: Option<String>,
 }
 
 /// Variant view for templates.
@@ -162,8 +183,10 @@ pub struct VariantView {
     pub id: String,
     pub title: String,
     pub sku: Option<String>,
+    pub barcode: Option<String>,
     pub price: String,
-    pub inventory: i64,
+    pub compare_at_price: Option<String>,
+    pub inventory_quantity: i64,
 }
 
 impl From<&AdminProduct> for ProductDetailView {
@@ -171,19 +194,19 @@ impl From<&AdminProduct> for ProductDetailView {
         let (status, status_class) = match product.status {
             ProductStatus::Active => (
                 "ACTIVE",
-                "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+                "bg-green-500/10 text-green-600 dark:text-green-400 ring-1 ring-inset ring-green-500/20",
             ),
             ProductStatus::Draft => (
                 "DRAFT",
-                "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
+                "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 ring-1 ring-inset ring-yellow-500/20",
             ),
             ProductStatus::Archived => (
                 "ARCHIVED",
-                "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400",
+                "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 ring-1 ring-inset ring-zinc-500/20",
             ),
             ProductStatus::Unlisted => (
                 "UNLISTED",
-                "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+                "bg-blue-500/10 text-blue-600 dark:text-blue-400 ring-1 ring-inset ring-blue-500/20",
             ),
         };
 
@@ -199,8 +222,20 @@ impl From<&AdminProduct> for ProductDetailView {
                 id: v.id.clone(),
                 title: v.title.clone(),
                 sku: v.sku.clone(),
-                price: format_price(&v.price),
-                inventory: v.inventory_quantity,
+                barcode: v.barcode.clone(),
+                price: v.price.amount.clone(),
+                compare_at_price: v.compare_at_price.as_ref().map(|p| p.amount.clone()),
+                inventory_quantity: v.inventory_quantity,
+            })
+            .collect();
+
+        let images: Vec<ImageView> = product
+            .images
+            .iter()
+            .map(|img| ImageView {
+                id: img.id.clone().unwrap_or_default(),
+                url: img.url.clone(),
+                alt: img.alt_text.clone(),
             })
             .collect();
 
@@ -216,6 +251,7 @@ impl From<&AdminProduct> for ProductDetailView {
             inventory: product.total_inventory,
             price,
             image_url: product.featured_image.as_ref().map(|img| img.url.clone()),
+            images,
             handle: product.handle.clone(),
             variants,
             created_at: product.created_at.clone(),
@@ -478,9 +514,10 @@ pub async fn update(
 }
 
 /// Archive product handler (HTMX).
+/// Requires `super_admin` role.
 #[instrument(skip(_admin, state))]
 pub async fn archive(
-    RequireAdminAuth(_admin): RequireAdminAuth,
+    RequireSuperAdmin(_admin): RequireSuperAdmin,
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> impl IntoResponse {
@@ -527,9 +564,10 @@ pub async fn archive(
 }
 
 /// Delete product handler.
+/// Requires `super_admin` role.
 #[instrument(skip(_admin, state))]
 pub async fn delete(
-    RequireAdminAuth(_admin): RequireAdminAuth,
+    RequireSuperAdmin(_admin): RequireSuperAdmin,
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> impl IntoResponse {
@@ -547,6 +585,148 @@ pub async fn delete(
         Err(e) => {
             tracing::error!(product_id = %product_id, error = %e, "Failed to delete product");
             (StatusCode::BAD_REQUEST, format!("Failed to delete: {e}")).into_response()
+        }
+    }
+}
+
+// ============================================================================
+// Variant Update
+// ============================================================================
+
+/// Form data for variant update.
+#[derive(Debug, Clone, Deserialize)]
+pub struct VariantFormInput {
+    pub price: Option<String>,
+    pub compare_at_price: Option<String>,
+    pub sku: Option<String>,
+    pub barcode: Option<String>,
+}
+
+/// Update variant handler (HTMX).
+#[instrument(skip(_admin, state))]
+pub async fn update_variant(
+    RequireAdminAuth(_admin): RequireAdminAuth,
+    State(state): State<AppState>,
+    Path((product_id, variant_id)): Path<(String, String)>,
+    Form(input): Form<VariantFormInput>,
+) -> impl IntoResponse {
+    let full_product_id = if product_id.starts_with("gid://") {
+        product_id.clone()
+    } else {
+        format!("gid://shopify/Product/{product_id}")
+    };
+
+    let full_variant_id = if variant_id.starts_with("gid://") {
+        variant_id.clone()
+    } else {
+        format!("gid://shopify/ProductVariant/{variant_id}")
+    };
+
+    match state
+        .shopify()
+        .update_variant(
+            &full_product_id,
+            &full_variant_id,
+            input.price.as_deref(),
+            input.compare_at_price.as_deref(),
+            input.sku.as_deref(),
+            input.barcode.as_deref(),
+        )
+        .await
+    {
+        Ok(variant) => {
+            tracing::info!(variant_id = %full_variant_id, "Variant updated");
+            // Return a success message with updated values
+            let html = format!(
+                r#"<div class="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                    <div class="flex items-center gap-2 text-green-600 dark:text-green-400 text-sm">
+                        <i class="ph ph-check-circle"></i>
+                        <span>Variant updated successfully</span>
+                    </div>
+                    <div class="mt-2 text-xs text-gray-600 dark:text-gray-400">
+                        <div>Price: ${}</div>
+                        {}
+                        {}
+                        {}
+                    </div>
+                </div>"#,
+                variant.price.amount,
+                variant
+                    .compare_at_price
+                    .as_ref()
+                    .map_or_else(String::new, |p| format!(
+                        "<div>Compare at: ${}</div>",
+                        p.amount
+                    )),
+                variant
+                    .sku
+                    .as_ref()
+                    .map_or_else(String::new, |s| format!("<div>SKU: {s}</div>")),
+                variant
+                    .barcode
+                    .as_ref()
+                    .map_or_else(String::new, |b| format!("<div>Barcode: {b}</div>")),
+            );
+            (StatusCode::OK, Html(html)).into_response()
+        }
+        Err(e) => {
+            tracing::error!(variant_id = %full_variant_id, error = %e, "Failed to update variant");
+            let html = format!(
+                r#"<div class="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                    <div class="flex items-center gap-2 text-red-600 dark:text-red-400 text-sm">
+                        <i class="ph ph-warning-circle"></i>
+                        <span>Error: {e}</span>
+                    </div>
+                </div>"#
+            );
+            (StatusCode::BAD_REQUEST, Html(html)).into_response()
+        }
+    }
+}
+
+// ============================================================================
+// Image Management
+// ============================================================================
+
+/// Delete image from product handler (HTMX).
+#[instrument(skip(_admin, state))]
+pub async fn delete_image(
+    RequireAdminAuth(_admin): RequireAdminAuth,
+    State(state): State<AppState>,
+    Path((_, media_id)): Path<(String, String)>,
+) -> impl IntoResponse {
+    // File IDs use MediaImage prefix
+    let full_media_id = if media_id.starts_with("gid://") {
+        media_id.clone()
+    } else {
+        format!("gid://shopify/MediaImage/{media_id}")
+    };
+
+    match state
+        .shopify()
+        .delete_files(vec![full_media_id.clone()])
+        .await
+    {
+        Ok(deleted_ids) => {
+            tracing::info!(media_id = %full_media_id, "Image deleted");
+            let html = if deleted_ids.is_empty() {
+                r#"<div class="text-red-600 dark:text-red-400 text-sm">No images were deleted</div>"#.to_string()
+            } else {
+                // Return empty string to remove the element
+                String::new()
+            };
+            (
+                StatusCode::OK,
+                [("HX-Trigger", "image-deleted")],
+                Html(html),
+            )
+                .into_response()
+        }
+        Err(e) => {
+            tracing::error!(media_id = %full_media_id, error = %e, "Failed to delete image");
+            let html =
+                format!(r#"<div class="text-red-600 dark:text-red-400 text-sm">Error: {e}</div>"#);
+            (StatusCode::BAD_REQUEST, Html(html)).into_response()
         }
     }
 }

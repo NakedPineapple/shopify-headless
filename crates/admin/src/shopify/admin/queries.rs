@@ -75,6 +75,38 @@ pub struct ProductUpdate;
 )]
 pub struct ProductDelete;
 
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/products.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct ProductVariantsBulkUpdate;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/products.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct StagedUploadsCreate;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/products.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct ProductCreateMedia;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/products.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct FileDelete;
+
 // =============================================================================
 // Collection queries and mutations
 // =============================================================================

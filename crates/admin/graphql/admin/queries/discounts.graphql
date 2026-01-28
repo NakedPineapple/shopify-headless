@@ -1,16 +1,17 @@
 # Discount queries and mutations for Shopify Admin API
 
 # Get paginated list of discount codes
+# Uses discountNodes with method:code filter to get only code-based discounts
 query GetDiscountCodes(
   $first: Int = 20
   $after: String
   $query: String
 ) {
-  codeDiscountNodes(first: $first, after: $after, query: $query) {
+  discountNodes(first: $first, after: $after, query: $query) {
     edges {
       node {
         id
-        codeDiscount {
+        discount {
           __typename
           ... on DiscountCodeBasic {
             title
@@ -83,9 +84,9 @@ query GetDiscountCodes(
 
 # Get a single discount by ID
 query GetDiscountCode($id: ID!) {
-  codeDiscountNode(id: $id) {
+  discountNode(id: $id) {
     id
-    codeDiscount {
+    discount {
       __typename
       ... on DiscountCodeBasic {
         title

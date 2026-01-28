@@ -21,6 +21,7 @@
             <i class="ph ph-pencil"></i>
             Edit
         </a>
+        {% if admin_user.is_super_admin %}
         <form hx-post="/products/{{ product.id.split("/").last().unwrap_or("") }}/archive"
               hx-confirm="Are you sure you want to archive this product?"
               class="inline">
@@ -30,6 +31,7 @@
                 Archive
             </button>
         </form>
+        {% endif %}
     </div>
 </div>
 
@@ -37,7 +39,7 @@
     <!-- Main Content -->
     <div class="lg:col-span-2 space-y-6">
         <!-- Product Info Card -->
-        <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6">
+        <div class="bg-white dark:bg-[#141419] rounded-xl border border-gray-200 dark:border-[#2a2a35] p-6">
             <div class="flex items-start gap-6">
                 {% if let Some(url) = product.image_url %}
                 <img src="{{ url }}" alt="{{ product.title }}" class="w-32 h-32 rounded-xl object-cover">
@@ -48,8 +50,9 @@
                 {% endif %}
                 <div class="flex-1">
                     <div class="flex items-center gap-3 mb-2">
-                        <h3 class="text-xl font-semibold text-gray-900 dark:text-gray-100">{{ product.title }}</h3>
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ product.status_class }}">
+                        <h3 class="text-xl font-semibold text-gray-900 dark:text-zinc-100">{{ product.title }}</h3>
+                        <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium {{ product.status_class }}">
+                            <span class="w-1.5 h-1.5 rounded-full bg-current opacity-70"></span>
                             {{ product.status }}
                         </span>
                     </div>
@@ -67,8 +70,8 @@
             </div>
 
             {% if !product.description_html.is_empty() %}
-            <div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-800">
-                <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Description</h4>
+            <div class="mt-6 pt-6 border-t border-gray-200 dark:border-[#2a2a35]">
+                <h4 class="text-sm font-medium text-gray-700 dark:text-zinc-300 mb-2">Description</h4>
                 <div class="prose prose-sm dark:prose-invert max-w-none">
                     {{ product.description_html|safe }}
                 </div>
@@ -76,11 +79,11 @@
             {% endif %}
 
             {% if !product.tags.is_empty() %}
-            <div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-800">
-                <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tags</h4>
+            <div class="mt-6 pt-6 border-t border-gray-200 dark:border-[#2a2a35]">
+                <h4 class="text-sm font-medium text-gray-700 dark:text-zinc-300 mb-2">Tags</h4>
                 <div class="flex flex-wrap gap-2">
                     {% for tag in product.tags.split(", ") %}
-                    <span class="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded text-sm text-gray-600 dark:text-gray-400">{{ tag }}</span>
+                    <span class="px-2 py-1 bg-gray-100 dark:bg-[#1c1c24] rounded text-sm text-gray-600 dark:text-zinc-400">{{ tag }}</span>
                     {% endfor %}
                 </div>
             </div>
@@ -89,9 +92,9 @@
 
         <!-- Variants Table -->
         {% if !product.variants.is_empty() %}
-        <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800">
-            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-800">
-                <h3 class="font-semibold text-gray-900 dark:text-gray-100">Variants</h3>
+        <div class="bg-white dark:bg-[#141419] rounded-xl border border-gray-200 dark:border-[#2a2a35]">
+            <div class="px-6 py-4 border-b border-gray-200 dark:border-[#2a2a35]">
+                <h3 class="font-semibold text-gray-900 dark:text-zinc-100">Variants</h3>
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full">
@@ -109,9 +112,9 @@
                             <td class="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">{{ variant.title }}</td>
                             <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{{ variant.sku.as_deref().unwrap_or("-") }}</td>
                             <td class="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">{{ variant.price }}</td>
-                            <td class="px-6 py-4 text-sm {% if variant.inventory <= 10 %}text-yellow-600 dark:text-yellow-400{% else %}text-gray-900 dark:text-gray-100{% endif %}">
-                                {{ variant.inventory }}
-                                {% if variant.inventory <= 10 %}
+                            <td class="px-6 py-4 text-sm {% if variant.inventory_quantity <= 10 %}text-yellow-600 dark:text-yellow-400{% else %}text-gray-900 dark:text-gray-100{% endif %}">
+                                {{ variant.inventory_quantity }}
+                                {% if variant.inventory_quantity <= 10 %}
                                 <i class="ph ph-warning ml-1 text-yellow-500"></i>
                                 {% endif %}
                             </td>
@@ -168,21 +171,25 @@
             </dl>
         </div>
 
+        {% if admin_user.is_super_admin %}
         <!-- Danger Zone -->
-        <div class="bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800 p-6">
-            <h3 class="font-semibold text-red-800 dark:text-red-200 mb-4">Danger Zone</h3>
-            <p class="text-sm text-red-600 dark:text-red-400 mb-4">
+        <div class="bg-red-50/30 dark:bg-red-950/10 rounded-xl border border-red-200/30 dark:border-red-900/20 p-6
+                    hover:bg-red-50 dark:hover:bg-red-950/20 hover:border-red-200 dark:hover:border-red-800/50
+                    transition-all group">
+            <h3 class="font-semibold text-red-800/70 dark:text-red-300/70 group-hover:text-red-800 dark:group-hover:text-red-300 mb-4">Danger Zone</h3>
+            <p class="text-sm text-red-600/70 dark:text-red-400/70 group-hover:text-red-600 dark:group-hover:text-red-400 mb-4">
                 Deleting a product is permanent and cannot be undone.
             </p>
             <form action="/products/{{ product.id.split("/").last().unwrap_or("") }}/delete" method="POST"
                   onsubmit="return confirm('Are you sure you want to permanently delete this product? This action cannot be undone.');">
                 <button type="submit"
-                        class="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+                        class="w-full px-4 py-2 bg-red-600/80 group-hover:bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
                     <i class="ph ph-trash mr-2"></i>
                     Delete Product
                 </button>
             </form>
         </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}

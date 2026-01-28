@@ -12,10 +12,6 @@ query GetPayout($id: ID!) {
         amount
         currencyCode
       }
-      gross {
-        amount
-        currencyCode
-      }
       issuedAt
     }
   }
@@ -31,10 +27,6 @@ query GetPayouts($first: Int = 20, $after: String) {
           legacyResourceId
           status
           net {
-            amount
-            currencyCode
-          }
-          gross {
             amount
             currencyCode
           }
