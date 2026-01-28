@@ -45,9 +45,10 @@ use queries::{
     GetCollections, GetCustomer, GetCustomers, GetDiscountCode, GetDiscountCodes, GetGiftCards,
     GetInventoryLevels, GetLocations, GetOrder, GetOrders, GetPayout, GetPayouts, GetProduct,
     GetProducts, GetPublications, GiftCardCreate, GiftCardUpdate, InventoryAdjustQuantities,
-    InventorySetQuantities, OrderCancel, OrderMarkAsPaid, OrderUpdate, ProductCreate,
-    ProductDelete, ProductReorderMedia, ProductSetMedia, ProductUpdate, ProductVariantsBulkUpdate,
-    PublishablePublish, PublishableUnpublish, StagedUploadsCreate, TagsAdd, TagsRemove,
+    InventorySetQuantities, OrderCancel, OrderCapture, OrderClose, OrderMarkAsPaid, OrderOpen,
+    OrderTagsAdd, OrderTagsRemove, OrderUpdate, ProductCreate, ProductDelete, ProductReorderMedia,
+    ProductSetMedia, ProductUpdate, ProductVariantsBulkUpdate, PublishablePublish,
+    PublishableUnpublish, StagedUploadsCreate, TagsAdd, TagsRemove,
 };
 
 /// OAuth token for Admin API access.
@@ -2375,6 +2376,225 @@ impl AdminClient {
         }
 
         Ok(())
+    }
+
+    /// Archive (close) an order.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - Shopify order ID
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails or returns user errors.
+    #[instrument(skip(self), fields(order_id = %id))]
+    pub async fn archive_order(&self, id: &str) -> Result<(), AdminShopifyError> {
+        use queries::order_close::{OrderCloseInput, Variables};
+
+        let variables = Variables {
+            input: OrderCloseInput { id: id.to_string() },
+        };
+
+        let response = self.execute::<OrderClose>(variables).await?;
+
+        if let Some(payload) = response.order_close
+            && !payload.user_errors.is_empty()
+        {
+            let error_messages: Vec<String> = payload
+                .user_errors
+                .iter()
+                .map(|e| {
+                    let field = e.field.as_ref().map_or_else(String::new, |f| f.join("."));
+                    format!("{}: {}", field, e.message)
+                })
+                .collect();
+            return Err(AdminShopifyError::UserError(error_messages.join("; ")));
+        }
+
+        Ok(())
+    }
+
+    /// Unarchive (reopen) an order.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - Shopify order ID
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails or returns user errors.
+    #[instrument(skip(self), fields(order_id = %id))]
+    pub async fn unarchive_order(&self, id: &str) -> Result<(), AdminShopifyError> {
+        use queries::order_open::{OrderOpenInput, Variables};
+
+        let variables = Variables {
+            input: OrderOpenInput { id: id.to_string() },
+        };
+
+        let response = self.execute::<OrderOpen>(variables).await?;
+
+        if let Some(payload) = response.order_open
+            && !payload.user_errors.is_empty()
+        {
+            let error_messages: Vec<String> = payload
+                .user_errors
+                .iter()
+                .map(|e| {
+                    let field = e.field.as_ref().map_or_else(String::new, |f| f.join("."));
+                    format!("{}: {}", field, e.message)
+                })
+                .collect();
+            return Err(AdminShopifyError::UserError(error_messages.join("; ")));
+        }
+
+        Ok(())
+    }
+
+    /// Capture payment on an order.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - Shopify order ID
+    /// * `parent_transaction_id` - ID of the authorized transaction to capture
+    /// * `amount` - Amount to capture (required)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails or returns user errors.
+    #[instrument(skip(self), fields(order_id = %id))]
+    pub async fn capture_order_payment(
+        &self,
+        id: &str,
+        parent_transaction_id: &str,
+        amount: &str,
+    ) -> Result<(), AdminShopifyError> {
+        use queries::order_capture::{OrderCaptureInput, Variables};
+
+        let variables = Variables {
+            input: OrderCaptureInput {
+                id: id.to_string(),
+                amount: amount.to_string(),
+                parent_transaction_id: parent_transaction_id.to_string(),
+                currency: None,
+                final_capture: None,
+            },
+        };
+
+        let response = self.execute::<OrderCapture>(variables).await?;
+
+        if let Some(payload) = response.order_capture
+            && !payload.user_errors.is_empty()
+        {
+            let error_messages: Vec<String> = payload
+                .user_errors
+                .iter()
+                .map(|e| {
+                    let field = e.field.as_ref().map_or_else(String::new, |f| f.join("."));
+                    format!("{}: {}", field, e.message)
+                })
+                .collect();
+            return Err(AdminShopifyError::UserError(error_messages.join("; ")));
+        }
+
+        Ok(())
+    }
+
+    /// Add tags to an order.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - Shopify order ID
+    /// * `tags` - Tags to add
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails or returns user errors.
+    #[instrument(skip(self), fields(order_id = %id))]
+    pub async fn add_tags_to_order(
+        &self,
+        id: &str,
+        tags: &[String],
+    ) -> Result<Vec<String>, AdminShopifyError> {
+        use queries::order_tags_add::Variables;
+
+        let variables = Variables {
+            id: id.to_string(),
+            tags: tags.to_vec(),
+        };
+
+        let response = self.execute::<OrderTagsAdd>(variables).await?;
+
+        if let Some(payload) = response.tags_add {
+            if !payload.user_errors.is_empty() {
+                let error_messages: Vec<String> = payload
+                    .user_errors
+                    .iter()
+                    .map(|e| {
+                        let field = e.field.as_ref().map_or_else(String::new, |f| f.join("."));
+                        format!("{}: {}", field, e.message)
+                    })
+                    .collect();
+                return Err(AdminShopifyError::UserError(error_messages.join("; ")));
+            }
+
+            // Tags were added successfully
+            return Ok(vec![]);
+        }
+
+        Err(AdminShopifyError::GraphQL(vec![GraphQLError {
+            message: "Tags add failed".to_string(),
+            locations: vec![],
+            path: vec![],
+        }]))
+    }
+
+    /// Remove tags from an order.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - Shopify order ID
+    /// * `tags` - Tags to remove
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails or returns user errors.
+    #[instrument(skip(self), fields(order_id = %id))]
+    pub async fn remove_tags_from_order(
+        &self,
+        id: &str,
+        tags: &[String],
+    ) -> Result<Vec<String>, AdminShopifyError> {
+        use queries::order_tags_remove::Variables;
+
+        let variables = Variables {
+            id: id.to_string(),
+            tags: tags.to_vec(),
+        };
+
+        let response = self.execute::<OrderTagsRemove>(variables).await?;
+
+        if let Some(payload) = response.tags_remove {
+            if !payload.user_errors.is_empty() {
+                let error_messages: Vec<String> = payload
+                    .user_errors
+                    .iter()
+                    .map(|e| {
+                        let field = e.field.as_ref().map_or_else(String::new, |f| f.join("."));
+                        format!("{}: {}", field, e.message)
+                    })
+                    .collect();
+                return Err(AdminShopifyError::UserError(error_messages.join("; ")));
+            }
+
+            // Tags were removed successfully
+            return Ok(vec![]);
+        }
+
+        Err(AdminShopifyError::GraphQL(vec![GraphQLError {
+            message: "Tags remove failed".to_string(),
+            locations: vec![],
+            path: vec![],
+        }]))
     }
 
     // =========================================================================

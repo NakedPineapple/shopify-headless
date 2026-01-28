@@ -499,9 +499,8 @@
 <div id="bulk-tags-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
     <div class="bg-card rounded-xl border border-border p-6 w-full max-w-md shadow-xl">
         <h3 class="text-lg font-medium text-foreground mb-4" id="bulk-tags-title">Add Tags</h3>
-        <form id="bulk-tags-form" method="POST" action="/orders/bulk/tags">
-            <input type="hidden" name="ids" id="bulk-tags-ids">
-            <input type="hidden" name="action" id="bulk-tags-action" value="add">
+        <form id="bulk-tags-form" method="POST">
+            <input type="hidden" name="order_ids" id="bulk-tags-ids">
             <div class="mb-4">
                 <label for="bulk-tags-input" class="block text-sm font-medium text-foreground mb-1">Tags (comma-separated)</label>
                 <input type="text"
@@ -534,12 +533,12 @@ document.addEventListener('dataTableBulkAction', function(e) {
     if (action === 'add_tags' || action === 'remove_tags') {
         const modal = document.getElementById('bulk-tags-modal');
         const title = document.getElementById('bulk-tags-title');
+        const form = document.getElementById('bulk-tags-form');
         const idsInput = document.getElementById('bulk-tags-ids');
-        const actionInput = document.getElementById('bulk-tags-action');
 
         title.textContent = action === 'add_tags' ? 'Add Tags' : 'Remove Tags';
+        form.action = action === 'add_tags' ? '/orders/bulk/add-tags' : '/orders/bulk/remove-tags';
         idsInput.value = ids.join(',');
-        actionInput.value = action === 'add_tags' ? 'add' : 'remove';
         modal.classList.remove('hidden');
     } else if (action === 'archive') {
         if (confirm('Archive ' + ids.length + ' order(s)?')) {
@@ -549,7 +548,7 @@ document.addEventListener('dataTableBulkAction', function(e) {
 
             const idsInput = document.createElement('input');
             idsInput.type = 'hidden';
-            idsInput.name = 'ids';
+            idsInput.name = 'order_ids';
             idsInput.value = ids.join(',');
             form.appendChild(idsInput);
 
@@ -564,7 +563,7 @@ document.addEventListener('dataTableBulkAction', function(e) {
 
             const idsInput = document.createElement('input');
             idsInput.type = 'hidden';
-            idsInput.name = 'ids';
+            idsInput.name = 'order_ids';
             idsInput.value = ids.join(',');
             form.appendChild(idsInput);
 

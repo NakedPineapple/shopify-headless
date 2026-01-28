@@ -180,6 +180,11 @@ pub fn routes() -> Router<AppState> {
         .route("/orders/{id}/note", post(orders::update_note))
         .route("/orders/{id}/mark-paid", post(orders::mark_paid))
         .route("/orders/{id}/cancel", post(orders::cancel))
+        // Orders bulk actions
+        .route("/orders/bulk/add-tags", post(orders::bulk_add_tags))
+        .route("/orders/bulk/remove-tags", post(orders::bulk_remove_tags))
+        .route("/orders/bulk/archive", post(orders::bulk_archive))
+        .route("/orders/bulk/cancel", post(orders::bulk_cancel))
         .merge(customer_routes())
         .merge(collection_routes())
         // Discounts CRUD
