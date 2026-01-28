@@ -24,7 +24,7 @@ use super::{
         GiftCard, GiftCardConnection, Image, InventoryLevel, InventoryLevelConnection, Location,
         LocationConnection, Money, Order, OrderConnection, OrderDetail, PageInfo, Payout,
         PayoutConnection, PayoutStatus, RefundCreateInput, RefundRestockType, ReturnCreateInput,
-        StagedUploadTarget,
+        StagedUploadTarget, SuggestedRefundLineItem, SuggestedRefundResult,
     },
 };
 
@@ -53,7 +53,8 @@ use queries::{
     InventorySetQuantities, OrderCancel, OrderCapture, OrderClose, OrderMarkAsPaid, OrderOpen,
     OrderTagsAdd, OrderTagsRemove, OrderUpdate, ProductCreate, ProductDelete, ProductReorderMedia,
     ProductSetMedia, ProductUpdate, ProductVariantsBulkUpdate, PublishablePublish,
-    PublishableUnpublish, RefundCreate, ReturnCreate, StagedUploadsCreate, TagsAdd, TagsRemove,
+    PublishableUnpublish, RefundCreate, ReturnCreate, StagedUploadsCreate, SuggestedRefund,
+    TagsAdd, TagsRemove,
 };
 
 /// OAuth token for Admin API access.
@@ -2888,6 +2889,67 @@ impl AdminClient {
             locations: vec![],
             path: vec![],
         }]))
+    }
+
+    /// Get suggested refund calculation for an order.
+    ///
+    /// # Arguments
+    ///
+    /// * `order_id` - Shopify order ID
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails or the order is not found.
+    #[instrument(skip(self), fields(order_id = %order_id))]
+    pub async fn get_suggested_refund(
+        &self,
+        order_id: &str,
+    ) -> Result<SuggestedRefundResult, AdminShopifyError> {
+        let variables = queries::suggested_refund::Variables {
+            order_id: order_id.to_string(),
+        };
+
+        let response = self.execute::<SuggestedRefund>(variables).await?;
+
+        let order = response.order.ok_or_else(|| {
+            AdminShopifyError::GraphQL(vec![GraphQLError {
+                message: "Order not found".to_string(),
+                locations: vec![],
+                path: vec![],
+            }])
+        })?;
+
+        let suggested = order.suggested_refund.ok_or_else(|| {
+            AdminShopifyError::GraphQL(vec![GraphQLError {
+                message: "No suggested refund available".to_string(),
+                locations: vec![],
+                path: vec![],
+            }])
+        })?;
+
+        let amount = suggested.amount_set.shop_money.amount.clone();
+        let currency_code = format!("{:?}", suggested.amount_set.shop_money.currency_code);
+        let subtotal = suggested.subtotal_set.shop_money.amount.clone();
+        let total_tax = suggested.total_tax_set.shop_money.amount.clone();
+
+        let line_items = suggested
+            .refund_line_items
+            .into_iter()
+            .map(|item| SuggestedRefundLineItem {
+                line_item_id: item.line_item.id,
+                title: item.line_item.title,
+                original_quantity: item.line_item.quantity,
+                refund_quantity: item.quantity,
+            })
+            .collect();
+
+        Ok(SuggestedRefundResult {
+            amount,
+            currency_code,
+            subtotal,
+            total_tax,
+            line_items,
+        })
     }
 
     // =========================================================================

@@ -1910,6 +1910,38 @@ pub struct StagedUploadTarget {
 }
 
 // =============================================================================
+// Refund Types
+// =============================================================================
+
+/// Suggested refund calculation result.
+#[derive(Debug, Clone)]
+pub struct SuggestedRefundResult {
+    /// Total refund amount.
+    pub amount: String,
+    /// Currency code.
+    pub currency_code: String,
+    /// Subtotal before tax.
+    pub subtotal: String,
+    /// Total tax amount.
+    pub total_tax: String,
+    /// Suggested line items to refund.
+    pub line_items: Vec<SuggestedRefundLineItem>,
+}
+
+/// A line item in a suggested refund.
+#[derive(Debug, Clone)]
+pub struct SuggestedRefundLineItem {
+    /// Line item ID.
+    pub line_item_id: String,
+    /// Line item title.
+    pub title: String,
+    /// Original quantity on the order.
+    pub original_quantity: i64,
+    /// Suggested quantity to refund.
+    pub refund_quantity: i64,
+}
+
+// =============================================================================
 // Refund Input Types
 // =============================================================================
 

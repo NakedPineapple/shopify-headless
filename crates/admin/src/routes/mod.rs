@@ -180,6 +180,25 @@ pub fn routes() -> Router<AppState> {
         .route("/orders/{id}/note", post(orders::update_note))
         .route("/orders/{id}/mark-paid", post(orders::mark_paid))
         .route("/orders/{id}/cancel", post(orders::cancel))
+        // Orders single-order actions
+        .route("/orders/{id}/tags", post(orders::update_tags))
+        .route("/orders/{id}/fulfill", post(orders::fulfill))
+        .route(
+            "/orders/{order_id}/fulfillment-orders/{fo_id}/hold",
+            post(orders::hold_fulfillment),
+        )
+        .route(
+            "/orders/{order_id}/fulfillment-orders/{fo_id}/release",
+            post(orders::release_hold),
+        )
+        .route(
+            "/orders/{id}/calculate-refund",
+            post(orders::calculate_refund),
+        )
+        .route("/orders/{id}/refund", post(orders::refund))
+        .route("/orders/{id}/return", post(orders::create_return))
+        .route("/orders/{id}/capture", post(orders::capture))
+        .route("/orders/{id}/archive", post(orders::archive))
         // Orders bulk actions
         .route("/orders/bulk/add-tags", post(orders::bulk_add_tags))
         .route("/orders/bulk/remove-tags", post(orders::bulk_remove_tags))
