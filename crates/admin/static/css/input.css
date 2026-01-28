@@ -460,6 +460,28 @@
   }
 
   /* ─────────────────────────────────────────────────────────────────────────
+     Sidebar - Mobile Responsive
+     ───────────────────────────────────────────────────────────────────────── */
+
+  /* Mobile: Sidebar slides in as overlay when open */
+  @media (max-width: 63.9375rem) {
+    .sidebar.mobile-open {
+      left: 0;
+    }
+
+    body.sidebar-open {
+      overflow: hidden;
+    }
+  }
+
+  /* Desktop: Collapsed margin override (JS sets inline style, but this is fallback) */
+  @media (min-width: 64rem) {
+    .main-content.collapsed {
+      margin-left: 4rem;
+    }
+  }
+
+  /* ─────────────────────────────────────────────────────────────────────────
      Tables
      ───────────────────────────────────────────────────────────────────────── */
   .table {

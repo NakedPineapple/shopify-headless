@@ -35,8 +35,15 @@
 </head>
 <body class="min-h-screen bg-background text-foreground font-sans antialiased transition-colors">
     <div class="flex min-h-screen">
+        <!-- Mobile overlay backdrop -->
+        <div id="mobile-overlay"
+             class="fixed inset-0 bg-black/50 z-30 lg:hidden hidden"
+             aria-hidden="true"></div>
+
         <!-- Sidebar - Midnight Lagoon (always dark) -->
-        <aside id="sidebar" class="sidebar fixed top-0 left-0 h-full w-64 z-40 flex flex-col">
+        <aside id="sidebar"
+               class="sidebar fixed top-0 h-full w-64 z-40 flex flex-col -left-64 lg:left-0 transition-[left] duration-300 ease-out"
+               aria-label="Main navigation">
             <!-- Logo -->
             <div class="sidebar-logo flex items-center gap-3 p-4 border-b border-sidebar-border">
                 <div class="w-10 h-10 rounded-lg bg-coral flex items-center justify-center shrink-0">
@@ -152,22 +159,33 @@
                 </div>
             </div>
 
-            <!-- Collapse Toggle -->
+            <!-- Collapse Toggle (desktop only) -->
             <button id="sidebar-toggle"
                     type="button"
-                    class="absolute -right-3 top-20 w-6 h-6 bg-sidebar border border-sidebar-border rounded-full flex items-center justify-center text-sidebar-muted hover:text-white transition-colors">
+                    class="hidden lg:flex absolute -right-3 top-20 w-6 h-6 bg-sidebar border border-sidebar-border rounded-full items-center justify-center text-sidebar-muted hover:text-white transition-colors">
                 <i id="toggle-icon" class="ph ph-caret-left text-xs"></i>
             </button>
         </aside>
 
         <!-- Main content wrapper -->
-        <div id="main-wrapper" class="main-content flex-1 ml-64 flex flex-col min-h-screen">
+        <div id="main-wrapper" class="main-content flex-1 ml-0 lg:ml-64 flex flex-col min-h-screen">
             <!-- Header -->
             <header class="sticky top-0 z-30 bg-card/80 backdrop-blur-sm border-b border-border transition-colors">
-                <div class="px-6 py-4 flex items-center justify-between">
-                    <div>
-                        <h2 class="text-xl font-semibold text-foreground">{% block page_title %}Dashboard{% endblock %}</h2>
-                        {% block page_subtitle %}{% endblock %}
+                <div class="px-4 lg:px-6 py-4 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <!-- Mobile menu toggle -->
+                        <button type="button"
+                                id="mobile-menu-toggle"
+                                class="lg:hidden p-2 -ml-2 text-muted-foreground hover:text-foreground transition-colors"
+                                aria-label="Open navigation menu"
+                                aria-expanded="false"
+                                aria-controls="sidebar">
+                            <i class="ph ph-list text-2xl"></i>
+                        </button>
+                        <div>
+                            <h2 class="text-xl font-semibold text-foreground">{% block page_title %}Dashboard{% endblock %}</h2>
+                            {% block page_subtitle %}{% endblock %}
+                        </div>
                     </div>
 
                     <div class="flex items-center gap-4">
@@ -235,18 +253,29 @@
     <!-- SortableJS for drag-and-drop -->
     <script src="/static/vendor/sortable.min.js"></script>
 
-    <!-- Sidebar collapse script -->
+    <!-- Sidebar script (mobile + desktop) -->
     <script>
         (function() {
-            const sidebar = document.getElementById('sidebar');
-            const mainWrapper = document.getElementById('main-wrapper');
-            const toggleBtn = document.getElementById('sidebar-toggle');
-            const toggleIcon = document.getElementById('toggle-icon');
+            var sidebar = document.getElementById('sidebar');
+            var mainWrapper = document.getElementById('main-wrapper');
+            var mobileToggle = document.getElementById('mobile-menu-toggle');
+            var mobileOverlay = document.getElementById('mobile-overlay');
+            var desktopToggle = document.getElementById('sidebar-toggle');
+            var toggleIcon = document.getElementById('toggle-icon');
 
-            // Load saved state from localStorage
-            const isCollapsed = localStorage.getItem('adminSidebarCollapsed') === 'true';
+            // Breakpoint matching lg (1024px)
+            var lgBreakpoint = window.matchMedia('(min-width: 1024px)');
 
-            function updateSidebar(collapsed) {
+            // Desktop collapse state from localStorage
+            var isDesktopCollapsed = localStorage.getItem('adminSidebarCollapsed') === 'true';
+
+            // Track mobile sidebar state
+            var isMobileOpen = false;
+
+            // Desktop collapse logic (lg and above)
+            function updateDesktopSidebar(collapsed) {
+                if (!lgBreakpoint.matches) return;
+
                 if (collapsed) {
                     sidebar.classList.add('collapsed');
                     mainWrapper.style.marginLeft = '4rem';
@@ -260,15 +289,84 @@
                 }
             }
 
-            // Apply initial state
-            updateSidebar(isCollapsed);
+            // Mobile sidebar logic (below lg)
+            function openMobileSidebar() {
+                isMobileOpen = true;
+                sidebar.classList.add('mobile-open');
+                mobileOverlay.classList.remove('hidden');
+                document.body.classList.add('sidebar-open');
+                mobileToggle.setAttribute('aria-expanded', 'true');
+            }
 
-            // Toggle handler
-            toggleBtn.addEventListener('click', function() {
-                const nowCollapsed = !sidebar.classList.contains('collapsed');
-                localStorage.setItem('adminSidebarCollapsed', nowCollapsed);
-                updateSidebar(nowCollapsed);
+            function closeMobileSidebar() {
+                isMobileOpen = false;
+                sidebar.classList.remove('mobile-open');
+                mobileOverlay.classList.add('hidden');
+                document.body.classList.remove('sidebar-open');
+                mobileToggle.setAttribute('aria-expanded', 'false');
+            }
+
+            function toggleMobileSidebar() {
+                if (isMobileOpen) {
+                    closeMobileSidebar();
+                } else {
+                    openMobileSidebar();
+                }
+            }
+
+            // Viewport change handler
+            function handleViewportChange() {
+                if (lgBreakpoint.matches) {
+                    // Switched to desktop: close mobile menu, apply desktop state
+                    closeMobileSidebar();
+                    updateDesktopSidebar(isDesktopCollapsed);
+                } else {
+                    // Switched to mobile: reset desktop styles
+                    sidebar.classList.remove('collapsed');
+                    mainWrapper.style.marginLeft = '';
+                }
+            }
+
+            // Event listeners
+            if (mobileToggle) {
+                mobileToggle.addEventListener('click', toggleMobileSidebar);
+            }
+
+            if (mobileOverlay) {
+                mobileOverlay.addEventListener('click', closeMobileSidebar);
+            }
+
+            if (desktopToggle) {
+                desktopToggle.addEventListener('click', function() {
+                    var nowCollapsed = !sidebar.classList.contains('collapsed');
+                    isDesktopCollapsed = nowCollapsed;
+                    localStorage.setItem('adminSidebarCollapsed', nowCollapsed);
+                    updateDesktopSidebar(nowCollapsed);
+                });
+            }
+
+            // Close mobile sidebar on navigation
+            document.addEventListener('click', function(e) {
+                if (!lgBreakpoint.matches && isMobileOpen) {
+                    var link = e.target.closest('a[href]');
+                    if (link && sidebar.contains(link)) {
+                        closeMobileSidebar();
+                    }
+                }
             });
+
+            // Close mobile sidebar on Escape key
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && isMobileOpen) {
+                    closeMobileSidebar();
+                }
+            });
+
+            // Handle viewport changes
+            lgBreakpoint.addEventListener('change', handleViewportChange);
+
+            // Initialize
+            handleViewportChange();
         })();
 
         // Admin theme toggle (3-way: light / dark / system)
