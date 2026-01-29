@@ -378,6 +378,69 @@ pub fn orders_table_config() -> DataTableConfig {
         )
 }
 
+/// Build the inventory table configuration.
+#[must_use]
+pub fn inventory_table_config() -> DataTableConfig {
+    DataTableConfig::new("inventory")
+        .column(TableColumn::sortable("product", "Product"))
+        .column(TableColumn::sortable("sku", "SKU"))
+        .column(TableColumn::new("tracked", "Tracked").visible(false))
+        .column(TableColumn::sortable("on_hand", "On Hand"))
+        .column(TableColumn::sortable("available", "Available"))
+        .column(TableColumn::new("committed", "Committed").visible(false))
+        .column(TableColumn::new("incoming", "Incoming").visible(false))
+        .column(TableColumn::new("cost", "Cost").visible(false))
+        .column(TableColumn::new("status", "Status"))
+        .filter(TableFilter::select(
+            "tracking",
+            "Tracking",
+            vec![
+                FilterOption::new("tracked", "Tracked"),
+                FilterOption::new("untracked", "Not Tracked"),
+            ],
+        ))
+        .filter(TableFilter::multi_select(
+            "stock_status",
+            "Stock Status",
+            vec![
+                FilterOption::new("in_stock", "In Stock"),
+                FilterOption::new("low_stock", "Low Stock"),
+                FilterOption::new("out_of_stock", "Out of Stock"),
+            ],
+        ))
+        .filter(TableFilter::multi_select(
+            "product_status",
+            "Product Status",
+            vec![
+                FilterOption::new("ACTIVE", "Active"),
+                FilterOption::new("DRAFT", "Draft"),
+                FilterOption::new("ARCHIVED", "Archived"),
+            ],
+        ))
+        .bulk_action(BulkAction::new(
+            "adjust_quantity",
+            "Adjust Quantity",
+            "ph-plus-minus",
+        ))
+        .bulk_action(BulkAction::new(
+            "toggle_tracked",
+            "Toggle Tracking",
+            "ph-check-circle",
+        ))
+        .bulk_action(BulkAction::new("update_sku", "Update SKU", "ph-barcode"))
+        .bulk_action(BulkAction::new(
+            "update_customs",
+            "Update Customs",
+            "ph-globe",
+        ))
+        .search_placeholder("Search products by name or SKU...")
+        .empty_state(
+            "ph-package",
+            "No inventory items found",
+            Some("Try adjusting your search or filters"),
+        )
+}
+
 /// Build the customers table configuration.
 #[must_use]
 pub fn customers_table_config() -> DataTableConfig {

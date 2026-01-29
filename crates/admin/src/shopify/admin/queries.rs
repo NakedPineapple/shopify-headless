@@ -611,6 +611,14 @@ pub struct GetInventoryLevels;
     query_path = "graphql/admin/queries/inventory.graphql",
     response_derives = "Debug, Clone"
 )]
+pub struct GetLocations;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/inventory.graphql",
+    response_derives = "Debug, Clone"
+)]
 pub struct InventoryAdjustQuantities;
 
 #[derive(GraphQLQuery)]
@@ -620,6 +628,54 @@ pub struct InventoryAdjustQuantities;
     response_derives = "Debug, Clone"
 )]
 pub struct InventorySetQuantities;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/inventory.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct GetInventoryItems;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/inventory.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct GetInventoryItem;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/inventory.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct UpdateInventoryItem;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/inventory.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct MoveInventory;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/inventory.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct ActivateInventory;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/inventory.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct DeactivateInventory;
 
 // =============================================================================
 // Gift Card queries and mutations
@@ -776,26 +832,6 @@ pub struct RefundCreate;
     response_derives = "Debug, Clone"
 )]
 pub struct ReturnCreate;
-
-// =============================================================================
-// Location and inventory queries
-// =============================================================================
-
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/admin/schema.json",
-    query_path = "graphql/admin/queries/inventory.graphql",
-    response_derives = "Debug, Clone"
-)]
-pub struct GetLocations;
-
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/admin/schema.json",
-    query_path = "graphql/admin/queries/inventory.graphql",
-    response_derives = "Debug, Clone"
-)]
-pub struct GetProductsWithInventory;
 
 // =============================================================================
 // Payout queries

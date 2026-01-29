@@ -1,0 +1,62 @@
+<!-- Bulk Update SKU Modal -->
+<div id="bulk-sku-modal" data-modal-backdrop class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div class="bg-card rounded-xl border border-border p-6 w-full max-w-md shadow-xl">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-medium text-foreground">Update SKU</h3>
+            <button type="button"
+                    onclick="document.getElementById('bulk-sku-modal').classList.add('hidden')"
+                    class="p-1 text-muted-foreground hover:text-foreground transition-colors">
+                <i class="ph ph-x text-lg"></i>
+            </button>
+        </div>
+
+        <form id="bulk-sku-form" method="POST" action="/inventory/bulk/sku">
+            <input type="hidden" name="ids" id="bulk-sku-ids">
+
+            <div class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3 mb-4">
+                <p class="text-sm text-yellow-800 dark:text-yellow-200">
+                    <i class="ph ph-warning mr-1"></i>
+                    This will apply a prefix or suffix to all selected items. Enter either a prefix OR suffix, not both.
+                </p>
+            </div>
+
+            <!-- Prefix -->
+            <div class="mb-4">
+                <label for="bulk-sku-prefix" class="block text-sm font-medium text-foreground mb-1">
+                    SKU Prefix
+                </label>
+                <input type="text"
+                       id="bulk-sku-prefix"
+                       name="prefix"
+                       placeholder="e.g., NP-"
+                       class="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-ring focus:border-ring font-mono">
+                <p class="text-xs text-muted-foreground mt-1">Added to the beginning of each SKU</p>
+            </div>
+
+            <!-- Suffix -->
+            <div class="mb-6">
+                <label for="bulk-sku-suffix" class="block text-sm font-medium text-foreground mb-1">
+                    SKU Suffix
+                </label>
+                <input type="text"
+                       id="bulk-sku-suffix"
+                       name="suffix"
+                       placeholder="e.g., -2024"
+                       class="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-ring focus:border-ring font-mono">
+                <p class="text-xs text-muted-foreground mt-1">Added to the end of each SKU</p>
+            </div>
+
+            <div class="flex justify-end gap-3">
+                <button type="button"
+                        onclick="document.getElementById('bulk-sku-modal').classList.add('hidden')"
+                        class="px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                    Cancel
+                </button>
+                <button type="submit"
+                        class="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors">
+                    Update SKUs
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

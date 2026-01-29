@@ -8,6 +8,10 @@
 <p class="text-sm text-muted-foreground mt-1">Manage stock levels across locations</p>
 {% endblock %}
 
+{% block head %}
+<script src="/static/js/data-table.js" defer></script>
+{% endblock %}
+
 {% block content %}
 <!-- Low Stock Alert Banner -->
 {% if low_stock_count > 0 %}
@@ -20,7 +24,7 @@
             <p class="font-medium text-yellow-800 dark:text-yellow-200">{{ low_stock_count }} item{% if low_stock_count != 1 %}s{% endif %} with low stock</p>
             <p class="text-sm text-yellow-600 dark:text-yellow-400">Items with 10 or fewer units are highlighted below</p>
         </div>
-        <a href="/inventory?low_stock_only=true{% if let Some(loc) = selected_location_id %}&location_id={{ loc }}{% endif %}"
+        <a href="/inventory?stock_status=low_stock{% if let Some(loc) = selected_location_id %}&location_id={{ loc }}{% endif %}"
            class="px-4 py-2 bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-300 rounded-lg text-sm font-medium hover:bg-yellow-200 dark:hover:bg-yellow-900 transition-colors">
             View Low Stock Only
         </a>
@@ -28,160 +32,273 @@
 </div>
 {% endif %}
 
-<!-- Filters and Search -->
-<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-    <form method="GET" action="/inventory" class="flex-1 flex flex-col sm:flex-row gap-4">
-        <!-- Location Selector -->
-        <div class="relative">
-            <select name="location_id"
-                    onchange="this.form.submit()"
-                    class="appearance-none pl-10 pr-8 py-2 bg-input border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-colors">
-                {% for location in locations %}
-                <option value="{{ location.id }}" {% if selected_location_id == Some(location.id.clone()) %}selected{% endif %}>
-                    {{ location.name }}
-                </option>
-                {% endfor %}
-            </select>
-            <i class="ph ph-map-pin absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"></i>
-            <i class="ph ph-caret-down absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"></i>
-        </div>
+<div data-table="{{ table_config.table_id }}"
+     data-table-auto
+     data-table-options='{"defaultColumns": {{ table_config.default_columns()|json }}}'
+     class="bg-card rounded-xl border border-border overflow-hidden">
 
-        <!-- Search -->
-        <div class="relative flex-1 max-w-md">
-            <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"></i>
-            <input type="search"
-                   name="query"
-                   value="{{ search_query.as_deref().unwrap_or("") }}"
-                   placeholder="Search products..."
-                   class="w-full pl-10 pr-4 py-2 bg-input border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-colors placeholder:text-muted-foreground">
+    <!-- Toolbar -->
+    <div class="px-6 py-4 border-b border-border">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <!-- Location Selector + Search -->
+            <div class="flex-1 flex flex-col sm:flex-row gap-3">
+                <!-- Location Selector -->
+                <div class="relative">
+                    <select id="location-select"
+                            onchange="updateLocation(this.value)"
+                            class="appearance-none pl-10 pr-8 py-2 bg-input border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-colors">
+                        {% for location in locations %}
+                        <option value="{{ location.id }}" {% if selected_location_id == Some(location.id.clone()) %}selected{% endif %}>
+                            {{ location.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <i class="ph ph-map-pin absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"></i>
+                    <i class="ph ph-caret-down absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"></i>
+                </div>
+
+                <!-- Search -->
+                <div class="relative flex-1 max-w-md">
+                    <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"></i>
+                    <input type="search"
+                           id="{{ table_config.table_id }}-search"
+                           name="query"
+                           value="{{ search_query.as_deref().unwrap_or("") }}"
+                           placeholder="{{ table_config.search_placeholder }}"
+                           class="w-full pl-10 pr-4 py-2 bg-input border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-colors placeholder:text-muted-foreground">
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <!-- Filters Toggle -->
+                <button type="button"
+                        id="{{ table_config.table_id }}-filters-toggle"
+                        class="inline-flex items-center gap-2 px-3 py-2 bg-muted text-foreground rounded-lg text-sm hover:bg-accent transition-colors"
+                        onclick="document.getElementById('{{ table_config.table_id }}-filters-panel').classList.toggle('hidden')">
+                    <i class="ph ph-funnel"></i>
+                    Filters
+                    {% if !filter_values.is_empty() %}
+                    <span class="w-5 h-5 rounded-full bg-primary text-white text-xs flex items-center justify-center">{{ filter_values.len() }}</span>
+                    {% endif %}
+                </button>
+
+                <!-- Column Picker -->
+                <div class="relative">
+                    <button type="button"
+                            class="inline-flex items-center gap-2 px-3 py-2 bg-muted text-foreground rounded-lg text-sm hover:bg-accent transition-colors"
+                            onclick="this.nextElementSibling.classList.toggle('hidden')">
+                        <i class="ph ph-columns"></i>
+                        Columns
+                    </button>
+                    <div class="hidden absolute right-0 mt-2 w-56 bg-card border border-border rounded-lg shadow-lg z-10">
+                        <div class="p-2">
+                            <p class="px-2 py-1 text-xs font-medium text-muted-foreground uppercase">Toggle Columns</p>
+                            {% for col in table_config.columns %}
+                            <label class="flex items-center gap-2 px-2 py-1.5 hover:bg-accent rounded cursor-pointer">
+                                <input type="checkbox"
+                                       data-column-toggle="{{ table_config.table_id }}"
+                                       data-column="{{ col.key }}"
+                                       {% if col_visible.is_visible(col.key) %}checked{% endif %}
+                                       class="rounded border-border text-primary focus:ring-primary">
+                                <span class="text-sm text-foreground">{{ col.label }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Panel -->
+    <div id="{{ table_config.table_id }}-filters-panel" class="{% if filter_values.is_empty() %}hidden{% endif %} px-6 py-4 border-b border-border bg-muted/30">
+        <form id="{{ table_config.table_id }}-filters-form" method="GET" class="space-y-4">
             {% if let Some(loc) = selected_location_id %}
             <input type="hidden" name="location_id" value="{{ loc }}">
             {% endif %}
+            {% if let Some(q) = search_query %}
+            <input type="hidden" name="query" value="{{ q }}">
+            {% endif %}
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {% for filter in table_config.filters %}
+                {% match filter.filter_type %}
+                {% when FilterType::MultiSelect %}
+                <div>
+                    <label class="block text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
+                        {{ filter.label }}
+                    </label>
+                    <div class="bg-input border border-border rounded-lg p-2 max-h-40 overflow-y-auto">
+                        {% for opt in filter.options %}
+                        <label class="flex items-center gap-2 px-2 py-1 hover:bg-accent rounded cursor-pointer">
+                            <input type="checkbox"
+                                   name="{{ filter.key }}"
+                                   value="{{ opt.value }}"
+                                   data-filter="{{ table_config.table_id }}"
+                                   class="rounded border-border text-primary focus:ring-primary">
+                            <span class="text-sm text-foreground">{{ opt.label }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% when FilterType::Select %}
+                <div>
+                    <label for="{{ filter.key }}" class="block text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
+                        {{ filter.label }}
+                    </label>
+                    <select id="{{ filter.key }}"
+                            name="{{ filter.key }}"
+                            data-filter="{{ table_config.table_id }}"
+                            class="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-colors">
+                        <option value="">All</option>
+                        {% for opt in filter.options %}
+                        <option value="{{ opt.value }}">
+                            {{ opt.label }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% when FilterType::Text %}
+                <div>
+                    <label for="{{ filter.key }}" class="block text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
+                        {{ filter.label }}
+                    </label>
+                    <input type="text"
+                           id="{{ filter.key }}"
+                           name="{{ filter.key }}"
+                           placeholder="{{ filter.placeholder.as_deref().unwrap_or("") }}"
+                           class="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-colors">
+                </div>
+                {% when FilterType::DateRange %}
+                <div class="space-y-2">
+                    <label class="block text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        {{ filter.label }}
+                    </label>
+                    <div class="flex items-center gap-2">
+                        <input type="date"
+                               name="{{ filter.key }}_from"
+                               class="flex-1 px-3 py-2 bg-input border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-ring focus:border-ring">
+                        <span class="text-muted-foreground">to</span>
+                        <input type="date"
+                               name="{{ filter.key }}_to"
+                               class="flex-1 px-3 py-2 bg-input border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-ring focus:border-ring">
+                    </div>
+                </div>
+                {% when FilterType::NumberRange %}
+                <div class="space-y-2">
+                    <label class="block text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        {{ filter.label }}
+                    </label>
+                    <div class="flex items-center gap-2">
+                        <input type="number"
+                               name="{{ filter.key }}_min"
+                               placeholder="Min"
+                               class="flex-1 px-3 py-2 bg-input border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-ring focus:border-ring">
+                        <span class="text-muted-foreground">to</span>
+                        <input type="number"
+                               name="{{ filter.key }}_max"
+                               placeholder="Max"
+                               class="flex-1 px-3 py-2 bg-input border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-ring focus:border-ring">
+                    </div>
+                </div>
+                {% endmatch %}
+                {% endfor %}
+            </div>
+
+            <div class="flex items-center gap-3 pt-2">
+                <button type="submit"
+                        class="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors">
+                    Apply Filters
+                </button>
+                <a href="/inventory{% if let Some(loc) = selected_location_id %}?location_id={{ loc }}{% endif %}"
+                   class="px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                    Clear All
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Bulk Action Bar -->
+    <div id="{{ table_config.table_id }}-bulk-bar"
+         class="hidden px-6 py-3 bg-primary/10 border-b border-primary/20">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-4">
+                <span data-selected-count class="text-sm font-medium text-primary">0 selected</span>
+                <button type="button"
+                        onclick="DataTable.get('{{ table_config.table_id }}').clearSelection()"
+                        class="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                    Clear selection
+                </button>
+            </div>
+
+            <div class="flex items-center gap-2">
+                {% for action in table_config.bulk_actions %}
+                <button type="button"
+                        data-bulk-action="{{ table_config.table_id }}"
+                        data-action="{{ action.key }}"
+                        class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
+                               {% if action.destructive %}
+                               bg-destructive/10 text-destructive hover:bg-destructive/20
+                               {% else %}
+                               bg-card text-foreground hover:bg-accent border border-border
+                               {% endif %}">
+                    <i class="ph {{ action.icon }}"></i>
+                    {{ action.label }}
+                </button>
+                {% endfor %}
+            </div>
         </div>
+    </div>
 
-        <!-- Low Stock Filter -->
-        <label class="inline-flex items-center gap-2 cursor-pointer">
-            <input type="checkbox"
-                   name="low_stock_only"
-                   value="true"
-                   {% if low_stock_only %}checked{% endif %}
-                   onchange="this.form.submit()"
-                   class="w-4 h-4 rounded border-border text-primary focus:ring-ring">
-            <span class="text-sm text-foreground">Low stock only</span>
-        </label>
-    </form>
-</div>
-
-<!-- Inventory Table -->
-<div class="bg-card rounded-xl border border-border overflow-hidden">
+    <!-- Table -->
     <div class="overflow-hidden md:overflow-x-auto">
         <table class="w-full data-table-cards">
             <thead class="bg-muted">
                 <tr>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Product / Variant</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">SKU</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
-                    <th class="px-6 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">Quantity</th>
-                    <th class="px-6 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">Adjust</th>
+                    <!-- Select All Checkbox -->
+                    <th class="w-12 px-6 py-3">
+                        <input type="checkbox"
+                               id="{{ table_config.table_id }}-select-all"
+                               class="rounded border-border text-primary focus:ring-primary">
+                    </th>
+
+                    {% for col in table_config.columns %}
+                    <th data-column="{{ col.key }}"
+                        class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider {% if !col_visible.is_visible(col.key) %}hidden{% endif %}
+                               {% if col.key == "on_hand" || col.key == "available" || col.key == "committed" || col.key == "incoming" %}text-right{% endif %}">
+                        {% if col.sortable %}
+                        <a href="?sort={{ col.key }}&dir={% if sort_column.as_deref() == Some(col.key) && sort_direction == "asc" %}desc{% else %}asc{% endif %}{{ preserve_params }}"
+                           class="inline-flex items-center gap-1 hover:text-foreground transition-colors group">
+                            {{ col.label }}
+                            {% if sort_column.as_deref() == Some(col.key) %}
+                            <i class="ph ph-caret-{% if sort_direction == "asc" %}up{% else %}down{% endif %} text-primary"></i>
+                            {% else %}
+                            <i class="ph ph-caret-up-down text-muted-foreground/50 group-hover:text-muted-foreground"></i>
+                            {% endif %}
+                        </a>
+                        {% else %}
+                        {{ col.label }}
+                        {% endif %}
+                    </th>
+                    {% endfor %}
+
+                    <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-border">
                 {% if items.is_empty() %}
                 <tr>
-                    <td colspan="5" class="px-6 py-12 text-center text-muted-foreground">
-                        <i class="ph ph-package text-4xl mb-2"></i>
-                        <p>No inventory items found</p>
+                    <td colspan="{{ table_config.columns.len() + 2 }}" class="px-6 py-12 text-center text-muted-foreground">
+                        <i class="ph {{ table_config.empty_icon }} text-4xl mb-2 block"></i>
+                        <p>{{ table_config.empty_title }}</p>
+                        {% if search_query.is_some() || !filter_values.is_empty() %}
+                        <a href="/inventory{% if let Some(loc) = selected_location_id %}?location_id={{ loc }}{% endif %}"
+                           class="text-sm text-primary hover:underline mt-2 inline-block">Clear filters</a>
+                        {% endif %}
                     </td>
                 </tr>
                 {% else %}
                 {% for item in items %}
-                <tr id="row-{{ item.inventory_item_id }}" class="hover:bg-accent transition-colors {% if item.is_low_stock %}bg-yellow-50/50 dark:bg-yellow-900/10{% endif %}">
-                    <td class="px-6 py-4 card-header" data-label="">
-                        <div class="flex items-center gap-4">
-                            {% if let Some(url) = item.product_image_url %}
-                            <img src="{{ url }}" alt="{{ item.product_title }}" class="w-10 h-10 rounded-lg object-cover">
-                            {% else %}
-                            <div class="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
-                                <i class="ph ph-image text-muted-foreground"></i>
-                            </div>
-                            {% endif %}
-                            <div>
-                                <p class="font-medium text-foreground">{{ item.product_title }}</p>
-                                {% if item.variant_title != "Default Title" %}
-                                <p class="text-sm text-muted-foreground">{{ item.variant_title }}</p>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </td>
-                    <td class="px-6 py-4 text-sm text-muted-foreground mobile-hidden" data-label="SKU">
-                        {{ item.sku.as_deref().unwrap_or("-") }}
-                    </td>
-                    <td class="px-6 py-4" data-label="Status">
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ item.status_class }}">
-                            {{ item.status }}
-                        </span>
-                    </td>
-                    <td class="px-6 py-4 text-center" data-label="Quantity">
-                        <span id="qty-{{ item.inventory_item_id }}"
-                              class="text-lg font-semibold {% if item.is_low_stock %}text-warning{% else %}text-foreground{% endif %}">
-                            {{ item.quantity }}
-                        </span>
-                        {% if item.is_low_stock %}
-                        <i class="ph ph-warning ml-1 text-warning" title="Low stock"></i>
-                        {% endif %}
-                    </td>
-                    <td class="px-6 py-4 card-actions" data-label="">
-                        <div class="flex items-center justify-center gap-2">
-                            <!-- Quick adjust buttons -->
-                            <form hx-post="/inventory/adjust"
-                                  hx-target="#qty-{{ item.inventory_item_id }}"
-                                  hx-swap="innerHTML"
-                                  class="flex items-center gap-1">
-                                <input type="hidden" name="inventory_item_id" value="{{ item.inventory_item_id }}">
-                                <input type="hidden" name="location_id" value="{{ selected_location_id.as_deref().unwrap_or("") }}">
-                                <input type="hidden" name="delta" value="-1">
-                                <button type="submit"
-                                        class="w-8 h-8 rounded-lg bg-muted hover:bg-accent flex items-center justify-center transition-colors"
-                                        title="Decrease by 1">
-                                    <i class="ph ph-minus text-muted-foreground"></i>
-                                </button>
-                            </form>
-
-                            <form hx-post="/inventory/adjust"
-                                  hx-target="#qty-{{ item.inventory_item_id }}"
-                                  hx-swap="innerHTML"
-                                  class="flex items-center gap-1">
-                                <input type="hidden" name="inventory_item_id" value="{{ item.inventory_item_id }}">
-                                <input type="hidden" name="location_id" value="{{ selected_location_id.as_deref().unwrap_or("") }}">
-                                <input type="hidden" name="delta" value="1">
-                                <button type="submit"
-                                        class="w-8 h-8 rounded-lg bg-muted hover:bg-accent flex items-center justify-center transition-colors"
-                                        title="Increase by 1">
-                                    <i class="ph ph-plus text-muted-foreground"></i>
-                                </button>
-                            </form>
-
-                            <!-- Set quantity input -->
-                            <form hx-post="/inventory/set"
-                                  hx-target="#qty-{{ item.inventory_item_id }}"
-                                  hx-swap="innerHTML"
-                                  class="flex items-center gap-1 ml-2">
-                                <input type="hidden" name="inventory_item_id" value="{{ item.inventory_item_id }}">
-                                <input type="hidden" name="location_id" value="{{ selected_location_id.as_deref().unwrap_or("") }}">
-                                <input type="number"
-                                       name="quantity"
-                                       value="{{ item.quantity }}"
-                                       min="0"
-                                       class="w-20 px-2 py-1 text-sm text-center bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring">
-                                <button type="submit"
-                                        class="px-3 py-1 bg-primary text-primary-foreground text-sm rounded-lg hover:bg-primary/90 transition-colors"
-                                        title="Set quantity">
-                                    Set
-                                </button>
-                            </form>
-                        </div>
-                    </td>
-                </tr>
+                {% include "_row.html" %}
                 {% endfor %}
                 {% endif %}
             </tbody>
@@ -191,7 +308,7 @@
     <!-- Pagination -->
     {% if has_next_page %}
     <div class="px-6 py-4 border-t border-border">
-        <a href="/inventory?cursor={{ next_cursor.as_deref().unwrap_or("") }}{% if let Some(loc) = selected_location_id %}&location_id={{ loc }}{% endif %}{% if let Some(q) = search_query %}&query={{ q }}{% endif %}{% if low_stock_only %}&low_stock_only=true{% endif %}"
+        <a href="/inventory?cursor={{ next_cursor.as_deref().unwrap_or("") }}{{ preserve_params }}"
            class="inline-flex items-center gap-2 text-sm text-primary hover:underline">
             Load more
             <i class="ph ph-arrow-right"></i>
@@ -199,13 +316,87 @@
     </div>
     {% endif %}
 </div>
-{% endblock %}
 
-{% block scripts %}
+<!-- Bulk Adjust Quantity Modal -->
+{% include "_bulk_adjust_modal.html" %}
+
+<!-- Bulk Update SKU Modal -->
+{% include "_bulk_sku_modal.html" %}
+
+<!-- Bulk Update Customs Modal -->
+{% include "_bulk_customs_modal.html" %}
+
 <script>
+// Location selector
+function updateLocation(locationId) {
+    const url = new URL(window.location.href);
+    url.searchParams.set('location_id', locationId);
+    window.location.href = url.toString();
+}
+
+// Handle bulk actions
+document.addEventListener('dataTableBulkAction', function(e) {
+    const { tableId, action, ids } = e.detail;
+    if (tableId !== '{{ table_config.table_id }}') return;
+
+    const locationId = document.getElementById('location-select').value;
+
+    if (action === 'adjust_quantity') {
+        const modal = document.getElementById('bulk-adjust-modal');
+        document.getElementById('bulk-adjust-ids').value = ids.join(',');
+        document.getElementById('bulk-adjust-location').value = locationId;
+        modal.classList.remove('hidden');
+    } else if (action === 'update_sku') {
+        const modal = document.getElementById('bulk-sku-modal');
+        document.getElementById('bulk-sku-ids').value = ids.join(',');
+        modal.classList.remove('hidden');
+    } else if (action === 'update_customs') {
+        const modal = document.getElementById('bulk-customs-modal');
+        document.getElementById('bulk-customs-ids').value = ids.join(',');
+        modal.classList.remove('hidden');
+    } else if (action === 'toggle_tracked') {
+        // Submit toggle form directly
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/inventory/bulk/toggle-tracked';
+
+        const idsInput = document.createElement('input');
+        idsInput.type = 'hidden';
+        idsInput.name = 'ids';
+        idsInput.value = ids.join(',');
+        form.appendChild(idsInput);
+
+        const locationInput = document.createElement('input');
+        locationInput.type = 'hidden';
+        locationInput.name = 'location_id';
+        locationInput.value = locationId;
+        form.appendChild(locationInput);
+
+        document.body.appendChild(form);
+        form.submit();
+    }
+});
+
+// Close modals on escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        document.getElementById('bulk-adjust-modal')?.classList.add('hidden');
+        document.getElementById('bulk-sku-modal')?.classList.add('hidden');
+        document.getElementById('bulk-customs-modal')?.classList.add('hidden');
+    }
+});
+
+// Close modals on backdrop click
+document.querySelectorAll('[data-modal-backdrop]').forEach(modal => {
+    modal.addEventListener('click', function(e) {
+        if (e.target === this) {
+            this.classList.add('hidden');
+        }
+    });
+});
+
 // Show success/error notifications for HTMX updates
 document.body.addEventListener('htmx:afterRequest', function(evt) {
-    // Reload after a short delay to show updated quantity
     if (evt.detail.successful) {
         setTimeout(function() {
             location.reload();

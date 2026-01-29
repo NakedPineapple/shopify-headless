@@ -21,9 +21,9 @@ use super::{
         CollectionConnection, CollectionProduct, CollectionWithProducts, Customer,
         CustomerConnection, DiscountCode, DiscountCodeConnection, DiscountStatus, DiscountValue,
         FulfillmentHoldInput, FulfillmentHoldReason, FulfillmentOrder, FulfillmentOrderLineItem,
-        GiftCard, GiftCardConnection, Image, InventoryLevel, InventoryLevelConnection, Location,
-        LocationConnection, Money, Order, OrderConnection, OrderDetail,
-        OrderEditAddShippingLineInput, OrderEditAppliedDiscountInput,
+        GiftCard, GiftCardConnection, Image, InventoryItem, InventoryItemConnection,
+        InventoryLevel, InventoryLevelConnection, Location, LocationConnection, Money, Order,
+        OrderConnection, OrderDetail, OrderEditAddShippingLineInput, OrderEditAppliedDiscountInput,
         OrderEditUpdateShippingLineInput, PageInfo, Payout, PayoutConnection, PayoutStatus,
         RefundCreateInput, RefundRestockType, ReturnCreateInput, StagedUploadTarget,
         SuggestedRefundLineItem, SuggestedRefundResult,
@@ -35,9 +35,10 @@ pub mod queries;
 
 use conversions::{
     convert_calculated_order, convert_customer, convert_customer_connection,
-    convert_fulfillment_orders, convert_inventory_level_connection, convert_location_connection,
-    convert_order, convert_order_connection, convert_order_list_connection, convert_product,
-    convert_product_connection,
+    convert_fulfillment_orders, convert_inventory_item_connection,
+    convert_inventory_level_connection, convert_location_connection, convert_order,
+    convert_order_connection, convert_order_list_connection, convert_product,
+    convert_product_connection, convert_single_inventory_item,
 };
 use queries::{
     CollectionAddProductsV2, CollectionCreate, CollectionDelete, CollectionRemoveProducts,
@@ -49,17 +50,17 @@ use queries::{
     DiscountCodeDeactivate, FileDelete, FileUpdate, FulfillmentCreate, FulfillmentOrderHold,
     FulfillmentOrderReleaseHold, FulfillmentTrackingInfoUpdate, GetCollection,
     GetCollectionWithProducts, GetCollections, GetCustomer, GetCustomers, GetDiscountCode,
-    GetDiscountCodes, GetFulfillmentOrders, GetGiftCards, GetInventoryLevels, GetLocations,
-    GetOrder, GetOrderDetail, GetOrders, GetPayout, GetPayouts, GetProduct, GetProducts,
-    GetPublications, GiftCardCreate, GiftCardUpdate, InventoryAdjustQuantities,
-    InventorySetQuantities, OrderCancel, OrderCapture, OrderClose, OrderEditAddCustomItem,
-    OrderEditAddLineItemDiscount, OrderEditAddShippingLine, OrderEditAddVariant, OrderEditBegin,
-    OrderEditCommit, OrderEditRemoveDiscount, OrderEditRemoveShippingLine, OrderEditSetQuantity,
-    OrderEditUpdateDiscount, OrderEditUpdateShippingLine, OrderMarkAsPaid, OrderOpen, OrderTagsAdd,
-    OrderTagsRemove, OrderUpdate, ProductCreate, ProductDelete, ProductReorderMedia,
-    ProductSetMedia, ProductUpdate, ProductVariantsBulkUpdate, PublishablePublish,
-    PublishableUnpublish, RefundCreate, ReturnCreate, StagedUploadsCreate, SuggestedRefund,
-    TagsAdd, TagsRemove,
+    GetDiscountCodes, GetFulfillmentOrders, GetGiftCards, GetInventoryItem, GetInventoryItems,
+    GetInventoryLevels, GetLocations, GetOrder, GetOrderDetail, GetOrders, GetPayout, GetPayouts,
+    GetProduct, GetProducts, GetPublications, GiftCardCreate, GiftCardUpdate,
+    InventoryAdjustQuantities, InventorySetQuantities, OrderCancel, OrderCapture, OrderClose,
+    OrderEditAddCustomItem, OrderEditAddLineItemDiscount, OrderEditAddShippingLine,
+    OrderEditAddVariant, OrderEditBegin, OrderEditCommit, OrderEditRemoveDiscount,
+    OrderEditRemoveShippingLine, OrderEditSetQuantity, OrderEditUpdateDiscount,
+    OrderEditUpdateShippingLine, OrderMarkAsPaid, OrderOpen, OrderTagsAdd, OrderTagsRemove,
+    OrderUpdate, ProductCreate, ProductDelete, ProductReorderMedia, ProductSetMedia, ProductUpdate,
+    ProductVariantsBulkUpdate, PublishablePublish, PublishableUnpublish, RefundCreate,
+    ReturnCreate, StagedUploadsCreate, SuggestedRefund, TagsAdd, TagsRemove,
 };
 
 /// OAuth token for Admin API access.
@@ -4804,6 +4805,56 @@ impl AdminClient {
             .location
             .map(convert_inventory_level_connection)
             .ok_or_else(|| AdminShopifyError::NotFound(format!("Location {location_id} not found")))
+    }
+
+    /// Get inventory items with pagination.
+    ///
+    /// # Arguments
+    ///
+    /// * `first` - Number of items to return
+    /// * `after` - Cursor for pagination
+    /// * `query` - Optional search query
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails.
+    #[instrument(skip(self))]
+    pub async fn get_inventory_items(
+        &self,
+        first: i64,
+        after: Option<String>,
+        query: Option<String>,
+    ) -> Result<InventoryItemConnection, AdminShopifyError> {
+        let variables = queries::get_inventory_items::Variables {
+            first: Some(first),
+            after,
+            query,
+        };
+
+        let response = self.execute::<GetInventoryItems>(variables).await?;
+
+        Ok(convert_inventory_item_connection(response))
+    }
+
+    /// Get a single inventory item by ID.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - Shopify inventory item ID (e.g., `gid://shopify/InventoryItem/123`)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails or the item is not found.
+    #[instrument(skip(self), fields(id = %id))]
+    pub async fn get_inventory_item(&self, id: &str) -> Result<InventoryItem, AdminShopifyError> {
+        let variables = queries::get_inventory_item::Variables { id: id.to_string() };
+
+        let response = self.execute::<GetInventoryItem>(variables).await?;
+
+        response
+            .inventory_item
+            .map(convert_single_inventory_item)
+            .ok_or_else(|| AdminShopifyError::NotFound(format!("Inventory item {id} not found")))
     }
 
     /// Adjust inventory quantity (delta adjustment).

@@ -1,51 +1,119 @@
-<tr id="row-{{ item.inventory_item_id }}" class="hover:bg-accent transition-colors {% if item.is_low_stock %}bg-yellow-50/50 dark:bg-yellow-900/10{% endif %}">
-    <td class="px-6 py-4">
-        <div class="flex items-center gap-4">
+<tr id="row-{{ item.inventory_item_id }}"
+    data-row="{{ item.inventory_item_id }}"
+    class="hover:bg-accent transition-colors {% if item.is_low_stock %}bg-yellow-50/50 dark:bg-yellow-900/10{% endif %}">
+
+    <!-- Checkbox -->
+    <td class="px-6 py-4 card-checkbox" data-label="">
+        <input type="checkbox"
+               data-row-id="{{ item.inventory_item_id }}"
+               class="rounded border-border text-primary focus:ring-primary">
+    </td>
+
+    <!-- Product -->
+    <td data-column="product" data-label="" class="px-6 py-4 card-header {% if !col_visible.product %}hidden{% endif %}">
+        <a href="/inventory/{{ item.id }}" class="flex items-center gap-4 group">
             {% if let Some(url) = item.product_image_url %}
-            <img src="{{ url }}" alt="{{ item.product_title }}" class="w-10 h-10 rounded-lg object-cover">
+            <img src="{{ url }}" alt="{{ item.product_title }}" class="w-10 h-10 rounded-lg object-cover shrink-0">
             {% else %}
-            <div class="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
-                <i class="ph ph-image text-muted-foreground"></i>
+            <div class="w-10 h-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                <i class="ph ph-package text-muted-foreground"></i>
             </div>
             {% endif %}
-            <div>
-                <p class="font-medium text-foreground">{{ item.product_title }}</p>
+            <div class="min-w-0">
+                <p class="font-medium text-foreground group-hover:text-primary transition-colors truncate">{{ item.product_title }}</p>
                 {% if item.variant_title != "Default Title" %}
-                <p class="text-sm text-muted-foreground">{{ item.variant_title }}</p>
+                <p class="text-sm text-muted-foreground truncate">{{ item.variant_title }}</p>
                 {% endif %}
             </div>
+        </a>
+    </td>
+
+    <!-- SKU -->
+    <td data-column="sku" data-label="SKU" class="px-6 py-4 text-sm text-muted-foreground mobile-hidden {% if !col_visible.sku %}hidden{% endif %}">
+        {% if let Some(sku) = item.sku %}
+        <span class="font-mono">{{ sku }}</span>
+        {% else %}
+        <span class="text-muted-foreground/50">-</span>
+        {% endif %}
+    </td>
+
+    <!-- Tracked -->
+    <td data-column="tracked" data-label="Tracked" class="px-6 py-4 mobile-hidden {% if !col_visible.tracked %}hidden{% endif %}">
+        {% if item.tracked %}
+        <span class="inline-flex items-center gap-1 text-sm text-green-600 dark:text-green-400">
+            <i class="ph ph-check-circle"></i>
+            Tracked
+        </span>
+        {% else %}
+        <span class="text-sm text-muted-foreground">Not tracked</span>
+        {% endif %}
+    </td>
+
+    <!-- On Hand -->
+    <td data-column="on_hand" data-label="On Hand" class="px-6 py-4 text-right tabular-nums {% if !col_visible.on_hand %}hidden{% endif %}">
+        <span class="text-foreground font-medium">{{ item.on_hand }}</span>
+    </td>
+
+    <!-- Available -->
+    <td data-column="available" data-label="Available" class="px-6 py-4 text-right tabular-nums {% if !col_visible.available %}hidden{% endif %}">
+        <div class="flex items-center justify-end gap-2">
+            <span id="qty-{{ item.inventory_item_id }}"
+                  class="font-semibold {% if item.is_out_of_stock %}text-destructive{% elif item.is_low_stock %}text-warning{% else %}text-foreground{% endif %}">
+                {{ item.available }}
+            </span>
+            {% if item.is_low_stock %}
+            <i class="ph ph-warning text-warning" title="Low stock"></i>
+            {% elif item.is_out_of_stock %}
+            <i class="ph ph-x-circle text-destructive" title="Out of stock"></i>
+            {% endif %}
         </div>
     </td>
-    <td class="px-6 py-4 text-sm text-muted-foreground">
-        {{ item.sku.as_deref().unwrap_or("-") }}
+
+    <!-- Committed -->
+    <td data-column="committed" data-label="Committed" class="px-6 py-4 text-right text-sm text-muted-foreground tabular-nums mobile-hidden {% if !col_visible.committed %}hidden{% endif %}">
+        {{ item.committed }}
     </td>
-    <td class="px-6 py-4">
+
+    <!-- Incoming -->
+    <td data-column="incoming" data-label="Incoming" class="px-6 py-4 text-right text-sm mobile-hidden {% if !col_visible.incoming %}hidden{% endif %}">
+        {% if item.incoming > 0 %}
+        <span class="text-blue-600 dark:text-blue-400">+{{ item.incoming }}</span>
+        {% else %}
+        <span class="text-muted-foreground/50">-</span>
+        {% endif %}
+    </td>
+
+    <!-- Cost -->
+    <td data-column="cost" data-label="Cost" class="px-6 py-4 text-sm text-muted-foreground mobile-hidden {% if !col_visible.cost %}hidden{% endif %}">
+        {% if let Some(cost) = item.unit_cost %}
+        {{ cost }}
+        {% else %}
+        <span class="text-muted-foreground/50">-</span>
+        {% endif %}
+    </td>
+
+    <!-- Status -->
+    <td data-column="status" data-label="Status" class="px-6 py-4 {% if !col_visible.status %}hidden{% endif %}">
         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ item.status_class }}">
             {{ item.status }}
         </span>
     </td>
-    <td class="px-6 py-4 text-center">
-        <span id="qty-{{ item.inventory_item_id }}"
-              class="text-lg font-semibold {% if item.is_low_stock %}text-warning{% else %}text-foreground{% endif %}">
-            {{ item.quantity }}
-        </span>
-        {% if item.is_low_stock %}
-        <i class="ph ph-warning ml-1 text-warning" title="Low stock"></i>
-        {% endif %}
-    </td>
-    <td class="px-6 py-4">
-        <div class="flex items-center justify-center gap-2">
+
+    <!-- Actions -->
+    <td class="px-6 py-4 text-right card-actions" data-label="">
+        <div class="flex items-center justify-end gap-2">
+            <!-- Quick adjust buttons -->
             <form hx-post="/inventory/adjust"
                   hx-target="#qty-{{ item.inventory_item_id }}"
                   hx-swap="innerHTML"
                   class="flex items-center gap-1">
                 <input type="hidden" name="inventory_item_id" value="{{ item.inventory_item_id }}">
-                <input type="hidden" name="location_id" value="{{ selected_location_id }}">
+                <input type="hidden" name="location_id" value="{{ selected_location_id.as_deref().unwrap_or("") }}">
                 <input type="hidden" name="delta" value="-1">
                 <button type="submit"
-                        class="w-8 h-8 rounded-lg bg-muted hover:bg-accent flex items-center justify-center transition-colors"
+                        class="w-7 h-7 rounded-lg bg-muted hover:bg-accent flex items-center justify-center transition-colors"
                         title="Decrease by 1">
-                    <i class="ph ph-minus text-muted-foreground"></i>
+                    <i class="ph ph-minus text-muted-foreground text-sm"></i>
                 </button>
             </form>
 
@@ -54,32 +122,21 @@
                   hx-swap="innerHTML"
                   class="flex items-center gap-1">
                 <input type="hidden" name="inventory_item_id" value="{{ item.inventory_item_id }}">
-                <input type="hidden" name="location_id" value="{{ selected_location_id }}">
+                <input type="hidden" name="location_id" value="{{ selected_location_id.as_deref().unwrap_or("") }}">
                 <input type="hidden" name="delta" value="1">
                 <button type="submit"
-                        class="w-8 h-8 rounded-lg bg-muted hover:bg-accent flex items-center justify-center transition-colors"
+                        class="w-7 h-7 rounded-lg bg-muted hover:bg-accent flex items-center justify-center transition-colors"
                         title="Increase by 1">
-                    <i class="ph ph-plus text-muted-foreground"></i>
+                    <i class="ph ph-plus text-muted-foreground text-sm"></i>
                 </button>
             </form>
 
-            <form hx-post="/inventory/set"
-                  hx-target="#qty-{{ item.inventory_item_id }}"
-                  hx-swap="innerHTML"
-                  class="flex items-center gap-1 ml-2">
-                <input type="hidden" name="inventory_item_id" value="{{ item.inventory_item_id }}">
-                <input type="hidden" name="location_id" value="{{ selected_location_id }}">
-                <input type="number"
-                       name="quantity"
-                       value="{{ item.quantity }}"
-                       min="0"
-                       class="w-20 px-2 py-1 text-sm text-center bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring">
-                <button type="submit"
-                        class="px-3 py-1 bg-primary text-primary-foreground text-sm rounded-lg hover:bg-primary/90 transition-colors"
-                        title="Set quantity">
-                    Set
-                </button>
-            </form>
+            <!-- View/Edit link -->
+            <a href="/inventory/{{ item.id }}"
+               class="p-2 text-muted-foreground hover:text-foreground transition-colors"
+               title="View details">
+                <i class="ph ph-eye"></i>
+            </a>
         </div>
     </td>
 </tr>

@@ -1,11 +1,14 @@
 //! Inventory type conversion functions.
 
 use crate::shopify::types::{
-    InventoryLevel, InventoryLevelConnection, Location, LocationAddress, LocationConnection,
-    PageInfo,
+    Image, InventoryItem, InventoryItemConnection, InventoryItemProduct, InventoryItemVariant,
+    InventoryLevel, InventoryLevelConnection, Location, LocationAddress, LocationConnection, Money,
+    PageInfo, ProductStatus,
 };
 
-use super::super::queries::{get_inventory_levels, get_locations};
+use super::super::queries::{
+    get_inventory_item, get_inventory_items, get_inventory_levels, get_locations,
+};
 
 // =============================================================================
 // GetInventoryLevels conversions
@@ -99,5 +102,231 @@ fn convert_location(location: get_locations::GetLocationsLocationsEdgesNode) -> 
             country_code: address.country_code,
             zip: address.zip,
         }),
+    }
+}
+
+// =============================================================================
+// GetInventoryItems conversions
+// =============================================================================
+
+/// Convert the `GetInventoryItems` response to our domain type.
+pub fn convert_inventory_item_connection(
+    response: get_inventory_items::ResponseData,
+) -> InventoryItemConnection {
+    InventoryItemConnection {
+        items: response
+            .inventory_items
+            .edges
+            .into_iter()
+            .map(|e| convert_inventory_item_from_list(e.node))
+            .collect(),
+        page_info: PageInfo {
+            has_next_page: response.inventory_items.page_info.has_next_page,
+            has_previous_page: false,
+            start_cursor: None,
+            end_cursor: response.inventory_items.page_info.end_cursor,
+        },
+    }
+}
+
+fn convert_inventory_item_from_list(
+    item: get_inventory_items::GetInventoryItemsInventoryItemsEdgesNode,
+) -> InventoryItem {
+    // Convert inventory levels
+    let inventory_levels: Vec<InventoryLevel> = item
+        .inventory_levels
+        .edges
+        .into_iter()
+        .map(|e| {
+            let level = e.node;
+            let mut available: i64 = 0;
+            let mut on_hand: i64 = 0;
+            let mut incoming: i64 = 0;
+
+            for qty in &level.quantities {
+                match qty.name.as_str() {
+                    "available" => available = qty.quantity,
+                    "on_hand" => on_hand = qty.quantity,
+                    "incoming" => incoming = qty.quantity,
+                    // committed tracked but not stored in InventoryLevel
+                    _ => {}
+                }
+            }
+
+            InventoryLevel {
+                inventory_item_id: item.id.clone(),
+                location_id: level.location.id,
+                location_name: Some(level.location.name),
+                available,
+                on_hand,
+                incoming,
+                updated_at: None,
+            }
+        })
+        .collect();
+
+    // Convert variant and product info from variants connection (first item)
+    let variant = item.variants.and_then(|variants| {
+        variants.edges.into_iter().next().map(|edge| {
+            let v = edge.node;
+            // product is a required field in this query, so convert directly
+            let p = v.product;
+            let product = Some(InventoryItemProduct {
+                id: p.id,
+                title: p.title,
+                handle: p.handle,
+                status: convert_product_status(&p.status),
+                featured_image: p
+                    .featured_media
+                    .and_then(|m| m.preview)
+                    .and_then(|preview| preview.image)
+                    .map(|img| Image {
+                        id: None,
+                        url: img.url,
+                        alt_text: img.alt_text,
+                        width: None,
+                        height: None,
+                    }),
+            });
+            InventoryItemVariant {
+                id: v.id,
+                title: v.title,
+                display_name: None,
+                price: None,
+                image: None,
+                product,
+            }
+        })
+    });
+
+    InventoryItem {
+        id: item.id,
+        sku: item.sku,
+        tracked: item.tracked,
+        requires_shipping: item.requires_shipping,
+        unit_cost: item.unit_cost.map(|c| Money {
+            amount: c.amount,
+            currency_code: format!("{:?}", c.currency_code),
+        }),
+        harmonized_system_code: item.harmonized_system_code,
+        country_code_of_origin: item.country_code_of_origin.map(|c| format!("{c:?}")),
+        province_code_of_origin: None,
+        inventory_levels,
+        variant,
+    }
+}
+
+const fn convert_product_status(status: &get_inventory_items::ProductStatus) -> ProductStatus {
+    match status {
+        get_inventory_items::ProductStatus::ACTIVE => ProductStatus::Active,
+        get_inventory_items::ProductStatus::ARCHIVED => ProductStatus::Archived,
+        get_inventory_items::ProductStatus::UNLISTED => ProductStatus::Unlisted,
+        get_inventory_items::ProductStatus::DRAFT
+        | get_inventory_items::ProductStatus::Other(_) => ProductStatus::Draft,
+    }
+}
+
+// =============================================================================
+// GetInventoryItem (single) conversions
+// =============================================================================
+
+/// Convert the `GetInventoryItem` response to our domain type.
+pub fn convert_single_inventory_item(
+    item: get_inventory_item::GetInventoryItemInventoryItem,
+) -> InventoryItem {
+    // Convert inventory levels
+    let inventory_levels: Vec<InventoryLevel> = item
+        .inventory_levels
+        .edges
+        .into_iter()
+        .map(|e| {
+            let level = e.node;
+            let mut available: i64 = 0;
+            let mut on_hand: i64 = 0;
+            let mut incoming: i64 = 0;
+
+            for qty in &level.quantities {
+                match qty.name.as_str() {
+                    "available" => available = qty.quantity,
+                    "on_hand" => on_hand = qty.quantity,
+                    "incoming" => incoming = qty.quantity,
+                    // committed, reserved, damaged tracked but not stored in InventoryLevel
+                    _ => {}
+                }
+            }
+
+            InventoryLevel {
+                inventory_item_id: item.id.clone(),
+                location_id: level.location.id,
+                location_name: Some(level.location.name),
+                available,
+                on_hand,
+                incoming,
+                updated_at: Some(level.updated_at),
+            }
+        })
+        .collect();
+
+    // Convert variant and product info from variants connection (first item)
+    let variant = item.variants.and_then(|variants| {
+        variants.edges.into_iter().next().map(|edge| {
+            let v = edge.node;
+            // product is a required field in this query, so convert directly
+            let p = v.product;
+            let product = Some(InventoryItemProduct {
+                id: p.id,
+                title: p.title,
+                handle: p.handle,
+                status: convert_single_product_status(&p.status),
+                featured_image: p
+                    .featured_media
+                    .and_then(|m| m.preview)
+                    .and_then(|preview| preview.image)
+                    .map(|img| Image {
+                        id: None,
+                        url: img.url,
+                        alt_text: img.alt_text,
+                        width: None,
+                        height: None,
+                    }),
+            });
+            InventoryItemVariant {
+                id: v.id,
+                title: v.title,
+                display_name: None,
+                price: None,
+                image: None,
+                product,
+            }
+        })
+    });
+
+    InventoryItem {
+        id: item.id,
+        sku: item.sku,
+        tracked: item.tracked,
+        requires_shipping: item.requires_shipping,
+        unit_cost: item.unit_cost.map(|c| Money {
+            amount: c.amount,
+            currency_code: format!("{:?}", c.currency_code),
+        }),
+        harmonized_system_code: item.harmonized_system_code,
+        country_code_of_origin: item.country_code_of_origin.map(|c| format!("{c:?}")),
+        province_code_of_origin: item.province_code_of_origin.map(|p| format!("{p:?}")),
+        inventory_levels,
+        variant,
+    }
+}
+
+const fn convert_single_product_status(
+    status: &get_inventory_item::ProductStatus,
+) -> ProductStatus {
+    match status {
+        get_inventory_item::ProductStatus::ACTIVE => ProductStatus::Active,
+        get_inventory_item::ProductStatus::ARCHIVED => ProductStatus::Archived,
+        get_inventory_item::ProductStatus::UNLISTED => ProductStatus::Unlisted,
+        get_inventory_item::ProductStatus::DRAFT | get_inventory_item::ProductStatus::Other(_) => {
+            ProductStatus::Draft
+        }
     }
 }

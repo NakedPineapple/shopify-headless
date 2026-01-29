@@ -37,6 +37,205 @@ query GetInventoryLevels(
   }
 }
 
+# Get inventory items with full details for the enhanced inventory management page
+query GetInventoryItems($first: Int = 50, $after: String, $query: String) {
+  inventoryItems(first: $first, after: $after, query: $query) {
+    edges {
+      node {
+        id
+        sku
+        tracked
+        requiresShipping
+        unitCost {
+          amount
+          currencyCode
+        }
+        countryCodeOfOrigin
+        harmonizedSystemCode
+        inventoryLevels(first: 10) {
+          edges {
+            node {
+              id
+              location {
+                id
+                name
+              }
+              quantities(names: ["available", "incoming", "committed", "on_hand"]) {
+                name
+                quantity
+              }
+            }
+          }
+        }
+        variants(first: 1) {
+          edges {
+            node {
+              id
+              title
+              product {
+                id
+                title
+                handle
+                status
+                featuredMedia {
+                  __typename
+                  preview {
+                    image {
+                      url
+                      altText
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}
+
+# Get a single inventory item with full details
+query GetInventoryItem($id: ID!) {
+  inventoryItem(id: $id) {
+    id
+    sku
+    tracked
+    requiresShipping
+    unitCost {
+      amount
+      currencyCode
+    }
+    harmonizedSystemCode
+    countryCodeOfOrigin
+    provinceCodeOfOrigin
+    inventoryLevels(first: 50) {
+      edges {
+        node {
+          id
+          location {
+            id
+            name
+            isActive
+          }
+          quantities(names: ["available", "incoming", "committed", "on_hand", "reserved", "damaged"]) {
+            name
+            quantity
+          }
+          updatedAt
+        }
+      }
+    }
+    variants(first: 1) {
+      edges {
+        node {
+          id
+          title
+          product {
+            id
+            title
+            handle
+            status
+            featuredMedia {
+              __typename
+              preview {
+                image {
+                  url
+                  altText
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+# Update inventory item properties
+mutation UpdateInventoryItem($id: ID!, $input: InventoryItemInput!) {
+  inventoryItemUpdate(id: $id, input: $input) {
+    inventoryItem {
+      id
+      sku
+      tracked
+      requiresShipping
+      harmonizedSystemCode
+      countryCodeOfOrigin
+      provinceCodeOfOrigin
+      unitCost {
+        amount
+        currencyCode
+      }
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
+# Move inventory between locations
+mutation MoveInventory($input: InventoryMoveQuantitiesInput!) {
+  inventoryMoveQuantities(input: $input) {
+    inventoryAdjustmentGroup {
+      id
+      changes {
+        name
+        delta
+        quantityAfterChange
+        location {
+          name
+        }
+      }
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
+# Activate inventory at a location
+mutation ActivateInventory($inventoryItemId: ID!, $locationId: ID!) {
+  inventoryActivate(
+    inventoryItemId: $inventoryItemId
+    locationId: $locationId
+    available: 0
+  ) {
+    inventoryLevel {
+      id
+      quantities(names: ["available"]) {
+        quantity
+      }
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
+# Deactivate inventory at a location
+mutation DeactivateInventory(
+  $inventoryLevelId: ID!
+  $locationId: ID!
+) {
+  inventoryDeactivate(
+    inventoryLevelId: $inventoryLevelId
+    locationId: $locationId
+  ) {
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
 # Adjust inventory quantities (delta adjustment)
 mutation InventoryAdjustQuantities($input: InventoryAdjustQuantitiesInput!) {
   inventoryAdjustQuantities(input: $input) {
@@ -134,9 +333,14 @@ query GetProductsWithInventory(
         handle
         status
         totalInventory
-        featuredImage {
-          url
-          altText
+        featuredMedia {
+          __typename
+          preview {
+            image {
+              url
+              altText
+            }
+          }
         }
         variants(first: 50) {
           edges {
