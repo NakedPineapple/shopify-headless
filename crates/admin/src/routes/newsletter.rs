@@ -95,6 +95,17 @@ struct CampaignPreviewTemplate {
     campaign: Campaign,
 }
 
+/// Error page template.
+#[derive(Template)]
+#[template(path = "newsletter/error.html")]
+struct NewsletterErrorTemplate {
+    admin_user: AdminUserView,
+    current_path: String,
+    title: String,
+    message: String,
+    show_config_help: bool,
+}
+
 // =============================================================================
 // Request Types
 // =============================================================================
