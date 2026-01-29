@@ -1,16 +1,25 @@
 # Gift Card queries and mutations for Shopify Admin API
 
-# Get paginated list of gift cards
+# Get paginated list of gift cards with sorting
 query GetGiftCards(
   $first: Int = 20
   $after: String
   $query: String
+  $sortKey: GiftCardSortKeys
+  $reverse: Boolean
 ) {
-  giftCards(first: $first, after: $after, query: $query) {
+  giftCards(
+    first: $first
+    after: $after
+    query: $query
+    sortKey: $sortKey
+    reverse: $reverse
+  ) {
     edges {
       node {
         id
         lastCharacters
+        maskedCode
         balance {
           amount
           currencyCode
@@ -21,26 +30,43 @@ query GetGiftCards(
         }
         expiresOn
         enabled
+        deactivatedAt
         createdAt
+        updatedAt
+        note
         customer {
           id
           displayName
           email
         }
+        order {
+          id
+          name
+        }
       }
     }
     pageInfo {
       hasNextPage
+      hasPreviousPage
+      startCursor
       endCursor
     }
   }
 }
 
-# Get a single gift card by ID
-query GetGiftCard($id: ID!) {
+# Get gift cards count
+query GetGiftCardsCount($query: String) {
+  giftCardsCount(query: $query) {
+    count
+  }
+}
+
+# Get a single gift card with full details and transactions
+query GetGiftCardDetail($id: ID!) {
   giftCard(id: $id) {
     id
     lastCharacters
+    maskedCode
     balance {
       amount
       currencyCode
@@ -51,16 +77,59 @@ query GetGiftCard($id: ID!) {
     }
     expiresOn
     enabled
+    deactivatedAt
     createdAt
+    updatedAt
     note
+    templateSuffix
     customer {
       id
       displayName
       email
+      phone
+    }
+    recipientAttributes {
+      recipient {
+        id
+        displayName
+        email
+      }
+      preferredName
+      message
+      sendNotificationAt
     }
     order {
       id
       name
+      createdAt
+    }
+    transactions(first: 100) {
+      edges {
+        node {
+          __typename
+          id
+          amount {
+            amount
+            currencyCode
+          }
+          processedAt
+          note
+        }
+      }
+    }
+  }
+}
+
+# Get shop gift card configuration (limits)
+query GetGiftCardConfiguration {
+  giftCardConfiguration {
+    issueLimit {
+      amount
+      currencyCode
+    }
+    purchaseLimit {
+      amount
+      currencyCode
     }
   }
 }
@@ -71,9 +140,23 @@ mutation GiftCardCreate($input: GiftCardCreateInput!) {
     giftCard {
       id
       lastCharacters
+      maskedCode
       balance {
         amount
         currencyCode
+      }
+      initialValue {
+        amount
+        currencyCode
+      }
+      expiresOn
+      enabled
+      createdAt
+      note
+      customer {
+        id
+        displayName
+        email
       }
     }
     giftCardCode
@@ -84,12 +167,107 @@ mutation GiftCardCreate($input: GiftCardCreateInput!) {
   }
 }
 
-# Update a gift card (used to disable)
+# Update a gift card (note, expiration, customer, recipient)
 mutation GiftCardUpdate($id: ID!, $input: GiftCardUpdateInput!) {
   giftCardUpdate(id: $id, input: $input) {
     giftCard {
       id
+      note
+      expiresOn
+      templateSuffix
+      customer {
+        id
+        displayName
+        email
+      }
+      recipientAttributes {
+        recipient {
+          id
+          displayName
+        }
+        preferredName
+        message
+        sendNotificationAt
+      }
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
+# Deactivate a gift card (permanent, cannot be undone)
+mutation GiftCardDeactivate($id: ID!) {
+  giftCardDeactivate(id: $id) {
+    giftCard {
+      id
       enabled
+      deactivatedAt
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
+# Credit a gift card (add funds)
+mutation GiftCardCredit($id: ID!, $creditInput: GiftCardCreditInput!) {
+  giftCardCredit(id: $id, creditInput: $creditInput) {
+    giftCardCreditTransaction {
+      id
+      amount {
+        amount
+        currencyCode
+      }
+      processedAt
+      note
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
+# Debit a gift card (remove funds)
+mutation GiftCardDebit($id: ID!, $debitInput: GiftCardDebitInput!) {
+  giftCardDebit(id: $id, debitInput: $debitInput) {
+    giftCardDebitTransaction {
+      id
+      amount {
+        amount
+        currencyCode
+      }
+      processedAt
+      note
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
+# Send notification to the assigned customer
+mutation GiftCardSendNotificationToCustomer($id: ID!) {
+  giftCardSendNotificationToCustomer(id: $id) {
+    giftCard {
+      id
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
+# Send notification to the designated recipient
+mutation GiftCardSendNotificationToRecipient($id: ID!) {
+  giftCardSendNotificationToRecipient(id: $id) {
+    giftCard {
+      id
     }
     userErrors {
       field

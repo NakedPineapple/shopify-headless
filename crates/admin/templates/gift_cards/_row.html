@@ -1,0 +1,121 @@
+<!-- Gift Card Row Partial - included from index.html with loop variable `card` and context variable `columns` -->
+<tr class="hover:bg-accent/50 transition-colors" data-id="{{ card.short_id }}">
+    <!-- Bulk Select -->
+    <td class="px-6 py-4">
+        <input type="checkbox" class="row-checkbox rounded border-border text-primary focus:ring-primary" data-id="{{ card.short_id }}" onchange="updateSelection()">
+    </td>
+
+    <!-- Code -->
+    {% if columns.code %}
+    <td class="px-6 py-4 card-header" data-label="">
+        <a href="/gift-cards/{{ card.short_id }}"
+           class="font-mono font-medium text-primary hover:underline">
+            {{ card.masked_code }}
+        </a>
+    </td>
+    {% endif %}
+
+    <!-- Balance -->
+    {% if columns.balance %}
+    <td class="px-6 py-4 text-sm font-medium text-foreground tabular-nums" data-label="Balance" data-column="balance">
+        {{ card.balance }}
+    </td>
+    {% endif %}
+
+    <!-- Initial Value -->
+    {% if columns.initial_value %}
+    <td class="px-6 py-4 text-sm text-muted-foreground tabular-nums mobile-hidden" data-label="Initial" data-column="initial_value">
+        {{ card.initial_value }}
+    </td>
+    {% endif %}
+
+    <!-- Status -->
+    {% if columns.status %}
+    <td class="px-6 py-4" data-label="Status" data-column="status" id="status-{{ card.short_id }}">
+        {% if !card.enabled %}
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-500/10 text-red-400 border border-red-500/20">
+            Disabled
+        </span>
+        {% elif card.is_expired %}
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-500/10 text-orange-400 border border-orange-500/20">
+            Expired
+        </span>
+        {% elif card.balance_empty %}
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-500/10 text-gray-400 border border-gray-500/20">
+            Empty
+        </span>
+        {% elif card.balance_partial %}
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">
+            Partial
+        </span>
+        {% else %}
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-500/10 text-green-400 border border-green-500/20">
+            Active
+        </span>
+        {% endif %}
+    </td>
+    {% endif %}
+
+    <!-- Customer -->
+    {% if columns.customer %}
+    <td class="px-6 py-4 text-sm text-muted-foreground mobile-hidden" data-label="Customer" data-column="customer">
+        {% if let Some(name) = card.customer_name %}
+        <a href="/customers/{{ card.customer_id.as_deref().unwrap_or("")|extract_id }}"
+           class="text-primary hover:underline">{{ name }}</a>
+        {% elif let Some(email) = card.customer_email %}
+        <span class="text-muted-foreground">{{ email }}</span>
+        {% else %}
+        <span class="text-muted-foreground/60">—</span>
+        {% endif %}
+    </td>
+    {% endif %}
+
+    <!-- Expires -->
+    {% if columns.expires_on %}
+    <td class="px-6 py-4 text-sm text-muted-foreground mobile-hidden" data-label="Expires" data-column="expires_on">
+        {% if let Some(exp) = card.expires_on %}
+        {{ exp }}
+        {% else %}
+        <span class="text-muted-foreground/60">Never</span>
+        {% endif %}
+    </td>
+    {% endif %}
+
+    <!-- Order -->
+    {% if columns.order %}
+    <td class="px-6 py-4 text-sm mobile-hidden" data-label="Order" data-column="order">
+        {% if let Some(order_name) = card.order_name %}
+        <a href="/orders/{{ card.order_id.as_deref().unwrap_or("")|extract_id }}"
+           class="text-primary hover:underline">{{ order_name }}</a>
+        {% else %}
+        <span class="text-muted-foreground/60">Manual</span>
+        {% endif %}
+    </td>
+    {% endif %}
+
+    <!-- Actions -->
+    <td class="px-6 py-4 text-right card-actions" data-label="">
+        <div class="flex items-center justify-end gap-2">
+            <a href="/gift-cards/{{ card.short_id }}"
+               class="p-1.5 rounded-lg hover:bg-muted transition-colors"
+               title="View details">
+                <i class="ph ph-eye text-lg text-muted-foreground"></i>
+            </a>
+            <a href="/gift-cards/{{ card.short_id }}/edit"
+               class="p-1.5 rounded-lg hover:bg-muted transition-colors"
+               title="Edit">
+                <i class="ph ph-pencil-simple text-lg text-muted-foreground"></i>
+            </a>
+            {% if card.enabled %}
+            <button hx-post="/gift-cards/{{ card.short_id }}/deactivate"
+                    hx-target="#status-{{ card.short_id }}"
+                    hx-swap="innerHTML"
+                    hx-confirm="Deactivate this gift card? This action cannot be undone."
+                    class="p-1.5 rounded-lg hover:bg-destructive/10 transition-colors"
+                    title="Deactivate">
+                <i class="ph ph-prohibit text-lg text-destructive"></i>
+            </button>
+            {% endif %}
+        </div>
+    </td>
+</tr>

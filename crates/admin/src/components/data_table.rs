@@ -488,6 +488,65 @@ pub fn customers_table_config() -> DataTableConfig {
         )
 }
 
+/// Build the gift cards table configuration.
+#[must_use]
+pub fn gift_cards_table_config() -> DataTableConfig {
+    DataTableConfig::new("gift_cards")
+        // Default visible columns
+        .column(TableColumn::sortable("code", "Code"))
+        .column(TableColumn::sortable("balance", "Balance"))
+        .column(TableColumn::sortable("initial_value", "Initial Value"))
+        .column(TableColumn::new("status", "Status"))
+        .column(TableColumn::sortable("customer", "Customer"))
+        .column(TableColumn::sortable("expires_on", "Expires"))
+        .column(TableColumn::sortable("created_at", "Created"))
+        // Hidden by default
+        .column(TableColumn::new("order", "Order").visible(false))
+        .column(TableColumn::new("note", "Note").visible(false))
+        .column(TableColumn::sortable("updated_at", "Updated").visible(false))
+        // Filters
+        .filter(TableFilter::multi_select(
+            "status",
+            "Status",
+            vec![
+                FilterOption::new("enabled", "Active"),
+                FilterOption::new("disabled", "Disabled"),
+                FilterOption::new("expired", "Expired"),
+                FilterOption::new("expiring", "Expiring Soon"),
+            ],
+        ))
+        .filter(TableFilter::multi_select(
+            "balance_status",
+            "Balance",
+            vec![
+                FilterOption::new("full", "Full Balance"),
+                FilterOption::new("partial", "Partially Used"),
+                FilterOption::new("empty", "Empty"),
+            ],
+        ))
+        .filter(TableFilter::multi_select(
+            "source",
+            "Source",
+            vec![
+                FilterOption::new("manual", "Manually Issued"),
+                FilterOption::new("purchased", "Purchased"),
+                FilterOption::new("api_client", "API"),
+            ],
+        ))
+        .filter(TableFilter::date_range("created_at", "Created Date"))
+        .filter(TableFilter::date_range("expires_on", "Expiration Date"))
+        // Bulk actions
+        .bulk_action(BulkAction::new("deactivate", "Deactivate", "ph-prohibit").destructive())
+        .bulk_action(BulkAction::new("export", "Export", "ph-export"))
+        // Config
+        .search_placeholder("Search by code, customer name, or email...")
+        .empty_state(
+            "ph-gift",
+            "No gift cards found",
+            Some("Create your first gift card or adjust your filters"),
+        )
+}
+
 /// Build the discounts table configuration.
 #[must_use]
 pub fn discounts_table_config() -> DataTableConfig {

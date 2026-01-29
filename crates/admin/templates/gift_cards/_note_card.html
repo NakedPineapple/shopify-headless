@@ -1,0 +1,50 @@
+<!-- Note Card -->
+<div class="bg-card rounded-xl border border-border p-6">
+    <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-semibold text-foreground">Internal Note</h3>
+        <button onclick="document.getElementById('note-form').classList.toggle('hidden'); document.getElementById('note-display').classList.toggle('hidden');"
+                class="text-sm text-primary hover:underline">
+            Edit
+        </button>
+    </div>
+
+    <!-- Display Mode -->
+    <div id="note-display">
+        {% if let Some(note) = gift_card.note %}
+        <p class="text-sm text-foreground whitespace-pre-wrap">{{ note }}</p>
+        {% else %}
+        <p class="text-sm text-muted-foreground italic">No note added</p>
+        {% endif %}
+    </div>
+
+    <!-- Edit Mode -->
+    <form id="note-form"
+          hx-post="/gift-cards/{{ gift_card.short_id }}/note"
+          hx-target="#note-save-result"
+          hx-swap="innerHTML"
+          class="hidden">
+        <textarea name="note"
+                  rows="3"
+                  placeholder="Add an internal note..."
+                  class="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-ring focus:border-ring resize-none mb-3">{{ gift_card.note.as_deref().unwrap_or("") }}</textarea>
+        <div class="flex items-center justify-between">
+            <span id="note-save-result" class="text-sm"></span>
+            <div class="flex items-center gap-2">
+                <button type="button"
+                        onclick="document.getElementById('note-form').classList.add('hidden'); document.getElementById('note-display').classList.remove('hidden');"
+                        class="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                    Cancel
+                </button>
+                <button type="submit"
+                        class="px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors">
+                    Save
+                </button>
+            </div>
+        </div>
+    </form>
+
+    <p class="text-xs text-muted-foreground mt-3 pt-3 border-t border-border">
+        <i class="ph ph-eye-slash mr-1"></i>
+        Only visible to staff
+    </p>
+</div>

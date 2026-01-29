@@ -695,7 +695,23 @@ pub struct GetGiftCards;
     query_path = "graphql/admin/queries/gift_cards.graphql",
     response_derives = "Debug, Clone"
 )]
-pub struct GetGiftCard;
+pub struct GetGiftCardsCount;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/gift_cards.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct GetGiftCardDetail;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/gift_cards.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct GetGiftCardConfiguration;
 
 #[derive(GraphQLQuery)]
 #[graphql(
@@ -712,6 +728,46 @@ pub struct GiftCardCreate;
     response_derives = "Debug, Clone"
 )]
 pub struct GiftCardUpdate;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/gift_cards.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct GiftCardDeactivate;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/gift_cards.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct GiftCardCredit;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/gift_cards.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct GiftCardDebit;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/gift_cards.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct GiftCardSendNotificationToCustomer;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/gift_cards.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct GiftCardSendNotificationToRecipient;
 
 // =============================================================================
 // Discount queries and mutations

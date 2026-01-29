@@ -310,7 +310,29 @@ pub fn routes() -> Router<AppState> {
             get(gift_cards::index).post(gift_cards::create),
         )
         .route("/gift-cards/new", get(gift_cards::new_gift_card))
-        .route("/gift-cards/{id}/disable", post(gift_cards::disable))
+        .route(
+            "/gift-cards/{id}",
+            get(gift_cards::show).post(gift_cards::update),
+        )
+        .route("/gift-cards/{id}/edit", get(gift_cards::edit))
+        .route("/gift-cards/{id}/deactivate", post(gift_cards::deactivate))
+        .route(
+            "/gift-cards/{id}/adjust-balance",
+            post(gift_cards::adjust_balance),
+        )
+        .route(
+            "/gift-cards/{id}/notify-customer",
+            post(gift_cards::notify_customer),
+        )
+        .route(
+            "/gift-cards/{id}/notify-recipient",
+            post(gift_cards::notify_recipient),
+        )
+        .route("/gift-cards/{id}/note", post(gift_cards::update_note))
+        .route(
+            "/gift-cards/bulk/deactivate",
+            post(gift_cards::bulk_deactivate),
+        )
         // Payouts (read-only)
         .route("/payouts", get(payouts::index))
         .route("/payouts/{id}", get(payouts::show))

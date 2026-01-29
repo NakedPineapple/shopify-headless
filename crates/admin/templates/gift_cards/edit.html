@@ -1,0 +1,206 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Edit Gift Card {{ gift_card.masked_code }}{% endblock %}
+
+{% block page_title %}Edit Gift Card{% endblock %}
+
+{% block page_subtitle %}
+<p class="text-sm text-muted-foreground mt-1">
+    {{ gift_card.masked_code }} - {{ gift_card.balance }} remaining
+</p>
+{% endblock %}
+
+{% block content %}
+<!-- Action Bar -->
+<div class="flex items-center justify-between mb-6">
+    <a href="/gift-cards/{{ gift_card.short_id }}" class="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
+        <i class="ph ph-arrow-left text-lg"></i>
+        Back to gift card
+    </a>
+</div>
+
+{% if let Some(err) = error %}
+<div class="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
+    <div class="flex items-center gap-3">
+        <i class="ph ph-warning-circle text-xl text-destructive"></i>
+        <p class="text-sm text-red-800 dark:text-red-200">{{ err }}</p>
+    </div>
+</div>
+{% endif %}
+
+{% if success %}
+<div class="mb-6 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-4">
+    <div class="flex items-center gap-3">
+        <i class="ph ph-check-circle text-xl text-green-600 dark:text-green-400"></i>
+        <p class="text-sm text-green-800 dark:text-green-200">Gift card updated successfully</p>
+    </div>
+</div>
+{% endif %}
+
+<div class="grid lg:grid-cols-3 gap-6">
+    <!-- Main Content -->
+    <div class="lg:col-span-2 space-y-6">
+        <form method="POST" action="/gift-cards/{{ gift_card.short_id }}" class="space-y-6">
+            <!-- Read-Only Information -->
+            <div class="bg-card rounded-xl border border-border p-6">
+                <h3 class="text-lg font-semibold text-foreground mb-4">Gift Card Information</h3>
+                <p class="text-sm text-muted-foreground mb-4">These fields cannot be changed after the gift card is created.</p>
+
+                <div class="grid sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-muted-foreground mb-1">Code</label>
+                        <p class="text-foreground font-mono">{{ gift_card.masked_code }}</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-muted-foreground mb-1">Status</label>
+                        <p>
+                            {% if !gift_card.enabled %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-500/10 text-red-400 border border-red-500/20">
+                                Disabled
+                            </span>
+                            {% elif gift_card.is_expired %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-500/10 text-orange-400 border border-orange-500/20">
+                                Expired
+                            </span>
+                            {% elif gift_card.balance_empty %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-500/10 text-gray-400 border border-gray-500/20">
+                                Empty
+                            </span>
+                            {% else %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-500/10 text-green-400 border border-green-500/20">
+                                Active
+                            </span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-muted-foreground mb-1">Current Balance</label>
+                        <p class="text-foreground font-medium tabular-nums">{{ gift_card.balance }}</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-muted-foreground mb-1">Initial Value</label>
+                        <p class="text-foreground tabular-nums">{{ gift_card.initial_value }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Editable Fields -->
+            <div class="bg-card rounded-xl border border-border p-6">
+                <h3 class="text-lg font-semibold text-foreground mb-4">Editable Details</h3>
+
+                <div class="space-y-4">
+                    <!-- Expiration Date -->
+                    <div>
+                        <label for="expires_on" class="block text-sm font-medium text-foreground mb-2">Expiration Date</label>
+                        <input type="date"
+                               id="expires_on"
+                               name="expires_on"
+                               value="{{ gift_card.expires_on.as_deref().unwrap_or_default() }}"
+                               class="w-full px-4 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring">
+                        <p class="mt-1 text-xs text-muted-foreground">
+                            Leave empty for no expiration. Note: You cannot set an expiration date in the past.
+                        </p>
+                    </div>
+
+                    <!-- Note -->
+                    <div>
+                        <label for="note" class="block text-sm font-medium text-foreground mb-2">Internal Note</label>
+                        <textarea id="note"
+                                  name="note"
+                                  rows="3"
+                                  placeholder="Add an internal note about this gift card..."
+                                  class="w-full px-4 py-2 bg-input border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-ring focus:border-ring resize-none">{{ gift_card.note.as_deref().unwrap_or_default() }}</textarea>
+                        <p class="mt-1 text-xs text-muted-foreground">
+                            This note is only visible to staff and will not be shown to customers.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Customer Assignment -->
+            <div class="bg-card rounded-xl border border-border p-6">
+                <h3 class="text-lg font-semibold text-foreground mb-4">Customer</h3>
+
+                {% if let Some(name) = gift_card.customer_name %}
+                <div class="flex items-center gap-3 p-4 bg-muted/30 rounded-lg">
+                    <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                        <span class="text-primary font-medium">{{ name.get(..1).unwrap_or("?") }}</span>
+                    </div>
+                    <div>
+                        <p class="font-medium text-foreground">{{ name }}</p>
+                        {% if let Some(email) = gift_card.customer_email %}
+                        <p class="text-sm text-muted-foreground">{{ email }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+                <p class="mt-3 text-xs text-muted-foreground">
+                    <i class="ph ph-info mr-1"></i>
+                    Customer assignment cannot be changed once set.
+                </p>
+                {% else %}
+                <div class="text-center py-6">
+                    <div class="w-12 h-12 rounded-full bg-muted mx-auto mb-3 flex items-center justify-center">
+                        <i class="ph ph-user-circle text-2xl text-muted-foreground"></i>
+                    </div>
+                    <p class="text-muted-foreground mb-2">No customer assigned</p>
+                    <p class="text-sm text-muted-foreground/70">
+                        Customer assignment is not currently supported through this interface.
+                        Use the Shopify Admin API to assign a customer.
+                    </p>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Form Actions -->
+            <div class="flex items-center justify-end gap-4">
+                <a href="/gift-cards/{{ gift_card.short_id }}"
+                   class="px-4 py-2 text-muted-foreground hover:text-foreground transition-colors">
+                    Cancel
+                </a>
+                <button type="submit"
+                        class="px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors">
+                    Save Changes
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="space-y-6">
+        <!-- Quick Info Card -->
+        <div class="bg-card rounded-xl border border-border p-6">
+            <h3 class="text-lg font-semibold text-foreground mb-4">Quick Info</h3>
+            <dl class="space-y-3">
+                <div class="flex justify-between">
+                    <dt class="text-sm text-muted-foreground">Created</dt>
+                    <dd class="text-sm text-foreground">{{ gift_card.created_at|humanize_datetime_str }}</dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt class="text-sm text-muted-foreground">Last Updated</dt>
+                    <dd class="text-sm text-foreground">{{ gift_card.updated_at|humanize_datetime_str }}</dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt class="text-sm text-muted-foreground">Transactions</dt>
+                    <dd class="text-sm text-foreground">{{ gift_card.transactions.len() }}</dd>
+                </div>
+            </dl>
+        </div>
+
+        <!-- Help Card -->
+        <div class="bg-muted/30 rounded-xl border border-border p-6">
+            <div class="flex items-center gap-2 mb-3">
+                <i class="ph ph-question text-lg text-primary"></i>
+                <h3 class="font-semibold text-foreground">Need help?</h3>
+            </div>
+            <p class="text-sm text-muted-foreground mb-3">
+                Gift card codes cannot be changed after creation. To adjust the balance, use the "Adjust Balance" feature on the gift card detail page.
+            </p>
+            <a href="/gift-cards/{{ gift_card.short_id }}"
+               class="inline-flex items-center gap-2 text-sm text-primary hover:underline">
+                <i class="ph ph-arrow-left"></i>
+                Back to gift card
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

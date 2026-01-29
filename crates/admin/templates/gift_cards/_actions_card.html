@@ -1,0 +1,101 @@
+<!-- Actions Card -->
+<div class="bg-card rounded-xl border border-border p-6">
+    <h3 class="text-lg font-semibold text-foreground mb-4">Actions</h3>
+
+    <div class="grid grid-cols-2 gap-3">
+        <!-- Adjust Balance -->
+        {% if gift_card.enabled && !gift_card.is_expired %}
+        <button onclick="document.getElementById('adjust-balance-modal').classList.remove('hidden')"
+                class="flex flex-col items-center gap-2 p-4 rounded-xl border border-border bg-muted/30 hover:bg-muted/50 hover:border-primary/30 transition-all group">
+            <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                <i class="ph ph-plus-minus text-xl text-primary"></i>
+            </div>
+            <span class="text-sm font-medium text-foreground">Adjust Balance</span>
+            <span class="text-xs text-muted-foreground">Add or remove funds</span>
+        </button>
+        {% else %}
+        <div class="flex flex-col items-center gap-2 p-4 rounded-xl border border-border bg-muted/10 opacity-50 cursor-not-allowed">
+            <div class="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                <i class="ph ph-plus-minus text-xl text-muted-foreground"></i>
+            </div>
+            <span class="text-sm font-medium text-muted-foreground">Adjust Balance</span>
+            <span class="text-xs text-muted-foreground">Card is inactive</span>
+        </div>
+        {% endif %}
+
+        <!-- Send to Customer -->
+        {% if gift_card.customer_id.is_some() && gift_card.enabled && !gift_card.is_expired %}
+        <button hx-post="/gift-cards/{{ gift_card.short_id }}/notify-customer"
+                hx-target="#notify-customer-result"
+                hx-swap="innerHTML"
+                class="flex flex-col items-center gap-2 p-4 rounded-xl border border-border bg-muted/30 hover:bg-muted/50 hover:border-blue-500/30 transition-all group">
+            <div class="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center group-hover:bg-blue-500/20 transition-colors">
+                <i class="ph ph-envelope-simple text-xl text-blue-400"></i>
+            </div>
+            <span class="text-sm font-medium text-foreground">Send to Customer</span>
+            <span class="text-xs text-muted-foreground" id="notify-customer-result">Email gift card details</span>
+        </button>
+        {% else %}
+        <div class="flex flex-col items-center gap-2 p-4 rounded-xl border border-border bg-muted/10 opacity-50 cursor-not-allowed">
+            <div class="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                <i class="ph ph-envelope-simple text-xl text-muted-foreground"></i>
+            </div>
+            <span class="text-sm font-medium text-muted-foreground">Send to Customer</span>
+            <span class="text-xs text-muted-foreground">
+                {% if gift_card.customer_id.is_none() %}
+                No customer assigned
+                {% else %}
+                Card is inactive
+                {% endif %}
+            </span>
+        </div>
+        {% endif %}
+
+        <!-- Send to Recipient -->
+        {% if gift_card.recipient_email.is_some() && gift_card.enabled && !gift_card.is_expired %}
+        <button hx-post="/gift-cards/{{ gift_card.short_id }}/notify-recipient"
+                hx-target="#notify-recipient-result"
+                hx-swap="innerHTML"
+                class="flex flex-col items-center gap-2 p-4 rounded-xl border border-border bg-muted/30 hover:bg-muted/50 hover:border-violet-500/30 transition-all group">
+            <div class="w-10 h-10 rounded-full bg-violet-500/10 flex items-center justify-center group-hover:bg-violet-500/20 transition-colors">
+                <i class="ph ph-gift text-xl text-violet-400"></i>
+            </div>
+            <span class="text-sm font-medium text-foreground">Send to Recipient</span>
+            <span class="text-xs text-muted-foreground" id="notify-recipient-result">Email to {{ gift_card.recipient_email.as_deref().unwrap_or("recipient") }}</span>
+        </button>
+        {% else %}
+        <div class="flex flex-col items-center gap-2 p-4 rounded-xl border border-border bg-muted/10 opacity-50 cursor-not-allowed">
+            <div class="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                <i class="ph ph-gift text-xl text-muted-foreground"></i>
+            </div>
+            <span class="text-sm font-medium text-muted-foreground">Send to Recipient</span>
+            <span class="text-xs text-muted-foreground">
+                {% if gift_card.recipient_email.is_none() %}
+                No recipient set
+                {% else %}
+                Card is inactive
+                {% endif %}
+            </span>
+        </div>
+        {% endif %}
+
+        <!-- View Code (for active cards) -->
+        {% if gift_card.enabled && !gift_card.is_expired && !gift_card.balance_empty %}
+        <div class="flex flex-col items-center gap-2 p-4 rounded-xl border border-border bg-muted/30">
+            <div class="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center">
+                <i class="ph ph-barcode text-xl text-emerald-400"></i>
+            </div>
+            <span class="text-sm font-medium text-foreground">Gift Card Code</span>
+            <span class="text-xs text-muted-foreground font-mono">{{ gift_card.masked_code }}</span>
+        </div>
+        {% else %}
+        <div class="flex flex-col items-center gap-2 p-4 rounded-xl border border-border bg-muted/10 opacity-50">
+            <div class="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                <i class="ph ph-barcode text-xl text-muted-foreground"></i>
+            </div>
+            <span class="text-sm font-medium text-muted-foreground">Gift Card Code</span>
+            <span class="text-xs text-muted-foreground font-mono">{{ gift_card.masked_code }}</span>
+        </div>
+        {% endif %}
+    </div>
+</div>

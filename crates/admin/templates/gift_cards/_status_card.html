@@ -1,0 +1,84 @@
+<!-- Balance Status Card -->
+<div class="bg-card rounded-xl border border-border overflow-hidden">
+    <div class="p-6">
+        <!-- Status Badge -->
+        <div class="flex items-center justify-between mb-6">
+            <div class="flex items-center gap-3">
+                {% if !gift_card.enabled %}
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-500/10 text-red-400 border border-red-500/20">
+                    <i class="ph ph-prohibit mr-1.5"></i>
+                    Disabled
+                </span>
+                {% elif gift_card.is_expired %}
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-orange-500/10 text-orange-400 border border-orange-500/20">
+                    <i class="ph ph-clock-countdown mr-1.5"></i>
+                    Expired
+                </span>
+                {% elif gift_card.balance_empty %}
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-500/10 text-gray-400 border border-gray-500/20">
+                    <i class="ph ph-empty mr-1.5"></i>
+                    Empty
+                </span>
+                {% elif gift_card.is_expiring_soon %}
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                    <i class="ph ph-warning mr-1.5"></i>
+                    Expiring Soon
+                </span>
+                {% elif gift_card.balance_partial %}
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">
+                    <i class="ph ph-chart-pie-slice mr-1.5"></i>
+                    Partially Used
+                </span>
+                {% else %}
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-500/10 text-green-400 border border-green-500/20">
+                    <i class="ph ph-check-circle mr-1.5"></i>
+                    Active
+                </span>
+                {% endif %}
+            </div>
+            {% if let Some(exp) = gift_card.expires_on %}
+            <div class="text-sm text-muted-foreground">
+                <i class="ph ph-calendar mr-1"></i>
+                Expires {{ exp }}
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Balance Display -->
+        <div class="text-center mb-6">
+            <p class="text-sm text-muted-foreground mb-1">Current Balance</p>
+            <p class="text-5xl font-bold text-foreground tabular-nums tracking-tight">{{ gift_card.balance }}</p>
+            <p class="text-sm text-muted-foreground mt-2">
+                of {{ gift_card.initial_value }} initial value
+            </p>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="relative">
+            <div class="h-3 bg-muted rounded-full overflow-hidden">
+                <div class="h-full bg-gradient-to-r from-primary to-primary/80 rounded-full transition-all duration-500"
+                     style="width: {{ gift_card.balance_percentage as i32 }}%"></div>
+            </div>
+            <div class="flex justify-between mt-2 text-xs text-muted-foreground">
+                <span>{{ gift_card.balance_percentage as i32 }}% remaining</span>
+                <span>{{ gift_card.amount_spent }} spent</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="grid grid-cols-3 divide-x divide-border border-t border-border">
+        <div class="px-4 py-3 text-center">
+            <p class="text-xs text-muted-foreground mb-1">Initial Value</p>
+            <p class="text-sm font-medium text-foreground tabular-nums">{{ gift_card.initial_value }}</p>
+        </div>
+        <div class="px-4 py-3 text-center">
+            <p class="text-xs text-muted-foreground mb-1">Amount Spent</p>
+            <p class="text-sm font-medium text-foreground tabular-nums">{{ gift_card.amount_spent }}</p>
+        </div>
+        <div class="px-4 py-3 text-center">
+            <p class="text-xs text-muted-foreground mb-1">Remaining</p>
+            <p class="text-sm font-medium text-foreground tabular-nums">{{ gift_card.balance }}</p>
+        </div>
+    </div>
+</div>

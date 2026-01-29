@@ -1,0 +1,44 @@
+<!-- Recipient Card -->
+<div class="bg-card rounded-xl border border-border p-6">
+    <div class="flex items-center gap-2 mb-4">
+        <i class="ph ph-gift text-lg text-violet-400"></i>
+        <h3 class="text-lg font-semibold text-foreground">Recipient</h3>
+    </div>
+
+    <div class="space-y-3">
+        {% if let Some(name) = gift_card.recipient_name %}
+        <div>
+            <p class="text-xs text-muted-foreground uppercase tracking-wider mb-1">Name</p>
+            <p class="text-sm text-foreground">{{ name }}</p>
+        </div>
+        {% endif %}
+
+        {% if let Some(preferred_name) = gift_card.recipient_preferred_name %}
+        <div>
+            <p class="text-xs text-muted-foreground uppercase tracking-wider mb-1">Preferred Name</p>
+            <p class="text-sm text-foreground">{{ preferred_name }}</p>
+        </div>
+        {% endif %}
+
+        {% if let Some(email) = gift_card.recipient_email %}
+        <div>
+            <p class="text-xs text-muted-foreground uppercase tracking-wider mb-1">Email</p>
+            <p class="text-sm text-foreground">{{ email }}</p>
+        </div>
+        {% endif %}
+
+        {% if let Some(message) = gift_card.recipient_message %}
+        <div>
+            <p class="text-xs text-muted-foreground uppercase tracking-wider mb-1">Gift Message</p>
+            <p class="text-sm text-foreground italic bg-muted/30 rounded-lg p-3">"{{ message }}"</p>
+        </div>
+        {% endif %}
+
+        {% if let Some(notify_at) = gift_card.recipient_send_notification_at %}
+        <div>
+            <p class="text-xs text-muted-foreground uppercase tracking-wider mb-1">Send Notification</p>
+            <p class="text-sm text-foreground">{{ notify_at }}</p>
+        </div>
+        {% endif %}
+    </div>
+</div>

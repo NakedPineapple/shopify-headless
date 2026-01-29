@@ -1,0 +1,40 @@
+<!-- Order Card -->
+<div class="bg-card rounded-xl border border-border p-6">
+    <div class="flex items-center gap-2 mb-4">
+        <i class="ph ph-shopping-bag text-lg text-blue-400"></i>
+        <h3 class="text-lg font-semibold text-foreground">Purchase Order</h3>
+    </div>
+
+    <div class="flex items-center justify-between">
+        <div>
+            {% if let Some(order_name) = gift_card.order_name %}
+            {% if let Some(order_id) = gift_card.order_short_id %}
+            <a href="/orders/{{ order_id }}"
+               class="font-medium text-primary hover:underline">
+                {{ order_name }}
+            </a>
+            {% else %}
+            <span class="font-medium text-foreground">{{ order_name }}</span>
+            {% endif %}
+            {% else %}
+            <span class="text-muted-foreground">Order</span>
+            {% endif %}
+
+            {% if let Some(order_date) = gift_card.order_created_at %}
+            <p class="text-sm text-muted-foreground mt-1">{{ order_date|humanize_datetime_str }}</p>
+            {% endif %}
+        </div>
+
+        {% if let Some(order_id) = gift_card.order_short_id %}
+        <a href="/orders/{{ order_id }}"
+           class="p-2 rounded-lg hover:bg-muted transition-colors">
+            <i class="ph ph-arrow-square-out text-lg text-muted-foreground"></i>
+        </a>
+        {% endif %}
+    </div>
+
+    <p class="text-xs text-muted-foreground mt-3 pt-3 border-t border-border">
+        <i class="ph ph-info mr-1"></i>
+        This gift card was purchased through checkout
+    </p>
+</div>

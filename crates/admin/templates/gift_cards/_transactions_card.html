@@ -1,0 +1,56 @@
+<!-- Transaction History Card -->
+<div class="bg-card rounded-xl border border-border overflow-hidden">
+    <div class="px-6 py-4 border-b border-border flex items-center justify-between">
+        <h3 class="text-lg font-semibold text-foreground">Transaction History</h3>
+        <span class="text-sm text-muted-foreground">{{ gift_card.transactions.len() }} transactions</span>
+    </div>
+
+    {% if gift_card.transactions.is_empty() %}
+    <div class="px-6 py-12 text-center">
+        <i class="ph ph-receipt text-4xl text-muted-foreground/50 mb-3 block"></i>
+        <p class="text-muted-foreground">No transactions yet</p>
+        <p class="text-sm text-muted-foreground/70 mt-1">Transactions will appear here when the card is used</p>
+    </div>
+    {% else %}
+    <div class="divide-y divide-border max-h-96 overflow-y-auto">
+        {% for tx in gift_card.transactions %}
+        <div class="px-6 py-4 flex items-start gap-4 hover:bg-muted/30 transition-colors">
+            <!-- Icon -->
+            <div class="mt-0.5">
+                {% if tx.is_credit %}
+                <div class="w-8 h-8 rounded-full bg-green-500/10 flex items-center justify-center">
+                    <i class="ph ph-plus-circle text-lg text-green-400"></i>
+                </div>
+                {% else %}
+                <div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                    <i class="ph ph-minus-circle text-lg text-primary"></i>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Details -->
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center justify-between gap-4">
+                    <p class="font-medium text-foreground">
+                        {% if tx.is_credit %}
+                        Credit
+                        {% else %}
+                        Debit
+                        {% endif %}
+                    </p>
+                    <p class="font-medium tabular-nums {% if tx.is_credit %}text-green-400{% else %}text-foreground{% endif %}">
+                        {% if tx.is_credit %}+{% else %}-{% endif %}{{ tx.amount }}
+                    </p>
+                </div>
+                {% if let Some(note) = tx.note %}
+                <p class="text-sm text-muted-foreground mt-1 truncate">{{ note }}</p>
+                {% endif %}
+                <p class="text-xs text-muted-foreground/70 mt-1">
+                    {{ tx.processed_at|humanize_datetime_str }}
+                </p>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>

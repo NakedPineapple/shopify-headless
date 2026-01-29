@@ -1,0 +1,50 @@
+<!-- Customer Card -->
+<div class="bg-card rounded-xl border border-border p-6">
+    <h3 class="text-lg font-semibold text-foreground mb-4">Customer</h3>
+
+    {% if let Some(name) = gift_card.customer_name %}
+    <div class="flex items-start gap-3">
+        <!-- Avatar -->
+        <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+            <span class="text-primary font-medium">
+                {{ name.get(..1).unwrap_or("?") }}
+            </span>
+        </div>
+
+        <div class="min-w-0 flex-1">
+            {% if let Some(cust_id) = gift_card.customer_short_id %}
+            <a href="/customers/{{ cust_id }}"
+               class="font-medium text-foreground hover:text-primary transition-colors">
+                {{ name }}
+            </a>
+            {% else %}
+            <span class="font-medium text-foreground">{{ name }}</span>
+            {% endif %}
+            {% if let Some(email) = gift_card.customer_email %}
+            <p class="text-sm text-muted-foreground truncate">{{ email }}</p>
+            {% endif %}
+            {% if let Some(phone) = gift_card.customer_phone %}
+            <p class="text-sm text-muted-foreground">{{ phone }}</p>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if let Some(cust_id) = gift_card.customer_short_id %}
+    <div class="mt-4 pt-4 border-t border-border">
+        <a href="/customers/{{ cust_id }}"
+           class="inline-flex items-center gap-2 text-sm text-primary hover:underline">
+            <i class="ph ph-user"></i>
+            View customer
+        </a>
+    </div>
+    {% endif %}
+    {% else %}
+    <div class="text-center py-4">
+        <div class="w-12 h-12 rounded-full bg-muted mx-auto mb-3 flex items-center justify-center">
+            <i class="ph ph-user-circle text-2xl text-muted-foreground"></i>
+        </div>
+        <p class="text-muted-foreground">No customer assigned</p>
+        <p class="text-sm text-muted-foreground/70 mt-1">This gift card is not linked to a customer</p>
+    </div>
+    {% endif %}
+</div>

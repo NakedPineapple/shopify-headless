@@ -9,113 +9,274 @@
 {% endblock %}
 
 {% block content %}
-<!-- Search and Actions -->
-<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-    <form method="GET" action="/gift-cards" class="flex-1 max-w-md">
-        <div class="relative">
-            <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"></i>
-            <input type="search"
-                   name="query"
-                   value="{{ search_query.as_deref().unwrap_or("") }}"
-                   placeholder="Search gift cards..."
-                   class="w-full pl-10 pr-4 py-2 bg-input border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-colors placeholder:text-muted-foreground">
-        </div>
-    </form>
-    <a href="/gift-cards/new" class="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors">
-        <i class="ph ph-plus text-lg"></i>
-        Create Gift Card
-    </a>
-</div>
-
-<!-- Info Banner -->
-<div class="mb-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
-    <div class="flex items-center gap-3">
-        <i class="ph ph-info text-xl text-blue-600 dark:text-blue-400"></i>
-        <p class="text-sm text-blue-800 dark:text-blue-200">
-            Gift card management is coming soon. For now, use the Shopify admin to create and manage gift cards.
-        </p>
-    </div>
-</div>
-
-<!-- Gift Cards Table -->
 <div class="bg-card rounded-xl border border-border overflow-hidden">
+    <!-- Toolbar -->
+    <div class="px-6 py-4 border-b border-border">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <!-- Search -->
+            <form method="GET" action="/gift-cards" class="flex-1 max-w-md">
+                <div class="relative">
+                    <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"></i>
+                    <input type="search"
+                           name="q"
+                           value="{{ search_query.as_deref().unwrap_or("") }}"
+                           placeholder="{{ table_config.search_placeholder }}"
+                           class="w-full pl-10 pr-4 py-2 bg-input border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-colors placeholder:text-muted-foreground">
+                    <!-- Preserve sort params -->
+                    {% if let Some(s) = sort_key %}
+                    <input type="hidden" name="sort" value="{{ s }}">
+                    {% endif %}
+                    <input type="hidden" name="direction" value="{{ sort_direction }}">
+                </div>
+            </form>
+
+            <div class="flex items-center gap-3">
+                <!-- Filter Button -->
+                <button type="button"
+                        onclick="document.getElementById('filter-panel').classList.toggle('hidden')"
+                        class="inline-flex items-center gap-2 px-3 py-2 bg-muted text-foreground rounded-lg text-sm hover:bg-accent transition-colors {% if filter_count > 0 %}ring-2 ring-primary{% endif %}">
+                    <i class="ph ph-funnel"></i>
+                    Filters
+                    {% if filter_count > 0 %}
+                    <span class="bg-primary text-white text-xs px-1.5 py-0.5 rounded-full">{{ filter_count }}</span>
+                    {% endif %}
+                </button>
+
+                <!-- Column Picker -->
+                <div class="relative">
+                    <button type="button"
+                            onclick="this.nextElementSibling.classList.toggle('hidden')"
+                            class="inline-flex items-center gap-2 px-3 py-2 bg-muted text-foreground rounded-lg text-sm hover:bg-accent transition-colors">
+                        <i class="ph ph-columns"></i>
+                        Columns
+                    </button>
+                    <div class="hidden absolute right-0 mt-2 w-56 bg-card border border-border rounded-lg shadow-lg z-20">
+                        <div class="p-2">
+                            <p class="px-2 py-1 text-xs font-medium text-muted-foreground uppercase">Toggle Columns</p>
+                            <label class="flex items-center gap-2 px-2 py-1.5 hover:bg-accent rounded cursor-pointer">
+                                <input type="checkbox" checked disabled class="rounded border-border text-primary">
+                                <span class="text-sm text-foreground">Code</span>
+                            </label>
+                            <label class="flex items-center gap-2 px-2 py-1.5 hover:bg-accent rounded cursor-pointer">
+                                <input type="checkbox" data-column="balance" {% if columns.balance %}checked{% endif %} onchange="toggleColumn('balance', this.checked)" class="rounded border-border text-primary focus:ring-primary">
+                                <span class="text-sm text-foreground">Balance</span>
+                            </label>
+                            <label class="flex items-center gap-2 px-2 py-1.5 hover:bg-accent rounded cursor-pointer">
+                                <input type="checkbox" data-column="initial_value" {% if columns.initial_value %}checked{% endif %} onchange="toggleColumn('initial_value', this.checked)" class="rounded border-border text-primary focus:ring-primary">
+                                <span class="text-sm text-foreground">Initial Value</span>
+                            </label>
+                            <label class="flex items-center gap-2 px-2 py-1.5 hover:bg-accent rounded cursor-pointer">
+                                <input type="checkbox" data-column="status" {% if columns.status %}checked{% endif %} onchange="toggleColumn('status', this.checked)" class="rounded border-border text-primary focus:ring-primary">
+                                <span class="text-sm text-foreground">Status</span>
+                            </label>
+                            <label class="flex items-center gap-2 px-2 py-1.5 hover:bg-accent rounded cursor-pointer">
+                                <input type="checkbox" data-column="customer" {% if columns.customer %}checked{% endif %} onchange="toggleColumn('customer', this.checked)" class="rounded border-border text-primary focus:ring-primary">
+                                <span class="text-sm text-foreground">Customer</span>
+                            </label>
+                            <label class="flex items-center gap-2 px-2 py-1.5 hover:bg-accent rounded cursor-pointer">
+                                <input type="checkbox" data-column="expires_on" {% if columns.expires_on %}checked{% endif %} onchange="toggleColumn('expires_on', this.checked)" class="rounded border-border text-primary focus:ring-primary">
+                                <span class="text-sm text-foreground">Expires</span>
+                            </label>
+                            <label class="flex items-center gap-2 px-2 py-1.5 hover:bg-accent rounded cursor-pointer">
+                                <input type="checkbox" data-column="order" {% if columns.order %}checked{% endif %} onchange="toggleColumn('order', this.checked)" class="rounded border-border text-primary focus:ring-primary">
+                                <span class="text-sm text-foreground">Order</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Create Button -->
+                <a href="/gift-cards/new"
+                   class="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors">
+                    <i class="ph ph-plus text-lg"></i>
+                    Create Gift Card
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Panel -->
+    <div id="filter-panel" class="{% if filter_count == 0 %}hidden{% endif %} px-6 py-4 border-b border-border bg-muted/30">
+        <form method="GET" action="/gift-cards" class="space-y-4">
+            <!-- Preserve search query -->
+            {% if let Some(q) = search_query %}
+            <input type="hidden" name="q" value="{{ q }}">
+            {% endif %}
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                <!-- Status Filter -->
+                <div>
+                    <label class="block text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Status</label>
+                    <select name="status" class="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm">
+                        <option value="">All statuses</option>
+                        <option value="enabled">Active</option>
+                        <option value="disabled">Disabled</option>
+                        <option value="expired">Expired</option>
+                        <option value="expiring">Expiring Soon</option>
+                    </select>
+                </div>
+
+                <!-- Balance Filter -->
+                <div>
+                    <label class="block text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Balance</label>
+                    <select name="balance_status" class="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm">
+                        <option value="">All balances</option>
+                        <option value="full">Full Balance</option>
+                        <option value="partial">Partially Used</option>
+                        <option value="empty">Empty</option>
+                    </select>
+                </div>
+
+                <!-- Source Filter -->
+                <div>
+                    <label class="block text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Source</label>
+                    <select name="source" class="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm">
+                        <option value="">All sources</option>
+                        <option value="manual">Manually Issued</option>
+                        <option value="purchased">Purchased</option>
+                        <option value="api_client">API</option>
+                    </select>
+                </div>
+
+                <!-- Created Date Range -->
+                <div class="space-y-1">
+                    <label class="block text-xs font-medium text-muted-foreground uppercase tracking-wider">Created</label>
+                    <div class="flex items-center gap-2">
+                        <input type="date" name="created_at_min" class="flex-1 px-2 py-2 bg-input border border-border rounded-lg text-sm">
+                        <span class="text-muted-foreground text-xs">to</span>
+                        <input type="date" name="created_at_max" class="flex-1 px-2 py-2 bg-input border border-border rounded-lg text-sm">
+                    </div>
+                </div>
+
+                <!-- Expires Date Range -->
+                <div class="space-y-1">
+                    <label class="block text-xs font-medium text-muted-foreground uppercase tracking-wider">Expires</label>
+                    <div class="flex items-center gap-2">
+                        <input type="date" name="expires_on_min" class="flex-1 px-2 py-2 bg-input border border-border rounded-lg text-sm">
+                        <span class="text-muted-foreground text-xs">to</span>
+                        <input type="date" name="expires_on_max" class="flex-1 px-2 py-2 bg-input border border-border rounded-lg text-sm">
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3 pt-2">
+                <button type="submit" class="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors text-sm">
+                    Apply Filters
+                </button>
+                <a href="/gift-cards" class="px-4 py-2 text-muted-foreground hover:text-foreground transition-colors text-sm">
+                    Clear All
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Bulk Action Bar (hidden by default) -->
+    <div id="bulk-bar" class="hidden px-6 py-3 border-b border-border bg-primary/5">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <span id="selected-count" class="text-sm font-medium text-foreground">0 selected</span>
+                <button type="button" onclick="clearSelection()" class="text-sm text-muted-foreground hover:text-foreground">
+                    Clear selection
+                </button>
+            </div>
+            <div class="flex items-center gap-2">
+                <button type="button"
+                        onclick="bulkDeactivate()"
+                        class="inline-flex items-center gap-2 px-3 py-1.5 text-sm text-destructive hover:bg-destructive/10 rounded-lg transition-colors">
+                    <i class="ph ph-prohibit"></i>
+                    Deactivate
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Table -->
     <div class="overflow-hidden md:overflow-x-auto">
         <table class="w-full data-table-cards">
             <thead class="bg-muted">
                 <tr>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Code</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Balance</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Initial Value</th>
+                    <!-- Bulk Select -->
+                    <th class="w-12 px-6 py-3">
+                        <input type="checkbox" id="select-all" onchange="toggleSelectAll(this.checked)" class="rounded border-border text-primary focus:ring-primary">
+                    </th>
+                    {% if columns.code %}
+                    <th class="px-6 py-3 text-left">
+                        <a href="/gift-cards?sort=code&direction={% if sort_key.as_deref() == Some("code") && sort_direction == "asc" %}desc{% else %}asc{% endif %}{% if let Some(q) = search_query %}&q={{ q }}{% endif %}"
+                           class="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground uppercase tracking-wider hover:text-foreground">
+                            Code
+                            {% if sort_key.as_deref() == Some("code") %}
+                            <i class="ph ph-caret-{% if sort_direction == "asc" %}up{% else %}down{% endif %}"></i>
+                            {% endif %}
+                        </a>
+                    </th>
+                    {% endif %}
+                    {% if columns.balance %}
+                    <th class="px-6 py-3 text-left">
+                        <a href="/gift-cards?sort=balance&direction={% if sort_key.as_deref() == Some("balance") && sort_direction == "asc" %}desc{% else %}asc{% endif %}{% if let Some(q) = search_query %}&q={{ q }}{% endif %}"
+                           class="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground uppercase tracking-wider hover:text-foreground">
+                            Balance
+                            {% if sort_key.as_deref() == Some("balance") %}
+                            <i class="ph ph-caret-{% if sort_direction == "asc" %}up{% else %}down{% endif %}"></i>
+                            {% endif %}
+                        </a>
+                    </th>
+                    {% endif %}
+                    {% if columns.initial_value %}
+                    <th class="px-6 py-3 text-left">
+                        <a href="/gift-cards?sort=initial_value&direction={% if sort_key.as_deref() == Some("initial_value") && sort_direction == "asc" %}desc{% else %}asc{% endif %}{% if let Some(q) = search_query %}&q={{ q }}{% endif %}"
+                           class="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground uppercase tracking-wider hover:text-foreground">
+                            Initial Value
+                            {% if sort_key.as_deref() == Some("initial_value") %}
+                            <i class="ph ph-caret-{% if sort_direction == "asc" %}up{% else %}down{% endif %}"></i>
+                            {% endif %}
+                        </a>
+                    </th>
+                    {% endif %}
+                    {% if columns.status %}
                     <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Customer</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Expires</th>
+                    {% endif %}
+                    {% if columns.customer %}
+                    <th class="px-6 py-3 text-left">
+                        <a href="/gift-cards?sort=customer&direction={% if sort_key.as_deref() == Some("customer") && sort_direction == "asc" %}desc{% else %}asc{% endif %}{% if let Some(q) = search_query %}&q={{ q }}{% endif %}"
+                           class="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground uppercase tracking-wider hover:text-foreground">
+                            Customer
+                            {% if sort_key.as_deref() == Some("customer") %}
+                            <i class="ph ph-caret-{% if sort_direction == "asc" %}up{% else %}down{% endif %}"></i>
+                            {% endif %}
+                        </a>
+                    </th>
+                    {% endif %}
+                    {% if columns.expires_on %}
+                    <th class="px-6 py-3 text-left">
+                        <a href="/gift-cards?sort=expires_on&direction={% if sort_key.as_deref() == Some("expires_on") && sort_direction == "asc" %}desc{% else %}asc{% endif %}{% if let Some(q) = search_query %}&q={{ q }}{% endif %}"
+                           class="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground uppercase tracking-wider hover:text-foreground">
+                            Expires
+                            {% if sort_key.as_deref() == Some("expires_on") %}
+                            <i class="ph ph-caret-{% if sort_direction == "asc" %}up{% else %}down{% endif %}"></i>
+                            {% endif %}
+                        </a>
+                    </th>
+                    {% endif %}
+                    {% if columns.order %}
+                    <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Order</th>
+                    {% endif %}
                     <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-border">
                 {% if gift_cards.is_empty() %}
                 <tr>
-                    <td colspan="7" class="px-6 py-12 text-center text-muted-foreground">
-                        <i class="ph ph-gift text-4xl mb-2"></i>
-                        <p>No gift cards found</p>
+                    <td colspan="9" class="px-6 py-12 text-center text-muted-foreground">
+                        <i class="ph {{ table_config.empty_icon }} text-4xl mb-2 block"></i>
+                        <p class="font-medium">{{ table_config.empty_title }}</p>
+                        {% if let Some(desc) = table_config.empty_description %}
+                        <p class="text-sm mt-1">{{ desc }}</p>
+                        {% endif %}
                     </td>
                 </tr>
                 {% else %}
                 {% for card in gift_cards %}
-                <tr class="hover:bg-accent transition-colors">
-                    <td class="px-6 py-4 card-header" data-label="">
-                        <p class="font-mono font-medium text-foreground">
-                            ****{{ card.last_characters }}
-                        </p>
-                    </td>
-                    <td class="px-6 py-4 text-sm font-medium text-foreground" data-label="Balance">
-                        {{ card.balance }}
-                    </td>
-                    <td class="px-6 py-4 text-sm text-muted-foreground mobile-hidden" data-label="Initial">
-                        {{ card.initial_value }}
-                    </td>
-                    <td class="px-6 py-4" data-label="Status">
-                        {% if card.enabled %}
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
-                            Active
-                        </span>
-                        {% else %}
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
-                            Disabled
-                        </span>
-                        {% endif %}
-                    </td>
-                    <td class="px-6 py-4 text-sm text-muted-foreground mobile-hidden" data-label="Customer">
-                        {% if let Some(name) = card.customer_name %}
-                            {{ name }}
-                        {% elif let Some(email) = card.customer_email %}
-                            {{ email }}
-                        {% else %}
-                            <span class="text-muted-foreground">—</span>
-                        {% endif %}
-                    </td>
-                    <td class="px-6 py-4 text-sm text-muted-foreground mobile-hidden" data-label="Expires">
-                        {% if let Some(exp) = card.expires_on %}
-                            {{ exp }}
-                        {% else %}
-                            <span class="text-muted-foreground">Never</span>
-                        {% endif %}
-                    </td>
-                    <td class="px-6 py-4 text-right card-actions" data-label="">
-                        {% if card.enabled %}
-                        <form action="/gift-cards/{{ card.id|extract_id }}/disable" method="POST" class="inline"
-                              hx-post="/gift-cards/{{ card.id|extract_id }}/disable"
-                              hx-target="closest tr"
-                              hx-confirm="Disable this gift card? This cannot be undone.">
-                            <button type="submit" class="text-sm text-destructive hover:underline">
-                                Disable
-                            </button>
-                        </form>
-                        {% else %}
-                        <span class="text-sm text-muted-foreground">Disabled</span>
-                        {% endif %}
-                    </td>
-                </tr>
+                {% include "_row.html" %}
                 {% endfor %}
                 {% endif %}
             </tbody>
@@ -125,7 +286,7 @@
     <!-- Pagination -->
     {% if has_next_page %}
     <div class="px-6 py-4 border-t border-border">
-        <a href="/gift-cards?cursor={{ next_cursor.as_deref().unwrap_or("") }}{% if let Some(q) = search_query %}&query={{ q }}{% endif %}"
+        <a href="/gift-cards?cursor={{ next_cursor.as_deref().unwrap_or("") }}{% if let Some(q) = search_query %}&q={{ q }}{% endif %}{% if let Some(s) = sort_key %}&sort={{ s }}{% endif %}&direction={{ sort_direction }}"
            class="inline-flex items-center gap-2 text-sm text-primary hover:underline">
             Load more
             <i class="ph ph-arrow-right"></i>
@@ -133,4 +294,69 @@
     </div>
     {% endif %}
 </div>
+
+<!-- Bulk Deactivate Form (hidden) -->
+<form id="bulk-form" hx-post="/gift-cards/bulk/deactivate" hx-swap="none" class="hidden">
+    <input type="hidden" name="ids" id="bulk-ids">
+</form>
+
+<script>
+    let selectedIds = new Set();
+
+    function toggleSelectAll(checked) {
+        document.querySelectorAll('.row-checkbox').forEach(cb => {
+            cb.checked = checked;
+            const id = cb.dataset.id;
+            if (checked) {
+                selectedIds.add(id);
+            } else {
+                selectedIds.delete(id);
+            }
+        });
+        updateBulkBar();
+    }
+
+    function updateSelection() {
+        selectedIds.clear();
+        document.querySelectorAll('.row-checkbox:checked').forEach(cb => {
+            selectedIds.add(cb.dataset.id);
+        });
+        updateBulkBar();
+    }
+
+    function clearSelection() {
+        selectedIds.clear();
+        document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = false);
+        document.getElementById('select-all').checked = false;
+        updateBulkBar();
+    }
+
+    function updateBulkBar() {
+        const bulkBar = document.getElementById('bulk-bar');
+        const countEl = document.getElementById('selected-count');
+        if (selectedIds.size > 0) {
+            bulkBar.classList.remove('hidden');
+            countEl.textContent = selectedIds.size + ' selected';
+        } else {
+            bulkBar.classList.add('hidden');
+        }
+    }
+
+    function bulkDeactivate() {
+        if (selectedIds.size === 0) return;
+        if (!confirm(`Deactivate ${selectedIds.size} gift card(s)? This action cannot be undone.`)) return;
+
+        document.getElementById('bulk-ids').value = Array.from(selectedIds).join(',');
+        htmx.trigger('#bulk-form', 'submit');
+    }
+
+    function toggleColumn(column, visible) {
+        document.querySelectorAll(`[data-column="${column}"]`).forEach(el => {
+            el.style.display = visible ? '' : 'none';
+        });
+        document.querySelectorAll(`th a[href*="sort=${column}"]`).forEach(el => {
+            el.closest('th').style.display = visible ? '' : 'none';
+        });
+    }
+</script>
 {% endblock %}
