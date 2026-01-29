@@ -606,3 +606,134 @@ pub fn discounts_table_config() -> DataTableConfig {
             Some("Create your first discount to get started"),
         )
 }
+
+/// Build the payouts table configuration.
+///
+/// All columns are sortable. Columns marked with (API) are sorted by Shopify,
+/// others are sorted in Rust after fetching.
+#[must_use]
+pub fn payouts_table_config() -> DataTableConfig {
+    DataTableConfig::new("payouts")
+        // All columns sortable - API supports: issued_at, status, gross (CHARGE_GROSS), net (AMOUNT)
+        .column(TableColumn::sortable("issued_at", "Date"))
+        .column(TableColumn::sortable("type", "Type"))
+        .column(TableColumn::sortable("status", "Status"))
+        .column(TableColumn::sortable("gross", "Gross"))
+        .column(TableColumn::sortable("fees", "Fees"))
+        .column(TableColumn::sortable("net", "Net"))
+        // Hidden by default
+        .column(TableColumn::sortable("bank_account", "Bank Account").visible(false))
+        .column(TableColumn::sortable("trace_id", "Trace ID").visible(false))
+        // Filters
+        .filter(TableFilter::multi_select(
+            "status",
+            "Status",
+            vec![
+                FilterOption::new("SCHEDULED", "Scheduled"),
+                FilterOption::new("IN_TRANSIT", "In Transit"),
+                FilterOption::new("PAID", "Paid"),
+                FilterOption::new("FAILED", "Failed"),
+                FilterOption::new("CANCELED", "Canceled"),
+            ],
+        ))
+        .filter(TableFilter::select(
+            "transaction_type",
+            "Type",
+            vec![
+                FilterOption::new("DEPOSIT", "Deposit"),
+                FilterOption::new("WITHDRAWAL", "Withdrawal"),
+            ],
+        ))
+        .filter(TableFilter::date_range("issued_at", "Date Range"))
+        // Empty state
+        .search_placeholder("Search payouts...")
+        .empty_state(
+            "ph-wallet",
+            "No payouts found",
+            Some("Payouts will appear here once processed"),
+        )
+}
+
+/// Build the disputes table configuration.
+///
+/// All columns are sortable. Shopify API does not support sorting disputes,
+/// so all sorting is done in Rust after fetching.
+#[must_use]
+pub fn disputes_table_config() -> DataTableConfig {
+    DataTableConfig::new("disputes")
+        // All columns sortable - all sorted in Rust (API doesn't support dispute sorting)
+        .column(TableColumn::sortable("initiated_at", "Date"))
+        .column(TableColumn::sortable("order", "Order"))
+        .column(TableColumn::sortable("type", "Type"))
+        .column(TableColumn::sortable("status", "Status"))
+        .column(TableColumn::sortable("reason", "Reason"))
+        .column(TableColumn::sortable("amount", "Amount"))
+        .column(TableColumn::sortable("evidence_due_by", "Evidence Due"))
+        // Filters
+        .filter(TableFilter::multi_select(
+            "status",
+            "Status",
+            vec![
+                FilterOption::new("NEEDS_RESPONSE", "Needs Response"),
+                FilterOption::new("UNDER_REVIEW", "Under Review"),
+                FilterOption::new("CHARGE_REFUNDED", "Charge Refunded"),
+                FilterOption::new("ACCEPTED", "Accepted"),
+                FilterOption::new("WON", "Won"),
+                FilterOption::new("LOST", "Lost"),
+            ],
+        ))
+        .filter(TableFilter::select(
+            "type",
+            "Type",
+            vec![
+                FilterOption::new("CHARGEBACK", "Chargeback"),
+                FilterOption::new("INQUIRY", "Inquiry"),
+            ],
+        ))
+        .filter(TableFilter::date_range("initiated_at", "Date Range"))
+        // Empty state
+        .search_placeholder("Search disputes by order...")
+        .empty_state(
+            "ph-shield-check",
+            "No disputes found",
+            Some("Great news! You have no payment disputes"),
+        )
+}
+
+/// Build the balance transactions table configuration.
+///
+/// All columns are sortable. Columns marked with (API) are sorted by Shopify,
+/// others are sorted in Rust after fetching.
+#[must_use]
+pub fn transactions_table_config() -> DataTableConfig {
+    DataTableConfig::new("transactions")
+        // All columns sortable - API supports: amount, fee, processed_at
+        .column(TableColumn::sortable("transaction_date", "Date"))
+        .column(TableColumn::sortable("type", "Type"))
+        .column(TableColumn::sortable("source", "Source"))
+        .column(TableColumn::sortable("order", "Order"))
+        .column(TableColumn::sortable("amount", "Amount"))
+        .column(TableColumn::sortable("fee", "Fee"))
+        .column(TableColumn::sortable("net", "Net"))
+        // Filters
+        .filter(TableFilter::multi_select(
+            "type",
+            "Type",
+            vec![
+                FilterOption::new("CHARGE", "Charge"),
+                FilterOption::new("REFUND", "Refund"),
+                FilterOption::new("ADJUSTMENT", "Adjustment"),
+                FilterOption::new("DISPUTE", "Dispute"),
+                FilterOption::new("PAYOUT", "Payout"),
+                FilterOption::new("RESERVED_FUNDS", "Reserved Funds"),
+            ],
+        ))
+        .filter(TableFilter::date_range("transaction_date", "Date Range"))
+        // Empty state
+        .search_placeholder("Search transactions...")
+        .empty_state(
+            "ph-list",
+            "No transactions found",
+            Some("Balance transactions will appear here"),
+        )
+}

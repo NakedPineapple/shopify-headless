@@ -1,0 +1,82 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Bank Accounts{% endblock %}
+
+{% block page_title %}Bank Accounts{% endblock %}
+
+{% block page_subtitle %}
+<p class="text-sm text-muted-foreground mt-1">Connected bank accounts for payouts</p>
+{% endblock %}
+
+{% block content %}
+<!-- Tab Navigation -->
+<div class="mb-6 border-b border-border">
+    <nav class="flex gap-6">
+        <a href="/payouts" class="text-muted-foreground hover:text-foreground py-3 border-b-2 border-transparent">
+            All Payouts
+        </a>
+        <a href="/payouts/disputes" class="text-muted-foreground hover:text-foreground py-3 border-b-2 border-transparent">
+            Disputes
+        </a>
+        <a href="/payouts/bank-accounts" class="text-foreground py-3 border-b-2 border-coral">
+            Bank Accounts
+        </a>
+        <a href="/payouts/settings" class="text-muted-foreground hover:text-foreground py-3 border-b-2 border-transparent">
+            Settings
+        </a>
+    </nav>
+</div>
+
+<!-- Bank Accounts Grid -->
+{% if accounts.is_empty() %}
+<div class="bg-card rounded-xl border border-border p-12 text-center">
+    <i class="ph ph-bank text-4xl text-muted-foreground mb-4"></i>
+    <h3 class="text-lg font-semibold text-foreground mb-2">No bank accounts connected</h3>
+    <p class="text-sm text-muted-foreground mb-4">Connect a bank account in your Shopify admin to receive payouts.</p>
+    <a href="https://admin.shopify.com/settings/payments" target="_blank" class="inline-flex items-center gap-2 text-primary hover:underline">
+        Go to Shopify Payments
+        <i class="ph ph-arrow-square-out"></i>
+    </a>
+</div>
+{% else %}
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    {% for account in accounts %}
+    <div class="bg-card rounded-xl border border-border p-6">
+        <div class="flex items-start justify-between mb-4">
+            <div class="w-12 h-12 rounded-full bg-coral/10 flex items-center justify-center">
+                <i class="ph ph-bank text-2xl text-coral"></i>
+            </div>
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ account.status_class }}">
+                {{ account.status }}
+            </span>
+        </div>
+
+        <h3 class="text-lg font-semibold text-foreground mb-1">{{ account.bank_name }}</h3>
+        <p class="text-sm text-muted-foreground mb-4">•••• {{ account.last_digits }}</p>
+
+        <dl class="space-y-2 text-sm">
+            <div class="flex justify-between">
+                <dt class="text-muted-foreground">Country</dt>
+                <dd class="text-foreground">{{ account.country }}</dd>
+            </div>
+            <div class="flex justify-between">
+                <dt class="text-muted-foreground">Currency</dt>
+                <dd class="text-foreground">{{ account.currency }}</dd>
+            </div>
+        </dl>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Help Card -->
+<div class="mt-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
+    <div class="flex gap-3">
+        <i class="ph ph-info text-xl text-blue-600 dark:text-blue-400 shrink-0"></i>
+        <div class="text-sm text-blue-800 dark:text-blue-200">
+            <p class="font-medium">Managing bank accounts</p>
+            <p class="mt-1">To add, edit, or remove bank accounts, go to Settings → Payments → Manage in your Shopify admin.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -333,9 +333,18 @@ pub fn routes() -> Router<AppState> {
             "/gift-cards/bulk/deactivate",
             post(gift_cards::bulk_deactivate),
         )
-        // Payouts (read-only)
+        // Payouts
         .route("/payouts", get(payouts::index))
+        .route("/payouts/disputes", get(payouts::disputes_index))
+        .route(
+            "/payouts/disputes/{id}",
+            get(payouts::dispute_show).post(payouts::dispute_submit_evidence),
+        )
+        .route("/payouts/bank-accounts", get(payouts::bank_accounts))
+        .route("/payouts/settings", get(payouts::settings))
         .route("/payouts/{id}", get(payouts::show))
+        .route("/payouts/{id}/transactions", get(payouts::transactions))
+        .route("/payouts/{id}/export", get(payouts::export_csv))
         // Admin management (super_admin only)
         .route("/admin-users", get(admin_users::index))
         // Auth

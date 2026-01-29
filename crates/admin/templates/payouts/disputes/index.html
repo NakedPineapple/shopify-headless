@@ -1,11 +1,11 @@
 {% extends "layouts/base.html" %}
 
-{% block title %}Payouts{% endblock %}
+{% block title %}Disputes{% endblock %}
 
-{% block page_title %}Payouts{% endblock %}
+{% block page_title %}Disputes{% endblock %}
 
 {% block page_subtitle %}
-<p class="text-sm text-muted-foreground mt-1">View Shopify Payments payout history</p>
+<p class="text-sm text-muted-foreground mt-1">Manage payment disputes and chargebacks</p>
 {% endblock %}
 
 {% block head %}
@@ -13,29 +13,19 @@
 {% endblock %}
 
 {% block content %}
-<!-- Balance Card -->
-{% if let Some(bal) = balance %}
-<div class="mb-6 bg-gradient-to-r from-coral/10 to-honey/10 border border-coral/20 rounded-xl p-6">
-    <div class="flex items-center gap-4">
-        <div class="w-12 h-12 rounded-full bg-coral/20 flex items-center justify-center">
-            <i class="ph ph-wallet text-2xl text-coral"></i>
-        </div>
-        <div>
-            <p class="text-sm text-muted-foreground">Available Balance</p>
-            <p class="text-2xl font-bold text-foreground">{{ bal }}</p>
-        </div>
-    </div>
-</div>
-{% endif %}
-
 <!-- Tab Navigation -->
 <div class="mb-6 border-b border-border">
     <nav class="flex gap-6">
-        <a href="/payouts" class="text-foreground py-3 border-b-2 border-coral">
+        <a href="/payouts" class="text-muted-foreground hover:text-foreground py-3 border-b-2 border-transparent">
             All Payouts
         </a>
-        <a href="/payouts/disputes" class="text-muted-foreground hover:text-foreground py-3 border-b-2 border-transparent">
+        <a href="/payouts/disputes" class="text-foreground py-3 border-b-2 border-coral">
             Disputes
+            {% if needs_response_count > 0 %}
+            <span class="ml-2 inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 rounded-full animate-pulse">
+                {{ needs_response_count }}
+            </span>
+            {% endif %}
         </a>
         <a href="/payouts/bank-accounts" class="text-muted-foreground hover:text-foreground py-3 border-b-2 border-transparent">
             Bank Accounts
@@ -167,7 +157,7 @@
                         class="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors">
                     Apply Filters
                 </button>
-                <a href="/payouts"
+                <a href="/payouts/disputes"
                    class="px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
                     Clear All
                 </a>
@@ -183,20 +173,12 @@
                     {% for col in table_config.columns %}
                     <th data-column="{{ col.key }}"
                         class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider {% if !col.default_visible %}hidden{% endif %}
-                               {% if col.key == "gross" || col.key == "fees" || col.key == "net" %}text-right{% endif %}">
+                               {% if col.key == "amount" %}text-right{% endif %}">
                         {% if col.sortable %}
-                        <a href="?sort={{ col.key }}&dir={% if current_sort.as_deref() == Some(col.key) && current_dir == "asc" %}desc{% else %}asc{% endif %}"
-                           class="inline-flex items-center gap-1 hover:text-foreground transition-colors group {% if current_sort.as_deref() == Some(col.key) %}text-foreground{% endif %}">
+                        <a href="?sort={{ col.key }}&dir=asc"
+                           class="inline-flex items-center gap-1 hover:text-foreground transition-colors group">
                             {{ col.label }}
-                            {% if current_sort.as_deref() == Some(col.key) %}
-                                {% if current_dir == "asc" %}
-                                <i class="ph ph-caret-up text-coral"></i>
-                                {% else %}
-                                <i class="ph ph-caret-down text-coral"></i>
-                                {% endif %}
-                            {% else %}
                             <i class="ph ph-caret-up-down text-muted-foreground/50 group-hover:text-muted-foreground"></i>
-                            {% endif %}
                         </a>
                         {% else %}
                         {{ col.label }}
@@ -207,7 +189,7 @@
                 </tr>
             </thead>
             <tbody class="divide-y divide-border">
-                {% if payouts.is_empty() %}
+                {% if disputes.is_empty() %}
                 <tr>
                     <td colspan="{{ table_config.columns.len() + 1 }}" class="px-6 py-12 text-center text-muted-foreground">
                         <i class="ph {{ table_config.empty_icon }} text-4xl mb-2 block"></i>
@@ -218,40 +200,50 @@
                     </td>
                 </tr>
                 {% else %}
-                {% for payout in payouts %}
+                {% for dispute in disputes %}
                 <tr class="hover:bg-accent transition-colors">
-                    <td data-column="issued_at" class="px-6 py-4 text-sm text-foreground card-header" data-label="">
-                        {% if let Some(issued) = payout.issued_at %}
-                            {{ issued }}
+                    <td data-column="initiated_at" class="px-6 py-4 text-sm text-foreground card-header" data-label="">
+                        {{ dispute.initiated_at }}
+                    </td>
+                    <td data-column="order" class="px-6 py-4 text-sm" data-label="Order">
+                        {% if let Some(name) = dispute.order_name %}
+                            <a href="/orders/{{ dispute.order_id.as_deref().unwrap_or("") }}" class="text-primary hover:underline">
+                                {{ name }}
+                            </a>
                         {% else %}
                             <span class="text-muted-foreground">—</span>
                         {% endif %}
                     </td>
-                    <td data-column="type" class="px-6 py-4 text-sm text-foreground" data-label="Type">
-                        {{ payout.transaction_type }}
-                    </td>
-                    <td data-column="status" class="px-6 py-4" data-label="Status">
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ payout.status_class }}">
-                            {{ payout.status }}
+                    <td data-column="type" class="px-6 py-4" data-label="Type">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ dispute.type_class }}">
+                            {{ dispute.dispute_type }}
                         </span>
                     </td>
-                    <td data-column="gross" class="px-6 py-4 text-sm text-right text-foreground" data-label="Gross">
-                        {{ payout.gross }}
+                    <td data-column="status" class="px-6 py-4" data-label="Status">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ dispute.status_class }}">
+                            {% if dispute.is_urgent %}
+                            <span class="w-1.5 h-1.5 bg-red-500 rounded-full mr-1.5"></span>
+                            {% endif %}
+                            {{ dispute.status }}
+                        </span>
                     </td>
-                    <td data-column="fees" class="px-6 py-4 text-sm text-right text-muted-foreground" data-label="Fees">
-                        {{ payout.fees }}
+                    <td data-column="reason" class="px-6 py-4 text-sm text-muted-foreground" data-label="Reason">
+                        {{ dispute.reason }}
                     </td>
-                    <td data-column="net" class="px-6 py-4 text-sm text-right font-medium text-foreground" data-label="Net">
-                        {{ payout.net }}
+                    <td data-column="amount" class="px-6 py-4 text-sm text-right font-medium text-foreground" data-label="Amount">
+                        {{ dispute.amount }}
                     </td>
-                    <td data-column="bank_account" class="hidden px-6 py-4 text-sm text-muted-foreground" data-label="Bank Account">
-                        —
-                    </td>
-                    <td data-column="trace_id" class="hidden px-6 py-4 text-sm text-muted-foreground font-mono" data-label="Trace ID">
-                        {{ payout.short_id }}
+                    <td data-column="evidence_due_by" class="px-6 py-4 text-sm" data-label="Evidence Due">
+                        {% if let Some(due) = dispute.evidence_due_by %}
+                            <span class="{% if dispute.is_urgent %}text-red-600 dark:text-red-400 font-medium{% else %}text-muted-foreground{% endif %}">
+                                {{ due }}
+                            </span>
+                        {% else %}
+                            <span class="text-muted-foreground">—</span>
+                        {% endif %}
                     </td>
                     <td class="px-6 py-4 text-right card-actions" data-label="">
-                        <a href="/payouts/{{ payout.short_id }}"
+                        <a href="/payouts/disputes/{{ dispute.short_id }}"
                            class="text-sm text-primary hover:underline">
                             View
                         </a>
@@ -266,7 +258,7 @@
     <!-- Pagination -->
     {% if has_next_page %}
     <div class="px-6 py-4 border-t border-border">
-        <a href="/payouts?cursor={{ next_cursor.as_deref().unwrap_or("") }}"
+        <a href="/payouts/disputes?cursor={{ next_cursor.as_deref().unwrap_or("") }}"
            class="inline-flex items-center gap-2 text-sm text-primary hover:underline">
             Load more
             <i class="ph ph-arrow-right"></i>

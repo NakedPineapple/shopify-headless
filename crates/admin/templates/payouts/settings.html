@@ -1,0 +1,81 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Payout Settings{% endblock %}
+
+{% block page_title %}Payout Settings{% endblock %}
+
+{% block page_subtitle %}
+<p class="text-sm text-muted-foreground mt-1">Your current payout schedule</p>
+{% endblock %}
+
+{% block content %}
+<!-- Tab Navigation -->
+<div class="mb-6 border-b border-border">
+    <nav class="flex gap-6">
+        <a href="/payouts" class="text-muted-foreground hover:text-foreground py-3 border-b-2 border-transparent">
+            All Payouts
+        </a>
+        <a href="/payouts/disputes" class="text-muted-foreground hover:text-foreground py-3 border-b-2 border-transparent">
+            Disputes
+        </a>
+        <a href="/payouts/bank-accounts" class="text-muted-foreground hover:text-foreground py-3 border-b-2 border-transparent">
+            Bank Accounts
+        </a>
+        <a href="/payouts/settings" class="text-foreground py-3 border-b-2 border-coral">
+            Settings
+        </a>
+    </nav>
+</div>
+
+<!-- Payout Schedule Card -->
+<div class="max-w-2xl">
+    <div class="bg-card rounded-xl border border-border p-6">
+        <div class="flex items-start gap-4 mb-6">
+            <div class="w-12 h-12 rounded-full bg-coral/10 flex items-center justify-center shrink-0">
+                <i class="ph ph-calendar text-2xl text-coral"></i>
+            </div>
+            <div>
+                <h2 class="text-lg font-semibold text-foreground">Payout Schedule</h2>
+                <p class="text-sm text-muted-foreground mt-1">{{ schedule.interval_description }}</p>
+            </div>
+        </div>
+
+        <dl class="space-y-4">
+            <div class="flex justify-between items-center py-3 border-t border-border">
+                <dt class="text-sm text-muted-foreground">Frequency</dt>
+                <dd class="text-sm font-medium text-foreground">{{ schedule.interval }}</dd>
+            </div>
+            {% if let Some(anchor) = schedule.monthly_anchor %}
+            <div class="flex justify-between items-center py-3 border-t border-border">
+                <dt class="text-sm text-muted-foreground">Day of Month</dt>
+                <dd class="text-sm font-medium text-foreground">{{ anchor }}</dd>
+            </div>
+            {% endif %}
+            {% if let Some(day) = schedule.weekly_anchor %}
+            <div class="flex justify-between items-center py-3 border-t border-border">
+                <dt class="text-sm text-muted-foreground">Day of Week</dt>
+                <dd class="text-sm font-medium text-foreground">{{ day }}</dd>
+            </div>
+            {% endif %}
+        </dl>
+    </div>
+
+    <!-- Help Card -->
+    <div class="mt-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
+        <div class="flex gap-3">
+            <i class="ph ph-info text-xl text-blue-600 dark:text-blue-400 shrink-0"></i>
+            <div class="text-sm text-blue-800 dark:text-blue-200">
+                <p class="font-medium">Changing your payout schedule</p>
+                <p class="mt-1">
+                    Payout schedules can only be modified in your Shopify admin.
+                    Go to Settings → Payments → Manage → Payout schedule to make changes.
+                </p>
+                <a href="https://admin.shopify.com/settings/payments" target="_blank" class="inline-flex items-center gap-1 mt-2 text-blue-600 dark:text-blue-400 hover:underline">
+                    Open Shopify Payments
+                    <i class="ph ph-arrow-square-out"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

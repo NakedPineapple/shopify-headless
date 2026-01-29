@@ -1,0 +1,51 @@
+{% for tx in transactions %}
+<tr class="hover:bg-accent transition-colors">
+    <td class="px-6 py-4 text-sm text-foreground" data-label="Date">
+        {{ tx.date }}
+    </td>
+    <td class="px-6 py-4" data-label="Type">
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ tx.type_class }}">
+            {{ tx.transaction_type }}
+        </span>
+    </td>
+    <td class="px-6 py-4 text-sm text-muted-foreground" data-label="Source">
+        {{ tx.source }}
+    </td>
+    <td class="px-6 py-4 text-sm" data-label="Order">
+        {% if let Some(order_id) = tx.order_id %}
+            <a href="/orders/{{ order_id }}" class="text-primary hover:underline">
+                {{ tx.order_name.as_deref().unwrap_or("-") }}
+            </a>
+        {% else %}
+            <span class="text-muted-foreground">—</span>
+        {% endif %}
+    </td>
+    <td class="px-6 py-4 text-sm text-right text-foreground" data-label="Amount">
+        {{ tx.amount }}
+    </td>
+    <td class="px-6 py-4 text-sm text-right text-muted-foreground" data-label="Fee">
+        {{ tx.fee }}
+    </td>
+    <td class="px-6 py-4 text-sm text-right font-medium text-foreground" data-label="Net">
+        {{ tx.net }}
+    </td>
+</tr>
+{% endfor %}
+
+{% if has_more %}
+<tr id="load-more-row">
+    <td colspan="7" class="px-6 py-4 text-center">
+        <button
+            hx-get="/payouts/{{ payout_id }}/transactions?cursor={{ next_cursor.as_deref().unwrap_or("") }}"
+            hx-target="#load-more-row"
+            hx-swap="outerHTML"
+            class="inline-flex items-center gap-2 text-sm text-primary hover:underline">
+            <span class="htmx-indicator">
+                <i class="ph ph-spinner animate-spin"></i>
+            </span>
+            Load more transactions
+            <i class="ph ph-arrow-down"></i>
+        </button>
+    </td>
+</tr>
+{% endif %}

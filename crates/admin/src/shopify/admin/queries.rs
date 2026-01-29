@@ -1089,3 +1089,59 @@ pub struct GetPayout;
     response_derives = "Debug, Clone"
 )]
 pub struct GetPayouts;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/payouts.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct GetPayoutDetail;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/payouts.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct GetPayoutTransactions;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/payouts.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct GetDisputes;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/payouts.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct GetDispute;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/payouts.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct DisputeEvidenceUpdate;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/payouts.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct GetBankAccounts;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/payouts.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct GetPayoutSchedule;

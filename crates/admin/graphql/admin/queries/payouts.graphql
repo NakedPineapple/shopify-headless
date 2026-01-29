@@ -1,6 +1,10 @@
 # Payout queries for Shopify Admin API
 
-# Get a single payout by ID
+# =============================================================================
+# Payout Queries
+# =============================================================================
+
+# Get a single payout by ID with basic fields
 query GetPayout($id: ID!) {
   node(id: $id) {
     __typename
@@ -17,10 +21,11 @@ query GetPayout($id: ID!) {
   }
 }
 
-# Get paginated list of payouts
-query GetPayouts($first: Int = 20, $after: String) {
+# Get paginated list of payouts with basic fields
+# Supports sorting via sortKey (ISSUED_AT, STATUS, AMOUNT, etc.) and reverse
+query GetPayouts($first: Int = 20, $after: String, $sortKey: PayoutSortKeys, $reverse: Boolean = false) {
   shopifyPaymentsAccount {
-    payouts(first: $first, after: $after) {
+    payouts(first: $first, after: $after, sortKey: $sortKey, reverse: $reverse) {
       edges {
         node {
           id
@@ -41,6 +46,285 @@ query GetPayouts($first: Int = 20, $after: String) {
     balance {
       amount
       currencyCode
+    }
+  }
+}
+
+# Get enhanced payout detail with summary breakdown
+query GetPayoutDetail($id: ID!) {
+  node(id: $id) {
+    __typename
+    ... on ShopifyPaymentsPayout {
+      id
+      legacyResourceId
+      status
+      transactionType
+      net {
+        amount
+        currencyCode
+      }
+      gross {
+        amount
+        currencyCode
+      }
+      issuedAt
+      summary {
+        chargesGross {
+          amount
+          currencyCode
+        }
+        chargesFee {
+          amount
+          currencyCode
+        }
+        refundsFeeGross {
+          amount
+          currencyCode
+        }
+        refundsFee {
+          amount
+          currencyCode
+        }
+        adjustmentsGross {
+          amount
+          currencyCode
+        }
+        adjustmentsFee {
+          amount
+          currencyCode
+        }
+        reservedFundsGross {
+          amount
+          currencyCode
+        }
+        reservedFundsFee {
+          amount
+          currencyCode
+        }
+        retriedPayoutsGross {
+          amount
+          currencyCode
+        }
+        retriedPayoutsFee {
+          amount
+          currencyCode
+        }
+      }
+    }
+  }
+}
+
+# Get balance transactions for a specific payout
+# Uses payout_date filter to narrow down results, then filters by payout_id client-side
+query GetPayoutTransactions($first: Int = 100, $after: String, $query: String) {
+  shopifyPaymentsAccount {
+    balanceTransactions(first: $first, after: $after, query: $query) {
+      edges {
+        node {
+          id
+          amount {
+            amount
+            currencyCode
+          }
+          fee {
+            amount
+            currencyCode
+          }
+          net {
+            amount
+            currencyCode
+          }
+          transactionDate
+          type
+          sourceType
+          associatedOrder {
+            id
+            name
+          }
+          associatedPayout {
+            id
+          }
+        }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+    }
+  }
+}
+
+# =============================================================================
+# Dispute Queries
+# =============================================================================
+
+# Get paginated list of disputes
+query GetDisputes($first: Int = 25, $after: String, $query: String) {
+  shopifyPaymentsAccount {
+    disputes(first: $first, after: $after, query: $query) {
+      edges {
+        node {
+          id
+          legacyResourceId
+          status
+          type
+          amount {
+            amount
+            currencyCode
+          }
+          initiatedAt
+          evidenceDueBy
+          finalizedOn
+          reasonDetails {
+            reason
+            networkReasonCode
+          }
+          order {
+            id
+            name
+          }
+        }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+    }
+  }
+}
+
+# Get a single dispute with full details
+query GetDispute($id: ID!) {
+  node(id: $id) {
+    __typename
+    ... on ShopifyPaymentsDispute {
+      id
+      legacyResourceId
+      status
+      type
+      amount {
+        amount
+        currencyCode
+      }
+      initiatedAt
+      evidenceDueBy
+      evidenceSentOn
+      finalizedOn
+      reasonDetails {
+        reason
+        networkReasonCode
+      }
+      order {
+        id
+        name
+        totalPriceSet {
+          shopMoney {
+            amount
+            currencyCode
+          }
+        }
+        customer {
+          id
+          email
+          firstName
+          lastName
+        }
+      }
+      disputeEvidence {
+        productDescription
+        customerFirstName
+        customerLastName
+        customerEmailAddress
+        uncategorizedText
+        submitted
+        accessActivityLog
+        cancellationPolicyDisclosure
+        cancellationRebuttal
+        refundPolicyDisclosure
+        refundRefusalExplanation
+        billingAddress {
+          address1
+          address2
+          city
+          provinceCode
+          countryCode
+          zip
+        }
+        shippingAddress {
+          address1
+          address2
+          city
+          provinceCode
+          countryCode
+          zip
+        }
+        disputeFileUploads {
+          id
+          disputeEvidenceType
+          fileSize
+          originalFileName
+          fileType
+          url
+        }
+        fulfillments {
+          id
+          shippingCarrier
+          shippingDate
+          shippingTrackingNumber
+        }
+      }
+    }
+  }
+}
+
+# Mutation to update dispute evidence
+mutation DisputeEvidenceUpdate($disputeId: ID!, $input: ShopifyPaymentsDisputeEvidenceUpdateInput!) {
+  disputeEvidenceUpdate(id: $disputeId, input: $input) {
+    disputeEvidence {
+      productDescription
+      submitted
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
+# =============================================================================
+# Bank Account Queries
+# =============================================================================
+
+# Get bank accounts
+query GetBankAccounts($first: Int = 10) {
+  shopifyPaymentsAccount {
+    bankAccounts(first: $first) {
+      edges {
+        node {
+          id
+          accountNumberLastDigits
+          bankName
+          country
+          currency
+          status
+          createdAt
+        }
+      }
+    }
+  }
+}
+
+# =============================================================================
+# Payout Schedule Query
+# =============================================================================
+
+# Get payout schedule
+query GetPayoutSchedule {
+  shopifyPaymentsAccount {
+    payoutSchedule {
+      interval
+      monthlyAnchor
+      weeklyAnchor
     }
   }
 }
