@@ -1,0 +1,62 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Create Discount{% endblock %}
+
+{% block page_title %}Create Discount{% endblock %}
+
+{% block page_subtitle %}
+<p class="text-sm text-muted-foreground mt-1">Step 1: Choose how customers will use this discount</p>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <!-- Code Discount -->
+        <a href="/discounts/new/code"
+           class="group bg-card rounded-xl border border-border p-6 hover:border-primary hover:shadow-lg transition-all">
+            <div class="flex items-center gap-4 mb-4">
+                <div class="w-12 h-12 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                    <i class="ph ph-ticket text-2xl text-blue-600 dark:text-blue-400"></i>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold text-foreground group-hover:text-primary transition-colors">
+                        Discount Code
+                    </h3>
+                    <p class="text-sm text-muted-foreground">Customers enter a code at checkout</p>
+                </div>
+            </div>
+            <p class="text-sm text-muted-foreground">
+                Create a unique code that customers can enter to receive the discount.
+                Great for promotions, influencer partnerships, and loyalty rewards.
+            </p>
+        </a>
+
+        <!-- Automatic Discount -->
+        <a href="/discounts/new/automatic"
+           class="group bg-card rounded-xl border border-border p-6 hover:border-primary hover:shadow-lg transition-all">
+            <div class="flex items-center gap-4 mb-4">
+                <div class="w-12 h-12 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                    <i class="ph ph-lightning text-2xl text-amber-600 dark:text-amber-400"></i>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold text-foreground group-hover:text-primary transition-colors">
+                        Automatic Discount
+                    </h3>
+                    <p class="text-sm text-muted-foreground">Applied automatically at checkout</p>
+                </div>
+            </div>
+            <p class="text-sm text-muted-foreground">
+                Discount applies automatically when conditions are met.
+                Perfect for site-wide sales and customer-friendly promotions.
+            </p>
+        </a>
+    </div>
+
+    <div class="mt-6 text-center">
+        <a href="/discounts" class="text-sm text-muted-foreground hover:text-foreground">
+            <i class="ph ph-arrow-left mr-1"></i>
+            Back to discounts
+        </a>
+    </div>
+</div>
+{% endblock %}

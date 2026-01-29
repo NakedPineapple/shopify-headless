@@ -1,0 +1,138 @@
+{# Customer search/picker modal #}
+{# Used for selecting specific customers for discount eligibility #}
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" id="customer-picker-overlay">
+    <div class="bg-card rounded-xl border border-border shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+        {# Header #}
+        <div class="flex items-center justify-between p-4 border-b border-border">
+            <h3 class="text-lg font-semibold text-foreground">Select Customers</h3>
+            <button type="button"
+                    onclick="document.getElementById('customer-picker-overlay').remove()"
+                    class="p-1 text-muted-foreground hover:text-foreground transition-colors">
+                <i class="ph ph-x text-xl"></i>
+            </button>
+        </div>
+
+        {# Tabs #}
+        <div class="flex border-b border-border">
+            <button type="button"
+                    class="flex-1 px-4 py-3 text-sm font-medium text-primary border-b-2 border-primary"
+                    data-tab="customers">
+                Specific Customers
+            </button>
+            <button type="button"
+                    class="flex-1 px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground"
+                    data-tab="segments"
+                    hx-get="/api/customer-segments"
+                    hx-target="#customer-results"
+                    hx-swap="innerHTML">
+                Customer Segments
+            </button>
+        </div>
+
+        {# Search #}
+        <div class="p-4 border-b border-border">
+            <div class="relative">
+                <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"></i>
+                <input type="search"
+                       id="customer-search"
+                       placeholder="Search by name or email..."
+                       hx-get="/api/customers/search"
+                       hx-trigger="keyup changed delay:300ms"
+                       hx-target="#customer-results"
+                       hx-include="[name='customer_query']"
+                       name="customer_query"
+                       class="w-full pl-10 pr-4 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring">
+            </div>
+        </div>
+
+        {# Results #}
+        <div class="flex-1 overflow-y-auto p-4" id="customer-results">
+            <div class="text-center text-muted-foreground py-8">
+                <i class="ph ph-users text-4xl mb-2"></i>
+                <p>Search for customers to add</p>
+            </div>
+        </div>
+
+        {# Selected items #}
+        <div class="p-4 border-t border-border bg-muted/50">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-sm text-muted-foreground">
+                    <span id="selected-customer-count">0</span> customers selected
+                </span>
+                <button type="button"
+                        onclick="clearCustomerSelection()"
+                        class="text-sm text-destructive hover:text-destructive/80">
+                    Clear all
+                </button>
+            </div>
+            <div id="selected-customers" class="flex flex-wrap gap-2"></div>
+        </div>
+
+        {# Footer #}
+        <div class="flex items-center justify-end gap-3 p-4 border-t border-border">
+            <button type="button"
+                    onclick="document.getElementById('customer-picker-overlay').remove()"
+                    class="px-4 py-2 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/90 transition-colors">
+                Cancel
+            </button>
+            <button type="button"
+                    onclick="confirmCustomerSelection()"
+                    class="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors">
+                Add Selected
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+let selectedCustomers = new Map();
+
+function toggleCustomer(id, name, email) {
+    if (selectedCustomers.has(id)) {
+        selectedCustomers.delete(id);
+    } else {
+        selectedCustomers.set(id, { name, email });
+    }
+    updateCustomerSelection();
+}
+
+function updateCustomerSelection() {
+    const container = document.getElementById('selected-customers');
+    const count = document.getElementById('selected-customer-count');
+    count.textContent = selectedCustomers.size;
+
+    container.innerHTML = '';
+    selectedCustomers.forEach((customer, id) => {
+        const chip = document.createElement('span');
+        chip.className = 'inline-flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary rounded text-sm';
+        chip.innerHTML = `${customer.name || customer.email} <button type="button" onclick="toggleCustomer('${id}')" class="hover:text-primary/80">&times;</button>`;
+        container.appendChild(chip);
+    });
+}
+
+function clearCustomerSelection() {
+    selectedCustomers.clear();
+    updateCustomerSelection();
+    document.querySelectorAll('[data-customer-checkbox]').forEach(cb => cb.checked = false);
+}
+
+function confirmCustomerSelection() {
+    const ids = Array.from(selectedCustomers.keys());
+    // Update hidden input with selected customer IDs
+    const input = document.querySelector('input[name="customer_ids"]');
+    if (input) input.value = ids.join(',');
+    document.getElementById('customer-picker-overlay').remove();
+}
+
+// Tab switching
+document.querySelectorAll('[data-tab]').forEach(tab => {
+    tab.addEventListener('click', () => {
+        document.querySelectorAll('[data-tab]').forEach(t => {
+            t.classList.remove('text-primary', 'border-primary', 'border-b-2');
+            t.classList.add('text-muted-foreground');
+        });
+        tab.classList.remove('text-muted-foreground');
+        tab.classList.add('text-primary', 'border-primary', 'border-b-2');
+    });
+});
+</script>

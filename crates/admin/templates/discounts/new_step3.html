@@ -1,0 +1,397 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Create {{ discount_type }} Discount{% endblock %}
+
+{% block page_title %}Create {{ discount_type }} Discount{% endblock %}
+
+{% block page_subtitle %}
+<p class="text-sm text-muted-foreground mt-1">
+    Step 3: Configure your {{ method }}
+    {% if discount_type == "basic" %}amount off{% elif discount_type == "bxgy" %}buy X get Y{% else %}free shipping{% endif %}
+    discount
+</p>
+{% endblock %}
+
+{% block content %}
+<div class="flex gap-6">
+    <!-- Main Form -->
+    <form method="POST" action="/discounts" class="flex-1 max-w-2xl space-y-6" id="discount-form">
+        <input type="hidden" name="method" value="{{ method }}">
+        <input type="hidden" name="discount_type" value="{{ discount_type }}">
+
+        {% if error.is_some() %}
+        <div class="bg-destructive/10 border border-destructive rounded-lg p-4">
+            <p class="text-sm text-destructive">{{ error.as_deref().unwrap_or("") }}</p>
+        </div>
+        {% endif %}
+
+        <!-- Basic Info -->
+        <div class="bg-card rounded-xl border border-border p-6 space-y-4">
+            <h2 class="text-lg font-semibold text-foreground">Basic Information</h2>
+
+            <div>
+                <label for="title" class="block text-sm font-medium text-foreground mb-1">
+                    Discount Title <span class="text-destructive">*</span>
+                </label>
+                <input type="text"
+                       id="title"
+                       name="title"
+                       required
+                       placeholder="e.g., Summer Sale 20% Off"
+                       oninput="updateSummary()"
+                       class="w-full px-4 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring">
+                <p class="text-xs text-muted-foreground mt-1">Customers won't see this title</p>
+                <p id="title-error" class="text-xs text-destructive mt-1 hidden">Title is required</p>
+            </div>
+
+            {% if method == "code" %}
+            <div>
+                <label for="code" class="block text-sm font-medium text-foreground mb-1">
+                    Discount Code <span class="text-destructive">*</span>
+                </label>
+                <div class="flex gap-2">
+                    <input type="text"
+                           id="code"
+                           name="code"
+                           required
+                           placeholder="e.g., SUMMER20"
+                           oninput="updateSummary(); validateCode()"
+                           class="flex-1 px-4 py-2 bg-input border border-border rounded-lg font-mono text-foreground focus:ring-2 focus:ring-ring focus:border-ring uppercase">
+                    <button type="button"
+                            onclick="generateCode()"
+                            class="px-4 py-2 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/90 transition-colors">
+                        Generate
+                    </button>
+                </div>
+                <p class="text-xs text-muted-foreground mt-1">Customers will enter this code at checkout</p>
+                <p id="code-error" class="text-xs text-destructive mt-1 hidden">Code must be at least 3 characters</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Value Section - Type Specific -->
+        {% if discount_type == "basic" %}
+        {% include "discounts/_partials/_form_basic.html" %}
+        {% elif discount_type == "bxgy" %}
+        {% include "discounts/_partials/_form_bxgy.html" %}
+        {% else %}
+        {% include "discounts/_partials/_form_free_shipping.html" %}
+        {% endif %}
+
+        <!-- Minimum Requirements -->
+        <div class="bg-card rounded-xl border border-border p-6 space-y-4">
+            <h2 class="text-lg font-semibold text-foreground">Minimum Requirements</h2>
+
+            <div class="space-y-2">
+                <label class="flex items-center gap-3 p-3 border border-border rounded-lg cursor-pointer has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+                    <input type="radio" name="minimum_type" value="none" checked class="text-primary focus:ring-primary" onchange="updateSummary(); toggleMinimumValue()">
+                    <div>
+                        <div class="font-medium text-foreground">No minimum requirements</div>
+                    </div>
+                </label>
+                <label class="flex items-center gap-3 p-3 border border-border rounded-lg cursor-pointer has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+                    <input type="radio" name="minimum_type" value="amount" class="text-primary focus:ring-primary" onchange="updateSummary(); toggleMinimumValue()">
+                    <div>
+                        <div class="font-medium text-foreground">Minimum purchase amount</div>
+                    </div>
+                </label>
+                <label class="flex items-center gap-3 p-3 border border-border rounded-lg cursor-pointer has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+                    <input type="radio" name="minimum_type" value="quantity" class="text-primary focus:ring-primary" onchange="updateSummary(); toggleMinimumValue()">
+                    <div>
+                        <div class="font-medium text-foreground">Minimum quantity of items</div>
+                    </div>
+                </label>
+            </div>
+
+            <div id="minimum-value-container" class="hidden">
+                <label for="minimum_value" class="block text-sm font-medium text-foreground mb-1">
+                    Minimum Value
+                </label>
+                <input type="number"
+                       id="minimum_value"
+                       name="minimum_value"
+                       min="0"
+                       step="0.01"
+                       placeholder="50"
+                       oninput="updateSummary(); validateMinimum()"
+                       class="w-full px-4 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring">
+                <p id="minimum-error" class="text-xs text-destructive mt-1 hidden">Minimum value must be greater than 0</p>
+            </div>
+        </div>
+
+        <!-- Active Dates -->
+        <div class="bg-card rounded-xl border border-border p-6 space-y-4">
+            <h2 class="text-lg font-semibold text-foreground">Active Dates</h2>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label for="starts_at" class="block text-sm font-medium text-foreground mb-1">
+                        Start Date
+                    </label>
+                    <input type="datetime-local"
+                           id="starts_at"
+                           name="starts_at"
+                           onchange="updateSummary(); validateDates()"
+                           class="w-full px-4 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring">
+                </div>
+                <div>
+                    <label for="ends_at" class="block text-sm font-medium text-foreground mb-1">
+                        End Date (optional)
+                    </label>
+                    <input type="datetime-local"
+                           id="ends_at"
+                           name="ends_at"
+                           onchange="updateSummary(); validateDates()"
+                           class="w-full px-4 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring">
+                    <p id="dates-error" class="text-xs text-destructive mt-1 hidden">End date must be after start date</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Usage Limits -->
+        {% if method == "code" %}
+        <div class="bg-card rounded-xl border border-border p-6 space-y-4">
+            <h2 class="text-lg font-semibold text-foreground">Usage Limits</h2>
+
+            <div>
+                <label for="usage_limit" class="block text-sm font-medium text-foreground mb-1">
+                    Total usage limit (optional)
+                </label>
+                <input type="number"
+                       id="usage_limit"
+                       name="usage_limit"
+                       min="0"
+                       placeholder="Leave empty for unlimited"
+                       oninput="updateSummary()"
+                       class="w-full px-4 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring">
+            </div>
+
+            <label class="flex items-center gap-3">
+                <input type="checkbox" name="once_per_customer" value="true" class="text-primary focus:ring-primary rounded" onchange="updateSummary()">
+                <span class="text-sm text-foreground">Limit to one use per customer</span>
+            </label>
+        </div>
+        {% endif %}
+
+        <!-- Actions -->
+        <div class="flex items-center justify-between pt-4">
+            <a href="/discounts/new/{{ method }}" class="text-sm text-muted-foreground hover:text-foreground">
+                <i class="ph ph-arrow-left mr-1"></i>
+                Back
+            </a>
+            <div class="flex gap-3">
+                <a href="/discounts" class="px-4 py-2 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/90">
+                    Cancel
+                </a>
+                <button type="submit" id="submit-btn" class="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed">
+                    Create Discount
+                </button>
+            </div>
+        </div>
+    </form>
+
+    <!-- Summary Sidebar -->
+    <div class="hidden lg:block w-80 flex-shrink-0">
+        <div class="sticky top-6 bg-card rounded-xl border border-border p-6 space-y-4">
+            <h3 class="text-lg font-semibold text-foreground">Summary</h3>
+
+            <!-- Discount Preview -->
+            <div class="p-4 bg-muted rounded-lg text-center">
+                <div id="summary-value" class="text-3xl font-bold text-primary">
+                    {% if discount_type == "basic" %}—{% elif discount_type == "bxgy" %}Buy X Get Y{% else %}Free Shipping{% endif %}
+                </div>
+                <p id="summary-title" class="text-sm text-muted-foreground mt-1">Untitled Discount</p>
+            </div>
+
+            <!-- Details -->
+            <dl class="space-y-3 text-sm">
+                <div class="flex justify-between">
+                    <dt class="text-muted-foreground">Method</dt>
+                    <dd class="text-foreground font-medium">{{ method|capitalize }}</dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt class="text-muted-foreground">Type</dt>
+                    <dd class="text-foreground font-medium">
+                        {% if discount_type == "basic" %}Amount Off{% elif discount_type == "bxgy" %}Buy X Get Y{% else %}Free Shipping{% endif %}
+                    </dd>
+                </div>
+                {% if method == "code" %}
+                <div class="flex justify-between">
+                    <dt class="text-muted-foreground">Code</dt>
+                    <dd id="summary-code" class="text-foreground font-mono">—</dd>
+                </div>
+                {% endif %}
+                <div class="flex justify-between">
+                    <dt class="text-muted-foreground">Minimum</dt>
+                    <dd id="summary-minimum" class="text-foreground">None</dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt class="text-muted-foreground">Start</dt>
+                    <dd id="summary-start" class="text-foreground">Immediately</dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt class="text-muted-foreground">End</dt>
+                    <dd id="summary-end" class="text-foreground">No end date</dd>
+                </div>
+                {% if method == "code" %}
+                <div class="flex justify-between">
+                    <dt class="text-muted-foreground">Usage Limit</dt>
+                    <dd id="summary-usage" class="text-foreground">Unlimited</dd>
+                </div>
+                {% endif %}
+            </dl>
+
+            <!-- Validation Status -->
+            <div id="validation-status" class="pt-4 border-t border-border">
+                <div class="flex items-center gap-2 text-sm">
+                    <i id="validation-icon" class="ph ph-circle-dashed text-muted-foreground"></i>
+                    <span id="validation-text" class="text-muted-foreground">Fill in required fields</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function generateCode() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let code = '';
+    for (let i = 0; i < 8; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    document.getElementById('code').value = code;
+    updateSummary();
+    validateCode();
+}
+
+function toggleMinimumValue() {
+    const minimumType = document.querySelector('input[name="minimum_type"]:checked').value;
+    const container = document.getElementById('minimum-value-container');
+    container.classList.toggle('hidden', minimumType === 'none');
+}
+
+function updateSummary() {
+    // Title
+    const title = document.getElementById('title').value || 'Untitled Discount';
+    document.getElementById('summary-title').textContent = title;
+
+    // Code
+    const codeEl = document.getElementById('code');
+    if (codeEl) {
+        document.getElementById('summary-code').textContent = codeEl.value || '—';
+    }
+
+    // Value
+    const valueEl = document.getElementById('value');
+    const valueTypeEl = document.querySelector('input[name="value_type"]:checked');
+    if (valueEl && valueTypeEl) {
+        const value = valueEl.value;
+        if (value) {
+            const formatted = valueTypeEl.value === 'percentage' ? `${value}% OFF` : `$${value} OFF`;
+            document.getElementById('summary-value').textContent = formatted;
+        }
+    }
+
+    // Minimum
+    const minimumType = document.querySelector('input[name="minimum_type"]:checked').value;
+    const minimumValue = document.getElementById('minimum_value').value;
+    let minimumText = 'None';
+    if (minimumType === 'amount' && minimumValue) {
+        minimumText = `$${minimumValue} purchase`;
+    } else if (minimumType === 'quantity' && minimumValue) {
+        minimumText = `${minimumValue} items`;
+    }
+    document.getElementById('summary-minimum').textContent = minimumText;
+
+    // Dates
+    const startsAt = document.getElementById('starts_at').value;
+    const endsAt = document.getElementById('ends_at').value;
+    document.getElementById('summary-start').textContent = startsAt ? new Date(startsAt).toLocaleDateString() : 'Immediately';
+    document.getElementById('summary-end').textContent = endsAt ? new Date(endsAt).toLocaleDateString() : 'No end date';
+
+    // Usage
+    const usageLimitEl = document.getElementById('usage_limit');
+    if (usageLimitEl) {
+        const usageLimit = usageLimitEl.value;
+        document.getElementById('summary-usage').textContent = usageLimit ? `${usageLimit} uses` : 'Unlimited';
+    }
+
+    validateForm();
+}
+
+// Real-time validation
+function validateCode() {
+    const codeEl = document.getElementById('code');
+    if (!codeEl) return true;
+    const error = document.getElementById('code-error');
+    const valid = codeEl.value.length >= 3;
+    error.classList.toggle('hidden', valid);
+    codeEl.classList.toggle('border-destructive', !valid && codeEl.value.length > 0);
+    return valid || codeEl.value.length === 0;
+}
+
+function validateMinimum() {
+    const minimumType = document.querySelector('input[name="minimum_type"]:checked').value;
+    if (minimumType === 'none') return true;
+    const minimumValue = document.getElementById('minimum_value').value;
+    const error = document.getElementById('minimum-error');
+    const valid = parseFloat(minimumValue) > 0;
+    error.classList.toggle('hidden', valid);
+    return valid;
+}
+
+function validateDates() {
+    const startsAt = document.getElementById('starts_at').value;
+    const endsAt = document.getElementById('ends_at').value;
+    const error = document.getElementById('dates-error');
+    if (startsAt && endsAt) {
+        const valid = new Date(endsAt) > new Date(startsAt);
+        error.classList.toggle('hidden', valid);
+        return valid;
+    }
+    error.classList.add('hidden');
+    return true;
+}
+
+function validateForm() {
+    const title = document.getElementById('title').value.trim();
+    const codeEl = document.getElementById('code');
+    const codeValid = !codeEl || codeEl.value.length >= 3;
+    const datesValid = validateDates();
+    const minimumValid = validateMinimum();
+
+    const isValid = title.length > 0 && codeValid && datesValid && minimumValid;
+
+    // Update validation status
+    const icon = document.getElementById('validation-icon');
+    const text = document.getElementById('validation-text');
+    const submitBtn = document.getElementById('submit-btn');
+
+    if (isValid) {
+        icon.className = 'ph ph-check-circle text-green-500';
+        text.textContent = 'Ready to create';
+        text.className = 'text-green-600 dark:text-green-400';
+        submitBtn.disabled = false;
+    } else {
+        icon.className = 'ph ph-circle-dashed text-muted-foreground';
+        text.textContent = 'Fill in required fields';
+        text.className = 'text-muted-foreground';
+        submitBtn.disabled = true;
+    }
+
+    return isValid;
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+    updateSummary();
+
+    // Set up form validation on submit
+    document.getElementById('discount-form').addEventListener('submit', (e) => {
+        if (!validateForm()) {
+            e.preventDefault();
+        }
+    });
+});
+</script>
+{% endblock %}

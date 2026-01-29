@@ -1,0 +1,113 @@
+{# Buy X Get Y discount form fields #}
+{# Required variables: None (used within new_step3 form context) #}
+<div class="bg-card rounded-xl border border-border p-6 space-y-6">
+    <h2 class="text-lg font-semibold text-foreground">Buy X Get Y</h2>
+
+    {# Customer Buys Section #}
+    <div class="space-y-4">
+        <h3 class="text-sm font-medium text-foreground flex items-center gap-2">
+            <span class="w-6 h-6 rounded-full bg-primary/10 text-primary text-xs flex items-center justify-center">1</span>
+            Customer buys
+        </h3>
+
+        <div class="pl-8 space-y-4">
+            <div class="flex gap-4">
+                <label class="flex-1">
+                    <input type="radio" name="buys_type" value="quantity" checked class="sr-only peer">
+                    <div class="p-3 border border-border rounded-lg cursor-pointer peer-checked:border-primary peer-checked:bg-primary/5 text-center">
+                        <div class="font-medium text-foreground">Minimum quantity</div>
+                    </div>
+                </label>
+                <label class="flex-1">
+                    <input type="radio" name="buys_type" value="amount" class="sr-only peer">
+                    <div class="p-3 border border-border rounded-lg cursor-pointer peer-checked:border-primary peer-checked:bg-primary/5 text-center">
+                        <div class="font-medium text-foreground">Minimum amount</div>
+                    </div>
+                </label>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label for="buys_value" class="block text-sm font-medium text-foreground mb-1">
+                        Quantity / Amount
+                    </label>
+                    <input type="number"
+                           id="buys_value"
+                           name="buys_value"
+                           min="1"
+                           value="1"
+                           class="w-full px-4 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-foreground mb-2">From</label>
+                <button type="button"
+                        class="w-full p-3 border border-dashed border-border rounded-lg text-sm text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+                        hx-get="/api/collections/picker"
+                        hx-target="#picker-modal">
+                    <i class="ph ph-plus mr-2"></i>
+                    Add products or collections
+                </button>
+                <input type="hidden" name="buys_items" value="">
+            </div>
+        </div>
+    </div>
+
+    {# Customer Gets Section #}
+    <div class="space-y-4 pt-4 border-t border-border">
+        <h3 class="text-sm font-medium text-foreground flex items-center gap-2">
+            <span class="w-6 h-6 rounded-full bg-primary/10 text-primary text-xs flex items-center justify-center">2</span>
+            Customer gets
+        </h3>
+
+        <div class="pl-8 space-y-4">
+            <div>
+                <label for="gets_quantity" class="block text-sm font-medium text-foreground mb-1">
+                    Quantity
+                </label>
+                <input type="number"
+                       id="gets_quantity"
+                       name="gets_quantity"
+                       min="1"
+                       value="1"
+                       class="w-full px-4 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring">
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-foreground mb-2">Items</label>
+                <button type="button"
+                        class="w-full p-3 border border-dashed border-border rounded-lg text-sm text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+                        hx-get="/api/products/picker"
+                        hx-target="#picker-modal">
+                    <i class="ph ph-plus mr-2"></i>
+                    Add products or collections
+                </button>
+                <input type="hidden" name="gets_items" value="">
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-foreground mb-2">At a discounted value</label>
+                <div class="space-y-2">
+                    <label class="flex items-center gap-3 p-3 border border-border rounded-lg cursor-pointer has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+                        <input type="radio" name="gets_discount_type" value="percentage" checked class="text-primary focus:ring-primary">
+                        <div class="flex-1">
+                            <div class="font-medium text-foreground">Percentage</div>
+                        </div>
+                        <input type="number" name="gets_percentage" value="100" min="0" max="100"
+                               class="w-20 px-2 py-1 bg-input border border-border rounded text-sm text-foreground">
+                        <span class="text-sm text-muted-foreground">%</span>
+                    </label>
+                    <label class="flex items-center gap-3 p-3 border border-border rounded-lg cursor-pointer has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+                        <input type="radio" name="gets_discount_type" value="free" class="text-primary focus:ring-primary">
+                        <div class="font-medium text-foreground">Free</div>
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <input type="hidden" name="value" value="0">
+</div>
+
+<div id="picker-modal"></div>

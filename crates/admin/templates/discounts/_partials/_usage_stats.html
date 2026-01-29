@@ -1,0 +1,17 @@
+{# Usage statistics card for discount detail page #}
+{# Required variables: discount (DiscountTableView) #}
+<div class="bg-card rounded-xl border border-border p-6">
+    <h2 class="text-lg font-semibold text-foreground mb-4">Usage</h2>
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div>
+            <p class="text-sm text-muted-foreground">Total Uses</p>
+            <p class="text-2xl font-semibold text-foreground">{{ discount.usage }}</p>
+        </div>
+        {% if discount.code_count > 1 %}
+        <div>
+            <p class="text-sm text-muted-foreground">Active Codes</p>
+            <p class="text-2xl font-semibold text-foreground">{{ discount.code_count }}</p>
+        </div>
+        {% endif %}
+    </div>
+</div>

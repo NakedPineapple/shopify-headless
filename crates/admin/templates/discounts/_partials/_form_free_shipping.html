@@ -1,0 +1,77 @@
+{# Free shipping discount form fields #}
+{# Required variables: None (used within new_step3 form context) #}
+<div class="bg-card rounded-xl border border-border p-6 space-y-4">
+    <h2 class="text-lg font-semibold text-foreground">Free Shipping</h2>
+
+    <div class="flex items-center gap-3 p-4 bg-primary/5 border border-primary/20 rounded-lg">
+        <i class="ph ph-truck text-2xl text-primary"></i>
+        <div>
+            <p class="font-medium text-foreground">Customers will receive free shipping</p>
+            <p class="text-sm text-muted-foreground">Shipping costs will be removed at checkout</p>
+        </div>
+    </div>
+
+    <div>
+        <label class="block text-sm font-medium text-foreground mb-2">Shipping rates</label>
+        <div class="space-y-2">
+            <label class="flex items-center gap-3 p-3 border border-border rounded-lg cursor-pointer has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+                <input type="radio" name="shipping_rates" value="all" checked class="text-primary focus:ring-primary">
+                <div>
+                    <div class="font-medium text-foreground">All shipping rates</div>
+                    <div class="text-sm text-muted-foreground">Free shipping for all available rates</div>
+                </div>
+            </label>
+            <label class="flex items-center gap-3 p-3 border border-border rounded-lg cursor-pointer has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+                <input type="radio" name="shipping_rates" value="max" class="text-primary focus:ring-primary">
+                <div class="flex-1">
+                    <div class="font-medium text-foreground">Exclude rates over a certain amount</div>
+                    <div class="text-sm text-muted-foreground">Set maximum shipping rate to discount</div>
+                </div>
+            </label>
+        </div>
+    </div>
+
+    <div id="max-shipping-rate" class="hidden">
+        <label for="max_shipping_amount" class="block text-sm font-medium text-foreground mb-1">
+            Maximum shipping rate
+        </label>
+        <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+            <input type="number"
+                   id="max_shipping_amount"
+                   name="max_shipping_amount"
+                   min="0"
+                   step="0.01"
+                   placeholder="0.00"
+                   class="w-full pl-8 pr-4 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring">
+        </div>
+    </div>
+
+    <div>
+        <label class="block text-sm font-medium text-foreground mb-2">Countries</label>
+        <div class="space-y-2">
+            <label class="flex items-center gap-3 p-3 border border-border rounded-lg cursor-pointer has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+                <input type="radio" name="countries" value="all" checked class="text-primary focus:ring-primary">
+                <div>
+                    <div class="font-medium text-foreground">All countries</div>
+                </div>
+            </label>
+            <label class="flex items-center gap-3 p-3 border border-border rounded-lg cursor-pointer has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+                <input type="radio" name="countries" value="selected" class="text-primary focus:ring-primary">
+                <div>
+                    <div class="font-medium text-foreground">Selected countries</div>
+                </div>
+            </label>
+        </div>
+    </div>
+
+    <input type="hidden" name="value" value="0">
+</div>
+
+<script>
+document.querySelectorAll('input[name="shipping_rates"]').forEach(radio => {
+    radio.addEventListener('change', (e) => {
+        document.getElementById('max-shipping-rate').classList.toggle('hidden', e.target.value !== 'max');
+    });
+});
+</script>

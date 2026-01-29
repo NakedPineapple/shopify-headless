@@ -1,0 +1,168 @@
+{# Common form fields shared across discount types #}
+{# Required variables: method (String) #}
+
+{# Basic Information #}
+<div class="bg-card rounded-xl border border-border p-6 space-y-4">
+    <h2 class="text-lg font-semibold text-foreground">Basic Information</h2>
+
+    <div>
+        <label for="title" class="block text-sm font-medium text-foreground mb-1">
+            Discount Title <span class="text-destructive">*</span>
+        </label>
+        <input type="text"
+               id="title"
+               name="title"
+               required
+               placeholder="e.g., Summer Sale 20% Off"
+               class="w-full px-4 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring">
+        <p class="text-xs text-muted-foreground mt-1">Customers won't see this title</p>
+    </div>
+
+    {% if method == "code" %}
+    <div>
+        <label for="code" class="block text-sm font-medium text-foreground mb-1">
+            Discount Code <span class="text-destructive">*</span>
+        </label>
+        <div class="flex gap-2">
+            <input type="text"
+                   id="code"
+                   name="code"
+                   required
+                   placeholder="e.g., SUMMER20"
+                   class="flex-1 px-4 py-2 bg-input border border-border rounded-lg font-mono text-foreground focus:ring-2 focus:ring-ring focus:border-ring uppercase">
+            <button type="button"
+                    onclick="document.getElementById('code').value = generateCode()"
+                    class="px-4 py-2 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/90 transition-colors">
+                Generate
+            </button>
+        </div>
+        <p class="text-xs text-muted-foreground mt-1">Customers will enter this code at checkout</p>
+    </div>
+    {% endif %}
+</div>
+
+{# Minimum Requirements #}
+<div class="bg-card rounded-xl border border-border p-6 space-y-4">
+    <h2 class="text-lg font-semibold text-foreground">Minimum Requirements</h2>
+
+    <div class="space-y-2">
+        <label class="flex items-center gap-3 p-3 border border-border rounded-lg cursor-pointer has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+            <input type="radio" name="minimum_type" value="none" checked class="text-primary focus:ring-primary">
+            <div>
+                <div class="font-medium text-foreground">No minimum requirements</div>
+            </div>
+        </label>
+        <label class="flex items-center gap-3 p-3 border border-border rounded-lg cursor-pointer has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+            <input type="radio" name="minimum_type" value="amount" class="text-primary focus:ring-primary">
+            <div>
+                <div class="font-medium text-foreground">Minimum purchase amount</div>
+            </div>
+        </label>
+        <label class="flex items-center gap-3 p-3 border border-border rounded-lg cursor-pointer has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+            <input type="radio" name="minimum_type" value="quantity" class="text-primary focus:ring-primary">
+            <div>
+                <div class="font-medium text-foreground">Minimum quantity of items</div>
+            </div>
+        </label>
+    </div>
+
+    <div id="minimum-value-field">
+        <label for="minimum_value" class="block text-sm font-medium text-foreground mb-1">
+            Minimum Value
+        </label>
+        <input type="number"
+               id="minimum_value"
+               name="minimum_value"
+               min="0"
+               step="0.01"
+               placeholder="50"
+               class="w-full px-4 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring">
+    </div>
+</div>
+
+{# Active Dates #}
+<div class="bg-card rounded-xl border border-border p-6 space-y-4">
+    <h2 class="text-lg font-semibold text-foreground">Active Dates</h2>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+            <label for="starts_at" class="block text-sm font-medium text-foreground mb-1">
+                Start Date
+            </label>
+            <input type="datetime-local"
+                   id="starts_at"
+                   name="starts_at"
+                   class="w-full px-4 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring">
+        </div>
+        <div>
+            <label for="ends_at" class="block text-sm font-medium text-foreground mb-1">
+                End Date (optional)
+            </label>
+            <input type="datetime-local"
+                   id="ends_at"
+                   name="ends_at"
+                   class="w-full px-4 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring">
+        </div>
+    </div>
+
+    <label class="flex items-center gap-3">
+        <input type="checkbox" name="set_end_date" class="text-primary focus:ring-primary rounded">
+        <span class="text-sm text-foreground">Set end date</span>
+    </label>
+</div>
+
+{# Usage Limits (Code discounts only) #}
+{% if method == "code" %}
+<div class="bg-card rounded-xl border border-border p-6 space-y-4">
+    <h2 class="text-lg font-semibold text-foreground">Usage Limits</h2>
+
+    <div>
+        <label for="usage_limit" class="block text-sm font-medium text-foreground mb-1">
+            Total usage limit (optional)
+        </label>
+        <input type="number"
+               id="usage_limit"
+               name="usage_limit"
+               min="0"
+               placeholder="Leave empty for unlimited"
+               class="w-full px-4 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring">
+    </div>
+
+    <label class="flex items-center gap-3">
+        <input type="checkbox" name="once_per_customer" value="true" class="text-primary focus:ring-primary rounded">
+        <span class="text-sm text-foreground">Limit to one use per customer</span>
+    </label>
+</div>
+{% endif %}
+
+{# Combinations #}
+<div class="bg-card rounded-xl border border-border p-6 space-y-4">
+    <h2 class="text-lg font-semibold text-foreground">Combinations</h2>
+    <p class="text-sm text-muted-foreground">This discount can be combined with:</p>
+
+    <div class="space-y-2">
+        <label class="flex items-center gap-3">
+            <input type="checkbox" name="combines_with_product" value="true" class="text-primary focus:ring-primary rounded">
+            <span class="text-sm text-foreground">Product discounts</span>
+        </label>
+        <label class="flex items-center gap-3">
+            <input type="checkbox" name="combines_with_order" value="true" class="text-primary focus:ring-primary rounded">
+            <span class="text-sm text-foreground">Order discounts</span>
+        </label>
+        <label class="flex items-center gap-3">
+            <input type="checkbox" name="combines_with_shipping" value="true" checked class="text-primary focus:ring-primary rounded">
+            <span class="text-sm text-foreground">Shipping discounts</span>
+        </label>
+    </div>
+</div>
+
+<script>
+function generateCode() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let code = '';
+    for (let i = 0; i < 8; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+}
+</script>

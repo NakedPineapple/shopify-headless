@@ -1,0 +1,79 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Create {{ method|capitalize }} Discount{% endblock %}
+
+{% block page_title %}Create {{ method|capitalize }} Discount{% endblock %}
+
+{% block page_subtitle %}
+<p class="text-sm text-muted-foreground mt-1">Step 2: Choose the type of discount</p>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <div class="grid grid-cols-1 gap-4">
+        <!-- Amount Off -->
+        <a href="/discounts/new/{{ method }}/basic"
+           class="group bg-card rounded-xl border border-border p-6 hover:border-primary hover:shadow-lg transition-all">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                    <i class="ph ph-percent text-2xl text-green-600 dark:text-green-400"></i>
+                </div>
+                <div class="flex-1">
+                    <h3 class="text-lg font-semibold text-foreground group-hover:text-primary transition-colors">
+                        Amount Off
+                    </h3>
+                    <p class="text-sm text-muted-foreground">
+                        Percentage or fixed amount discount on products or orders
+                    </p>
+                </div>
+                <i class="ph ph-arrow-right text-muted-foreground group-hover:text-primary transition-colors"></i>
+            </div>
+        </a>
+
+        <!-- Buy X Get Y -->
+        <a href="/discounts/new/{{ method }}/bxgy"
+           class="group bg-card rounded-xl border border-border p-6 hover:border-primary hover:shadow-lg transition-all">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                    <i class="ph ph-gift text-2xl text-purple-600 dark:text-purple-400"></i>
+                </div>
+                <div class="flex-1">
+                    <h3 class="text-lg font-semibold text-foreground group-hover:text-primary transition-colors">
+                        Buy X Get Y
+                    </h3>
+                    <p class="text-sm text-muted-foreground">
+                        Customers buy specific items and get others discounted or free
+                    </p>
+                </div>
+                <i class="ph ph-arrow-right text-muted-foreground group-hover:text-primary transition-colors"></i>
+            </div>
+        </a>
+
+        <!-- Free Shipping -->
+        <a href="/discounts/new/{{ method }}/free_shipping"
+           class="group bg-card rounded-xl border border-border p-6 hover:border-primary hover:shadow-lg transition-all">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                    <i class="ph ph-truck text-2xl text-blue-600 dark:text-blue-400"></i>
+                </div>
+                <div class="flex-1">
+                    <h3 class="text-lg font-semibold text-foreground group-hover:text-primary transition-colors">
+                        Free Shipping
+                    </h3>
+                    <p class="text-sm text-muted-foreground">
+                        Offer free shipping on orders that meet your conditions
+                    </p>
+                </div>
+                <i class="ph ph-arrow-right text-muted-foreground group-hover:text-primary transition-colors"></i>
+            </div>
+        </a>
+    </div>
+
+    <div class="mt-6 text-center">
+        <a href="/discounts/new" class="text-sm text-muted-foreground hover:text-foreground">
+            <i class="ph ph-arrow-left mr-1"></i>
+            Back to method selection
+        </a>
+    </div>
+</div>
+{% endblock %}

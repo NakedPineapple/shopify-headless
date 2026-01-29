@@ -258,10 +258,40 @@ pub fn routes() -> Router<AppState> {
         .merge(collection_routes())
         // Discounts CRUD
         .route("/discounts", get(discounts::index).post(discounts::create))
-        .route("/discounts/new", get(discounts::new_discount))
+        .route("/discounts/new", get(discounts::new_step1))
+        .route("/discounts/new/{method}", get(discounts::new_step2))
+        .route("/discounts/new/{method}/{type}", get(discounts::new_step3))
+        .route(
+            "/discounts/{id}",
+            get(discounts::show).post(discounts::update),
+        )
         .route("/discounts/{id}/edit", get(discounts::edit))
-        .route("/discounts/{id}", post(discounts::update))
+        .route("/discounts/{id}/activate", post(discounts::activate))
         .route("/discounts/{id}/deactivate", post(discounts::deactivate))
+        .route("/discounts/{id}/delete", post(discounts::delete))
+        .route("/discounts/{id}/duplicate", post(discounts::duplicate))
+        // Discount bulk actions
+        .route("/discounts/bulk/activate", post(discounts::bulk_activate))
+        .route(
+            "/discounts/bulk/deactivate",
+            post(discounts::bulk_deactivate),
+        )
+        .route("/discounts/bulk/delete", post(discounts::bulk_delete))
+        // Discount API endpoints
+        .route("/api/products/search", get(discounts::api_search_products))
+        .route(
+            "/api/collections/search",
+            get(discounts::api_search_collections),
+        )
+        .route(
+            "/api/customers/search",
+            get(discounts::api_search_customers),
+        )
+        .route(
+            "/api/customer-segments",
+            get(discounts::api_customer_segments),
+        )
+        .route("/discounts/{id}/codes", post(discounts::api_add_codes))
         // Inventory management
         .route("/inventory", get(inventory::index))
         .route("/inventory/adjust", post(inventory::adjust))

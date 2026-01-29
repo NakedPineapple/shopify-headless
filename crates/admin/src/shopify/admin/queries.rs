@@ -717,6 +717,15 @@ pub struct GiftCardUpdate;
 // Discount queries and mutations
 // =============================================================================
 
+// List queries
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/discounts.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct GetDiscountNodes;
+
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "graphql/admin/schema.json",
@@ -724,6 +733,15 @@ pub struct GiftCardUpdate;
     response_derives = "Debug, Clone"
 )]
 pub struct GetDiscountCodes;
+
+// Detail queries
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/discounts.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct GetDiscountDetail;
 
 #[derive(GraphQLQuery)]
 #[graphql(
@@ -733,6 +751,15 @@ pub struct GetDiscountCodes;
 )]
 pub struct GetDiscountCode;
 
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/discounts.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct GetCustomerSegments;
+
+// Code discount mutations
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "graphql/admin/schema.json",
@@ -755,7 +782,161 @@ pub struct DiscountCodeBasicUpdate;
     query_path = "graphql/admin/queries/discounts.graphql",
     response_derives = "Debug, Clone"
 )]
+pub struct DiscountCodeBxgyCreate;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/discounts.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct DiscountCodeBxgyUpdate;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/discounts.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct DiscountCodeFreeShippingCreate;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/discounts.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct DiscountCodeFreeShippingUpdate;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/discounts.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct DiscountCodeActivate;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/discounts.graphql",
+    response_derives = "Debug, Clone"
+)]
 pub struct DiscountCodeDeactivate;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/discounts.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct DiscountCodeDelete;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/discounts.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct DiscountRedeemCodeBulkAdd;
+
+// Automatic discount mutations
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/discounts.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct DiscountAutomaticBasicCreate;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/discounts.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct DiscountAutomaticBasicUpdate;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/discounts.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct DiscountAutomaticBxgyCreate;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/discounts.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct DiscountAutomaticBxgyUpdate;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/discounts.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct DiscountAutomaticFreeShippingCreate;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/discounts.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct DiscountAutomaticFreeShippingUpdate;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/discounts.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct DiscountAutomaticActivate;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/discounts.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct DiscountAutomaticDeactivate;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/discounts.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct DiscountAutomaticDelete;
+
+// Bulk operations
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/discounts.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct DiscountCodeBulkActivate;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/discounts.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct DiscountCodeBulkDeactivate;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/discounts.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct DiscountCodeBulkDelete;
 
 // =============================================================================
 // Fulfillment queries and mutations

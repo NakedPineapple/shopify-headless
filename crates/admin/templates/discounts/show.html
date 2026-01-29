@@ -1,0 +1,121 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}{{ discount.title }} - Discounts{% endblock %}
+
+{% block page_title %}{{ discount.title }}{% endblock %}
+
+{% block page_subtitle %}
+<p class="text-sm text-muted-foreground mt-1">
+    {% if discount.code.is_some() %}
+    <span class="font-mono">{{ discount.code.as_deref().unwrap_or("") }}</span> &middot;
+    {% endif %}
+    {{ discount.method }} &middot; {{ discount.discount_type }}
+</p>
+{% endblock %}
+
+{% block content %}
+<!-- Status and Actions -->
+<div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+    {% include "discounts/_partials/_status_badge.html" %}
+    <div class="flex items-center gap-2">
+        <a href="/discounts/{{ discount.id|extract_id }}/edit"
+           class="inline-flex items-center gap-2 px-4 py-2 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/90 transition-colors">
+            <i class="ph ph-pencil"></i>
+            Edit
+        </a>
+        {% if discount.status == "Active" %}
+        <button type="button"
+                hx-post="/discounts/{{ discount.id|extract_id }}/deactivate"
+                hx-confirm="Deactivate this discount?"
+                class="inline-flex items-center gap-2 px-4 py-2 bg-destructive text-destructive-foreground rounded-lg hover:bg-destructive/90 transition-colors">
+            <i class="ph ph-pause"></i>
+            Deactivate
+        </button>
+        {% else %}
+        <button type="button"
+                hx-post="/discounts/{{ discount.id|extract_id }}/activate"
+                hx-confirm="Activate this discount?"
+                class="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors">
+            <i class="ph ph-play"></i>
+            Activate
+        </button>
+        {% endif %}
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Main Content -->
+    <div class="lg:col-span-2 space-y-6">
+        {% include "discounts/_partials/_discount_summary.html" %}
+        {% include "discounts/_partials/_usage_stats.html" %}
+
+        <!-- Schedule -->
+        <div class="bg-card rounded-xl border border-border p-6">
+            <h2 class="text-lg font-semibold text-foreground mb-4">Schedule</h2>
+            <div class="space-y-2 text-sm">
+                <div class="flex justify-between">
+                    <span class="text-muted-foreground">Start date</span>
+                    <span class="text-foreground">
+                        {{ discount.starts_at.as_deref().unwrap_or("—") }}
+                    </span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-muted-foreground">End date</span>
+                    <span class="text-foreground">
+                        {{ discount.ends_at.as_deref().unwrap_or("No end date") }}
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        {% include "discounts/_partials/_codes_section.html" %}
+    </div>
+
+    <!-- Sidebar -->
+    <div class="space-y-6">
+        <!-- Details Card -->
+        <div class="bg-card rounded-xl border border-border p-6">
+            <h2 class="text-lg font-semibold text-foreground mb-4">Details</h2>
+            <dl class="space-y-3 text-sm">
+                <div>
+                    <dt class="text-muted-foreground">Method</dt>
+                    <dd class="text-foreground font-medium">{{ discount.method }}</dd>
+                </div>
+                <div>
+                    <dt class="text-muted-foreground">Type</dt>
+                    <dd class="text-foreground font-medium">{{ discount.discount_type }}</dd>
+                </div>
+                {% if discount.code.is_some() %}
+                <div>
+                    <dt class="text-muted-foreground">Code</dt>
+                    <dd class="text-foreground font-mono">{{ discount.code.as_deref().unwrap_or("") }}</dd>
+                </div>
+                {% endif %}
+                {% if discount.code_count > 1 %}
+                <div>
+                    <dt class="text-muted-foreground">Total codes</dt>
+                    <dd class="text-foreground font-medium">{{ discount.code_count }}</dd>
+                </div>
+                {% endif %}
+            </dl>
+        </div>
+
+        <!-- Combinations Card -->
+        <div class="bg-card rounded-xl border border-border p-6">
+            <h2 class="text-lg font-semibold text-foreground mb-4">Combines with</h2>
+            <p class="text-sm text-muted-foreground">{{ discount.combines_with }}</p>
+        </div>
+
+        <!-- Danger Zone -->
+        <div class="bg-card rounded-xl border border-destructive/30 p-6">
+            <h2 class="text-lg font-semibold text-destructive mb-4">Danger Zone</h2>
+            <button type="button"
+                    hx-post="/discounts/{{ discount.id|extract_id }}/delete"
+                    hx-confirm="Are you sure you want to delete this discount? This cannot be undone."
+                    class="w-full px-4 py-2 bg-destructive text-destructive-foreground rounded-lg hover:bg-destructive/90 transition-colors">
+                Delete Discount
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}

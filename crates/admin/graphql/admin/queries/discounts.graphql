@@ -1,7 +1,255 @@
 # Discount queries and mutations for Shopify Admin API
+#
+# Supports all 6 discount types:
+# - Code: DiscountCodeBasic, DiscountCodeBxgy, DiscountCodeFreeShipping
+# - Automatic: DiscountAutomaticBasic, DiscountAutomaticBxgy, DiscountAutomaticFreeShipping
 
-# Get paginated list of discount codes
-# Uses discountNodes with method:code filter to get only code-based discounts
+# =============================================================================
+# Shared Fragments
+# =============================================================================
+
+fragment DiscountCustomerGetsValue on DiscountCustomerGetsValue {
+  __typename
+  ... on DiscountPercentage {
+    percentage
+  }
+  ... on DiscountAmount {
+    amount {
+      amount
+      currencyCode
+    }
+  }
+  ... on DiscountOnQuantity {
+    quantity {
+      quantity
+    }
+    effect {
+      __typename
+      ... on DiscountPercentage {
+        percentage
+      }
+      ... on DiscountAmount {
+        amount {
+          amount
+          currencyCode
+        }
+      }
+    }
+  }
+}
+
+fragment DiscountMinimumRequirement on DiscountMinimumRequirement {
+  __typename
+  ... on DiscountMinimumQuantity {
+    greaterThanOrEqualToQuantity
+  }
+  ... on DiscountMinimumSubtotal {
+    greaterThanOrEqualToSubtotal {
+      amount
+      currencyCode
+    }
+  }
+}
+
+fragment DiscountCustomerSelection on DiscountCustomerSelection {
+  __typename
+  ... on DiscountCustomerAll {
+    allCustomers
+  }
+  ... on DiscountCustomerSegments {
+    segments {
+      id
+      name
+    }
+  }
+  ... on DiscountCustomers {
+    customers {
+      id
+      displayName
+      email
+    }
+  }
+}
+
+fragment CombinesWithFields on DiscountCombinesWith {
+  orderDiscounts
+  productDiscounts
+  shippingDiscounts
+}
+
+fragment DiscountCodeFields on DiscountRedeemCode {
+  code
+  id
+  asyncUsageCount
+}
+
+fragment ProductFields on Product {
+  id
+  title
+  featuredImage {
+    url
+    altText
+  }
+}
+
+fragment CollectionFields on Collection {
+  id
+  title
+  image {
+    url
+    altText
+  }
+}
+
+# Note: CountryCode is an enum, not an object type, so we don't use a fragment
+
+# =============================================================================
+# List Queries
+# =============================================================================
+
+# Unified query for discount list with all types
+query GetDiscountNodes(
+  $first: Int = 25
+  $after: String
+  $query: String
+  $sortKey: DiscountSortKeys
+  $reverse: Boolean = false
+) {
+  discountNodes(
+    first: $first
+    after: $after
+    query: $query
+    sortKey: $sortKey
+    reverse: $reverse
+  ) {
+    edges {
+      node {
+        id
+        discount {
+          __typename
+          # Code-based discounts
+          ... on DiscountCodeBasic {
+            title
+            status
+            startsAt
+            endsAt
+            usageLimit
+            asyncUsageCount
+            appliesOncePerCustomer
+            combinesWith {
+              ...CombinesWithFields
+            }
+            codes(first: 1) {
+              edges {
+                node {
+                  ...DiscountCodeFields
+                }
+              }
+            }
+            customerGets {
+              value {
+                ...DiscountCustomerGetsValue
+              }
+            }
+            minimumRequirement {
+              ...DiscountMinimumRequirement
+            }
+          }
+          ... on DiscountCodeBxgy {
+            title
+            status
+            startsAt
+            endsAt
+            usageLimit
+            asyncUsageCount
+            combinesWith {
+              ...CombinesWithFields
+            }
+            codes(first: 1) {
+              edges {
+                node {
+                  ...DiscountCodeFields
+                }
+              }
+            }
+          }
+          ... on DiscountCodeFreeShipping {
+            title
+            status
+            startsAt
+            endsAt
+            usageLimit
+            asyncUsageCount
+            appliesOncePerCustomer
+            combinesWith {
+              ...CombinesWithFields
+            }
+            codes(first: 1) {
+              edges {
+                node {
+                  ...DiscountCodeFields
+                }
+              }
+            }
+            minimumRequirement {
+              ...DiscountMinimumRequirement
+            }
+          }
+          # Automatic discounts
+          ... on DiscountAutomaticBasic {
+            title
+            status
+            startsAt
+            endsAt
+            asyncUsageCount
+            combinesWith {
+              ...CombinesWithFields
+            }
+            customerGets {
+              value {
+                ...DiscountCustomerGetsValue
+              }
+            }
+            minimumRequirement {
+              ...DiscountMinimumRequirement
+            }
+          }
+          ... on DiscountAutomaticBxgy {
+            title
+            status
+            startsAt
+            endsAt
+            asyncUsageCount
+            combinesWith {
+              ...CombinesWithFields
+            }
+          }
+          ... on DiscountAutomaticFreeShipping {
+            title
+            status
+            startsAt
+            endsAt
+            asyncUsageCount
+            combinesWith {
+              ...CombinesWithFields
+            }
+            minimumRequirement {
+              ...DiscountMinimumRequirement
+            }
+          }
+        }
+      }
+    }
+    pageInfo {
+      hasNextPage
+      hasPreviousPage
+      startCursor
+      endCursor
+    }
+  }
+}
+
+# Legacy query for compatibility
 query GetDiscountCodes(
   $first: Int = 20
   $after: String
@@ -82,7 +330,374 @@ query GetDiscountCodes(
   }
 }
 
-# Get a single discount by ID
+# =============================================================================
+# Detail Queries
+# =============================================================================
+
+# Get full discount details for view/edit pages
+query GetDiscountDetail($id: ID!) {
+  discountNode(id: $id) {
+    id
+    discount {
+      __typename
+      # Code-based discounts
+      ... on DiscountCodeBasic {
+        title
+        status
+        startsAt
+        endsAt
+        usageLimit
+        asyncUsageCount
+        appliesOncePerCustomer
+        recurringCycleLimit
+        combinesWith {
+          ...CombinesWithFields
+        }
+        codes(first: 50) {
+          edges {
+            node {
+              ...DiscountCodeFields
+            }
+          }
+        }
+        customerGets {
+          value {
+            ...DiscountCustomerGetsValue
+          }
+          items {
+            __typename
+            ... on AllDiscountItems {
+              allItems
+            }
+            ... on DiscountProducts {
+              products(first: 50) {
+                edges {
+                  node {
+                    ...ProductFields
+                  }
+                }
+              }
+              productVariants(first: 50) {
+                edges {
+                  node {
+                    id
+                    title
+                    displayName
+                    product {
+                      id
+                      title
+                    }
+                  }
+                }
+              }
+            }
+            ... on DiscountCollections {
+              collections(first: 50) {
+                edges {
+                  node {
+                    ...CollectionFields
+                  }
+                }
+              }
+            }
+          }
+        }
+        minimumRequirement {
+          ...DiscountMinimumRequirement
+        }
+        customerSelection {
+          ...DiscountCustomerSelection
+        }
+      }
+      ... on DiscountCodeBxgy {
+        title
+        status
+        startsAt
+        endsAt
+        usageLimit
+        asyncUsageCount
+        usesPerOrderLimit
+        combinesWith {
+          ...CombinesWithFields
+        }
+        codes(first: 50) {
+          edges {
+            node {
+              ...DiscountCodeFields
+            }
+          }
+        }
+        customerBuys {
+          value {
+            __typename
+            ... on DiscountQuantity {
+              quantity
+            }
+            ... on DiscountPurchaseAmount {
+              amount
+            }
+          }
+          items {
+            __typename
+            ... on AllDiscountItems {
+              allItems
+            }
+            ... on DiscountProducts {
+              products(first: 50) {
+                edges {
+                  node {
+                    ...ProductFields
+                  }
+                }
+              }
+            }
+            ... on DiscountCollections {
+              collections(first: 50) {
+                edges {
+                  node {
+                    ...CollectionFields
+                  }
+                }
+              }
+            }
+          }
+        }
+        customerGets {
+          value {
+            ...DiscountCustomerGetsValue
+          }
+          items {
+            __typename
+            ... on AllDiscountItems {
+              allItems
+            }
+            ... on DiscountProducts {
+              products(first: 50) {
+                edges {
+                  node {
+                    ...ProductFields
+                  }
+                }
+              }
+            }
+            ... on DiscountCollections {
+              collections(first: 50) {
+                edges {
+                  node {
+                    ...CollectionFields
+                  }
+                }
+              }
+            }
+          }
+        }
+        customerSelection {
+          ...DiscountCustomerSelection
+        }
+      }
+      ... on DiscountCodeFreeShipping {
+        title
+        status
+        startsAt
+        endsAt
+        usageLimit
+        asyncUsageCount
+        appliesOncePerCustomer
+        recurringCycleLimit
+        combinesWith {
+          ...CombinesWithFields
+        }
+        codes(first: 50) {
+          edges {
+            node {
+              ...DiscountCodeFields
+            }
+          }
+        }
+        minimumRequirement {
+          ...DiscountMinimumRequirement
+        }
+        destinationSelection {
+          __typename
+          ... on DiscountCountryAll {
+            allCountries
+          }
+          ... on DiscountCountries {
+            countries
+            includeRestOfWorld
+          }
+        }
+        maximumShippingPrice {
+          amount
+          currencyCode
+        }
+        customerSelection {
+          ...DiscountCustomerSelection
+        }
+      }
+      # Automatic discounts
+      ... on DiscountAutomaticBasic {
+        title
+        status
+        startsAt
+        endsAt
+        asyncUsageCount
+        combinesWith {
+          ...CombinesWithFields
+        }
+        customerGets {
+          value {
+            ...DiscountCustomerGetsValue
+          }
+          items {
+            __typename
+            ... on AllDiscountItems {
+              allItems
+            }
+            ... on DiscountProducts {
+              products(first: 50) {
+                edges {
+                  node {
+                    ...ProductFields
+                  }
+                }
+              }
+              productVariants(first: 50) {
+                edges {
+                  node {
+                    id
+                    title
+                    displayName
+                    product {
+                      id
+                      title
+                    }
+                  }
+                }
+              }
+            }
+            ... on DiscountCollections {
+              collections(first: 50) {
+                edges {
+                  node {
+                    ...CollectionFields
+                  }
+                }
+              }
+            }
+          }
+        }
+        minimumRequirement {
+          ...DiscountMinimumRequirement
+        }
+      }
+      ... on DiscountAutomaticBxgy {
+        title
+        status
+        startsAt
+        endsAt
+        asyncUsageCount
+        usesPerOrderLimit
+        combinesWith {
+          ...CombinesWithFields
+        }
+        customerBuys {
+          value {
+            __typename
+            ... on DiscountQuantity {
+              quantity
+            }
+            ... on DiscountPurchaseAmount {
+              amount
+            }
+          }
+          items {
+            __typename
+            ... on AllDiscountItems {
+              allItems
+            }
+            ... on DiscountProducts {
+              products(first: 50) {
+                edges {
+                  node {
+                    ...ProductFields
+                  }
+                }
+              }
+            }
+            ... on DiscountCollections {
+              collections(first: 50) {
+                edges {
+                  node {
+                    ...CollectionFields
+                  }
+                }
+              }
+            }
+          }
+        }
+        customerGets {
+          value {
+            ...DiscountCustomerGetsValue
+          }
+          items {
+            __typename
+            ... on AllDiscountItems {
+              allItems
+            }
+            ... on DiscountProducts {
+              products(first: 50) {
+                edges {
+                  node {
+                    ...ProductFields
+                  }
+                }
+              }
+            }
+            ... on DiscountCollections {
+              collections(first: 50) {
+                edges {
+                  node {
+                    ...CollectionFields
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+      ... on DiscountAutomaticFreeShipping {
+        title
+        status
+        startsAt
+        endsAt
+        asyncUsageCount
+        combinesWith {
+          ...CombinesWithFields
+        }
+        minimumRequirement {
+          ...DiscountMinimumRequirement
+        }
+        destinationSelection {
+          __typename
+          ... on DiscountCountryAll {
+            allCountries
+          }
+          ... on DiscountCountries {
+            countries
+            includeRestOfWorld
+          }
+        }
+        maximumShippingPrice {
+          amount
+          currencyCode
+        }
+      }
+    }
+  }
+}
+
+# Get a single discount by ID (legacy)
 query GetDiscountCode($id: ID!) {
   discountNode(id: $id) {
     id
@@ -133,7 +748,24 @@ query GetDiscountCode($id: ID!) {
   }
 }
 
-# Create a basic percentage or fixed amount discount
+# Get customer segments for eligibility picker
+query GetCustomerSegments($first: Int = 50) {
+  segments(first: $first) {
+    edges {
+      node {
+        id
+        name
+        query
+      }
+    }
+  }
+}
+
+# =============================================================================
+# Code Discount Mutations
+# =============================================================================
+
+# Create a basic percentage or fixed amount code discount
 mutation DiscountCodeBasicCreate($basicCodeDiscount: DiscountCodeBasicInput!) {
   discountCodeBasicCreate(basicCodeDiscount: $basicCodeDiscount) {
     codeDiscountNode {
@@ -155,11 +787,12 @@ mutation DiscountCodeBasicCreate($basicCodeDiscount: DiscountCodeBasicInput!) {
     userErrors {
       field
       message
+      code
     }
   }
 }
 
-# Update a basic discount
+# Update a basic code discount
 mutation DiscountCodeBasicUpdate($id: ID!, $basicCodeDiscount: DiscountCodeBasicInput!) {
   discountCodeBasicUpdate(id: $id, basicCodeDiscount: $basicCodeDiscount) {
     codeDiscountNode {
@@ -168,11 +801,120 @@ mutation DiscountCodeBasicUpdate($id: ID!, $basicCodeDiscount: DiscountCodeBasic
     userErrors {
       field
       message
+      code
     }
   }
 }
 
-# Deactivate a discount
+# Create a Buy X Get Y code discount
+mutation DiscountCodeBxgyCreate($bxgyCodeDiscount: DiscountCodeBxgyInput!) {
+  discountCodeBxgyCreate(bxgyCodeDiscount: $bxgyCodeDiscount) {
+    codeDiscountNode {
+      id
+      codeDiscount {
+        __typename
+        ... on DiscountCodeBxgy {
+          title
+          codes(first: 1) {
+            edges {
+              node {
+                code
+              }
+            }
+          }
+        }
+      }
+    }
+    userErrors {
+      field
+      message
+      code
+    }
+  }
+}
+
+# Update a Buy X Get Y code discount
+mutation DiscountCodeBxgyUpdate($id: ID!, $bxgyCodeDiscount: DiscountCodeBxgyInput!) {
+  discountCodeBxgyUpdate(id: $id, bxgyCodeDiscount: $bxgyCodeDiscount) {
+    codeDiscountNode {
+      id
+    }
+    userErrors {
+      field
+      message
+      code
+    }
+  }
+}
+
+# Create a free shipping code discount
+mutation DiscountCodeFreeShippingCreate($freeShippingCodeDiscount: DiscountCodeFreeShippingInput!) {
+  discountCodeFreeShippingCreate(freeShippingCodeDiscount: $freeShippingCodeDiscount) {
+    codeDiscountNode {
+      id
+      codeDiscount {
+        __typename
+        ... on DiscountCodeFreeShipping {
+          title
+          codes(first: 1) {
+            edges {
+              node {
+                code
+              }
+            }
+          }
+        }
+      }
+    }
+    userErrors {
+      field
+      message
+      code
+    }
+  }
+}
+
+# Update a free shipping code discount
+mutation DiscountCodeFreeShippingUpdate($id: ID!, $freeShippingCodeDiscount: DiscountCodeFreeShippingInput!) {
+  discountCodeFreeShippingUpdate(id: $id, freeShippingCodeDiscount: $freeShippingCodeDiscount) {
+    codeDiscountNode {
+      id
+    }
+    userErrors {
+      field
+      message
+      code
+    }
+  }
+}
+
+# Activate a code discount
+mutation DiscountCodeActivate($id: ID!) {
+  discountCodeActivate(id: $id) {
+    codeDiscountNode {
+      id
+      codeDiscount {
+        __typename
+        ... on DiscountCodeBasic {
+          status
+        }
+        ... on DiscountCodeBxgy {
+          status
+        }
+        ... on DiscountCodeFreeShipping {
+          status
+        }
+      }
+    }
+    userErrors {
+      field
+      message
+      code
+    }
+  }
+}
+
+# Deactivate a code discount
 mutation DiscountCodeDeactivate($id: ID!) {
   discountCodeDeactivate(id: $id) {
     codeDiscountNode {
@@ -182,11 +924,268 @@ mutation DiscountCodeDeactivate($id: ID!) {
         ... on DiscountCodeBasic {
           status
         }
+        ... on DiscountCodeBxgy {
+          status
+        }
+        ... on DiscountCodeFreeShipping {
+          status
+        }
       }
     }
     userErrors {
       field
       message
+      code
     }
   }
 }
+
+# Delete a code discount
+mutation DiscountCodeDelete($id: ID!) {
+  discountCodeDelete(id: $id) {
+    deletedCodeDiscountId
+    userErrors {
+      field
+      message
+      code
+    }
+  }
+}
+
+# Add codes to an existing discount (bulk code generation)
+mutation DiscountRedeemCodeBulkAdd($discountId: ID!, $codes: [DiscountRedeemCodeInput!]!) {
+  discountRedeemCodeBulkAdd(discountId: $discountId, codes: $codes) {
+    bulkCreation {
+      id
+      done
+    }
+    userErrors {
+      field
+      message
+      code
+    }
+  }
+}
+
+# =============================================================================
+# Automatic Discount Mutations
+# =============================================================================
+
+# Create an automatic basic discount
+mutation DiscountAutomaticBasicCreate($automaticBasicDiscount: DiscountAutomaticBasicInput!) {
+  discountAutomaticBasicCreate(automaticBasicDiscount: $automaticBasicDiscount) {
+    automaticDiscountNode {
+      id
+      automaticDiscount {
+        __typename
+        ... on DiscountAutomaticBasic {
+          title
+          status
+        }
+      }
+    }
+    userErrors {
+      field
+      message
+      code
+    }
+  }
+}
+
+# Update an automatic basic discount
+mutation DiscountAutomaticBasicUpdate($id: ID!, $automaticBasicDiscount: DiscountAutomaticBasicInput!) {
+  discountAutomaticBasicUpdate(id: $id, automaticBasicDiscount: $automaticBasicDiscount) {
+    automaticDiscountNode {
+      id
+    }
+    userErrors {
+      field
+      message
+      code
+    }
+  }
+}
+
+# Create an automatic Buy X Get Y discount
+mutation DiscountAutomaticBxgyCreate($automaticBxgyDiscount: DiscountAutomaticBxgyInput!) {
+  discountAutomaticBxgyCreate(automaticBxgyDiscount: $automaticBxgyDiscount) {
+    automaticDiscountNode {
+      id
+      automaticDiscount {
+        __typename
+        ... on DiscountAutomaticBxgy {
+          title
+          status
+        }
+      }
+    }
+    userErrors {
+      field
+      message
+      code
+    }
+  }
+}
+
+# Update an automatic Buy X Get Y discount
+mutation DiscountAutomaticBxgyUpdate($id: ID!, $automaticBxgyDiscount: DiscountAutomaticBxgyInput!) {
+  discountAutomaticBxgyUpdate(id: $id, automaticBxgyDiscount: $automaticBxgyDiscount) {
+    automaticDiscountNode {
+      id
+    }
+    userErrors {
+      field
+      message
+      code
+    }
+  }
+}
+
+# Create an automatic free shipping discount
+mutation DiscountAutomaticFreeShippingCreate($freeShippingAutomaticDiscount: DiscountAutomaticFreeShippingInput!) {
+  discountAutomaticFreeShippingCreate(freeShippingAutomaticDiscount: $freeShippingAutomaticDiscount) {
+    automaticDiscountNode {
+      id
+      automaticDiscount {
+        __typename
+        ... on DiscountAutomaticFreeShipping {
+          title
+          status
+        }
+      }
+    }
+    userErrors {
+      field
+      message
+      code
+    }
+  }
+}
+
+# Update an automatic free shipping discount
+mutation DiscountAutomaticFreeShippingUpdate($id: ID!, $freeShippingAutomaticDiscount: DiscountAutomaticFreeShippingInput!) {
+  discountAutomaticFreeShippingUpdate(id: $id, freeShippingAutomaticDiscount: $freeShippingAutomaticDiscount) {
+    automaticDiscountNode {
+      id
+    }
+    userErrors {
+      field
+      message
+      code
+    }
+  }
+}
+
+# Activate an automatic discount
+mutation DiscountAutomaticActivate($id: ID!) {
+  discountAutomaticActivate(id: $id) {
+    automaticDiscountNode {
+      id
+      automaticDiscount {
+        __typename
+        ... on DiscountAutomaticBasic {
+          status
+        }
+        ... on DiscountAutomaticBxgy {
+          status
+        }
+        ... on DiscountAutomaticFreeShipping {
+          status
+        }
+      }
+    }
+    userErrors {
+      field
+      message
+      code
+    }
+  }
+}
+
+# Deactivate an automatic discount
+mutation DiscountAutomaticDeactivate($id: ID!) {
+  discountAutomaticDeactivate(id: $id) {
+    automaticDiscountNode {
+      id
+      automaticDiscount {
+        __typename
+        ... on DiscountAutomaticBasic {
+          status
+        }
+        ... on DiscountAutomaticBxgy {
+          status
+        }
+        ... on DiscountAutomaticFreeShipping {
+          status
+        }
+      }
+    }
+    userErrors {
+      field
+      message
+      code
+    }
+  }
+}
+
+# Delete an automatic discount
+mutation DiscountAutomaticDelete($id: ID!) {
+  discountAutomaticDelete(id: $id) {
+    deletedAutomaticDiscountId
+    userErrors {
+      field
+      message
+      code
+    }
+  }
+}
+
+# =============================================================================
+# Bulk Operations
+# =============================================================================
+
+# Bulk activate code discounts
+mutation DiscountCodeBulkActivate($ids: [ID!]!) {
+  discountCodeBulkActivate(ids: $ids) {
+    job {
+      id
+      done
+    }
+    userErrors {
+      field
+      message
+      code
+    }
+  }
+}
+
+# Bulk deactivate code discounts
+mutation DiscountCodeBulkDeactivate($ids: [ID!]!) {
+  discountCodeBulkDeactivate(ids: $ids) {
+    job {
+      id
+      done
+    }
+    userErrors {
+      field
+      message
+      code
+    }
+  }
+}
+
+# Bulk delete code discounts
+mutation DiscountCodeBulkDelete($ids: [ID!]!) {
+  discountCodeBulkDelete(ids: $ids) {
+    job {
+      id
+      done
+    }
+    userErrors {
+      field
+      message
+      code
+    }
+  }
+}
+

@@ -1,0 +1,109 @@
+{# Collection search/picker modal #}
+{# Used for selecting collections for discount eligibility #}
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" id="collection-picker-overlay">
+    <div class="bg-card rounded-xl border border-border shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+        {# Header #}
+        <div class="flex items-center justify-between p-4 border-b border-border">
+            <h3 class="text-lg font-semibold text-foreground">Select Collections</h3>
+            <button type="button"
+                    onclick="document.getElementById('collection-picker-overlay').remove()"
+                    class="p-1 text-muted-foreground hover:text-foreground transition-colors">
+                <i class="ph ph-x text-xl"></i>
+            </button>
+        </div>
+
+        {# Search #}
+        <div class="p-4 border-b border-border">
+            <div class="relative">
+                <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"></i>
+                <input type="search"
+                       id="collection-search"
+                       placeholder="Search collections..."
+                       hx-get="/api/collections/search"
+                       hx-trigger="keyup changed delay:300ms"
+                       hx-target="#collection-results"
+                       hx-include="[name='collection_query']"
+                       name="collection_query"
+                       class="w-full pl-10 pr-4 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring">
+            </div>
+        </div>
+
+        {# Results #}
+        <div class="flex-1 overflow-y-auto p-4" id="collection-results">
+            <div class="text-center text-muted-foreground py-8">
+                <i class="ph ph-folders text-4xl mb-2"></i>
+                <p>Search for collections to add</p>
+            </div>
+        </div>
+
+        {# Selected items #}
+        <div class="p-4 border-t border-border bg-muted/50">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-sm text-muted-foreground">
+                    <span id="selected-collection-count">0</span> collections selected
+                </span>
+                <button type="button"
+                        onclick="clearCollectionSelection()"
+                        class="text-sm text-destructive hover:text-destructive/80">
+                    Clear all
+                </button>
+            </div>
+            <div id="selected-collections" class="flex flex-wrap gap-2"></div>
+        </div>
+
+        {# Footer #}
+        <div class="flex items-center justify-end gap-3 p-4 border-t border-border">
+            <button type="button"
+                    onclick="document.getElementById('collection-picker-overlay').remove()"
+                    class="px-4 py-2 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/90 transition-colors">
+                Cancel
+            </button>
+            <button type="button"
+                    onclick="confirmCollectionSelection()"
+                    class="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors">
+                Add Selected
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+let selectedCollections = new Map();
+
+function toggleCollection(id, title, image) {
+    if (selectedCollections.has(id)) {
+        selectedCollections.delete(id);
+    } else {
+        selectedCollections.set(id, { title, image });
+    }
+    updateCollectionSelection();
+}
+
+function updateCollectionSelection() {
+    const container = document.getElementById('selected-collections');
+    const count = document.getElementById('selected-collection-count');
+    count.textContent = selectedCollections.size;
+
+    container.innerHTML = '';
+    selectedCollections.forEach((collection, id) => {
+        const chip = document.createElement('span');
+        chip.className = 'inline-flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary rounded text-sm';
+        chip.innerHTML = `${collection.title} <button type="button" onclick="toggleCollection('${id}')" class="hover:text-primary/80">&times;</button>`;
+        container.appendChild(chip);
+    });
+}
+
+function clearCollectionSelection() {
+    selectedCollections.clear();
+    updateCollectionSelection();
+    document.querySelectorAll('[data-collection-checkbox]').forEach(cb => cb.checked = false);
+}
+
+function confirmCollectionSelection() {
+    const ids = Array.from(selectedCollections.keys());
+    // Update hidden input with selected collection IDs
+    const input = document.querySelector('input[name="collection_ids"]');
+    if (input) input.value = ids.join(',');
+    document.getElementById('collection-picker-overlay').remove();
+}
+</script>

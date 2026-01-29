@@ -5,98 +5,563 @@
 {% block page_title %}Discounts{% endblock %}
 
 {% block page_subtitle %}
-<p class="text-sm text-muted-foreground mt-1">Manage discount codes</p>
+<p class="text-sm text-muted-foreground mt-1">Manage discount codes and automatic discounts</p>
+{% endblock %}
+
+{% block head %}
+<script src="/static/js/data-table.js" defer></script>
 {% endblock %}
 
 {% block content %}
-<!-- Search and Actions -->
-<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-    <form method="GET" action="/discounts" class="flex-1 max-w-md">
-        <div class="relative">
-            <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"></i>
-            <input type="search"
-                   name="query"
-                   value="{{ search_query.as_deref().unwrap_or("") }}"
-                   placeholder="Search discounts..."
-                   class="w-full pl-10 pr-4 py-2 bg-input border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-colors placeholder:text-muted-foreground">
-        </div>
-    </form>
-    <a href="/discounts/new" class="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors">
-        <i class="ph ph-plus text-lg"></i>
-        Add Discount
+<!-- Tab Navigation -->
+<div class="flex items-center gap-1 mb-6 border-b border-border">
+    <a href="/discounts"
+       class="px-4 py-2 text-sm font-medium border-b-2 transition-colors {% if method_filter.is_none() %}text-primary border-primary{% else %}text-muted-foreground border-transparent hover:text-foreground hover:border-border{% endif %}">
+        All
+    </a>
+    <a href="/discounts?method=code"
+       class="px-4 py-2 text-sm font-medium border-b-2 transition-colors {% if method_filter.as_deref() == Some("code") %}text-primary border-primary{% else %}text-muted-foreground border-transparent hover:text-foreground hover:border-border{% endif %}">
+        <i class="ph ph-ticket mr-1"></i>
+        Code
+    </a>
+    <a href="/discounts?method=automatic"
+       class="px-4 py-2 text-sm font-medium border-b-2 transition-colors {% if method_filter.as_deref() == Some("automatic") %}text-primary border-primary{% else %}text-muted-foreground border-transparent hover:text-foreground hover:border-border{% endif %}">
+        <i class="ph ph-lightning mr-1"></i>
+        Automatic
     </a>
 </div>
 
-<!-- Info Banner -->
-<div class="mb-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
-    <div class="flex items-center gap-3">
-        <i class="ph ph-info text-xl text-blue-600 dark:text-blue-400"></i>
-        <p class="text-sm text-blue-800 dark:text-blue-200">
-            Discount management is coming soon. For now, use the Shopify admin to create and manage discount codes.
-        </p>
-    </div>
-</div>
+<div data-table="{{ table_id }}"
+     data-table-auto
+     data-table-options='{"defaultColumns": {{ default_columns|json }}}'
+     class="bg-card rounded-xl border border-border overflow-hidden">
 
-<!-- Discounts Table -->
-<div class="bg-card rounded-xl border border-border overflow-hidden">
+    <!-- Toolbar -->
+    <div class="px-6 py-4 border-b border-border">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <!-- Search -->
+            <div class="flex-1 max-w-md">
+                <form method="GET" action="/discounts" class="relative">
+                    <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"></i>
+                    <input type="search"
+                           id="{{ table_id }}-search"
+                           name="query"
+                           value="{{ search_value.as_deref().unwrap_or("") }}"
+                           placeholder="Search discounts by title or code..."
+                           class="w-full pl-10 pr-4 py-2 bg-input border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-colors placeholder:text-muted-foreground">
+                    <!-- Preserve sort params -->
+                    {% if let Some(s) = sort_column %}
+                    <input type="hidden" name="sort" value="{{ s }}">
+                    {% endif %}
+                    <input type="hidden" name="dir" value="{{ sort_direction }}">
+                    {% if let Some(m) = method_filter %}
+                    <input type="hidden" name="method" value="{{ m }}">
+                    {% endif %}
+                </form>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <!-- Filters Toggle -->
+                <button type="button"
+                        id="{{ table_id }}-filters-toggle"
+                        class="inline-flex items-center gap-2 px-3 py-2 bg-muted text-foreground rounded-lg text-sm hover:bg-accent transition-colors {% if !filter_values.is_empty() %}ring-2 ring-primary{% endif %}"
+                        onclick="document.getElementById('{{ table_id }}-filters-panel').classList.toggle('hidden')">
+                    <i class="ph ph-funnel"></i>
+                    Filters
+                    {% if !filter_values.is_empty() %}
+                    <span class="bg-primary text-white text-xs px-1.5 py-0.5 rounded-full">{{ filter_values.len() }}</span>
+                    {% endif %}
+                </button>
+
+                <!-- Column Picker -->
+                <div class="relative">
+                    <button type="button"
+                            class="inline-flex items-center gap-2 px-3 py-2 bg-muted text-foreground rounded-lg text-sm hover:bg-accent transition-colors"
+                            onclick="this.nextElementSibling.classList.toggle('hidden')">
+                        <i class="ph ph-columns"></i>
+                        Columns
+                    </button>
+                    <div class="hidden absolute right-0 mt-2 w-56 bg-card border border-border rounded-lg shadow-lg z-10">
+                        <div class="p-2">
+                            <p class="px-2 py-1 text-xs font-medium text-muted-foreground uppercase">Toggle Columns</p>
+                            {% for col in columns %}
+                            <label class="flex items-center gap-2 px-2 py-1.5 hover:bg-accent rounded cursor-pointer">
+                                <input type="checkbox"
+                                       data-column-toggle="{{ table_id }}"
+                                       data-column="{{ col.key }}"
+                                       {% if col_visible.is_visible(&col.key) %}checked{% endif %}
+                                       class="rounded border-border text-primary focus:ring-primary">
+                                <span class="text-sm text-foreground">{{ col.label }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Create Button -->
+                <a href="/discounts/new" class="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors">
+                    <i class="ph ph-plus text-lg"></i>
+                    Create Discount
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Panel -->
+    <div id="{{ table_id }}-filters-panel" class="{% if filter_values.is_empty() %}hidden{% endif %} px-6 py-4 border-b border-border bg-muted/30">
+        <form id="{{ table_id }}-filters-form" method="GET" class="space-y-4">
+            {% if let Some(m) = method_filter %}
+            <input type="hidden" name="method" value="{{ m }}">
+            {% endif %}
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {% for filter in filters %}
+                {% match filter.filter_type %}
+                {% when FilterType::MultiSelect %}
+                <div>
+                    <label class="block text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
+                        {{ filter.label }}
+                    </label>
+                    <div class="bg-input border border-border rounded-lg p-2 max-h-40 overflow-y-auto">
+                        {% for opt in filter.options %}
+                        <label class="flex items-center gap-2 px-2 py-1 hover:bg-accent rounded cursor-pointer">
+                            <input type="checkbox"
+                                   name="{{ filter.key }}"
+                                   value="{{ opt.value }}"
+                                   data-filter="{{ table_id }}"
+                                   class="rounded border-border text-primary focus:ring-primary">
+                            <span class="text-sm text-foreground">{{ opt.label }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% when FilterType::Select %}
+                <div>
+                    <label for="{{ filter.key }}" class="block text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
+                        {{ filter.label }}
+                    </label>
+                    <select id="{{ filter.key }}"
+                            name="{{ filter.key }}"
+                            data-filter="{{ table_id }}"
+                            class="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-colors">
+                        <option value="">All</option>
+                        {% for opt in filter.options %}
+                        <option value="{{ opt.value }}">
+                            {{ opt.label }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% when FilterType::Text %}
+                <div>
+                    <label for="{{ filter.key }}" class="block text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
+                        {{ filter.label }}
+                    </label>
+                    <input type="text"
+                           id="{{ filter.key }}"
+                           name="{{ filter.key }}"
+                           placeholder="{{ filter.placeholder.as_deref().unwrap_or("") }}"
+                           class="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-colors">
+                </div>
+                {% when FilterType::DateRange %}
+                <div class="space-y-2">
+                    <label class="block text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        {{ filter.label }}
+                    </label>
+                    <div class="flex items-center gap-2">
+                        <input type="date"
+                               name="{{ filter.key }}_from"
+                               class="flex-1 px-3 py-2 bg-input border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-ring focus:border-ring">
+                        <span class="text-muted-foreground">to</span>
+                        <input type="date"
+                               name="{{ filter.key }}_to"
+                               class="flex-1 px-3 py-2 bg-input border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-ring focus:border-ring">
+                    </div>
+                </div>
+                {% when FilterType::NumberRange %}
+                <div class="space-y-2">
+                    <label class="block text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        {{ filter.label }}
+                    </label>
+                    <div class="flex items-center gap-2">
+                        <input type="number"
+                               name="{{ filter.key }}_min"
+                               placeholder="Min"
+                               class="flex-1 px-3 py-2 bg-input border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-ring focus:border-ring">
+                        <span class="text-muted-foreground">to</span>
+                        <input type="number"
+                               name="{{ filter.key }}_max"
+                               placeholder="Max"
+                               class="flex-1 px-3 py-2 bg-input border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-ring focus:border-ring">
+                    </div>
+                </div>
+                {% endmatch %}
+                {% endfor %}
+            </div>
+
+            <div class="flex items-center gap-3 pt-2">
+                <button type="submit"
+                        class="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors">
+                    Apply Filters
+                </button>
+                <a href="/discounts{% if method_filter.is_some() %}?method={{ method_filter.as_deref().unwrap_or("") }}{% endif %}" class="px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                    Clear All
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Bulk Action Bar -->
+    <div id="{{ table_id }}-bulk-bar"
+         class="hidden px-6 py-3 bg-primary/10 border-b border-primary/20">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-4">
+                <span data-selected-count class="text-sm font-medium text-primary">0 selected</span>
+                <button type="button"
+                        onclick="DataTable.get('{{ table_id }}').clearSelection()"
+                        class="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                    Clear selection
+                </button>
+            </div>
+
+            <div class="flex items-center gap-2">
+                {% for action in bulk_actions %}
+                <button type="button"
+                        data-bulk-action="{{ table_id }}"
+                        data-action="{{ action.key }}"
+                        class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
+                               {% if action.destructive %}
+                               bg-destructive/10 text-destructive hover:bg-destructive/20
+                               {% else %}
+                               bg-card text-foreground hover:bg-accent border border-border
+                               {% endif %}">
+                    <i class="ph {{ action.icon }}"></i>
+                    {{ action.label }}
+                </button>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Table -->
     <div class="overflow-hidden md:overflow-x-auto">
         <table class="w-full data-table-cards">
             <thead class="bg-muted">
                 <tr>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Code</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Type</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Value</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Usage</th>
+                    <!-- Select All Checkbox -->
+                    <th class="w-12 px-6 py-3">
+                        <input type="checkbox"
+                               id="{{ table_id }}-select-all"
+                               class="rounded border-border text-primary focus:ring-primary">
+                    </th>
+
+                    <!-- Title -->
+                    <th data-column="title"
+                        class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider {% if !col_visible.title %}hidden{% endif %}">
+                        <a href="/discounts?sort=title&dir={% if sort_column.as_deref() == Some("title") && sort_direction == "asc" %}desc{% else %}asc{% endif %}{{ preserve_params }}"
+                           class="inline-flex items-center gap-1 hover:text-foreground transition-colors group">
+                            Discount
+                            {% if sort_column.as_deref() == Some("title") %}
+                            <i class="ph ph-caret-{% if sort_direction == "asc" %}up{% else %}down{% endif %} text-primary"></i>
+                            {% else %}
+                            <i class="ph ph-caret-up-down text-muted-foreground/50 group-hover:text-muted-foreground"></i>
+                            {% endif %}
+                        </a>
+                    </th>
+
+                    <!-- Code -->
+                    <th data-column="code"
+                        class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider {% if !col_visible.code %}hidden{% endif %}">
+                        <a href="/discounts?sort=code&dir={% if sort_column.as_deref() == Some("code") && sort_direction == "asc" %}desc{% else %}asc{% endif %}{{ preserve_params }}"
+                           class="inline-flex items-center gap-1 hover:text-foreground transition-colors group">
+                            Code
+                            {% if sort_column.as_deref() == Some("code") %}
+                            <i class="ph ph-caret-{% if sort_direction == "asc" %}up{% else %}down{% endif %} text-primary"></i>
+                            {% else %}
+                            <i class="ph ph-caret-up-down text-muted-foreground/50 group-hover:text-muted-foreground"></i>
+                            {% endif %}
+                        </a>
+                    </th>
+
+                    <!-- Type -->
+                    <th data-column="type"
+                        class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider {% if !col_visible.discount_type %}hidden{% endif %}">
+                        <a href="/discounts?sort=type&dir={% if sort_column.as_deref() == Some("type") && sort_direction == "asc" %}desc{% else %}asc{% endif %}{{ preserve_params }}"
+                           class="inline-flex items-center gap-1 hover:text-foreground transition-colors group">
+                            Type
+                            {% if sort_column.as_deref() == Some("type") %}
+                            <i class="ph ph-caret-{% if sort_direction == "asc" %}up{% else %}down{% endif %} text-primary"></i>
+                            {% else %}
+                            <i class="ph ph-caret-up-down text-muted-foreground/50 group-hover:text-muted-foreground"></i>
+                            {% endif %}
+                        </a>
+                    </th>
+
+                    <!-- Status -->
+                    <th data-column="status"
+                        class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider {% if !col_visible.status %}hidden{% endif %}">
+                        <a href="/discounts?sort=status&dir={% if sort_column.as_deref() == Some("status") && sort_direction == "asc" %}desc{% else %}asc{% endif %}{{ preserve_params }}"
+                           class="inline-flex items-center gap-1 hover:text-foreground transition-colors group">
+                            Status
+                            {% if sort_column.as_deref() == Some("status") %}
+                            <i class="ph ph-caret-{% if sort_direction == "asc" %}up{% else %}down{% endif %} text-primary"></i>
+                            {% else %}
+                            <i class="ph ph-caret-up-down text-muted-foreground/50 group-hover:text-muted-foreground"></i>
+                            {% endif %}
+                        </a>
+                    </th>
+
+                    <!-- Value -->
+                    <th data-column="value"
+                        class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider {% if !col_visible.value %}hidden{% endif %}">
+                        <a href="/discounts?sort=value&dir={% if sort_column.as_deref() == Some("value") && sort_direction == "asc" %}desc{% else %}asc{% endif %}{{ preserve_params }}"
+                           class="inline-flex items-center gap-1 hover:text-foreground transition-colors group">
+                            Value
+                            {% if sort_column.as_deref() == Some("value") %}
+                            <i class="ph ph-caret-{% if sort_direction == "asc" %}up{% else %}down{% endif %} text-primary"></i>
+                            {% else %}
+                            <i class="ph ph-caret-up-down text-muted-foreground/50 group-hover:text-muted-foreground"></i>
+                            {% endif %}
+                        </a>
+                    </th>
+
+                    <!-- Usage -->
+                    <th data-column="usage"
+                        class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider {% if !col_visible.usage %}hidden{% endif %}">
+                        <a href="/discounts?sort=usage&dir={% if sort_column.as_deref() == Some("usage") && sort_direction == "asc" %}desc{% else %}asc{% endif %}{{ preserve_params }}"
+                           class="inline-flex items-center gap-1 hover:text-foreground transition-colors group">
+                            Usage
+                            {% if sort_column.as_deref() == Some("usage") %}
+                            <i class="ph ph-caret-{% if sort_direction == "asc" %}up{% else %}down{% endif %} text-primary"></i>
+                            {% else %}
+                            <i class="ph ph-caret-up-down text-muted-foreground/50 group-hover:text-muted-foreground"></i>
+                            {% endif %}
+                        </a>
+                    </th>
+
+                    <!-- Method (hidden by default) -->
+                    <th data-column="method"
+                        class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider {% if !col_visible.method %}hidden{% endif %}">
+                        <a href="/discounts?sort=method&dir={% if sort_column.as_deref() == Some("method") && sort_direction == "asc" %}desc{% else %}asc{% endif %}{{ preserve_params }}"
+                           class="inline-flex items-center gap-1 hover:text-foreground transition-colors group">
+                            Method
+                            {% if sort_column.as_deref() == Some("method") %}
+                            <i class="ph ph-caret-{% if sort_direction == "asc" %}up{% else %}down{% endif %} text-primary"></i>
+                            {% else %}
+                            <i class="ph ph-caret-up-down text-muted-foreground/50 group-hover:text-muted-foreground"></i>
+                            {% endif %}
+                        </a>
+                    </th>
+
+                    <!-- Minimum (hidden by default) -->
+                    <th data-column="minimum"
+                        class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider {% if !col_visible.minimum %}hidden{% endif %}">
+                        <a href="/discounts?sort=minimum&dir={% if sort_column.as_deref() == Some("minimum") && sort_direction == "asc" %}desc{% else %}asc{% endif %}{{ preserve_params }}"
+                           class="inline-flex items-center gap-1 hover:text-foreground transition-colors group">
+                            Minimum
+                            {% if sort_column.as_deref() == Some("minimum") %}
+                            <i class="ph ph-caret-{% if sort_direction == "asc" %}up{% else %}down{% endif %} text-primary"></i>
+                            {% else %}
+                            <i class="ph ph-caret-up-down text-muted-foreground/50 group-hover:text-muted-foreground"></i>
+                            {% endif %}
+                        </a>
+                    </th>
+
+                    <!-- Combines With (hidden by default) -->
+                    <th data-column="combines_with"
+                        class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider {% if !col_visible.combines_with %}hidden{% endif %}">
+                        <a href="/discounts?sort=combines_with&dir={% if sort_column.as_deref() == Some("combines_with") && sort_direction == "asc" %}desc{% else %}asc{% endif %}{{ preserve_params }}"
+                           class="inline-flex items-center gap-1 hover:text-foreground transition-colors group">
+                            Combines With
+                            {% if sort_column.as_deref() == Some("combines_with") %}
+                            <i class="ph ph-caret-{% if sort_direction == "asc" %}up{% else %}down{% endif %} text-primary"></i>
+                            {% else %}
+                            <i class="ph ph-caret-up-down text-muted-foreground/50 group-hover:text-muted-foreground"></i>
+                            {% endif %}
+                        </a>
+                    </th>
+
+                    <!-- Start Date (hidden by default) -->
+                    <th data-column="starts_at"
+                        class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider {% if !col_visible.starts_at %}hidden{% endif %}">
+                        <a href="/discounts?sort=starts_at&dir={% if sort_column.as_deref() == Some("starts_at") && sort_direction == "asc" %}desc{% else %}asc{% endif %}{{ preserve_params }}"
+                           class="inline-flex items-center gap-1 hover:text-foreground transition-colors group">
+                            Start Date
+                            {% if sort_column.as_deref() == Some("starts_at") %}
+                            <i class="ph ph-caret-{% if sort_direction == "asc" %}up{% else %}down{% endif %} text-primary"></i>
+                            {% else %}
+                            <i class="ph ph-caret-up-down text-muted-foreground/50 group-hover:text-muted-foreground"></i>
+                            {% endif %}
+                        </a>
+                    </th>
+
+                    <!-- End Date (hidden by default) -->
+                    <th data-column="ends_at"
+                        class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider {% if !col_visible.ends_at %}hidden{% endif %}">
+                        <a href="/discounts?sort=ends_at&dir={% if sort_column.as_deref() == Some("ends_at") && sort_direction == "asc" %}desc{% else %}asc{% endif %}{{ preserve_params }}"
+                           class="inline-flex items-center gap-1 hover:text-foreground transition-colors group">
+                            End Date
+                            {% if sort_column.as_deref() == Some("ends_at") %}
+                            <i class="ph ph-caret-{% if sort_direction == "asc" %}up{% else %}down{% endif %} text-primary"></i>
+                            {% else %}
+                            <i class="ph ph-caret-up-down text-muted-foreground/50 group-hover:text-muted-foreground"></i>
+                            {% endif %}
+                        </a>
+                    </th>
+
                     <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-border">
                 {% if discounts.is_empty() %}
                 <tr>
-                    <td colspan="6" class="px-6 py-12 text-center text-muted-foreground">
-                        <i class="ph ph-tag text-4xl mb-2"></i>
+                    <td colspan="13" class="px-6 py-12 text-center text-muted-foreground">
+                        <i class="ph ph-tag text-4xl mb-2 block"></i>
                         <p>No discounts found</p>
+                        {% if search_value.is_some() || !filter_values.is_empty() %}
+                        <a href="/discounts{% if method_filter.is_some() %}?method={{ method_filter.as_deref().unwrap_or("") }}{% endif %}" class="text-sm text-primary hover:underline mt-2 inline-block">Clear filters</a>
+                        {% else %}
+                        <a href="/discounts/new" class="text-sm text-primary hover:underline mt-2 inline-block">Create your first discount</a>
+                        {% endif %}
                     </td>
                 </tr>
                 {% else %}
                 {% for discount in discounts %}
-                <tr class="hover:bg-accent transition-colors">
-                    <td class="px-6 py-4 card-header" data-label="">
-                        <div>
-                            <p class="font-mono font-medium text-foreground">{{ discount.code }}</p>
-                            <p class="text-sm text-muted-foreground">{{ discount.title }}</p>
-                        </div>
+                <tr class="hover:bg-accent transition-colors" data-row="{{ discount.id|extract_id }}">
+                    <!-- Checkbox -->
+                    <td class="px-6 py-4 card-checkbox" data-label="">
+                        <input type="checkbox"
+                               data-row-id="{{ discount.id|extract_id }}"
+                               class="rounded border-border text-primary focus:ring-primary">
                     </td>
-                    <td class="px-6 py-4 text-sm text-muted-foreground" data-label="Type">
+
+                    <!-- Title -->
+                    <td data-column="title" data-label="" class="px-6 py-4 card-header {% if !col_visible.title %}hidden{% endif %}">
+                        <a href="/discounts/{{ discount.id|extract_id }}" class="group">
+                            <div class="flex items-center gap-2">
+                                <p class="font-medium text-foreground group-hover:text-primary transition-colors">{{ discount.title }}</p>
+                                {% if discount.method == "Automatic" %}
+                                <span class="px-1.5 py-0.5 bg-amber-100 dark:bg-amber-900/30 rounded text-xs text-amber-700 dark:text-amber-400">Auto</span>
+                                {% endif %}
+                            </div>
+                        </a>
+                    </td>
+
+                    <!-- Code -->
+                    <td data-column="code" data-label="Code" class="px-6 py-4 {% if !col_visible.code %}hidden{% endif %}">
+                        {% if let Some(code) = discount.code %}
+                        <span class="font-mono text-sm text-foreground">{{ code }}</span>
+                        {% if discount.code_count > 1 %}
+                        <span class="text-xs text-muted-foreground ml-1">(+{{ discount.code_count - 1 }})</span>
+                        {% endif %}
+                        {% else %}
+                        <span class="text-muted-foreground/50">-</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Type -->
+                    <td data-column="type" data-label="Type" class="px-6 py-4 text-sm text-muted-foreground {% if !col_visible.discount_type %}hidden{% endif %}">
                         {{ discount.discount_type }}
                     </td>
-                    <td class="px-6 py-4 text-sm font-medium text-foreground" data-label="Value">
-                        {{ discount.value }}
-                    </td>
-                    <td class="px-6 py-4" data-label="Status">
+
+                    <!-- Status -->
+                    <td data-column="status" data-label="Status" class="px-6 py-4 {% if !col_visible.status %}hidden{% endif %}">
                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ discount.status_class }}">
                             {{ discount.status }}
                         </span>
                     </td>
-                    <td class="px-6 py-4 text-sm text-muted-foreground" data-label="Usage">
-                        {{ discount.usage }}
+
+                    <!-- Value -->
+                    <td data-column="value" data-label="Value" class="px-6 py-4 text-sm font-medium text-foreground {% if !col_visible.value %}hidden{% endif %}">
+                        {{ discount.value.as_deref().unwrap_or("—") }}
                     </td>
+
+                    <!-- Usage -->
+                    <td data-column="usage" data-label="Usage" class="px-6 py-4 {% if !col_visible.usage %}hidden{% endif %}">
+                        <div class="flex items-center gap-2">
+                            <div class="flex-1 min-w-[60px]">
+                                <div class="h-2 bg-muted rounded-full overflow-hidden">
+                                    <div class="h-full bg-primary rounded-full transition-all" style="width: {{ discount.usage_percentage }}%"></div>
+                                </div>
+                            </div>
+                            <span class="text-sm text-muted-foreground whitespace-nowrap">{{ discount.usage }}</span>
+                        </div>
+                    </td>
+
+                    <!-- Method -->
+                    <td data-column="method" data-label="Method" class="px-6 py-4 text-sm text-muted-foreground mobile-hidden {% if !col_visible.method %}hidden{% endif %}">
+                        <span class="inline-flex items-center gap-1">
+                            {% if discount.method == "Automatic" %}
+                            <i class="ph ph-lightning text-amber-500"></i>
+                            {% else %}
+                            <i class="ph ph-ticket text-blue-500"></i>
+                            {% endif %}
+                            {{ discount.method }}
+                        </span>
+                    </td>
+
+                    <!-- Minimum -->
+                    <td data-column="minimum" data-label="Minimum" class="px-6 py-4 text-sm text-muted-foreground mobile-hidden {% if !col_visible.minimum %}hidden{% endif %}">
+                        {% if let Some(min) = discount.minimum %}
+                        {{ min }}
+                        {% else %}
+                        <span class="text-muted-foreground/50">-</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Combines With -->
+                    <td data-column="combines_with" data-label="Combines With" class="px-6 py-4 text-sm text-muted-foreground mobile-hidden {% if !col_visible.combines_with %}hidden{% endif %}">
+                        {{ discount.combines_with }}
+                    </td>
+
+                    <!-- Start Date -->
+                    <td data-column="starts_at" data-label="Start Date" class="px-6 py-4 text-sm text-muted-foreground mobile-hidden {% if !col_visible.starts_at %}hidden{% endif %}">
+                        {% if let Some(date) = discount.starts_at %}
+                        {{ date }}
+                        {% else %}
+                        <span class="text-muted-foreground/50">-</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- End Date -->
+                    <td data-column="ends_at" data-label="End Date" class="px-6 py-4 text-sm text-muted-foreground mobile-hidden {% if !col_visible.ends_at %}hidden{% endif %}">
+                        {% if let Some(date) = discount.ends_at %}
+                        {{ date }}
+                        {% else %}
+                        <span class="text-muted-foreground/50">No end date</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Actions -->
                     <td class="px-6 py-4 text-right card-actions" data-label="">
                         <div class="flex items-center justify-end gap-2">
                             <a href="/discounts/{{ discount.id|extract_id }}/edit"
-                               class="text-sm text-primary hover:underline">
-                                Edit
+                               class="p-2 text-muted-foreground hover:text-foreground transition-colors"
+                               title="Edit">
+                                <i class="ph ph-pencil"></i>
                             </a>
-                            <span class="text-border">|</span>
-                            <form action="/discounts/{{ discount.id|extract_id }}/deactivate" method="POST" class="inline"
-                                  hx-post="/discounts/{{ discount.id|extract_id }}/deactivate"
-                                  hx-target="closest tr"
-                                  hx-confirm="Deactivate this discount?">
-                                <button type="submit" class="text-sm text-destructive hover:underline">
-                                    Deactivate
-                                </button>
-                            </form>
+                            <button type="button"
+                                    hx-post="/discounts/{{ discount.id|extract_id }}/duplicate"
+                                    class="p-2 text-muted-foreground hover:text-foreground transition-colors"
+                                    title="Duplicate">
+                                <i class="ph ph-copy"></i>
+                            </button>
+                            {% if discount.status == "Active" %}
+                            <button type="button"
+                                    hx-post="/discounts/{{ discount.id|extract_id }}/deactivate"
+                                    hx-confirm="Deactivate this discount?"
+                                    class="p-2 text-muted-foreground hover:text-destructive transition-colors"
+                                    title="Deactivate">
+                                <i class="ph ph-pause"></i>
+                            </button>
+                            {% else %}
+                            <button type="button"
+                                    hx-post="/discounts/{{ discount.id|extract_id }}/activate"
+                                    hx-confirm="Activate this discount?"
+                                    class="p-2 text-muted-foreground hover:text-primary transition-colors"
+                                    title="Activate">
+                                <i class="ph ph-play"></i>
+                            </button>
+                            {% endif %}
                         </div>
                     </td>
                 </tr>
@@ -109,7 +574,7 @@
     <!-- Pagination -->
     {% if has_next_page %}
     <div class="px-6 py-4 border-t border-border">
-        <a href="/discounts?cursor={{ next_cursor.as_deref().unwrap_or("") }}{% if let Some(q) = search_query %}&query={{ q }}{% endif %}"
+        <a href="/discounts?cursor={{ next_cursor.as_deref().unwrap_or("") }}{{ preserve_params }}"
            class="inline-flex items-center gap-2 text-sm text-primary hover:underline">
             Load more
             <i class="ph ph-arrow-right"></i>
@@ -117,4 +582,47 @@
     </div>
     {% endif %}
 </div>
+
+<script>
+// Handle bulk actions
+document.addEventListener('dataTableBulkAction', function(e) {
+    const { tableId, action, ids } = e.detail;
+    if (tableId !== '{{ table_id }}') return;
+
+    let confirmMsg = '';
+    let formAction = '';
+
+    switch (action) {
+        case 'activate':
+            confirmMsg = `Activate ${ids.length} discount(s)?`;
+            formAction = '/discounts/bulk/activate';
+            break;
+        case 'deactivate':
+            confirmMsg = `Deactivate ${ids.length} discount(s)?`;
+            formAction = '/discounts/bulk/deactivate';
+            break;
+        case 'delete':
+            confirmMsg = `Delete ${ids.length} discount(s)? This cannot be undone.`;
+            formAction = '/discounts/bulk/delete';
+            break;
+        default:
+            return;
+    }
+
+    if (confirm(confirmMsg)) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = formAction;
+
+        const idsInput = document.createElement('input');
+        idsInput.type = 'hidden';
+        idsInput.name = 'ids';
+        idsInput.value = ids.join(',');
+        form.appendChild(idsInput);
+
+        document.body.appendChild(form);
+        form.submit();
+    }
+});
+</script>
 {% endblock %}

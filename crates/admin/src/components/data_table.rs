@@ -487,3 +487,63 @@ pub fn customers_table_config() -> DataTableConfig {
             Some("Try adjusting your search or filters"),
         )
 }
+
+/// Build the discounts table configuration.
+#[must_use]
+pub fn discounts_table_config() -> DataTableConfig {
+    DataTableConfig::new("discounts")
+        // Columns (default visible)
+        .column(TableColumn::sortable("title", "Discount"))
+        .column(TableColumn::sortable("code", "Code"))
+        .column(TableColumn::sortable("type", "Type"))
+        .column(TableColumn::sortable("status", "Status"))
+        .column(TableColumn::sortable("value", "Value"))
+        .column(TableColumn::sortable("usage", "Usage"))
+        // Hidden by default
+        .column(TableColumn::sortable("method", "Method").visible(false))
+        .column(TableColumn::sortable("minimum", "Minimum").visible(false))
+        .column(TableColumn::sortable("combines_with", "Combines With").visible(false))
+        .column(TableColumn::sortable("starts_at", "Start Date").visible(false))
+        .column(TableColumn::sortable("ends_at", "End Date").visible(false))
+        // Filters
+        .filter(TableFilter::multi_select(
+            "status",
+            "Status",
+            vec![
+                FilterOption::new("ACTIVE", "Active"),
+                FilterOption::new("SCHEDULED", "Scheduled"),
+                FilterOption::new("EXPIRED", "Expired"),
+            ],
+        ))
+        .filter(TableFilter::multi_select(
+            "type",
+            "Type",
+            vec![
+                FilterOption::new("percentage", "Percentage"),
+                FilterOption::new("fixed_amount", "Fixed Amount"),
+                FilterOption::new("bxgy", "Buy X Get Y"),
+                FilterOption::new("free_shipping", "Free Shipping"),
+            ],
+        ))
+        .filter(TableFilter::select(
+            "method",
+            "Method",
+            vec![
+                FilterOption::new("code", "Code"),
+                FilterOption::new("automatic", "Automatic"),
+            ],
+        ))
+        .filter(TableFilter::date_range("starts_at", "Start Date"))
+        .filter(TableFilter::date_range("ends_at", "End Date"))
+        // Bulk actions
+        .bulk_action(BulkAction::new("activate", "Activate", "ph-play"))
+        .bulk_action(BulkAction::new("deactivate", "Deactivate", "ph-pause"))
+        .bulk_action(BulkAction::new("delete", "Delete", "ph-trash").destructive())
+        // Empty state
+        .search_placeholder("Search discounts by title or code...")
+        .empty_state(
+            "ph-tag",
+            "No discounts found",
+            Some("Create your first discount to get started"),
+        )
+}
