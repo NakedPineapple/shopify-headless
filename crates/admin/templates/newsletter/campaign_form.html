@@ -1,0 +1,143 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}{% if is_edit %}Edit Campaign{% else %}New {{ channel|capitalize }} Campaign{% endif %}{% endblock %}
+
+{% block page_title %}{% if is_edit %}Edit Campaign{% else %}New {{ channel|capitalize }} Campaign{% endif %}{% endblock %}
+
+{% block page_subtitle %}
+<p class="text-sm text-muted-foreground mt-1">
+    {% if channel == "sms" %}
+    Create an SMS campaign (160 char limit, 70 with emoji)
+    {% else %}
+    Create an email campaign with HTML content
+    {% endif %}
+</p>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl">
+    <!-- Back link -->
+    <div class="mb-6">
+        <a href="/newsletter/campaigns" class="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+            <i class="ph ph-arrow-left"></i>
+            Back to campaigns
+        </a>
+    </div>
+
+    {% if let Some(err) = error %}
+    <div class="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+        <div class="flex items-center gap-2 text-destructive">
+            <i class="ph ph-warning-circle"></i>
+            <p class="text-sm font-medium">{{ err }}</p>
+        </div>
+    </div>
+    {% endif %}
+
+    <form action="{% if is_edit %}{% if let Some(c) = campaign %}/newsletter/campaigns/{{ c.id }}/edit{% endif %}{% else %}/newsletter/campaigns/new?channel={{ channel }}{% endif %}"
+          method="POST"
+          class="bg-card rounded-xl border border-border">
+
+        <div class="p-6 space-y-6">
+            <!-- Campaign Name -->
+            <div>
+                <label for="name" class="block text-sm font-medium text-foreground mb-2">Campaign Name</label>
+                <input type="text"
+                       id="name"
+                       name="name"
+                       value="{% if let Some(c) = campaign %}{{ c.attributes.name }}{% endif %}"
+                       required
+                       placeholder="e.g., Summer Sale Announcement"
+                       class="w-full px-4 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-colors placeholder:text-muted-foreground">
+                <p class="mt-1 text-xs text-muted-foreground">Internal name for this campaign</p>
+            </div>
+
+            {% if channel == "sms" %}
+            <!-- SMS Body -->
+            <div>
+                <label for="subject" class="block text-sm font-medium text-foreground mb-2">Message Body</label>
+                <textarea id="subject"
+                          name="subject"
+                          rows="4"
+                          required
+                          maxlength="160"
+                          placeholder="Your SMS message here..."
+                          class="w-full px-4 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-colors placeholder:text-muted-foreground resize-none"></textarea>
+                <div class="mt-1 flex items-center justify-between">
+                    <p class="text-xs text-muted-foreground">Standard: 160 chars, with emoji: 70 chars</p>
+                    <p class="text-xs text-muted-foreground"><span id="char-count">0</span>/160</p>
+                </div>
+            </div>
+            {% else %}
+            <!-- Email Subject -->
+            <div>
+                <label for="subject" class="block text-sm font-medium text-foreground mb-2">Subject Line</label>
+                <input type="text"
+                       id="subject"
+                       name="subject"
+                       required
+                       placeholder="e.g., Don't miss our summer sale!"
+                       class="w-full px-4 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-colors placeholder:text-muted-foreground">
+            </div>
+
+            <!-- From Email -->
+            <div>
+                <label for="from_email" class="block text-sm font-medium text-foreground mb-2">From Email</label>
+                <input type="email"
+                       id="from_email"
+                       name="from_email"
+                       required
+                       placeholder="hello@nakedpineapple.co"
+                       class="w-full px-4 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-colors placeholder:text-muted-foreground">
+            </div>
+
+            <!-- From Name -->
+            <div>
+                <label for="from_name" class="block text-sm font-medium text-foreground mb-2">From Name</label>
+                <input type="text"
+                       id="from_name"
+                       name="from_name"
+                       required
+                       placeholder="Naked Pineapple"
+                       class="w-full px-4 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-colors placeholder:text-muted-foreground">
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Form Actions -->
+        <div class="px-6 py-4 border-t border-border bg-muted/30 flex items-center justify-end gap-3">
+            <a href="/newsletter/campaigns"
+               class="px-4 py-2 text-muted-foreground hover:text-foreground transition-colors">
+                Cancel
+            </a>
+            <button type="submit"
+                    class="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors">
+                <i class="ph ph-check"></i>
+                {% if is_edit %}Save Changes{% else %}Create Campaign{% endif %}
+            </button>
+        </div>
+    </form>
+</div>
+
+{% if channel == "sms" %}
+<script>
+    const textarea = document.getElementById('subject');
+    const charCount = document.getElementById('char-count');
+
+    function updateCharCount() {
+        const count = textarea.value.length;
+        charCount.textContent = count;
+        if (count > 160) {
+            charCount.classList.add('text-destructive');
+        } else if (count > 70) {
+            charCount.classList.add('text-honey');
+            charCount.classList.remove('text-destructive');
+        } else {
+            charCount.classList.remove('text-destructive', 'text-honey');
+        }
+    }
+
+    textarea.addEventListener('input', updateCharCount);
+    updateCharCount();
+</script>
+{% endif %}
+{% endblock %}

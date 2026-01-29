@@ -22,6 +22,8 @@
 //! - `CLAUDE_MODEL` - Claude model ID (default: claude-sonnet-4-20250514)
 //! - `SMTP_PORT` - SMTP port (default: 587)
 //! - `SENTRY_DSN` - Sentry error tracking DSN
+//! - `KLAVIYO_API_KEY` - Klaviyo private API key (for newsletter campaigns)
+//! - `KLAVIYO_LIST_ID` - Klaviyo newsletter list ID
 //!
 //! ## Optional (TLS)
 //! - `ADMIN_TLS_CERT` - PEM-encoded certificate chain
@@ -85,6 +87,8 @@ pub struct AdminConfig {
     pub claude: ClaudeConfig,
     /// Email configuration
     pub email: EmailConfig,
+    /// Klaviyo configuration (optional - for newsletter campaigns)
+    pub klaviyo: Option<KlaviyoConfig>,
     /// Sentry DSN for error tracking
     pub sentry_dsn: Option<String>,
     /// Sentry environment (e.g., "development", "staging", "production")
@@ -173,6 +177,49 @@ impl std::fmt::Debug for EmailConfig {
     }
 }
 
+/// Klaviyo API configuration for newsletter campaigns.
+///
+/// Implements `Debug` manually to redact the API key.
+#[derive(Clone)]
+pub struct KlaviyoConfig {
+    /// Klaviyo private API key
+    pub api_key: SecretString,
+    /// Newsletter list ID
+    pub list_id: String,
+}
+
+impl std::fmt::Debug for KlaviyoConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("KlaviyoConfig")
+            .field("api_key", &"[REDACTED]")
+            .field("list_id", &self.list_id)
+            .finish()
+    }
+}
+
+impl KlaviyoConfig {
+    fn from_env() -> Result<Option<Self>, ConfigError> {
+        let api_key = get_optional_env("KLAVIYO_API_KEY");
+        let list_id = get_optional_env("KLAVIYO_LIST_ID");
+
+        match (api_key, list_id) {
+            (Some(key), Some(id)) => {
+                // Validate API key has sufficient entropy
+                validate_secret_strength(&key, "KLAVIYO_API_KEY")?;
+                Ok(Some(Self {
+                    api_key: SecretString::from(key),
+                    list_id: id,
+                }))
+            }
+            (None, None) => Ok(None),
+            _ => Err(ConfigError::InvalidEnvVar(
+                "KLAVIYO_*".to_string(),
+                "Both KLAVIYO_API_KEY and KLAVIYO_LIST_ID must be set together".to_string(),
+            )),
+        }
+    }
+}
+
 /// TLS configuration for HTTPS.
 #[derive(Clone)]
 pub struct TlsConfig {
@@ -237,6 +284,7 @@ impl AdminConfig {
         let shopify = ShopifyAdminConfig::from_env()?;
         let claude = ClaudeConfig::from_env()?;
         let email = EmailConfig::from_env()?;
+        let klaviyo = KlaviyoConfig::from_env()?;
         let sentry_dsn = get_optional_env("SENTRY_DSN");
         let sentry_environment = get_optional_env("SENTRY_ENVIRONMENT");
         let sentry_sample_rate = get_optional_env("SENTRY_SAMPLE_RATE")
@@ -256,6 +304,7 @@ impl AdminConfig {
             shopify,
             claude,
             email,
+            klaviyo,
             sentry_dsn,
             sentry_environment,
             sentry_sample_rate,
@@ -274,6 +323,12 @@ impl AdminConfig {
     #[must_use]
     pub const fn claude(&self) -> &ClaudeConfig {
         &self.claude
+    }
+
+    /// Returns a reference to the Klaviyo configuration (if configured).
+    #[must_use]
+    pub const fn klaviyo(&self) -> Option<&KlaviyoConfig> {
+        self.klaviyo.as_ref()
     }
 }
 
@@ -522,6 +577,7 @@ mod tests {
                 smtp_password: SecretString::from("pass"),
                 from_address: "admin@example.com".to_string(),
             },
+            klaviyo: None,
             sentry_dsn: None,
             sentry_environment: None,
             sentry_sample_rate: 1.0,

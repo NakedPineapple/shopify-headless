@@ -1,0 +1,119 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Preview: {{ campaign.attributes.name }}{% endblock %}
+
+{% block page_title %}Preview{% endblock %}
+
+{% block page_subtitle %}
+<p class="text-sm text-muted-foreground mt-1">{{ campaign.attributes.name }}</p>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Back link -->
+    <div>
+        <a href="/newsletter/campaigns/{{ campaign.id }}" class="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+            <i class="ph ph-arrow-left"></i>
+            Back to campaign
+        </a>
+    </div>
+
+    <!-- Preview Card -->
+    <div class="bg-card rounded-xl border border-border overflow-hidden">
+        <div class="px-6 py-4 border-b border-border flex items-center justify-between">
+            <h3 class="font-semibold text-foreground">Email Preview</h3>
+            <div class="flex items-center gap-2">
+                <button type="button"
+                        onclick="setPreviewMode('desktop')"
+                        class="p-2 rounded-lg bg-muted text-foreground hover:bg-accent transition-colors"
+                        id="btn-desktop">
+                    <i class="ph ph-desktop"></i>
+                </button>
+                <button type="button"
+                        onclick="setPreviewMode('mobile')"
+                        class="p-2 rounded-lg text-muted-foreground hover:bg-accent transition-colors"
+                        id="btn-mobile">
+                    <i class="ph ph-device-mobile"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Preview Container -->
+        <div class="p-6 bg-muted/30 flex justify-center">
+            <div id="preview-container" class="bg-white rounded-lg shadow-lg overflow-hidden transition-all duration-300" style="width: 600px;">
+                <!-- Email Header -->
+                <div class="px-4 py-3 bg-gray-100 border-b">
+                    <div class="space-y-1">
+                        <div class="flex items-center gap-2 text-sm">
+                            <span class="text-gray-500">From:</span>
+                            <span class="text-gray-900">Naked Pineapple</span>
+                        </div>
+                        <div class="flex items-center gap-2 text-sm">
+                            <span class="text-gray-500">Subject:</span>
+                            <span class="text-gray-900 font-medium">{{ campaign.attributes.name }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Email Body -->
+                <div class="p-6">
+                    <div class="text-center text-gray-500">
+                        <i class="ph ph-envelope-open text-4xl mb-3"></i>
+                        <p class="text-sm">Email content preview will be available after you add HTML content to the campaign in Klaviyo.</p>
+                        <a href="https://www.klaviyo.com" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-sm text-primary hover:underline mt-2">
+                            Open in Klaviyo
+                            <i class="ph ph-arrow-square-out"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Campaign Info -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-card rounded-xl border border-border p-4">
+            <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Status</p>
+            <span class="px-2.5 py-1 text-xs font-medium rounded-full {{ campaign.attributes.status.badge_class() }}">
+                {{ campaign.attributes.status.label() }}
+            </span>
+        </div>
+        <div class="bg-card rounded-xl border border-border p-4">
+            <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Audiences</p>
+            <p class="text-foreground">{{ campaign.attributes.audiences.included.len() }} list(s)</p>
+        </div>
+        <div class="bg-card rounded-xl border border-border p-4">
+            <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Smart Sending</p>
+            <p class="text-foreground">
+                {% if let Some(opts) = campaign.attributes.send_options %}
+                {% if opts.use_smart_sending %}Enabled{% else %}Disabled{% endif %}
+                {% else %}
+                Disabled
+                {% endif %}
+            </p>
+        </div>
+    </div>
+</div>
+
+<script>
+function setPreviewMode(mode) {
+    const container = document.getElementById('preview-container');
+    const btnDesktop = document.getElementById('btn-desktop');
+    const btnMobile = document.getElementById('btn-mobile');
+
+    if (mode === 'mobile') {
+        container.style.width = '375px';
+        btnMobile.classList.add('bg-muted', 'text-foreground');
+        btnMobile.classList.remove('text-muted-foreground');
+        btnDesktop.classList.remove('bg-muted', 'text-foreground');
+        btnDesktop.classList.add('text-muted-foreground');
+    } else {
+        container.style.width = '600px';
+        btnDesktop.classList.add('bg-muted', 'text-foreground');
+        btnDesktop.classList.remove('text-muted-foreground');
+        btnMobile.classList.remove('bg-muted', 'text-foreground');
+        btnMobile.classList.add('text-muted-foreground');
+    }
+}
+</script>
+{% endblock %}

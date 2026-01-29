@@ -23,6 +23,9 @@
 //! # Checkout
 //! GET  /checkout               - Redirect to Shopify checkout
 //!
+//! # Newsletter
+//! POST /newsletter/subscribe   - Subscribe to newsletter (HTMX fragment)
+//!
 //! # Auth
 //! GET  /auth/login             - Login page
 //! POST /auth/login             - Login action
@@ -55,6 +58,7 @@ pub mod blog;
 pub mod cart;
 pub mod collections;
 pub mod home;
+pub mod newsletter;
 pub mod pages;
 pub mod products;
 pub mod search;
@@ -187,4 +191,6 @@ pub fn routes() -> Router<AppState> {
         .nest("/auth", auth_routes())
         // `WebAuthn` API
         .nest("/api/auth/webauthn", webauthn_api_routes())
+        // Newsletter routes
+        .route("/newsletter/subscribe", post(newsletter::subscribe))
 }

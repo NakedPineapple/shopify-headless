@@ -1,0 +1,184 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}{{ campaign.attributes.name }}{% endblock %}
+
+{% block page_title %}{{ campaign.attributes.name }}{% endblock %}
+
+{% block page_subtitle %}
+<div class="flex items-center gap-3 mt-1">
+    <span class="px-2.5 py-1 text-xs font-medium rounded-full {{ campaign.attributes.status.badge_class() }}">
+        {{ campaign.attributes.status.label() }}
+    </span>
+    {% if let Some(created) = campaign.attributes.created_at %}
+    <span class="text-sm text-muted-foreground">Created {{ created }}</span>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Back link -->
+    <div>
+        <a href="/newsletter/campaigns" class="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+            <i class="ph ph-arrow-left"></i>
+            Back to campaigns
+        </a>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Main Content -->
+        <div class="lg:col-span-2 space-y-6">
+            <!-- Campaign Details Card -->
+            <div class="bg-card rounded-xl border border-border">
+                <div class="px-6 py-4 border-b border-border">
+                    <h3 class="font-semibold text-foreground">Campaign Details</h3>
+                </div>
+                <div class="p-6 space-y-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Name</p>
+                            <p class="text-foreground">{{ campaign.attributes.name }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Status</p>
+                            <span class="px-2.5 py-1 text-xs font-medium rounded-full {{ campaign.attributes.status.badge_class() }}">
+                                {{ campaign.attributes.status.label() }}
+                            </span>
+                        </div>
+                        {% if let Some(scheduled) = campaign.attributes.scheduled_at %}
+                        <div>
+                            <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Scheduled For</p>
+                            <p class="text-foreground">{{ scheduled }}</p>
+                        </div>
+                        {% endif %}
+                        {% if let Some(sent) = campaign.attributes.send_time %}
+                        <div>
+                            <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Sent At</p>
+                            <p class="text-foreground">{{ sent }}</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Audience Card -->
+            <div class="bg-card rounded-xl border border-border">
+                <div class="px-6 py-4 border-b border-border">
+                    <h3 class="font-semibold text-foreground">Audience</h3>
+                </div>
+                <div class="p-6">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                            <i class="ph ph-users text-lg text-primary"></i>
+                        </div>
+                        <div>
+                            <p class="font-medium text-foreground">{{ campaign.attributes.audiences.included.len() }} list(s) included</p>
+                            {% if !campaign.attributes.audiences.excluded.is_empty() %}
+                            <p class="text-sm text-muted-foreground">{{ campaign.attributes.audiences.excluded.len() }} list(s) excluded</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="space-y-6">
+            <!-- Actions Card -->
+            {% if admin_user.is_super_admin %}
+            <div class="bg-card rounded-xl border border-border">
+                <div class="px-6 py-4 border-b border-border">
+                    <h3 class="font-semibold text-foreground">Actions</h3>
+                </div>
+                <div class="p-6 space-y-3">
+                    {% match campaign.attributes.status %}
+                    {% when CampaignStatus::Draft %}
+                    <a href="/newsletter/campaigns/{{ campaign.id }}/edit"
+                       class="w-full inline-flex items-center justify-center gap-2 px-4 py-2 bg-muted text-foreground rounded-lg hover:bg-accent transition-colors">
+                        <i class="ph ph-pencil"></i>
+                        Edit Campaign
+                    </a>
+                    <form action="/newsletter/campaigns/{{ campaign.id }}/send" method="POST">
+                        <button type="submit"
+                                onclick="return confirm('Send this campaign now? This action cannot be undone.')"
+                                class="w-full inline-flex items-center justify-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors">
+                            <i class="ph ph-paper-plane-tilt"></i>
+                            Send Now
+                        </button>
+                    </form>
+                    <form action="/newsletter/campaigns/{{ campaign.id }}/delete" method="POST">
+                        <button type="submit"
+                                onclick="return confirm('Delete this campaign? This action cannot be undone.')"
+                                class="w-full inline-flex items-center justify-center gap-2 px-4 py-2 text-destructive hover:bg-destructive/10 rounded-lg transition-colors">
+                            <i class="ph ph-trash"></i>
+                            Delete Campaign
+                        </button>
+                    </form>
+                    {% when CampaignStatus::Scheduled %}
+                    <p class="text-sm text-muted-foreground">Campaign is scheduled and cannot be edited.</p>
+                    {% when CampaignStatus::Sending %}
+                    <p class="text-sm text-muted-foreground">Campaign is currently being sent.</p>
+                    {% when CampaignStatus::Sent %}
+                    <p class="text-sm text-muted-foreground">Campaign has been sent.</p>
+                    {% when CampaignStatus::Cancelled %}
+                    <p class="text-sm text-muted-foreground">Campaign was cancelled.</p>
+                    {% endmatch %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Preview Card -->
+            <div class="bg-card rounded-xl border border-border">
+                <div class="px-6 py-4 border-b border-border">
+                    <h3 class="font-semibold text-foreground">Preview</h3>
+                </div>
+                <div class="p-6">
+                    <a href="/newsletter/campaigns/{{ campaign.id }}/preview"
+                       class="w-full inline-flex items-center justify-center gap-2 px-4 py-2 bg-muted text-foreground rounded-lg hover:bg-accent transition-colors">
+                        <i class="ph ph-eye"></i>
+                        View Preview
+                    </a>
+                </div>
+            </div>
+
+            <!-- Timeline Card -->
+            <div class="bg-card rounded-xl border border-border">
+                <div class="px-6 py-4 border-b border-border">
+                    <h3 class="font-semibold text-foreground">Timeline</h3>
+                </div>
+                <div class="p-6">
+                    <div class="space-y-4">
+                        {% if let Some(created) = campaign.attributes.created_at %}
+                        <div class="flex items-start gap-3">
+                            <div class="w-2 h-2 rounded-full bg-muted-foreground mt-2"></div>
+                            <div>
+                                <p class="text-sm font-medium text-foreground">Created</p>
+                                <p class="text-xs text-muted-foreground">{{ created }}</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if let Some(updated) = campaign.attributes.updated_at %}
+                        <div class="flex items-start gap-3">
+                            <div class="w-2 h-2 rounded-full bg-muted-foreground mt-2"></div>
+                            <div>
+                                <p class="text-sm font-medium text-foreground">Last Updated</p>
+                                <p class="text-xs text-muted-foreground">{{ updated }}</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if let Some(sent) = campaign.attributes.send_time %}
+                        <div class="flex items-start gap-3">
+                            <div class="w-2 h-2 rounded-full bg-leaf mt-2"></div>
+                            <div>
+                                <p class="text-sm font-medium text-foreground">Sent</p>
+                                <p class="text-xs text-muted-foreground">{{ sent }}</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

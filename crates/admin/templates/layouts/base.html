@@ -115,6 +115,11 @@
                         <span class="sidebar-text text-xs font-medium text-sidebar-muted uppercase tracking-wider">Tools</span>
                     </div>
                     <div class="space-y-1 px-3">
+                        <a href="/newsletter"
+                           class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors {% if current_path.starts_with("/newsletter") %}bg-coral text-white{% else %}text-sidebar-foreground hover:bg-sidebar-accent hover:text-white{% endif %}">
+                            <i class="ph ph-megaphone text-xl"></i>
+                            <span class="sidebar-text">Newsletter</span>
+                        </a>
                         <a href="/chat"
                            class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors {% if current_path.starts_with("/chat") %}bg-coral text-white{% else %}text-sidebar-foreground hover:bg-sidebar-accent hover:text-white{% endif %}">
                             <i class="ph ph-chats-circle text-xl"></i>

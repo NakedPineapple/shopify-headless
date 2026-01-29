@@ -1,0 +1,106 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Newsletter{% endblock %}
+
+{% block page_title %}Newsletter{% endblock %}
+
+{% block page_subtitle %}
+<p class="text-sm text-muted-foreground mt-1">Manage email and SMS marketing campaigns</p>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Email Subscribers -->
+        <div class="bg-card rounded-xl border border-border p-6">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <i class="ph ph-envelope text-2xl text-primary"></i>
+                </div>
+                <div>
+                    <p class="text-2xl font-semibold text-foreground">{{ stats.email_subscribers }}</p>
+                    <p class="text-sm text-muted-foreground">Email Subscribers</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- SMS Subscribers -->
+        <div class="bg-card rounded-xl border border-border p-6">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 rounded-lg bg-leaf/10 flex items-center justify-center">
+                    <i class="ph ph-chat-circle-text text-2xl text-leaf"></i>
+                </div>
+                <div>
+                    <p class="text-2xl font-semibold text-foreground">{{ stats.sms_subscribers }}</p>
+                    <p class="text-sm text-muted-foreground">SMS Subscribers</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="bg-card rounded-xl border border-border p-6 md:col-span-2">
+            <h3 class="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-4">Quick Actions</h3>
+            <div class="flex flex-wrap gap-3">
+                {% if admin_user.is_super_admin %}
+                <a href="/newsletter/campaigns/new?channel=email"
+                   class="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors">
+                    <i class="ph ph-plus"></i>
+                    New Email Campaign
+                </a>
+                <a href="/newsletter/campaigns/new?channel=sms"
+                   class="inline-flex items-center gap-2 px-4 py-2 bg-leaf text-white rounded-lg hover:bg-leaf/90 transition-colors">
+                    <i class="ph ph-plus"></i>
+                    New SMS Campaign
+                </a>
+                {% endif %}
+                <a href="/newsletter/campaigns"
+                   class="inline-flex items-center gap-2 px-4 py-2 bg-muted text-foreground rounded-lg hover:bg-accent transition-colors">
+                    <i class="ph ph-list"></i>
+                    View All Campaigns
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Campaigns -->
+    <div class="bg-card rounded-xl border border-border overflow-hidden">
+        <div class="px-6 py-4 border-b border-border flex items-center justify-between">
+            <h3 class="font-semibold text-foreground">Recent Campaigns</h3>
+            <a href="/newsletter/campaigns" class="text-sm text-primary hover:underline">View all</a>
+        </div>
+
+        {% if recent_campaigns.is_empty() %}
+        <div class="px-6 py-12 text-center text-muted-foreground">
+            <i class="ph ph-megaphone text-4xl mb-2 block"></i>
+            <p class="font-medium">No campaigns yet</p>
+            {% if admin_user.is_super_admin %}
+            <p class="text-sm mt-1">Create your first campaign to get started</p>
+            {% endif %}
+        </div>
+        {% else %}
+        <div class="divide-y divide-border">
+            {% for campaign in recent_campaigns %}
+            <a href="/newsletter/campaigns/{{ campaign.id }}"
+               class="flex items-center justify-between px-6 py-4 hover:bg-muted/50 transition-colors">
+                <div class="flex items-center gap-4">
+                    <div class="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
+                        <i class="ph ph-envelope text-lg text-muted-foreground"></i>
+                    </div>
+                    <div>
+                        <p class="font-medium text-foreground">{{ campaign.attributes.name }}</p>
+                        {% if let Some(created) = campaign.attributes.created_at %}
+                        <p class="text-sm text-muted-foreground">{{ created }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+                <span class="px-2.5 py-1 text-xs font-medium rounded-full {{ campaign.attributes.status.badge_class() }}">
+                    {{ campaign.attributes.status.label() }}
+                </span>
+            </a>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

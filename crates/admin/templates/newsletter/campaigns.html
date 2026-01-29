@@ -1,0 +1,155 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Campaigns{% endblock %}
+
+{% block page_title %}Campaigns{% endblock %}
+
+{% block page_subtitle %}
+<p class="text-sm text-muted-foreground mt-1">Email and SMS marketing campaigns</p>
+{% endblock %}
+
+{% block content %}
+<div class="bg-card rounded-xl border border-border overflow-hidden">
+    <!-- Toolbar -->
+    <div class="px-6 py-4 border-b border-border">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <!-- Filters -->
+            <div class="flex items-center gap-3">
+                <!-- Channel Filter -->
+                <div class="relative">
+                    <select onchange="applyFilter('channel', this.value)"
+                            class="appearance-none px-3 py-2 pr-8 bg-muted text-foreground rounded-lg text-sm border-0 cursor-pointer">
+                        <option value="" {% if channel_filter.is_none() %}selected{% endif %}>All Channels</option>
+                        <option value="email" {% if channel_filter.as_deref() == Some("email") %}selected{% endif %}>Email</option>
+                        <option value="sms" {% if channel_filter.as_deref() == Some("sms") %}selected{% endif %}>SMS</option>
+                    </select>
+                    <i class="ph ph-caret-down absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"></i>
+                </div>
+
+                <!-- Status Filter -->
+                <div class="relative">
+                    <select onchange="applyFilter('status', this.value)"
+                            class="appearance-none px-3 py-2 pr-8 bg-muted text-foreground rounded-lg text-sm border-0 cursor-pointer">
+                        <option value="" {% if status_filter.is_none() %}selected{% endif %}>All Statuses</option>
+                        <option value="draft" {% if status_filter.as_deref() == Some("draft") %}selected{% endif %}>Draft</option>
+                        <option value="scheduled" {% if status_filter.as_deref() == Some("scheduled") %}selected{% endif %}>Scheduled</option>
+                        <option value="sending" {% if status_filter.as_deref() == Some("sending") %}selected{% endif %}>Sending</option>
+                        <option value="sent" {% if status_filter.as_deref() == Some("sent") %}selected{% endif %}>Sent</option>
+                        <option value="cancelled" {% if status_filter.as_deref() == Some("cancelled") %}selected{% endif %}>Cancelled</option>
+                    </select>
+                    <i class="ph ph-caret-down absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"></i>
+                </div>
+
+                {% if channel_filter.is_some() || status_filter.is_some() %}
+                <a href="/newsletter/campaigns" class="text-sm text-muted-foreground hover:text-foreground">
+                    Clear filters
+                </a>
+                {% endif %}
+            </div>
+
+            {% if admin_user.is_super_admin %}
+            <div class="flex items-center gap-2">
+                <a href="/newsletter/campaigns/new?channel=email"
+                   class="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors">
+                    <i class="ph ph-plus text-lg"></i>
+                    New Email
+                </a>
+                <a href="/newsletter/campaigns/new?channel=sms"
+                   class="inline-flex items-center gap-2 px-4 py-2 bg-leaf text-white rounded-lg hover:bg-leaf/90 transition-colors">
+                    <i class="ph ph-plus text-lg"></i>
+                    New SMS
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Table -->
+    <div class="overflow-hidden md:overflow-x-auto">
+        <table class="w-full data-table-cards">
+            <thead class="bg-muted">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Campaign</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Channel</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Created</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-border">
+                {% if campaigns.is_empty() %}
+                <tr>
+                    <td colspan="5" class="px-6 py-12 text-center text-muted-foreground">
+                        <i class="ph ph-megaphone text-4xl mb-2 block"></i>
+                        <p class="font-medium">No campaigns found</p>
+                        {% if admin_user.is_super_admin %}
+                        <p class="text-sm mt-1">Create a new campaign to get started</p>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                {% for campaign in campaigns %}
+                <tr class="hover:bg-muted/50 transition-colors">
+                    <td class="px-6 py-4">
+                        <a href="/newsletter/campaigns/{{ campaign.id }}" class="font-medium text-foreground hover:text-primary">
+                            {{ campaign.attributes.name }}
+                        </a>
+                    </td>
+                    <td class="px-6 py-4">
+                        <span class="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+                            <i class="ph ph-envelope"></i>
+                            Email
+                        </span>
+                    </td>
+                    <td class="px-6 py-4">
+                        <span class="px-2.5 py-1 text-xs font-medium rounded-full {{ campaign.attributes.status.badge_class() }}">
+                            {{ campaign.attributes.status.label() }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 text-sm text-muted-foreground">
+                        {% if let Some(created) = campaign.attributes.created_at %}
+                        {{ created }}
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4 text-right">
+                        <div class="flex items-center justify-end gap-2">
+                            <a href="/newsletter/campaigns/{{ campaign.id }}"
+                               class="p-2 text-muted-foreground hover:text-foreground transition-colors"
+                               title="View">
+                                <i class="ph ph-eye"></i>
+                            </a>
+                            {% if admin_user.is_super_admin %}
+                            {% match campaign.attributes.status %}
+                            {% when CampaignStatus::Draft %}
+                            <a href="/newsletter/campaigns/{{ campaign.id }}/edit"
+                               class="p-2 text-muted-foreground hover:text-foreground transition-colors"
+                               title="Edit">
+                                <i class="ph ph-pencil"></i>
+                            </a>
+                            {% when _ %}
+                            {% endmatch %}
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+function applyFilter(key, value) {
+    const url = new URL(window.location.href);
+    if (value) {
+        url.searchParams.set(key, value);
+    } else {
+        url.searchParams.delete(key);
+    }
+    window.location.href = url.toString();
+}
+</script>
+{% endblock %}

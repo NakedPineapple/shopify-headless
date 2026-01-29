@@ -1,0 +1,40 @@
+{# Error fragment - replaces the newsletter card via HTMX with error message #}
+<div id="newsletter-card" class="bg-background rounded-2xl p-6 md:p-8 shadow-sm">
+    <h3 class="font-display text-xl md:text-2xl font-medium text-foreground mb-2">Stay in the Glow</h3>
+    <p class="text-sm text-muted-foreground mb-5">
+        Join our community for exclusive offers, skincare tips, and first access to new products.
+    </p>
+
+    {# Error message #}
+    <div class="mb-4 p-3 bg-primary/5 border border-primary/20 rounded-lg">
+        <p class="text-sm text-primary flex items-center gap-2">
+            <i class="ph ph-warning-circle"></i>
+            {{ message }}
+        </p>
+    </div>
+
+    <form action="/newsletter/subscribe" method="post" class="space-y-3"
+          hx-post="/newsletter/subscribe"
+          hx-target="#newsletter-card"
+          hx-swap="outerHTML">
+        <div class="relative">
+            <label for="footer-email" class="sr-only">Email address</label>
+            <input type="email"
+                   id="footer-email"
+                   name="email"
+                   class="input"
+                   placeholder="Enter your email"
+                   required
+                   autocomplete="email"
+                   value="{{ email }}">
+        </div>
+        <button type="submit"
+                class="w-full btn btn-primary justify-center group">
+            Subscribe
+            <i class="ph ph-arrow-right text-lg transition-transform group-hover:translate-x-1"></i>
+        </button>
+    </form>
+    <p class="text-xs text-muted-foreground mt-4">
+        By subscribing, you agree to our <a href="/privacy" class="underline hover:text-primary transition-colors">Privacy Policy</a>.
+    </p>
+</div>

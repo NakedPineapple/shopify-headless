@@ -1,0 +1,22 @@
+{# Success fragment - replaces the newsletter card via HTMX #}
+<div id="newsletter-card" class="bg-background rounded-2xl p-6 md:p-8 shadow-sm">
+    <div class="text-center space-y-4">
+        {# Success icon #}
+        <div class="w-16 h-16 mx-auto bg-leaf/10 rounded-full flex items-center justify-center">
+            <i class="ph-fill ph-check-circle text-3xl text-leaf"></i>
+        </div>
+
+        <h3 class="font-display text-xl md:text-2xl font-medium text-foreground">
+            You're In!
+        </h3>
+
+        <p class="text-muted-foreground">
+            Welcome to the glow crew! We've sent a confirmation to
+            <span class="font-medium text-foreground">{{ email }}</span>.
+        </p>
+
+        <p class="text-sm text-muted-foreground">
+            Get ready for exclusive offers, skincare tips, and first access to new products.
+        </p>
+    </div>
+</div>

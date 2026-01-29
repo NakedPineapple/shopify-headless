@@ -56,6 +56,7 @@ pub mod dashboard;
 pub mod discounts;
 pub mod gift_cards;
 pub mod inventory;
+pub mod newsletter;
 pub mod orders;
 pub mod payouts;
 pub mod products;
@@ -365,6 +366,8 @@ pub fn routes() -> Router<AppState> {
         .route("/payouts/{id}/export", get(payouts::export_csv))
         // Admin management (super_admin only)
         .merge(admin_user_routes())
+        // Newsletter (Klaviyo)
+        .merge(newsletter::router())
         // Auth
         .merge(auth::router())
         .merge(setup::router())

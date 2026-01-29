@@ -35,13 +35,14 @@
                     </div>
 
                     {# Newsletter - Styled as invitation #}
-                    <div class="bg-background rounded-2xl p-6 md:p-8 shadow-sm">
+                    <div id="newsletter-card" class="bg-background rounded-2xl p-6 md:p-8 shadow-sm">
                         <h3 class="font-display text-xl md:text-2xl font-medium text-foreground mb-2">Stay in the Glow</h3>
                         <p class="text-sm text-muted-foreground mb-5">
                             Join our community for exclusive offers, skincare tips, and first access to new products.
                         </p>
                         <form action="/newsletter/subscribe" method="post" class="space-y-3"
                               hx-post="/newsletter/subscribe"
+                              hx-target="#newsletter-card"
                               hx-swap="outerHTML">
                             <div class="relative">
                                 <label for="footer-email" class="sr-only">Email address</label>
