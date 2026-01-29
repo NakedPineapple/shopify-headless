@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            DELETE FROM admin.admin_credential\n            WHERE id = $1 AND admin_user_id = $2\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "14db6a3497805cc674426d867cc9f1a90ac67117c19f2478923542c6d959fd3c"
+}

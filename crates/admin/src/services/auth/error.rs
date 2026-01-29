@@ -31,6 +31,14 @@ pub enum AdminAuthError {
     #[error("credential not found")]
     CredentialNotFound,
 
+    /// Cannot delete the last credential.
+    #[error("cannot delete your only passkey")]
+    LastCredential,
+
+    /// Invalid user handle from passkey authentication.
+    #[error("invalid user handle in passkey")]
+    InvalidUserHandle,
+
     /// Session state missing or invalid.
     #[error("invalid session state")]
     InvalidSessionState,

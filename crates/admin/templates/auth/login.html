@@ -483,29 +483,14 @@
                     <div class="form-header">
                         <h2 class="form-title">Welcome back</h2>
                         <p class="form-description">
-                            Sign in with your passkey to access the admin dashboard.
+                            Sign in with your registered passkey to access the admin dashboard.
                         </p>
                     </div>
 
-                    <form id="login-form">
-                        <div class="input-group">
-                            <label for="email" class="input-label">Email Address</label>
-                            <input
-                                type="email"
-                                id="email"
-                                name="email"
-                                required
-                                autocomplete="email webauthn"
-                                class="input-field"
-                                placeholder="you@nakedpineapple.co"
-                            >
-                        </div>
-
-                        <button type="submit" id="login-btn" class="submit-btn">
-                            <i class="ph-fill ph-fingerprint"></i>
-                            <span>Sign in with Passkey</span>
-                        </button>
-                    </form>
+                    <button type="button" id="login-btn" class="submit-btn">
+                        <i class="ph-fill ph-fingerprint"></i>
+                        <span>Sign in with Passkey</span>
+                    </button>
 
                     <!-- Messages -->
                     <div id="error-message" class="message message-error"></div>
@@ -515,7 +500,7 @@
 
                 <!-- Footer -->
                 <p class="footer-notice">
-                    Passkey authentication required for admin access.<br>
+                    Your device will prompt you to select a registered passkey.<br>
                     Have an invite? <a href="/auth/setup">Set up your account</a><br>
                     Need help? <a href="mailto:support@nakedpineapple.co">Contact support</a>
                 </p>
@@ -527,15 +512,12 @@
     <script src="/static/js/webauthn.js"></script>
     <script>
     (function() {
-        const form = document.getElementById('login-form');
-        const emailInput = document.getElementById('email');
         const loginBtn = document.getElementById('login-btn');
         const errorEl = document.getElementById('error-message');
         const infoEl = document.getElementById('info-message');
         const warningEl = document.getElementById('webauthn-warning');
 
-        // Check WebAuthn support - use native API check, not window.WebAuthn
-        // This is more reliable across browsers including Firefox
+        // Check WebAuthn support - use native API check
         function checkWebAuthnSupport() {
             const supported = window.PublicKeyCredential !== undefined;
 
@@ -577,17 +559,10 @@
             }
         }
 
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
+        loginBtn.addEventListener('click', async () => {
             hideMessages();
 
-            const email = emailInput.value.trim();
-            if (!email) {
-                showError('Please enter your email address');
-                return;
-            }
-
-            // Double-check WebAuthn support before attempting
+            // Check WebAuthn support before attempting
             if (!window.WebAuthn || !window.WebAuthn.isWebAuthnSupported()) {
                 showError('Passkey authentication is not available in your browser');
                 return;
@@ -596,7 +571,8 @@
             setLoading(true);
 
             try {
-                const result = await window.WebAuthn.loginWithPasskey(email);
+                // No email needed - passkey contains user identity
+                const result = await window.WebAuthn.loginWithPasskey();
 
                 if (!result.success) {
                     showError(result.error || 'Authentication failed. Please try again.');
@@ -613,9 +589,6 @@
                 setLoading(false);
             }
         });
-
-        // Focus email input on page load
-        emailInput.focus();
     })();
     </script>
 </body>

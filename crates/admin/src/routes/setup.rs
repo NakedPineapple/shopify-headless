@@ -41,6 +41,8 @@ struct PendingRegistration {
     email: String,
     display_name: String,
     passkey_name: String,
+    /// `WebAuthn` user ID for discoverable credentials - stored in passkey for login without email.
+    webauthn_user_id: uuid::Uuid,
 }
 
 /// Setup page template.
@@ -339,18 +341,14 @@ async fn register_start(
         return Err(ApiError::new("Invite is no longer valid"));
     }
 
-    // Generate a temporary user ID for WebAuthn (will be replaced with real ID after creation)
-    let temp_user_id = uuid::Uuid::new_v4();
+    // Generate the WebAuthn user ID that will be stored in the passkey
+    // This enables discoverable credentials (login without email)
+    let webauthn_user_id = uuid::Uuid::new_v4();
 
-    // Start passkey registration with WebAuthn
-    let (ccr, reg_state) = state
-        .webauthn()
-        .start_passkey_registration(
-            temp_user_id,
-            &email,
-            &req.display_name,
-            None, // No existing credentials
-        )
+    // Start passkey registration using the auth service
+    let auth = crate::services::AdminAuthService::new(state.pool(), state.webauthn());
+    let (ccr, reg_state) = auth
+        .start_passkey_registration_for_new_user(webauthn_user_id, &email, &req.display_name)
         .map_err(|e| ApiError::new(format!("WebAuthn error: {e}")))?;
 
     // Store registration state and pending info
@@ -359,11 +357,12 @@ async fn register_start(
         .await
         .map_err(|e| ApiError::new(format!("Session error: {e}")))?;
 
-    // Store pending registration info
+    // Store pending registration info including the webauthn_user_id
     let pending = PendingRegistration {
         email,
         display_name: req.display_name,
         passkey_name: req.passkey_name.unwrap_or_else(|| "Passkey".to_owned()),
+        webauthn_user_id,
     };
 
     session
@@ -438,10 +437,15 @@ async fn register_finish(
     // Parse email
     let email = Email::parse(&pending.email).map_err(|_| ApiError::new("Invalid email address"))?;
 
-    // Create admin user
+    // Create admin user with the WebAuthn user ID for discoverable credentials
     let user_repo = AdminUserRepository::new(state.pool());
     let user = user_repo
-        .create(&email, &pending.display_name, invite.role)
+        .create(
+            &email,
+            &pending.display_name,
+            invite.role,
+            pending.webauthn_user_id,
+        )
         .await
         .map_err(|e| ApiError::new(format!("Failed to create user: {e}")))?;
 

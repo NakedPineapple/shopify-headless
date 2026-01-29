@@ -1,0 +1,386 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Settings{% endblock %}
+
+{% block page_title %}Settings{% endblock %}
+
+{% block page_subtitle %}
+<p class="text-sm text-muted-foreground mt-1">Manage your profile and security settings</p>
+{% endblock %}
+
+{% block content %}
+<!-- Success/Error Messages -->
+{% if let Some(msg) = success_message %}
+<div class="mb-6 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl">
+    <div class="flex items-center gap-3">
+        <i class="ph ph-check-circle text-xl text-success"></i>
+        <p class="text-sm text-green-700 dark:text-green-300">{{ msg }}</p>
+    </div>
+</div>
+{% endif %}
+
+{% if let Some(msg) = error_message %}
+<div class="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
+    <div class="flex items-center gap-3">
+        <i class="ph ph-warning-circle text-xl text-destructive"></i>
+        <p class="text-sm text-red-700 dark:text-red-300">{{ msg }}</p>
+    </div>
+</div>
+{% endif %}
+
+<!-- Profile Section -->
+<div class="bg-card rounded-xl border border-border overflow-hidden mb-8">
+    <div class="px-6 py-4 border-b border-border">
+        <h2 class="text-lg font-semibold text-foreground">Profile</h2>
+        <p class="text-sm text-muted-foreground mt-0.5">Your personal information</p>
+    </div>
+    <div class="p-6 space-y-6">
+        <!-- Display Name -->
+        <div id="profile-name-section">
+            <label class="block text-sm font-medium text-foreground mb-2">Display Name</label>
+            <div class="flex items-center gap-3">
+                <input type="text"
+                       id="profile-name"
+                       value="{{ admin_user.name }}"
+                       class="flex-1 px-3 py-2 text-sm bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-coral/50 focus:border-coral">
+                <button type="button"
+                        onclick="saveProfileName()"
+                        class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-coral hover:bg-coral/90 rounded-lg transition-colors">
+                    <i class="ph ph-check text-lg"></i>
+                    Save
+                </button>
+            </div>
+            <p id="name-feedback" class="mt-2 text-sm hidden"></p>
+        </div>
+
+        <!-- Email -->
+        <div id="email-section">
+            <label class="block text-sm font-medium text-foreground mb-2">Email Address</label>
+            <div class="flex items-center gap-3">
+                <input type="email"
+                       id="current-email"
+                       value="{{ admin_user.email }}"
+                       disabled
+                       class="flex-1 px-3 py-2 text-sm bg-muted border border-border rounded-lg text-muted-foreground cursor-not-allowed">
+                <button type="button"
+                        onclick="showEmailChangeForm()"
+                        class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-foreground bg-muted hover:bg-muted/80 rounded-lg transition-colors border border-border">
+                    <i class="ph ph-pencil text-lg"></i>
+                    Change
+                </button>
+            </div>
+        </div>
+
+        <!-- Email Change Form (hidden by default) -->
+        <div id="email-change-form" class="hidden">
+            <div class="p-4 bg-muted rounded-lg border border-border">
+                <h3 class="text-sm font-medium text-foreground mb-3">Change Email Address</h3>
+
+                <!-- Step 1: Enter new email -->
+                <div id="email-step-1">
+                    <label class="block text-sm text-muted-foreground mb-2">New Email Address</label>
+                    <div class="flex items-center gap-3">
+                        <input type="email"
+                               id="new-email"
+                               placeholder="you@example.com"
+                               class="flex-1 px-3 py-2 text-sm bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-coral/50 focus:border-coral">
+                        <button type="button"
+                                onclick="sendEmailCode()"
+                                class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-coral hover:bg-coral/90 rounded-lg transition-colors">
+                            <i class="ph ph-paper-plane-tilt text-lg"></i>
+                            Send Code
+                        </button>
+                        <button type="button"
+                                onclick="hideEmailChangeForm()"
+                                class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 2: Enter verification code -->
+                <div id="email-step-2" class="hidden">
+                    <p class="text-sm text-muted-foreground mb-3">
+                        We've sent a verification code to <strong id="email-target" class="text-foreground"></strong>
+                    </p>
+                    <label class="block text-sm text-muted-foreground mb-2">Verification Code</label>
+                    <div class="flex items-center gap-3">
+                        <input type="text"
+                               id="email-code"
+                               placeholder="123456"
+                               maxlength="6"
+                               class="w-32 px-3 py-2 text-sm bg-background border border-border rounded-lg text-foreground text-center font-mono tracking-widest focus:outline-none focus:ring-2 focus:ring-coral/50 focus:border-coral">
+                        <button type="button"
+                                onclick="verifyEmailCode()"
+                                class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-coral hover:bg-coral/90 rounded-lg transition-colors">
+                            <i class="ph ph-check text-lg"></i>
+                            Verify
+                        </button>
+                        <button type="button"
+                                onclick="hideEmailChangeForm()"
+                                class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+
+                <p id="email-feedback" class="mt-3 text-sm hidden"></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Passkeys Section -->
+<div class="bg-card rounded-xl border border-border overflow-hidden">
+    <div class="px-6 py-4 border-b border-border flex items-center justify-between">
+        <div>
+            <h2 class="text-lg font-semibold text-foreground">Passkeys</h2>
+            <p class="text-sm text-muted-foreground mt-0.5">Manage your authentication methods</p>
+        </div>
+        <button type="button"
+                onclick="addPasskey()"
+                class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-coral hover:bg-coral/90 rounded-lg transition-colors">
+            <i class="ph ph-plus text-lg"></i>
+            Add Passkey
+        </button>
+    </div>
+
+    <div class="divide-y divide-border">
+        {% for passkey in passkeys %}
+        <div id="passkey-{{ passkey.id }}" class="px-6 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-4">
+                <div class="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
+                    <i class="ph ph-fingerprint text-xl text-muted-foreground"></i>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-foreground">{{ passkey.name }}</p>
+                    <p class="text-xs text-muted-foreground">Added {{ passkey.created_at }}</p>
+                </div>
+            </div>
+            <div>
+                {% if passkey.is_only_passkey %}
+                <span class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-muted-foreground bg-muted rounded-lg cursor-not-allowed"
+                      title="You cannot delete your only passkey">
+                    <i class="ph ph-lock-simple text-sm mr-1.5"></i>
+                    Required
+                </span>
+                {% else %}
+                <button type="button"
+                        onclick="deletePasskey({{ passkey.id }}, '{{ passkey.name }}')"
+                        class="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-destructive bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors">
+                    <i class="ph ph-trash text-lg"></i>
+                    Delete
+                </button>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+
+        {% if passkeys.is_empty() %}
+        <div class="px-6 py-8 text-center">
+            <i class="ph ph-fingerprint text-4xl text-muted-foreground mb-3"></i>
+            <p class="text-sm text-muted-foreground">No passkeys registered</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Info Section -->
+<div class="mt-8 p-4 bg-muted rounded-xl border border-border">
+    <div class="flex items-start gap-3">
+        <i class="ph ph-info text-xl text-muted-foreground mt-0.5"></i>
+        <div class="text-sm text-muted-foreground">
+            <p class="font-medium text-foreground mb-1">About Passkeys</p>
+            <p>
+                Passkeys use biometrics (Touch ID, Face ID) or security keys for secure, passwordless
+                authentication. You can register multiple passkeys for different devices.
+            </p>
+            <p class="mt-2">
+                <strong class="text-foreground">Tip:</strong> We recommend registering at least two
+                passkeys in case you lose access to one device.
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/webauthn.js"></script>
+<script>
+// Profile name save
+async function saveProfileName() {
+    const nameInput = document.getElementById('profile-name');
+    const feedback = document.getElementById('name-feedback');
+    const name = nameInput.value.trim();
+
+    if (!name) {
+        showFeedback(feedback, 'Name cannot be empty', 'error');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/settings/profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            showFeedback(feedback, data.error || 'Failed to update name', 'error');
+            return;
+        }
+
+        showFeedback(feedback, 'Name updated successfully', 'success');
+        // Update sidebar name display if present
+        const sidebarName = document.querySelector('.sidebar-user-name');
+        if (sidebarName) sidebarName.textContent = data.name;
+    } catch (error) {
+        showFeedback(feedback, 'An error occurred', 'error');
+    }
+}
+
+// Email change flow
+function showEmailChangeForm() {
+    document.getElementById('email-change-form').classList.remove('hidden');
+    document.getElementById('email-step-1').classList.remove('hidden');
+    document.getElementById('email-step-2').classList.add('hidden');
+    document.getElementById('new-email').value = '';
+    document.getElementById('email-code').value = '';
+    hideFeedback(document.getElementById('email-feedback'));
+}
+
+function hideEmailChangeForm() {
+    document.getElementById('email-change-form').classList.add('hidden');
+    document.getElementById('email-step-1').classList.remove('hidden');
+    document.getElementById('email-step-2').classList.add('hidden');
+}
+
+async function sendEmailCode() {
+    const emailInput = document.getElementById('new-email');
+    const feedback = document.getElementById('email-feedback');
+    const email = emailInput.value.trim();
+
+    if (!email) {
+        showFeedback(feedback, 'Please enter an email address', 'error');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/settings/email/send-code', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            showFeedback(feedback, data.error || 'Failed to send code', 'error');
+            return;
+        }
+
+        // Show step 2
+        document.getElementById('email-step-1').classList.add('hidden');
+        document.getElementById('email-step-2').classList.remove('hidden');
+        document.getElementById('email-target').textContent = email;
+        showFeedback(feedback, 'Verification code sent', 'success');
+    } catch (error) {
+        showFeedback(feedback, 'An error occurred', 'error');
+    }
+}
+
+async function verifyEmailCode() {
+    const codeInput = document.getElementById('email-code');
+    const feedback = document.getElementById('email-feedback');
+    const code = codeInput.value.trim();
+
+    if (!code) {
+        showFeedback(feedback, 'Please enter the verification code', 'error');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/settings/email/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            showFeedback(feedback, data.error || 'Invalid code', 'error');
+            return;
+        }
+
+        // Success - reload page to reflect changes
+        window.location.href = '/settings?success=email_changed';
+    } catch (error) {
+        showFeedback(feedback, 'An error occurred', 'error');
+    }
+}
+
+// Passkey management
+async function addPasskey() {
+    const name = prompt('Enter a name for this passkey (e.g., "MacBook", "iPhone"):');
+    if (!name) return;
+
+    try {
+        const result = await window.WebAuthn.registerPasskey(name);
+
+        if (!result.success) {
+            alert(result.error || 'Failed to add passkey');
+            return;
+        }
+
+        // Success - reload to show new passkey
+        window.location.href = '/settings?success=passkey_added';
+    } catch (error) {
+        alert('An error occurred while adding passkey');
+    }
+}
+
+async function deletePasskey(id, name) {
+    if (!confirm(`Are you sure you want to delete the passkey "${name}"?`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/settings/passkeys/${id}`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            alert(data.error || 'Failed to delete passkey');
+            return;
+        }
+
+        // Success - remove row and reload
+        window.location.href = '/settings?success=passkey_deleted';
+    } catch (error) {
+        alert('An error occurred while deleting passkey');
+    }
+}
+
+// Feedback helpers
+function showFeedback(element, message, type) {
+    element.textContent = message;
+    element.classList.remove('hidden', 'text-green-600', 'text-red-600', 'dark:text-green-400', 'dark:text-red-400');
+    if (type === 'success') {
+        element.classList.add('text-green-600', 'dark:text-green-400');
+    } else {
+        element.classList.add('text-red-600', 'dark:text-red-400');
+    }
+}
+
+function hideFeedback(element) {
+    element.classList.add('hidden');
+    element.textContent = '';
+}
+</script>
+{% endblock %}

@@ -3,6 +3,7 @@
 //! These types represent validated domain objects for admin authentication.
 
 use chrono::{DateTime, Utc};
+use uuid::Uuid;
 use webauthn_rs::prelude::Passkey;
 
 use naked_pineapple_core::{AdminCredentialId, AdminUserId, Email};
@@ -21,6 +22,9 @@ pub struct AdminUser {
     pub name: String,
     /// Admin's role/permission level.
     pub role: AdminRole,
+    /// `WebAuthn` user ID for discoverable credentials (passkey login without email).
+    /// This UUID is stored in the passkey and returned during authentication.
+    pub webauthn_user_id: Uuid,
     /// When the admin was created.
     pub created_at: DateTime<Utc>,
     /// When the admin was last updated.

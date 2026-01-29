@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT id, email, name, role as \"role: AdminRole\",\n                   created_at as \"created_at: DateTime<Utc>\",\n                   updated_at as \"updated_at: DateTime<Utc>\"\n            FROM admin.admin_user\n            WHERE id = $1\n            ",
+  "query": "\n            SELECT id, email, name, role as \"role: AdminRole\",\n                   webauthn_user_id,\n                   created_at as \"created_at: DateTime<Utc>\",\n                   updated_at as \"updated_at: DateTime<Utc>\"\n            FROM admin.admin_user\n            WHERE email = $1\n            ",
   "describe": {
     "columns": [
       {
@@ -41,18 +41,28 @@
       },
       {
         "ordinal": 4,
+        "name": "webauthn_user_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 5,
         "name": "created_at: DateTime<Utc>",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 5,
+        "ordinal": 6,
         "name": "updated_at: DateTime<Utc>",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
-        "Int4"
+        {
+          "Custom": {
+            "name": "citext",
+            "kind": "Simple"
+          }
+        }
       ]
     },
     "nullable": [
@@ -61,8 +71,9 @@
       false,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "59ac37d73034425044d58042832c0a2b7383c94cb328a9a3c72abea83903c87c"
+  "hash": "c92977deaf60e09aa377c9ab47a25aad706dd281acd5de39d7fdb756359e08b1"
 }

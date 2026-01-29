@@ -58,6 +58,7 @@ pub mod inventory;
 pub mod orders;
 pub mod payouts;
 pub mod products;
+pub mod settings;
 pub mod setup;
 pub mod shopify;
 
@@ -169,18 +170,14 @@ fn collection_routes() -> Router<AppState> {
         )
 }
 
-/// Build the complete router for the admin application.
-pub fn routes() -> Router<AppState> {
+/// Build order routes.
+fn order_routes() -> Router<AppState> {
     Router::new()
-        .route("/", get(dashboard::dashboard))
-        .merge(product_routes())
-        // Orders CRUD
         .route("/orders", get(orders::index))
         .route("/orders/{id}", get(orders::show))
         .route("/orders/{id}/note", post(orders::update_note))
         .route("/orders/{id}/mark-paid", post(orders::mark_paid))
         .route("/orders/{id}/cancel", post(orders::cancel))
-        // Orders single-order actions
         .route("/orders/{id}/tags", post(orders::update_tags))
         .route("/orders/{id}/fulfill", post(orders::fulfill))
         .route(
@@ -200,7 +197,6 @@ pub fn routes() -> Router<AppState> {
         .route("/orders/{id}/capture", post(orders::capture))
         .route("/orders/{id}/archive", post(orders::archive))
         .route("/orders/{id}/print", get(orders::print))
-        // Order edit workflow
         .route(
             "/orders/{id}/edit",
             get(orders::edit).post(orders::edit_commit),
@@ -246,11 +242,18 @@ pub fn routes() -> Router<AppState> {
             "/orders/{id}/edit/search-products",
             get(orders::edit_search_products),
         )
-        // Orders bulk actions
         .route("/orders/bulk/add-tags", post(orders::bulk_add_tags))
         .route("/orders/bulk/remove-tags", post(orders::bulk_remove_tags))
         .route("/orders/bulk/archive", post(orders::bulk_archive))
         .route("/orders/bulk/cancel", post(orders::bulk_cancel))
+}
+
+/// Build the complete router for the admin application.
+pub fn routes() -> Router<AppState> {
+    Router::new()
+        .route("/", get(dashboard::dashboard))
+        .merge(product_routes())
+        .merge(order_routes())
         .merge(customer_routes())
         .merge(collection_routes())
         // Discounts CRUD
@@ -282,4 +285,6 @@ pub fn routes() -> Router<AppState> {
         .merge(chat::router())
         // Shopify OAuth
         .merge(shopify::router())
+        // Settings
+        .merge(settings::router())
 }

@@ -125,30 +125,19 @@ async function registerPasskey(name = 'Passkey') {
 }
 
 /**
- * Authenticate with a passkey.
+ * Authenticate with a passkey using discoverable credentials.
  *
- * @param {string} email - User's email address
+ * No email required - the authenticator will present available passkeys.
+ *
  * @returns {Promise<{success: boolean, redirect?: string, error?: string}>}
  */
-async function loginWithPasskey(email) {
+async function loginWithPasskey() {
     try {
-        // If no email provided, try to get from form
-        if (!email) {
-            const emailInput = document.getElementById('passkey-email');
-            if (emailInput) {
-                email = emailInput.value;
-            }
-        }
-
-        if (!email) {
-            return { success: false, error: 'Please enter your email address' };
-        }
-
-        // Start authentication - get challenge from server
+        // Start authentication - get challenge from server (no email needed)
         const startResponse = await fetch('/api/auth/webauthn/authenticate/start', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email }),
+            body: JSON.stringify({}),
         });
 
         if (!startResponse.ok) {
@@ -164,6 +153,8 @@ async function loginWithPasskey(email) {
             challenge: base64UrlToArrayBuffer(options.publicKey.challenge),
         };
 
+        // For discoverable credentials, allowCredentials is empty or undefined
+        // The browser/authenticator will prompt the user to select a passkey
         if (options.publicKey.allowCredentials) {
             publicKeyOptions.allowCredentials = options.publicKey.allowCredentials.map(cred => ({
                 ...cred,
@@ -171,7 +162,7 @@ async function loginWithPasskey(email) {
             }));
         }
 
-        // Prompt user to authenticate
+        // Prompt user to authenticate - authenticator will show available passkeys
         const credential = await navigator.credentials.get({
             publicKey: publicKeyOptions,
         });
@@ -180,7 +171,7 @@ async function loginWithPasskey(email) {
             return { success: false, error: 'User cancelled authentication' };
         }
 
-        // Prepare credential for server
+        // Prepare credential for server - includes userHandle which identifies the user
         const credentialResponse = {
             id: credential.id,
             rawId: arrayBufferToBase64Url(credential.rawId),
@@ -192,6 +183,7 @@ async function loginWithPasskey(email) {
             },
         };
 
+        // userHandle is critical for discoverable credentials - it contains the user ID
         if (credential.response.userHandle) {
             credentialResponse.response.userHandle = arrayBufferToBase64Url(credential.response.userHandle);
         }
@@ -210,7 +202,7 @@ async function loginWithPasskey(email) {
 
         const result = await finishResponse.json();
 
-        // Redirect to account page on success
+        // Redirect on success
         if (result.success && result.redirect) {
             window.location.href = result.redirect;
         }

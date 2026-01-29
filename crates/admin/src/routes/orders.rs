@@ -54,6 +54,10 @@ pub struct OrdersQuery {
     pub status: Option<String>,
     /// Risk level filter.
     pub risk_level: Option<String>,
+    /// Delivery method filter (shipping, `local_delivery`, pickup).
+    pub delivery_method: Option<String>,
+    /// Sales channel filter.
+    pub channel: Option<String>,
     /// Tag filter.
     pub tag: Option<String>,
     /// Discount code filter.
@@ -396,6 +400,20 @@ fn build_shopify_query(query: &OrdersQuery) -> Option<String> {
         parts.push(format!("risk_level:{risk}"));
     }
 
+    // Delivery method filter (maps to shipping_method_category in Shopify)
+    if let Some(method) = &query.delivery_method {
+        for m in method.split(',') {
+            parts.push(format!("shipping_method_category:{m}"));
+        }
+    }
+
+    // Sales channel filter
+    if let Some(channel) = &query.channel
+        && !channel.is_empty()
+    {
+        parts.push(format!("sales_channel:{channel}"));
+    }
+
     // Tag filter
     if let Some(tag) = &query.tag
         && !tag.is_empty()
@@ -458,6 +476,14 @@ fn build_preserve_params(query: &OrdersQuery) -> String {
     }
     if let Some(rl) = &query.risk_level {
         params.push(format!("risk_level={rl}"));
+    }
+    if let Some(dm) = &query.delivery_method {
+        params.push(format!("delivery_method={dm}"));
+    }
+    if let Some(ch) = &query.channel
+        && !ch.is_empty()
+    {
+        params.push(format!("channel={}", urlencoding::encode(ch)));
     }
     if let Some(t) = &query.tag
         && !t.is_empty()

@@ -345,6 +345,20 @@ pub fn orders_table_config() -> DataTableConfig {
                 FilterOption::new("low", "Low Risk"),
             ],
         ))
+        .filter(TableFilter::multi_select(
+            "delivery_method",
+            "Delivery Method",
+            vec![
+                FilterOption::new("shipping", "Shipping"),
+                FilterOption::new("local_delivery", "Local Delivery"),
+                FilterOption::new("pickup", "Pickup"),
+            ],
+        ))
+        .filter(TableFilter::text(
+            "channel",
+            "Sales Channel",
+            "e.g., Online Store",
+        ))
         .filter(TableFilter::date_range("created_at", "Created Date"))
         .filter(TableFilter::text("tag", "Tag", "Enter tag..."))
         .filter(TableFilter::text(

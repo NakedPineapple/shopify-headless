@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            INSERT INTO admin.admin_user (email, name, role)\n            VALUES ($1, $2, $3)\n            RETURNING id, email, name, role as \"role: AdminRole\",\n                      created_at as \"created_at: DateTime<Utc>\",\n                      updated_at as \"updated_at: DateTime<Utc>\"\n            ",
+  "query": "\n            SELECT id, email, name, role as \"role: AdminRole\",\n                   webauthn_user_id,\n                   created_at as \"created_at: DateTime<Utc>\",\n                   updated_at as \"updated_at: DateTime<Utc>\"\n            FROM admin.admin_user\n            WHERE id = $1\n            ",
   "describe": {
     "columns": [
       {
@@ -41,36 +41,23 @@
       },
       {
         "ordinal": 4,
+        "name": "webauthn_user_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 5,
         "name": "created_at: DateTime<Utc>",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 5,
+        "ordinal": 6,
         "name": "updated_at: DateTime<Utc>",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
-        {
-          "Custom": {
-            "name": "citext",
-            "kind": "Simple"
-          }
-        },
-        "Text",
-        {
-          "Custom": {
-            "name": "admin.admin_role",
-            "kind": {
-              "Enum": [
-                "super_admin",
-                "admin",
-                "viewer"
-              ]
-            }
-          }
-        }
+        "Int4"
       ]
     },
     "nullable": [
@@ -79,8 +66,9 @@
       false,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "ca0c718788f750ef69e78b0f2369a5e99be901ceaa4131d9ed5af53ed02f4a90"
+  "hash": "e828504b685b56db275b401677c8b8c50d1857a0b587ca94ec538c5e4b20bc3b"
 }

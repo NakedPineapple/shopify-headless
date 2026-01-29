@@ -13,8 +13,6 @@ use serde::{Deserialize, Serialize};
 use tower_sessions::Session;
 use webauthn_rs::prelude::*;
 
-use naked_pineapple_core::AdminUserId;
-
 use crate::middleware::{RequireAdminAuth, set_current_admin};
 use crate::models::{CurrentAdmin, session_keys};
 use crate::services::{AdminAuthError, AdminAuthService};
@@ -180,14 +178,8 @@ pub async fn finish_registration(
 }
 
 // ============================================================================
-// Authentication (no auth required)
+// Authentication (no auth required) - Discoverable Credentials
 // ============================================================================
-
-/// Request to start passkey authentication.
-#[derive(Debug, Deserialize)]
-pub struct StartAuthenticationRequest {
-    pub email: String,
-}
 
 /// Response from starting passkey authentication.
 #[derive(Debug, Serialize)]
@@ -195,9 +187,11 @@ pub struct StartAuthenticationResponse {
     pub options: RequestChallengeResponse,
 }
 
-/// Start passkey authentication.
+/// Start discoverable passkey authentication.
 ///
 /// POST /api/auth/webauthn/authenticate/start
+///
+/// No email required - authenticator will present available credentials.
 ///
 /// # Errors
 ///
@@ -205,23 +199,21 @@ pub struct StartAuthenticationResponse {
 pub async fn start_authentication(
     State(state): State<AppState>,
     session: Session,
-    Json(req): Json<StartAuthenticationRequest>,
 ) -> Result<Json<StartAuthenticationResponse>, ApiError> {
     let auth = AdminAuthService::new(state.pool(), state.webauthn());
 
-    // Start authentication
-    let (options, auth_state, admin_user_id) = auth
-        .start_passkey_authentication(&req.email)
+    // Start discoverable authentication - no email needed
+    let (options, auth_state) = auth
+        .start_passkey_authentication()
         .await
         .map_err(|e| match e {
-            AdminAuthError::UserNotFound => ApiError::new("user not found"),
-            AdminAuthError::NoCredentials => ApiError::new("no passkeys registered"),
+            AdminAuthError::NoCredentials => ApiError::new("no admin accounts exist"),
             other => ApiError::new(other.to_string()),
         })?;
 
-    // Store authentication state in session (includes admin_user_id for verification)
+    // Store authentication state in session
     session
-        .insert(session_keys::WEBAUTHN_AUTH, (auth_state, admin_user_id))
+        .insert(session_keys::WEBAUTHN_AUTH, auth_state)
         .await
         .map_err(|e| ApiError::new(format!("session error: {e}")))?;
 
@@ -241,9 +233,11 @@ pub struct FinishAuthenticationResponse {
     pub redirect: String,
 }
 
-/// Finish passkey authentication.
+/// Finish discoverable passkey authentication.
 ///
 /// POST /api/auth/webauthn/authenticate/finish
+///
+/// The user is identified by the user handle stored in the passkey.
 ///
 /// # Errors
 ///
@@ -254,7 +248,7 @@ pub async fn finish_authentication(
     Json(req): Json<FinishAuthenticationRequest>,
 ) -> Result<Json<FinishAuthenticationResponse>, ApiError> {
     // Get authentication state from session
-    let (auth_state, admin_user_id): (PasskeyAuthentication, AdminUserId) = session
+    let auth_state: DiscoverableAuthentication = session
         .get(session_keys::WEBAUTHN_AUTH)
         .await
         .map_err(|e| ApiError::new(format!("session error: {e}")))?
@@ -262,14 +256,14 @@ pub async fn finish_authentication(
 
     // Clear authentication state
     let _ = session
-        .remove::<(PasskeyAuthentication, AdminUserId)>(session_keys::WEBAUTHN_AUTH)
+        .remove::<DiscoverableAuthentication>(session_keys::WEBAUTHN_AUTH)
         .await;
 
     let auth = AdminAuthService::new(state.pool(), state.webauthn());
 
-    // Finish authentication
+    // Finish authentication - user is identified by the user handle in the credential
     let user = auth
-        .finish_passkey_authentication(&auth_state, &req.credential, admin_user_id)
+        .finish_passkey_authentication(&auth_state, &req.credential)
         .await
         .map_err(|e| ApiError::new(e.to_string()))?;
 

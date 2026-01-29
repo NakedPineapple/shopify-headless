@@ -5,6 +5,7 @@
 
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
+use uuid::Uuid;
 use webauthn_rs::prelude::Passkey;
 
 use naked_pineapple_core::{AdminCredentialId, AdminUserId, Email};
@@ -23,6 +24,7 @@ struct AdminUserRow {
     email: String,
     name: String,
     role: AdminRole,
+    webauthn_user_id: Uuid,
     created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
 }
@@ -40,6 +42,7 @@ impl TryFrom<AdminUserRow> for AdminUser {
             email,
             name: row.name,
             role: row.role,
+            webauthn_user_id: row.webauthn_user_id,
             created_at: row.created_at,
             updated_at: row.updated_at,
         })
@@ -102,6 +105,7 @@ impl<'a> AdminUserRepository<'a> {
             AdminUserRow,
             r#"
             SELECT id, email, name, role as "role: AdminRole",
+                   webauthn_user_id,
                    created_at as "created_at: DateTime<Utc>",
                    updated_at as "updated_at: DateTime<Utc>"
             FROM admin.admin_user
@@ -125,6 +129,7 @@ impl<'a> AdminUserRepository<'a> {
             AdminUserRow,
             r#"
             SELECT id, email, name, role as "role: AdminRole",
+                   webauthn_user_id,
                    created_at as "created_at: DateTime<Utc>",
                    updated_at as "updated_at: DateTime<Utc>"
             FROM admin.admin_user
@@ -149,6 +154,7 @@ impl<'a> AdminUserRepository<'a> {
             AdminUserRow,
             r#"
             SELECT id, email, name, role as "role: AdminRole",
+                   webauthn_user_id,
                    created_at as "created_at: DateTime<Utc>",
                    updated_at as "updated_at: DateTime<Utc>"
             FROM admin.admin_user
@@ -162,7 +168,39 @@ impl<'a> AdminUserRepository<'a> {
         row.map(TryInto::try_into).transpose()
     }
 
+    /// Get an admin user by their `WebAuthn` user ID (for discoverable credential authentication).
+    ///
+    /// # Errors
+    ///
+    /// Returns `RepositoryError::Database` if the query fails.
+    /// Returns `RepositoryError::DataCorruption` if the data is invalid.
+    pub async fn get_by_webauthn_user_id(
+        &self,
+        webauthn_user_id: Uuid,
+    ) -> Result<Option<AdminUser>, RepositoryError> {
+        let row = sqlx::query_as!(
+            AdminUserRow,
+            r#"
+            SELECT id, email, name, role as "role: AdminRole",
+                   webauthn_user_id,
+                   created_at as "created_at: DateTime<Utc>",
+                   updated_at as "updated_at: DateTime<Utc>"
+            FROM admin.admin_user
+            WHERE webauthn_user_id = $1
+            "#,
+            webauthn_user_id
+        )
+        .fetch_optional(self.pool)
+        .await?;
+
+        row.map(TryInto::try_into).transpose()
+    }
+
     /// Create a new admin user.
+    ///
+    /// The `webauthn_user_id` is the UUID that will be stored in passkeys for discoverable
+    /// credential authentication (login without email). This should be generated when
+    /// starting passkey registration and passed here.
     ///
     /// # Errors
     ///
@@ -173,19 +211,22 @@ impl<'a> AdminUserRepository<'a> {
         email: &Email,
         name: &str,
         role: AdminRole,
+        webauthn_user_id: Uuid,
     ) -> Result<AdminUser, RepositoryError> {
         let row = sqlx::query_as!(
             AdminUserRow,
             r#"
-            INSERT INTO admin.admin_user (email, name, role)
-            VALUES ($1, $2, $3)
+            INSERT INTO admin.admin_user (email, name, role, webauthn_user_id)
+            VALUES ($1, $2, $3, $4)
             RETURNING id, email, name, role as "role: AdminRole",
+                      webauthn_user_id,
                       created_at as "created_at: DateTime<Utc>",
                       updated_at as "updated_at: DateTime<Utc>"
             "#,
             email.as_str(),
             name,
-            role as AdminRole
+            role as AdminRole,
+            webauthn_user_id
         )
         .fetch_one(self.pool)
         .await
@@ -221,6 +262,30 @@ impl<'a> AdminUserRepository<'a> {
             ORDER BY created_at ASC
             "#,
             admin_user_id.as_i32()
+        )
+        .fetch_all(self.pool)
+        .await?;
+
+        rows.into_iter().map(TryInto::try_into).collect()
+    }
+
+    /// Get all credentials from all admin users.
+    ///
+    /// Used for discoverable credential authentication where we don't know the user upfront.
+    ///
+    /// # Errors
+    ///
+    /// Returns `RepositoryError::Database` if the query fails.
+    /// Returns `RepositoryError::DataCorruption` if any credential data is invalid.
+    pub async fn get_all_credentials(&self) -> Result<Vec<AdminCredential>, RepositoryError> {
+        let rows = sqlx::query_as!(
+            AdminCredentialRow,
+            r#"
+            SELECT id, admin_user_id, credential_id, public_key, name,
+                   created_at as "created_at: DateTime<Utc>"
+            FROM admin.admin_credential
+            ORDER BY created_at ASC
+            "#
         )
         .fetch_all(self.pool)
         .await?;
@@ -323,6 +388,134 @@ impl<'a> AdminUserRepository<'a> {
             "#,
             &public_key,
             credential_id
+        )
+        .execute(self.pool)
+        .await?;
+
+        if result.rows_affected() == 0 {
+            return Err(RepositoryError::NotFound);
+        }
+
+        Ok(())
+    }
+
+    /// Update an admin user's display name.
+    ///
+    /// # Errors
+    ///
+    /// Returns `RepositoryError::NotFound` if the user doesn't exist.
+    /// Returns `RepositoryError::Database` for other database errors.
+    pub async fn update_name(
+        &self,
+        id: AdminUserId,
+        name: &str,
+    ) -> Result<AdminUser, RepositoryError> {
+        let row = sqlx::query_as!(
+            AdminUserRow,
+            r#"
+            UPDATE admin.admin_user
+            SET name = $1
+            WHERE id = $2
+            RETURNING id, email, name, role as "role: AdminRole",
+                      webauthn_user_id,
+                      created_at as "created_at: DateTime<Utc>",
+                      updated_at as "updated_at: DateTime<Utc>"
+            "#,
+            name,
+            id.as_i32()
+        )
+        .fetch_optional(self.pool)
+        .await?
+        .ok_or(RepositoryError::NotFound)?;
+
+        row.try_into()
+    }
+
+    /// Update an admin user's email address.
+    ///
+    /// # Errors
+    ///
+    /// Returns `RepositoryError::NotFound` if the user doesn't exist.
+    /// Returns `RepositoryError::Conflict` if the email is already used by another user.
+    /// Returns `RepositoryError::Database` for other database errors.
+    pub async fn update_email(
+        &self,
+        id: AdminUserId,
+        email: &Email,
+    ) -> Result<AdminUser, RepositoryError> {
+        let row = sqlx::query_as!(
+            AdminUserRow,
+            r#"
+            UPDATE admin.admin_user
+            SET email = $1
+            WHERE id = $2
+            RETURNING id, email, name, role as "role: AdminRole",
+                      webauthn_user_id,
+                      created_at as "created_at: DateTime<Utc>",
+                      updated_at as "updated_at: DateTime<Utc>"
+            "#,
+            email.as_str(),
+            id.as_i32()
+        )
+        .fetch_optional(self.pool)
+        .await
+        .map_err(|e| {
+            if let sqlx::Error::Database(ref db_err) = e
+                && db_err.is_unique_violation()
+            {
+                return RepositoryError::Conflict("email already exists".to_owned());
+            }
+            RepositoryError::Database(e)
+        })?
+        .ok_or(RepositoryError::NotFound)?;
+
+        row.try_into()
+    }
+
+    /// Count the number of credentials for an admin user.
+    ///
+    /// # Errors
+    ///
+    /// Returns `RepositoryError::Database` if the query fails.
+    pub async fn count_credentials(
+        &self,
+        admin_user_id: AdminUserId,
+    ) -> Result<i64, RepositoryError> {
+        let count = sqlx::query_scalar!(
+            r#"
+            SELECT COUNT(*) as "count!"
+            FROM admin.admin_credential
+            WHERE admin_user_id = $1
+            "#,
+            admin_user_id.as_i32()
+        )
+        .fetch_one(self.pool)
+        .await?;
+
+        Ok(count)
+    }
+
+    /// Delete a credential by its database ID.
+    ///
+    /// Verifies ownership before deletion.
+    ///
+    /// # Errors
+    ///
+    /// Returns `RepositoryError::NotFound` if the credential doesn't exist or doesn't
+    /// belong to the specified user.
+    /// Returns `RepositoryError::Database` for other database errors.
+    pub async fn delete_credential(
+        &self,
+        credential_id: AdminCredentialId,
+        admin_user_id: AdminUserId,
+    ) -> Result<(), RepositoryError> {
+        let result = sqlx::query!(
+            r#"
+            DELETE FROM admin.admin_credential
+            WHERE id = $1 AND admin_user_id = $2
+            "#,
+            credential_id.as_i32(),
+            admin_user_id.as_i32()
         )
         .execute(self.pool)
         .await?;
