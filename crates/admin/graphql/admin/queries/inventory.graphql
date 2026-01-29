@@ -221,14 +221,8 @@ mutation ActivateInventory($inventoryItemId: ID!, $locationId: ID!) {
 }
 
 # Deactivate inventory at a location
-mutation DeactivateInventory(
-  $inventoryLevelId: ID!
-  $locationId: ID!
-) {
-  inventoryDeactivate(
-    inventoryLevelId: $inventoryLevelId
-    locationId: $locationId
-  ) {
+mutation DeactivateInventory($inventoryLevelId: ID!) {
+  inventoryDeactivate(inventoryLevelId: $inventoryLevelId) {
     userErrors {
       field
       message

@@ -1,0 +1,130 @@
+<!-- Single Item Adjust Quantity Modal -->
+<div id="adjust-modal" data-modal-backdrop class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div class="bg-card rounded-xl border border-border p-6 w-full max-w-md shadow-xl">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-medium text-foreground">Adjust Quantity</h3>
+            <button type="button"
+                    onclick="closeAdjustModal()"
+                    class="p-1 text-muted-foreground hover:text-foreground transition-colors">
+                <i class="ph ph-x text-lg"></i>
+            </button>
+        </div>
+
+        <form id="adjust-form"
+              hx-post="/inventory/adjust"
+              hx-swap="none"
+              hx-on::after-request="if(event.detail.successful) { closeAdjustModal(); location.reload(); }">
+            <input type="hidden" name="inventory_item_id" id="adjust-inventory-item-id">
+            <input type="hidden" name="location_id" id="adjust-location-id">
+
+            <!-- Location Display -->
+            <div class="mb-4 p-3 bg-muted rounded-lg">
+                <span class="text-sm text-muted-foreground">Location:</span>
+                <span id="adjust-location-name" class="text-sm font-medium text-foreground ml-2"></span>
+            </div>
+
+            <!-- Adjustment Type -->
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-foreground mb-2">Adjustment Type</label>
+                <div class="flex gap-4">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="radio" name="adjustment_type" value="adjust" checked
+                               onchange="updateFormAction(this.value)"
+                               class="text-primary focus:ring-primary">
+                        <span class="text-sm text-foreground">Adjust by</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="radio" name="adjustment_type" value="set"
+                               onchange="updateFormAction(this.value)"
+                               class="text-primary focus:ring-primary">
+                        <span class="text-sm text-foreground">Set to</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Quantity -->
+            <div class="mb-4">
+                <label for="adjust-quantity" class="block text-sm font-medium text-foreground mb-1">
+                    Quantity
+                </label>
+                <input type="number"
+                       id="adjust-quantity"
+                       name="delta"
+                       placeholder="0"
+                       required
+                       class="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-ring focus:border-ring">
+                <p id="adjust-quantity-hint" class="text-xs text-muted-foreground mt-1">Use negative numbers to decrease (e.g., -5)</p>
+            </div>
+
+            <!-- Reason -->
+            <div class="mb-4">
+                <label for="adjust-reason" class="block text-sm font-medium text-foreground mb-1">
+                    Reason <span class="text-muted-foreground">(required)</span>
+                </label>
+                <select id="adjust-reason"
+                        name="reason"
+                        required
+                        class="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-ring focus:border-ring">
+                    <option value="">Select a reason...</option>
+                    <option value="Correction">Correction</option>
+                    <option value="Cycle count">Cycle Count</option>
+                    <option value="Damaged">Damaged</option>
+                    <option value="Received">Received</option>
+                    <option value="Restock">Restock</option>
+                    <option value="Shrinkage">Shrinkage</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+
+            <div class="flex justify-end gap-3">
+                <button type="button"
+                        onclick="closeAdjustModal()"
+                        class="px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                    Cancel
+                </button>
+                <button type="submit"
+                        class="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors">
+                    Apply
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openAdjustModal(inventoryItemId, locationId, locationName) {
+    document.getElementById('adjust-inventory-item-id').value = inventoryItemId;
+    document.getElementById('adjust-location-id').value = locationId;
+    document.getElementById('adjust-location-name').textContent = locationName;
+    document.getElementById('adjust-quantity').value = '';
+    document.getElementById('adjust-reason').value = '';
+    document.getElementById('adjust-modal').classList.remove('hidden');
+    // Reset to adjust mode
+    document.querySelector('input[name="adjustment_type"][value="adjust"]').checked = true;
+    updateFormAction('adjust');
+}
+
+function closeAdjustModal() {
+    document.getElementById('adjust-modal').classList.add('hidden');
+}
+
+function updateFormAction(type) {
+    const form = document.getElementById('adjust-form');
+    const quantityInput = document.getElementById('adjust-quantity');
+    const hint = document.getElementById('adjust-quantity-hint');
+
+    if (type === 'set') {
+        form.setAttribute('hx-post', '/inventory/set');
+        quantityInput.name = 'quantity';
+        quantityInput.min = '0';
+        hint.textContent = 'Enter the new total quantity';
+    } else {
+        form.setAttribute('hx-post', '/inventory/adjust');
+        quantityInput.name = 'delta';
+        quantityInput.removeAttribute('min');
+        hint.textContent = 'Use negative numbers to decrease (e.g., -5)';
+    }
+    // Reinitialize HTMX on the form
+    htmx.process(form);
+}
+</script>

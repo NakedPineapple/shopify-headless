@@ -67,6 +67,30 @@ pub struct InventorySetForm {
     pub reason: Option<String>,
 }
 
+/// Form input for inventory move between locations.
+#[derive(Debug, Deserialize)]
+pub struct InventoryMoveForm {
+    pub inventory_item_id: String,
+    pub from_location_id: String,
+    pub to_location_id: String,
+    pub quantity: i64,
+    pub reason: Option<String>,
+}
+
+/// Form input for activating inventory at a location.
+#[derive(Debug, Deserialize)]
+pub struct InventoryActivateForm {
+    pub inventory_item_id: String,
+    pub location_id: String,
+}
+
+/// Form input for deactivating inventory at a location.
+#[derive(Debug, Deserialize)]
+pub struct InventoryDeactivateForm {
+    pub inventory_level_id: String,
+    pub location_id: String,
+}
+
 // =============================================================================
 // View Types
 // =============================================================================
@@ -177,6 +201,15 @@ fn extract_product_info(
         status_text.to_string(),
         status_css.to_string(),
     )
+}
+
+/// Ensure ID has the proper Shopify GID format for inventory items.
+fn normalize_inventory_item_id(id: &str) -> String {
+    if id.starts_with("gid://") {
+        id.to_string()
+    } else {
+        format!("gid://shopify/InventoryItem/{id}")
+    }
 }
 
 impl From<&InventoryItem> for InventoryItemView {
@@ -800,8 +833,10 @@ pub async fn show(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> impl IntoResponse {
+    let inventory_item_id = normalize_inventory_item_id(&id);
+
     // Fetch inventory item and locations in parallel
-    let item_future = state.shopify().get_inventory_item(&id);
+    let item_future = state.shopify().get_inventory_item(&inventory_item_id);
     let locations_future = state.shopify().get_locations();
 
     let (item_result, locations_result) = tokio::join!(item_future, locations_future);
@@ -852,7 +887,9 @@ pub async fn edit(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> impl IntoResponse {
-    let item = match state.shopify().get_inventory_item(&id).await {
+    let inventory_item_id = normalize_inventory_item_id(&id);
+
+    let item = match state.shopify().get_inventory_item(&inventory_item_id).await {
         Ok(item) => InventoryItemDetailView::from(&item),
         Err(e) => {
             tracing::error!(id = %id, error = %e, "Failed to fetch inventory item");
@@ -885,6 +922,8 @@ pub async fn update(
     Path(id): Path<String>,
     Form(form): Form<InventoryUpdateForm>,
 ) -> impl IntoResponse {
+    let inventory_item_id = normalize_inventory_item_id(&id);
+
     let input = InventoryItemUpdateInput {
         sku: None, // SKU updates require variant mutation
         tracked: form.tracked.as_deref().map(|v| v == "on" || v == "true"),
@@ -898,7 +937,11 @@ pub async fn update(
         province_code_of_origin: form.province_code_of_origin.clone(),
     };
 
-    match state.shopify().update_inventory_item(&id, &input).await {
+    match state
+        .shopify()
+        .update_inventory_item(&inventory_item_id, &input)
+        .await
+    {
         Ok(_) => {
             tracing::info!(id = %id, "Inventory item updated");
             axum::response::Redirect::to(&format!("/inventory/{id}")).into_response()
@@ -908,6 +951,140 @@ pub async fn update(
             (
                 StatusCode::BAD_REQUEST,
                 Html(format!("Failed to update: {e}")),
+            )
+                .into_response()
+        }
+    }
+}
+
+/// POST /inventory/move - Move inventory between locations (HTMX handler).
+#[instrument(skip(_admin, state))]
+pub async fn move_quantity(
+    RequireAdminAuth(_admin): RequireAdminAuth,
+    State(state): State<AppState>,
+    Form(form): Form<InventoryMoveForm>,
+) -> impl IntoResponse {
+    let reason = form
+        .reason
+        .as_deref()
+        .unwrap_or("Stock transfer from admin");
+
+    match state
+        .shopify()
+        .move_inventory(
+            &form.inventory_item_id,
+            &form.from_location_id,
+            &form.to_location_id,
+            form.quantity,
+            Some(reason),
+        )
+        .await
+    {
+        Ok(()) => {
+            tracing::info!(
+                inventory_item_id = %form.inventory_item_id,
+                from_location = %form.from_location_id,
+                to_location = %form.to_location_id,
+                quantity = %form.quantity,
+                "Inventory moved"
+            );
+            (
+                StatusCode::OK,
+                [("HX-Trigger", "inventory-updated")],
+                Html(format!(
+                    r#"<span class="text-green-600 dark:text-green-400">Moved {} units</span>"#,
+                    form.quantity
+                )),
+            )
+        }
+        Err(e) => {
+            tracing::error!(
+                inventory_item_id = %form.inventory_item_id,
+                from_location = %form.from_location_id,
+                to_location = %form.to_location_id,
+                quantity = %form.quantity,
+                error = %e,
+                "Failed to move inventory"
+            );
+            (
+                StatusCode::BAD_REQUEST,
+                [("HX-Trigger", "inventory-error")],
+                Html(format!(
+                    r#"<span class="text-red-600 dark:text-red-400">Error: {e}</span>"#
+                )),
+            )
+        }
+    }
+}
+
+/// POST /inventory/:id/activate - Activate inventory at a location.
+#[instrument(skip(_admin, state))]
+pub async fn activate(
+    RequireAdminAuth(_admin): RequireAdminAuth,
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    Form(form): Form<InventoryActivateForm>,
+) -> impl IntoResponse {
+    match state
+        .shopify()
+        .activate_inventory(&form.inventory_item_id, &form.location_id)
+        .await
+    {
+        Ok(()) => {
+            tracing::info!(
+                inventory_item_id = %form.inventory_item_id,
+                location_id = %form.location_id,
+                "Inventory activated at location"
+            );
+            axum::response::Redirect::to(&format!("/inventory/{id}")).into_response()
+        }
+        Err(e) => {
+            tracing::error!(
+                inventory_item_id = %form.inventory_item_id,
+                location_id = %form.location_id,
+                error = %e,
+                "Failed to activate inventory"
+            );
+            (
+                StatusCode::BAD_REQUEST,
+                Html(format!("Failed to activate: {e}")),
+            )
+                .into_response()
+        }
+    }
+}
+
+/// POST /inventory/:id/deactivate - Deactivate inventory at a location.
+#[instrument(skip(_admin, state))]
+pub async fn deactivate(
+    RequireAdminAuth(_admin): RequireAdminAuth,
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    Form(form): Form<InventoryDeactivateForm>,
+) -> impl IntoResponse {
+    match state
+        .shopify()
+        .deactivate_inventory(&form.inventory_level_id)
+        .await
+    {
+        Ok(()) => {
+            tracing::info!(
+                inventory_level_id = %form.inventory_level_id,
+                location_id = %form.location_id,
+                "Inventory deactivated at location"
+            );
+            axum::response::Redirect::to(&format!("/inventory/{id}")).into_response()
+        }
+        Err(e) => {
+            tracing::error!(
+                inventory_level_id = %form.inventory_level_id,
+                location_id = %form.location_id,
+                error = %e,
+                "Failed to deactivate inventory"
+            );
+            (
+                StatusCode::BAD_REQUEST,
+                Html(format!("Failed to deactivate: {e}")),
             )
                 .into_response()
         }

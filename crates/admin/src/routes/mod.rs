@@ -266,11 +266,14 @@ pub fn routes() -> Router<AppState> {
         .route("/inventory", get(inventory::index))
         .route("/inventory/adjust", post(inventory::adjust))
         .route("/inventory/set", post(inventory::set))
+        .route("/inventory/move", post(inventory::move_quantity))
         .route(
             "/inventory/{id}",
             get(inventory::show).post(inventory::update),
         )
         .route("/inventory/{id}/edit", get(inventory::edit))
+        .route("/inventory/{id}/activate", post(inventory::activate))
+        .route("/inventory/{id}/deactivate", post(inventory::deactivate))
         // Gift Cards CRUD
         .route(
             "/gift-cards",

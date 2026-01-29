@@ -6,7 +6,7 @@
 <nav class="flex items-center gap-2 text-sm text-muted-foreground mb-2">
     <a href="/inventory" class="hover:text-foreground transition-colors">Inventory</a>
     <i class="ph ph-caret-right text-xs"></i>
-    <a href="/inventory/{{ item.id }}" class="hover:text-foreground transition-colors">{{ item.sku.as_deref().unwrap_or("No SKU") }}</a>
+    <a href="/inventory/{{ item.id|extract_id }}" class="hover:text-foreground transition-colors">{{ item.sku.as_deref().unwrap_or("No SKU") }}</a>
     <i class="ph ph-caret-right text-xs"></i>
     <span class="text-foreground">Edit</span>
 </nav>
@@ -14,7 +14,7 @@
 {% endblock %}
 
 {% block content %}
-<form method="POST" action="/inventory/{{ item.id }}" class="max-w-2xl space-y-6">
+<form method="POST" action="/inventory/{{ item.id|extract_id }}" class="max-w-2xl space-y-6">
     <!-- Product Info (Read-only) -->
     <div class="bg-card rounded-xl border border-border p-6">
         <h2 class="text-lg font-medium text-foreground mb-4">Product</h2>
@@ -136,7 +136,7 @@
 
     <!-- Form Actions -->
     <div class="flex items-center justify-end gap-3">
-        <a href="/inventory/{{ item.id }}"
+        <a href="/inventory/{{ item.id|extract_id }}"
            class="px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
             Cancel
         </a>

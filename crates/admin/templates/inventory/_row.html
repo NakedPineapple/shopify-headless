@@ -11,7 +11,7 @@
 
     <!-- Product -->
     <td data-column="product" data-label="" class="px-6 py-4 card-header {% if !col_visible.product %}hidden{% endif %}">
-        <a href="/inventory/{{ item.id }}" class="flex items-center gap-4 group">
+        <a href="/inventory/{{ item.id|extract_id }}" class="flex items-center gap-4 group">
             {% if let Some(url) = item.product_image_url %}
             <img src="{{ url }}" alt="{{ item.product_title }}" class="w-10 h-10 rounded-lg object-cover shrink-0">
             {% else %}
@@ -132,7 +132,7 @@
             </form>
 
             <!-- View/Edit link -->
-            <a href="/inventory/{{ item.id }}"
+            <a href="/inventory/{{ item.id|extract_id }}"
                class="p-2 text-muted-foreground hover:text-foreground transition-colors"
                title="View details">
                 <i class="ph ph-eye"></i>

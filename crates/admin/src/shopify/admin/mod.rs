@@ -41,26 +41,27 @@ use conversions::{
     convert_product_connection, convert_single_inventory_item,
 };
 use queries::{
-    CollectionAddProductsV2, CollectionCreate, CollectionDelete, CollectionRemoveProducts,
-    CollectionUpdate, CollectionUpdateFields, CollectionUpdateSortOrder, CustomerAddressCreate,
-    CustomerAddressDelete, CustomerAddressUpdate, CustomerCreate, CustomerDelete,
-    CustomerEmailMarketingConsentUpdate, CustomerGenerateAccountActivationUrl, CustomerMerge,
-    CustomerSendAccountInviteEmail, CustomerSmsMarketingConsentUpdate, CustomerUpdate,
-    CustomerUpdateDefaultAddress, DiscountCodeBasicCreate, DiscountCodeBasicUpdate,
-    DiscountCodeDeactivate, FileDelete, FileUpdate, FulfillmentCreate, FulfillmentOrderHold,
-    FulfillmentOrderReleaseHold, FulfillmentTrackingInfoUpdate, GetCollection,
-    GetCollectionWithProducts, GetCollections, GetCustomer, GetCustomers, GetDiscountCode,
-    GetDiscountCodes, GetFulfillmentOrders, GetGiftCards, GetInventoryItem, GetInventoryItems,
-    GetInventoryLevels, GetLocations, GetOrder, GetOrderDetail, GetOrders, GetPayout, GetPayouts,
-    GetProduct, GetProducts, GetPublications, GiftCardCreate, GiftCardUpdate,
-    InventoryAdjustQuantities, InventorySetQuantities, OrderCancel, OrderCapture, OrderClose,
-    OrderEditAddCustomItem, OrderEditAddLineItemDiscount, OrderEditAddShippingLine,
-    OrderEditAddVariant, OrderEditBegin, OrderEditCommit, OrderEditRemoveDiscount,
-    OrderEditRemoveShippingLine, OrderEditSetQuantity, OrderEditUpdateDiscount,
-    OrderEditUpdateShippingLine, OrderMarkAsPaid, OrderOpen, OrderTagsAdd, OrderTagsRemove,
-    OrderUpdate, ProductCreate, ProductDelete, ProductReorderMedia, ProductSetMedia, ProductUpdate,
-    ProductVariantsBulkUpdate, PublishablePublish, PublishableUnpublish, RefundCreate,
-    ReturnCreate, StagedUploadsCreate, SuggestedRefund, TagsAdd, TagsRemove, UpdateInventoryItem,
+    ActivateInventory, CollectionAddProductsV2, CollectionCreate, CollectionDelete,
+    CollectionRemoveProducts, CollectionUpdate, CollectionUpdateFields, CollectionUpdateSortOrder,
+    CustomerAddressCreate, CustomerAddressDelete, CustomerAddressUpdate, CustomerCreate,
+    CustomerDelete, CustomerEmailMarketingConsentUpdate, CustomerGenerateAccountActivationUrl,
+    CustomerMerge, CustomerSendAccountInviteEmail, CustomerSmsMarketingConsentUpdate,
+    CustomerUpdate, CustomerUpdateDefaultAddress, DeactivateInventory, DiscountCodeBasicCreate,
+    DiscountCodeBasicUpdate, DiscountCodeDeactivate, FileDelete, FileUpdate, FulfillmentCreate,
+    FulfillmentOrderHold, FulfillmentOrderReleaseHold, FulfillmentTrackingInfoUpdate,
+    GetCollection, GetCollectionWithProducts, GetCollections, GetCustomer, GetCustomers,
+    GetDiscountCode, GetDiscountCodes, GetFulfillmentOrders, GetGiftCards, GetInventoryItem,
+    GetInventoryItems, GetInventoryLevels, GetLocations, GetOrder, GetOrderDetail, GetOrders,
+    GetPayout, GetPayouts, GetProduct, GetProducts, GetPublications, GiftCardCreate,
+    GiftCardUpdate, InventoryAdjustQuantities, InventorySetQuantities, MoveInventory, OrderCancel,
+    OrderCapture, OrderClose, OrderEditAddCustomItem, OrderEditAddLineItemDiscount,
+    OrderEditAddShippingLine, OrderEditAddVariant, OrderEditBegin, OrderEditCommit,
+    OrderEditRemoveDiscount, OrderEditRemoveShippingLine, OrderEditSetQuantity,
+    OrderEditUpdateDiscount, OrderEditUpdateShippingLine, OrderMarkAsPaid, OrderOpen, OrderTagsAdd,
+    OrderTagsRemove, OrderUpdate, ProductCreate, ProductDelete, ProductReorderMedia,
+    ProductSetMedia, ProductUpdate, ProductVariantsBulkUpdate, PublishablePublish,
+    PublishableUnpublish, RefundCreate, ReturnCreate, StagedUploadsCreate, SuggestedRefund,
+    TagsAdd, TagsRemove, UpdateInventoryItem,
 };
 
 /// OAuth token for Admin API access.
@@ -5045,6 +5046,147 @@ impl AdminClient {
 
         // Re-fetch the item to get the full updated data
         self.get_inventory_item(id).await
+    }
+
+    /// Move inventory from one location to another.
+    ///
+    /// # Arguments
+    ///
+    /// * `inventory_item_id` - The inventory item ID
+    /// * `from_location_id` - Source location ID
+    /// * `to_location_id` - Destination location ID
+    /// * `quantity` - Quantity to move
+    /// * `reason` - Reason for the move
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails or returns user errors.
+    #[instrument(skip(self))]
+    pub async fn move_inventory(
+        &self,
+        inventory_item_id: &str,
+        from_location_id: &str,
+        to_location_id: &str,
+        quantity: i64,
+        reason: Option<&str>,
+    ) -> Result<(), AdminShopifyError> {
+        use queries::move_inventory::{
+            InventoryMoveQuantitiesInput, InventoryMoveQuantityChange,
+            InventoryMoveQuantityTerminalInput,
+        };
+
+        let variables = queries::move_inventory::Variables {
+            input: InventoryMoveQuantitiesInput {
+                changes: vec![InventoryMoveQuantityChange {
+                    inventory_item_id: inventory_item_id.to_string(),
+                    quantity,
+                    from: InventoryMoveQuantityTerminalInput {
+                        location_id: from_location_id.to_string(),
+                        name: "available".to_string(),
+                        ledger_document_uri: None,
+                        change_from_quantity: None,
+                    },
+                    to: InventoryMoveQuantityTerminalInput {
+                        location_id: to_location_id.to_string(),
+                        name: "available".to_string(),
+                        ledger_document_uri: None,
+                        change_from_quantity: None,
+                    },
+                }],
+                reason: reason.unwrap_or("Stock transfer").to_string(),
+                reference_document_uri: String::new(),
+            },
+        };
+
+        let response = self.execute::<MoveInventory>(variables).await?;
+
+        // Check for user errors
+        if let Some(ref payload) = response.inventory_move_quantities
+            && !payload.user_errors.is_empty()
+        {
+            let error_messages: Vec<String> = payload
+                .user_errors
+                .iter()
+                .map(|e| e.message.clone())
+                .collect();
+            return Err(AdminShopifyError::UserError(error_messages.join("; ")));
+        }
+
+        Ok(())
+    }
+
+    /// Activate inventory tracking at a location.
+    ///
+    /// # Arguments
+    ///
+    /// * `inventory_item_id` - The inventory item ID
+    /// * `location_id` - The location to activate at
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails or returns user errors.
+    #[instrument(skip(self))]
+    pub async fn activate_inventory(
+        &self,
+        inventory_item_id: &str,
+        location_id: &str,
+    ) -> Result<(), AdminShopifyError> {
+        let variables = queries::activate_inventory::Variables {
+            inventory_item_id: inventory_item_id.to_string(),
+            location_id: location_id.to_string(),
+        };
+
+        let response = self.execute::<ActivateInventory>(variables).await?;
+
+        // Check for user errors
+        if let Some(ref payload) = response.inventory_activate
+            && !payload.user_errors.is_empty()
+        {
+            let error_messages: Vec<String> = payload
+                .user_errors
+                .iter()
+                .map(|e| e.message.clone())
+                .collect();
+            return Err(AdminShopifyError::UserError(error_messages.join("; ")));
+        }
+
+        Ok(())
+    }
+
+    /// Deactivate inventory tracking at a location.
+    ///
+    /// # Arguments
+    ///
+    /// * `inventory_level_id` - The inventory level ID (not item ID)
+    /// * `location_id` - The location to deactivate at
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails or returns user errors.
+    #[instrument(skip(self))]
+    pub async fn deactivate_inventory(
+        &self,
+        inventory_level_id: &str,
+    ) -> Result<(), AdminShopifyError> {
+        let variables = queries::deactivate_inventory::Variables {
+            inventory_level_id: inventory_level_id.to_string(),
+        };
+
+        let response = self.execute::<DeactivateInventory>(variables).await?;
+
+        // Check for user errors
+        if let Some(ref payload) = response.inventory_deactivate
+            && !payload.user_errors.is_empty()
+        {
+            let error_messages: Vec<String> = payload
+                .user_errors
+                .iter()
+                .map(|e| e.message.clone())
+                .collect();
+            return Err(AdminShopifyError::UserError(error_messages.join("; ")));
+        }
+
+        Ok(())
     }
 
     // =========================================================================

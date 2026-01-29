@@ -26,7 +26,7 @@
 {% endblock %}
 
 {% block page_actions %}
-<a href="/inventory/{{ item.id }}/edit"
+<a href="/inventory/{{ item.id|extract_id }}/edit"
    class="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors">
     <i class="ph ph-pencil"></i>
     Edit
@@ -61,7 +61,7 @@
                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ item.status_class }}">
                         {{ item.status }}
                     </span>
-                    <a href="/products/{{ product_id }}"
+                    <a href="/products/{{ product_id|extract_id }}"
                        class="p-2 text-muted-foreground hover:text-foreground transition-colors"
                        title="View product">
                         <i class="ph ph-arrow-square-out"></i>
@@ -121,26 +121,43 @@
                             </td>
                             <td class="px-6 py-4 text-center">
                                 <div class="flex items-center justify-center gap-1">
+                                    <!-- Quick adjust buttons -->
                                     <form hx-post="/inventory/adjust"
                                           hx-swap="none"
-                                          class="flex items-center gap-1">
+                                          class="flex items-center">
                                         <input type="hidden" name="inventory_item_id" value="{{ item.id }}">
                                         <input type="hidden" name="location_id" value="{{ level.location_id }}">
                                         <input type="hidden" name="delta" value="-1">
-                                        <button type="submit" class="w-7 h-7 rounded bg-muted hover:bg-accent flex items-center justify-center transition-colors" title="Decrease">
+                                        <button type="submit" class="w-7 h-7 rounded bg-muted hover:bg-accent flex items-center justify-center transition-colors" title="Decrease by 1">
                                             <i class="ph ph-minus text-sm text-muted-foreground"></i>
                                         </button>
                                     </form>
                                     <form hx-post="/inventory/adjust"
                                           hx-swap="none"
-                                          class="flex items-center gap-1">
+                                          class="flex items-center">
                                         <input type="hidden" name="inventory_item_id" value="{{ item.id }}">
                                         <input type="hidden" name="location_id" value="{{ level.location_id }}">
                                         <input type="hidden" name="delta" value="1">
-                                        <button type="submit" class="w-7 h-7 rounded bg-muted hover:bg-accent flex items-center justify-center transition-colors" title="Increase">
+                                        <button type="submit" class="w-7 h-7 rounded bg-muted hover:bg-accent flex items-center justify-center transition-colors" title="Increase by 1">
                                             <i class="ph ph-plus text-sm text-muted-foreground"></i>
                                         </button>
                                     </form>
+                                    <!-- Adjust with reason button -->
+                                    <button type="button"
+                                            onclick="openAdjustModal('{{ item.id }}', '{{ level.location_id }}', '{{ level.location_name }}')"
+                                            class="w-7 h-7 rounded bg-muted hover:bg-accent flex items-center justify-center transition-colors ml-1"
+                                            title="Adjust with reason">
+                                        <i class="ph ph-pencil-simple text-sm text-muted-foreground"></i>
+                                    </button>
+                                    {% if locations.len() > 1 && level.available > 0 %}
+                                    <!-- Move to another location -->
+                                    <button type="button"
+                                            onclick="openMoveModal('{{ item.id }}', '{{ level.location_id }}', '{{ level.location_name }}', {{ level.available }})"
+                                            class="w-7 h-7 rounded bg-muted hover:bg-accent flex items-center justify-center transition-colors"
+                                            title="Move to another location">
+                                        <i class="ph ph-arrows-left-right text-sm text-muted-foreground"></i>
+                                    </button>
+                                    {% endif %}
                                 </div>
                             </td>
                         </tr>
@@ -159,6 +176,15 @@
                 </table>
             </div>
         </div>
+
+        <!-- TODO: Adjustment History - fetch from ShipHero GraphQL API
+             Display a timeline of inventory changes with:
+             - Timestamp
+             - Change type and delta
+             - Reason code
+             - Staff attribution (if available)
+             - Reference document (if any)
+        -->
     </div>
 
     <!-- Sidebar -->
@@ -231,6 +257,14 @@
         </div>
     </div>
 </div>
+
+<!-- Adjust Modal -->
+{% include "inventory/_adjust_modal.html" %}
+
+<!-- Move Modal (only if multiple locations) -->
+{% if locations.len() > 1 %}
+{% include "inventory/_move_modal.html" %}
+{% endif %}
 
 <script>
 // Reload page after HTMX adjustment
