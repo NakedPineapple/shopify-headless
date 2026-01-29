@@ -526,4 +526,82 @@ impl<'a> AdminUserRepository<'a> {
 
         Ok(())
     }
+
+    /// Update an admin user's role.
+    ///
+    /// # Errors
+    ///
+    /// Returns `RepositoryError::NotFound` if the user doesn't exist.
+    /// Returns `RepositoryError::Database` for other database errors.
+    pub async fn update_role(
+        &self,
+        id: AdminUserId,
+        role: AdminRole,
+    ) -> Result<AdminUser, RepositoryError> {
+        let row = sqlx::query_as!(
+            AdminUserRow,
+            r#"
+            UPDATE admin.admin_user
+            SET role = $1
+            WHERE id = $2
+            RETURNING id, email, name, role as "role: AdminRole",
+                      webauthn_user_id,
+                      created_at as "created_at: DateTime<Utc>",
+                      updated_at as "updated_at: DateTime<Utc>"
+            "#,
+            role as AdminRole,
+            id.as_i32()
+        )
+        .fetch_optional(self.pool)
+        .await?
+        .ok_or(RepositoryError::NotFound)?;
+
+        row.try_into()
+    }
+
+    /// Delete an admin user by their ID.
+    ///
+    /// This will cascade delete their credentials and sessions.
+    ///
+    /// # Errors
+    ///
+    /// Returns `RepositoryError::NotFound` if the user doesn't exist.
+    /// Returns `RepositoryError::Database` for other database errors.
+    pub async fn delete(&self, id: AdminUserId) -> Result<(), RepositoryError> {
+        let result = sqlx::query!(
+            r#"
+            DELETE FROM admin.admin_user
+            WHERE id = $1
+            "#,
+            id.as_i32()
+        )
+        .execute(self.pool)
+        .await?;
+
+        if result.rows_affected() == 0 {
+            return Err(RepositoryError::NotFound);
+        }
+
+        Ok(())
+    }
+
+    /// Count admin users by role.
+    ///
+    /// # Errors
+    ///
+    /// Returns `RepositoryError::Database` if the query fails.
+    pub async fn count_by_role(&self, role: AdminRole) -> Result<i64, RepositoryError> {
+        let count = sqlx::query_scalar!(
+            r#"
+            SELECT COUNT(*) as "count!"
+            FROM admin.admin_user
+            WHERE role = $1
+            "#,
+            role as AdminRole
+        )
+        .fetch_one(self.pool)
+        .await?;
+
+        Ok(count)
+    }
 }

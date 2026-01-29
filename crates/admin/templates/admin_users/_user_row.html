@@ -1,0 +1,63 @@
+<tr id="user-row-{{ user.id }}" class="hover:bg-accent transition-colors">
+    <td class="px-6 py-4 card-header" data-label="">
+        <div class="flex items-center gap-4">
+            <div class="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                {% if user.role == "super_admin" %}
+                <i class="ph ph-crown text-purple-500"></i>
+                {% else %}
+                <i class="ph ph-user text-muted-foreground"></i>
+                {% endif %}
+            </div>
+            <div>
+                <p class="font-medium text-foreground flex items-center gap-2">
+                    {{ user.name }}
+                    {% if user.is_current_user %}
+                    <span class="text-xs text-muted-foreground">(You)</span>
+                    {% endif %}
+                </p>
+                <p class="text-sm text-muted-foreground">{{ user.email }}</p>
+            </div>
+        </div>
+    </td>
+    <td class="px-6 py-4" data-label="Role">
+        {% if user.is_current_user %}
+        {% if user.role == "super_admin" %}
+        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
+            <i class="ph ph-crown"></i>
+            Super Admin
+        </span>
+        {% else %}
+        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+            <i class="ph ph-user"></i>
+            Admin
+        </span>
+        {% endif %}
+        {% else %}
+        <form hx-post="/admin-users/{{ user.id }}/role"
+              hx-target="#user-row-{{ user.id }}"
+              hx-swap="outerHTML">
+            <select name="role"
+                    onchange="this.form.requestSubmit()"
+                    class="px-2.5 py-1 rounded-lg text-xs font-medium bg-input border-0 focus:ring-2 focus:ring-ring cursor-pointer">
+                <option value="admin" {% if user.role == "admin" %}selected{% endif %}>Admin</option>
+                <option value="super_admin" {% if user.role == "super_admin" %}selected{% endif %}>Super Admin</option>
+            </select>
+        </form>
+        {% endif %}
+    </td>
+    <td class="px-6 py-4 text-sm text-muted-foreground" data-label="Created">
+        {{ user.created_at|humanize_datetime }}
+    </td>
+    <td class="px-6 py-4 text-right" data-label="Actions">
+        {% if user.is_current_user %}
+        <span class="text-xs text-muted-foreground">-</span>
+        {% else %}
+        <button type="button"
+                onclick="openDeleteUserModal({{ user.id }}, '{{ user.name }}', '{{ user.email }}')"
+                class="p-2 text-muted-foreground hover:text-destructive transition-colors"
+                title="Delete user">
+            <i class="ph ph-trash"></i>
+        </button>
+        {% endif %}
+    </td>
+</tr>

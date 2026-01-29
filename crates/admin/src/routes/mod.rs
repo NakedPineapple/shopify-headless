@@ -248,6 +248,19 @@ fn order_routes() -> Router<AppState> {
         .route("/orders/bulk/cancel", post(orders::bulk_cancel))
 }
 
+/// Build admin user management routes.
+fn admin_user_routes() -> Router<AppState> {
+    Router::new()
+        .route("/admin-users", get(admin_users::index))
+        .route("/admin-users/{id}/role", post(admin_users::update_role))
+        .route("/admin-users/{id}/delete", post(admin_users::delete_user))
+        .route("/admin-users/invites", post(admin_users::create_invite))
+        .route(
+            "/admin-users/invites/{id}/delete",
+            post(admin_users::delete_invite),
+        )
+}
+
 /// Build the complete router for the admin application.
 pub fn routes() -> Router<AppState> {
     Router::new()
@@ -346,7 +359,7 @@ pub fn routes() -> Router<AppState> {
         .route("/payouts/{id}/transactions", get(payouts::transactions))
         .route("/payouts/{id}/export", get(payouts::export_csv))
         // Admin management (super_admin only)
-        .route("/admin-users", get(admin_users::index))
+        .merge(admin_user_routes())
         // Auth
         .merge(auth::router())
         .merge(setup::router())

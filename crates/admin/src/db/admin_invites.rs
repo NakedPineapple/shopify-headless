@@ -271,4 +271,28 @@ impl<'a> AdminInviteRepository<'a> {
 
         Ok(result.rows_affected())
     }
+
+    /// Delete an invite by its ID.
+    ///
+    /// # Errors
+    ///
+    /// Returns `RepositoryError::NotFound` if the invite doesn't exist.
+    /// Returns `RepositoryError::Database` for other database errors.
+    pub async fn delete(&self, id: i32) -> Result<(), RepositoryError> {
+        let result = sqlx::query!(
+            r#"
+            DELETE FROM admin.admin_invite
+            WHERE id = $1
+            "#,
+            id
+        )
+        .execute(self.pool)
+        .await?;
+
+        if result.rows_affected() == 0 {
+            return Err(RepositoryError::NotFound);
+        }
+
+        Ok(())
+    }
 }

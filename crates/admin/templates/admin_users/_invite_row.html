@@ -1,0 +1,53 @@
+<tr id="invite-row-{{ invite.id }}" class="hover:bg-accent transition-colors">
+    <td class="px-6 py-4 card-header" data-label="">
+        <div class="flex items-center gap-4">
+            <div class="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                <i class="ph ph-envelope-simple text-amber-600 dark:text-amber-400"></i>
+            </div>
+            <div>
+                <p class="font-medium text-foreground">{{ invite.name }}</p>
+                <p class="text-sm text-muted-foreground">{{ invite.email }}</p>
+            </div>
+        </div>
+    </td>
+    <td class="px-6 py-4" data-label="Role">
+        {% if invite.role == "super_admin" %}
+        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
+            <i class="ph ph-crown"></i>
+            Super Admin
+        </span>
+        {% else %}
+        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+            <i class="ph ph-user"></i>
+            Admin
+        </span>
+        {% endif %}
+    </td>
+    <td class="px-6 py-4 text-sm text-muted-foreground" data-label="Expires">
+        {{ invite.expires_at|humanize_datetime }}
+    </td>
+    <td class="px-6 py-4" data-label="Status">
+        {% if invite.is_expired %}
+        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+            <i class="ph ph-x-circle"></i>
+            Expired
+        </span>
+        {% else %}
+        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+            <i class="ph ph-clock"></i>
+            Pending
+        </span>
+        {% endif %}
+    </td>
+    <td class="px-6 py-4 text-right" data-label="Actions">
+        <button type="button"
+                hx-post="/admin-users/invites/{{ invite.id }}/delete"
+                hx-target="#invite-row-{{ invite.id }}"
+                hx-swap="delete"
+                hx-confirm="Are you sure you want to cancel this invite?"
+                class="p-2 text-muted-foreground hover:text-destructive transition-colors"
+                title="Cancel invite">
+            <i class="ph ph-trash"></i>
+        </button>
+    </td>
+</tr>

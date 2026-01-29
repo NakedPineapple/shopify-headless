@@ -1,0 +1,33 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT COUNT(*) as \"count!\"\n            FROM admin.admin_user\n            WHERE role = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        {
+          "Custom": {
+            "name": "admin.admin_role",
+            "kind": {
+              "Enum": [
+                "super_admin",
+                "admin",
+                "viewer"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "1a243c525939b93c09136b28234737435d0e1d1d4600d85592f3f33fb0d7a763"
+}
