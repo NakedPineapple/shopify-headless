@@ -1,5 +1,8 @@
 {% extends "layouts/base.html" %}
+{% import "macros/analytics_data.html" as analytics_macro %}
 {% import "macros/picture.html" as img %}
+
+{% block body_data %}{{ analytics_macro::body_attrs(analytics=analytics) }}{% endblock %}
 
 {% block title %}Affiliate Program - Naked Pineapple{% endblock %}
 

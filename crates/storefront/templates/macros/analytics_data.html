@@ -1,0 +1,26 @@
+{#
+    Analytics data attributes macro.
+
+    Generates data-* attributes for the body tag that analytics.js reads
+    to determine which tracking platforms are enabled.
+
+    Usage in templates:
+    {% import "macros/analytics_data.html" as analytics_macro %}
+
+    {% block body_data %}{{ analytics_macro::body_attrs(analytics=analytics) }}{% endblock %}
+#}
+
+{# Generate all analytics data attributes for the body tag #}
+{% macro body_attrs(analytics) %}
+{% if let Some(id) = analytics.ga4_measurement_id.as_ref() %}data-ga4-id="{{ id }}" {% endif %}
+{% if let Some(id) = analytics.meta_pixel_id.as_ref() %}data-meta-pixel-id="{{ id }}" {% endif %}
+{% if let Some(id) = analytics.google_ads_id.as_ref() %}data-google-ads-id="{{ id }}" {% endif %}
+{% if let Some(label) = analytics.google_ads_conversion_label.as_ref() %}data-google-ads-conversion-label="{{ label }}" {% endif %}
+{% if let Some(id) = analytics.tiktok_pixel_id.as_ref() %}data-tiktok-pixel-id="{{ id }}" {% endif %}
+{% if let Some(id) = analytics.pinterest_tag_id.as_ref() %}data-pinterest-tag-id="{{ id }}" {% endif %}
+{% if let Some(id) = analytics.snapchat_pixel_id.as_ref() %}data-snapchat-pixel-id="{{ id }}" {% endif %}
+{% if let Some(id) = analytics.microsoft_uet_id.as_ref() %}data-microsoft-uet-id="{{ id }}" {% endif %}
+{% if let Some(id) = analytics.twitter_pixel_id.as_ref() %}data-twitter-pixel-id="{{ id }}" {% endif %}
+{% if let Some(token) = analytics.mixpanel_project_token.as_ref() %}data-mixpanel-token="{{ token }}" {% endif %}
+{% if let Some(id) = analytics.crazy_egg_account_id.as_ref() %}data-crazy-egg-id="{{ id }}" {% endif %}
+{% endmacro %}

@@ -11,6 +11,7 @@ use axum::{
 use serde::{Deserialize, Deserializer};
 use tracing::instrument;
 
+use crate::config::AnalyticsConfig;
 use crate::filters;
 use crate::search::{SearchFilters, SearchResults, SearchSort};
 use crate::state::AppState;
@@ -81,6 +82,7 @@ pub struct SearchPageTemplate {
     pub filter_availability: Option<String>,
     pub filter_price_gte: Option<u64>,
     pub filter_price_lte: Option<u64>,
+    pub analytics: AnalyticsConfig,
 }
 
 /// Search suggestions endpoint (HTMX).
@@ -140,6 +142,7 @@ pub async fn search_page(
         filter_availability: query.availability.clone(),
         filter_price_gte: filters.min_price_cents,
         filter_price_lte: filters.max_price_cents,
+        analytics: state.config().analytics.clone(),
     }
     .into_response()
 }

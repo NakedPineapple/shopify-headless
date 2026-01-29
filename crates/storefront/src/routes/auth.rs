@@ -14,6 +14,7 @@ use secrecy::{ExposeSecret, SecretString};
 use serde::Deserialize;
 use tower_sessions::Session;
 
+use crate::config::AnalyticsConfig;
 use crate::filters;
 use crate::middleware::{clear_current_customer, set_current_customer};
 use crate::models::CurrentCustomer;
@@ -89,6 +90,7 @@ pub struct CallbackQuery {
 pub struct LoginTemplate {
     pub error: Option<String>,
     pub success: Option<String>,
+    pub analytics: AnalyticsConfig,
 }
 
 /// Register page template.
@@ -96,6 +98,7 @@ pub struct LoginTemplate {
 #[template(path = "auth/register.html")]
 pub struct RegisterTemplate {
     pub error: Option<String>,
+    pub analytics: AnalyticsConfig,
 }
 
 /// Registration success page template.
@@ -103,6 +106,7 @@ pub struct RegisterTemplate {
 #[template(path = "auth/register_success.html")]
 pub struct RegisterSuccessTemplate {
     pub email: String,
+    pub analytics: AnalyticsConfig,
 }
 
 /// Forgot password page template.
@@ -111,6 +115,7 @@ pub struct RegisterSuccessTemplate {
 pub struct ForgotPasswordTemplate {
     pub error: Option<String>,
     pub success: Option<String>,
+    pub analytics: AnalyticsConfig,
 }
 
 /// Reset password page template.
@@ -119,6 +124,7 @@ pub struct ForgotPasswordTemplate {
 pub struct ResetPasswordTemplate {
     pub error: Option<String>,
     pub reset_url: String,
+    pub analytics: AnalyticsConfig,
 }
 
 /// Activate account page template.
@@ -127,6 +133,7 @@ pub struct ResetPasswordTemplate {
 pub struct ActivateTemplate {
     pub error: Option<String>,
     pub activation_url: String,
+    pub analytics: AnalyticsConfig,
 }
 
 // =============================================================================
@@ -134,10 +141,14 @@ pub struct ActivateTemplate {
 // =============================================================================
 
 /// Display the login page.
-pub async fn login_page(Query(query): Query<MessageQuery>) -> impl IntoResponse {
+pub async fn login_page(
+    State(state): State<AppState>,
+    Query(query): Query<MessageQuery>,
+) -> impl IntoResponse {
     LoginTemplate {
         error: query.error,
         success: query.success,
+        analytics: state.config().analytics.clone(),
     }
 }
 
@@ -197,8 +208,14 @@ pub async fn login(
 // =============================================================================
 
 /// Display the registration page.
-pub async fn register_page(Query(query): Query<MessageQuery>) -> impl IntoResponse {
-    RegisterTemplate { error: query.error }
+pub async fn register_page(
+    State(state): State<AppState>,
+    Query(query): Query<MessageQuery>,
+) -> impl IntoResponse {
+    RegisterTemplate {
+        error: query.error,
+        analytics: state.config().analytics.clone(),
+    }
 }
 
 /// Handle registration form submission.
@@ -234,6 +251,7 @@ pub async fn register(State(state): State<AppState>, Form(form): Form<RegisterFo
             // Show success page telling them to check their email
             RegisterSuccessTemplate {
                 email: customer.email.unwrap_or_else(|| form.email.clone()),
+                analytics: state.config().analytics.clone(),
             }
             .into_response()
         }
@@ -257,11 +275,15 @@ pub async fn register(State(state): State<AppState>, Form(form): Form<RegisterFo
 /// Display the account activation page.
 ///
 /// Called when user clicks the activation link in Shopify's email.
-pub async fn activate_page(Query(query): Query<CallbackQuery>) -> Response {
+pub async fn activate_page(
+    State(state): State<AppState>,
+    Query(query): Query<CallbackQuery>,
+) -> Response {
     match query.url {
         Some(url) => ActivateTemplate {
             error: query.error,
             activation_url: url,
+            analytics: state.config().analytics.clone(),
         }
         .into_response(),
         None => Redirect::to("/auth/login?error=invalid_activation_link").into_response(),
@@ -330,10 +352,14 @@ pub async fn activate(
 // =============================================================================
 
 /// Display the forgot password page.
-pub async fn forgot_password_page(Query(query): Query<MessageQuery>) -> impl IntoResponse {
+pub async fn forgot_password_page(
+    State(state): State<AppState>,
+    Query(query): Query<MessageQuery>,
+) -> impl IntoResponse {
     ForgotPasswordTemplate {
         error: query.error,
         success: query.success,
+        analytics: state.config().analytics.clone(),
     }
 }
 
@@ -357,11 +383,15 @@ pub async fn forgot_password(
 /// Display the reset password page.
 ///
 /// Called when user clicks the reset link in Shopify's email.
-pub async fn reset_password_page(Query(query): Query<CallbackQuery>) -> Response {
+pub async fn reset_password_page(
+    State(state): State<AppState>,
+    Query(query): Query<CallbackQuery>,
+) -> Response {
     match query.url {
         Some(url) => ResetPasswordTemplate {
             error: query.error,
             reset_url: url,
+            analytics: state.config().analytics.clone(),
         }
         .into_response(),
         None => Redirect::to("/auth/forgot-password?error=invalid_reset_link").into_response(),

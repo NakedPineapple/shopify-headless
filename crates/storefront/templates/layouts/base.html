@@ -45,12 +45,15 @@
     <meta property="og:image" content="{% block og_image %}{% endblock %}">
 
     <!-- Analytics - Head Scripts -->
-    {% block ga4_script %}{% endblock %}
+    {% block ga4_script %}
+    {% include "partials/analytics.html" %}
+    {% endblock %}
     {% block sentry_script %}{% endblock %}
 
     {% block head %}{% endblock %}
 </head>
-<body class="min-h-screen bg-background text-foreground font-sans antialiased {% block body_class %}{% endblock %}" hx-boost="true">
+<body class="min-h-screen bg-background text-foreground font-sans antialiased {% block body_class %}{% endblock %}" hx-boost="true"
+      {% block body_data %}{% endblock %}>
     <!-- Skip to main content link for accessibility -->
     <a href="#main" class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-primary text-primary-foreground px-4 py-2 rounded-full font-medium z-50">
         Skip to main content
@@ -525,6 +528,8 @@
     {% block scripts %}{% endblock %}
 
     <!-- Analytics script - loaded after other scripts -->
-    {% block analytics_script %}{% endblock %}
+    {% block analytics_script %}
+    <script src="/static/js/analytics.js"></script>
+    {% endblock %}
 </body>
 </html>

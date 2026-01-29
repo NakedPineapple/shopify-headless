@@ -5,6 +5,7 @@ use askama_web::WebTemplate;
 use axum::{extract::State, response::IntoResponse};
 use tracing::instrument;
 
+use crate::config::AnalyticsConfig;
 use crate::filters;
 use crate::shopify::types::{Money, Product as ShopifyProduct};
 use crate::state::AppState;
@@ -293,6 +294,8 @@ pub struct HomeTemplate {
     pub merch_products: Vec<ProductView>,
     /// Featured customer reviews.
     pub featured_reviews: Vec<ReviewView>,
+    /// Analytics tracking configuration.
+    pub analytics: AnalyticsConfig,
 }
 
 /// Number of products to show per collection tab.
@@ -336,5 +339,6 @@ pub async fn home(State(state): State<AppState>) -> impl IntoResponse {
         skincare_products,
         merch_products,
         featured_reviews: get_featured_reviews(),
+        analytics: state.config().analytics.clone(),
     }
 }

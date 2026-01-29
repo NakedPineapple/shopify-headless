@@ -141,6 +141,16 @@ pub struct AnalyticsConfig {
     pub google_ads_id: Option<String>,
     /// Google Ads conversion label
     pub google_ads_conversion_label: Option<String>,
+    /// Snapchat pixel ID
+    pub snapchat_pixel_id: Option<String>,
+    /// Microsoft/Bing UET tag ID
+    pub microsoft_uet_id: Option<String>,
+    /// Twitter/X pixel ID
+    pub twitter_pixel_id: Option<String>,
+    /// Mixpanel project token
+    pub mixpanel_project_token: Option<String>,
+    /// Crazy Egg account ID (for heatmaps, session recordings, A/B testing)
+    pub crazy_egg_account_id: Option<String>,
 }
 
 impl StorefrontConfig {
@@ -229,7 +239,27 @@ impl AnalyticsConfig {
             pinterest_tag_id: get_optional_env("PINTEREST_TAG_ID"),
             google_ads_id: get_optional_env("GOOGLE_ADS_ID"),
             google_ads_conversion_label: get_optional_env("GOOGLE_ADS_CONVERSION_LABEL"),
+            snapchat_pixel_id: get_optional_env("SNAPCHAT_PIXEL_ID"),
+            microsoft_uet_id: get_optional_env("MICROSOFT_UET_ID"),
+            twitter_pixel_id: get_optional_env("TWITTER_PIXEL_ID"),
+            mixpanel_project_token: get_optional_env("MIXPANEL_PROJECT_TOKEN"),
+            crazy_egg_account_id: get_optional_env("CRAZY_EGG_ACCOUNT_ID"),
         }
+    }
+
+    /// Returns true if any tracking is enabled.
+    #[must_use]
+    pub const fn is_enabled(&self) -> bool {
+        self.ga4_measurement_id.is_some()
+            || self.meta_pixel_id.is_some()
+            || self.google_ads_id.is_some()
+            || self.tiktok_pixel_id.is_some()
+            || self.pinterest_tag_id.is_some()
+            || self.snapchat_pixel_id.is_some()
+            || self.microsoft_uet_id.is_some()
+            || self.twitter_pixel_id.is_some()
+            || self.mixpanel_project_token.is_some()
+            || self.crazy_egg_account_id.is_some()
     }
 }
 

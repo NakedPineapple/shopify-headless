@@ -1,0 +1,128 @@
+{#
+Multi-platform Analytics Scripts
+
+This partial loads tracking pixel base code for all configured platforms.
+Only platforms with configured IDs will have their scripts loaded.
+
+The analytics.js file (loaded separately) handles:
+- HTMX-aware page view tracking
+- E-commerce events (view_item, add_to_cart, begin_checkout, purchase)
+- Error forwarding to Sentry
+
+Required template variables (from AnalyticsConfig):
+- analytics.ga4_measurement_id: Option<String>
+- analytics.meta_pixel_id: Option<String>
+- analytics.google_ads_id: Option<String>
+- analytics.google_ads_conversion_label: Option<String>
+- analytics.tiktok_pixel_id: Option<String>
+- analytics.pinterest_tag_id: Option<String>
+- analytics.snapchat_pixel_id: Option<String>
+- analytics.microsoft_uet_id: Option<String>
+- analytics.twitter_pixel_id: Option<String>
+- analytics.mixpanel_project_token: Option<String>
+- analytics.crazy_egg_account_id: Option<String>
+#}
+
+{# Google Analytics 4 / Google Ads gtag.js - loaded async for performance #}
+{% if analytics.ga4_measurement_id.is_some() || analytics.google_ads_id.is_some() %}
+{% let primary_id = analytics.ga4_measurement_id.as_ref().or(analytics.google_ads_id.as_ref()).unwrap() %}
+<script async src="https://www.googletagmanager.com/gtag/js?id={{ primary_id }}"></script>
+<script>
+window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+</script>
+{% endif %}
+
+{# Meta (Facebook) Pixel base code #}
+{% if let Some(pixel_id) = analytics.meta_pixel_id.as_ref() %}
+<script>
+!function(f,b,e,v,n,t,s)
+{if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+n.queue=[];t=b.createElement(e);t.async=!0;
+t.src=v;s=b.getElementsByTagName(e)[0];
+s.parentNode.insertBefore(t,s)}(window, document,'script',
+'https://connect.facebook.net/en_US/fbevents.js');
+fbq('init', '{{ pixel_id }}');
+fbq('track', 'PageView');
+</script>
+<noscript><img height="1" width="1" style="display:none"
+src="https://www.facebook.com/tr?id={{ pixel_id }}&ev=PageView&noscript=1"
+/></noscript>
+{% endif %}
+
+{# TikTok Pixel base code #}
+{% if let Some(pixel_id) = analytics.tiktok_pixel_id.as_ref() %}
+<script>
+!function (w, d, t) {
+  w.TiktokAnalyticsObject=t;var ttq=w[t]=w[t]||[];ttq.methods=["page","track","identify","instances","debug","on","off","once","ready","alias","group","enableCookie","disableCookie"],ttq.setAndDefer=function(t,e){t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}};for(var i=0;i<ttq.methods.length;i++)ttq.setAndDefer(ttq,ttq.methods[i]);ttq.instance=function(t){for(var e=ttq._i[t]||[],n=0;n<ttq.methods.length;n++)ttq.setAndDefer(e,ttq.methods[n]);return e},ttq.load=function(e,n){var i="https://analytics.tiktok.com/i18n/pixel/events.js";ttq._i=ttq._i||{},ttq._i[e]=[],ttq._i[e]._u=i,ttq._t=ttq._t||{},ttq._t[e]=+new Date,ttq._o=ttq._o||{},ttq._o[e]=n||{};var o=document.createElement("script");o.type="text/javascript",o.async=!0,o.src=i+"?sdkid="+e+"&lib="+t;var a=document.getElementsByTagName("script")[0];a.parentNode.insertBefore(o,a)};
+  ttq.load('{{ pixel_id }}');
+  ttq.page();
+}(window, document, 'ttq');
+</script>
+{% endif %}
+
+{# Pinterest Tag base code #}
+{% if let Some(tag_id) = analytics.pinterest_tag_id.as_ref() %}
+<script>
+!function(e){if(!window.pintrk){window.pintrk = function () {
+window.pintrk.queue.push(Array.prototype.slice.call(arguments))};var
+  n=window.pintrk;n.queue=[],n.version="3.0";var
+  t=document.createElement("script");t.async=!0,t.src=e;var
+  r=document.getElementsByTagName("script")[0];
+  r.parentNode.insertBefore(t,r)}}("https://s.pinimg.com/ct/core.js");
+pintrk('load', '{{ tag_id }}');
+pintrk('page');
+</script>
+<noscript>
+<img height="1" width="1" style="display:none;" alt=""
+  src="https://ct.pinterest.com/v3/?event=init&tid={{ tag_id }}&noscript=1" />
+</noscript>
+{% endif %}
+
+{# Snapchat Pixel base code #}
+{% if let Some(pixel_id) = analytics.snapchat_pixel_id.as_ref() %}
+<script>
+(function(e,t,n){if(e.snaptr)return;var a=e.snaptr=function()
+{a.handleRequest?a.handleRequest.apply(a,arguments):a.queue.push(arguments)};
+a.queue=[];var s='script';r=t.createElement(s);r.async=!0;
+r.src=n;var u=t.getElementsByTagName(s)[0];
+u.parentNode.insertBefore(r,u);})(window,document,
+'https://sc-static.net/scevent.min.js');
+snaptr('init', '{{ pixel_id }}');
+snaptr('track', 'PAGE_VIEW');
+</script>
+{% endif %}
+
+{# Microsoft UET Tag base code #}
+{% if let Some(uet_id) = analytics.microsoft_uet_id.as_ref() %}
+<script>
+(function(w,d,t,r,u){var f,n,i;w[u]=w[u]||[],f=function(){var o={ti:"{{ uet_id }}"};o.q=w[u],w[u]=new UET(o),w[u].push("pageLoad")},n=d.createElement(t),n.src=r,n.async=1,n.onload=n.onreadystatechange=function(){var s=this.readyState;s&&s!=="loaded"&&s!=="complete"||(f(),n.onload=n.onreadystatechange=null)},i=d.getElementsByTagName(t)[0],i.parentNode.insertBefore(n,i)})(window,document,"script","//bat.bing.com/bat.js","uetq");
+</script>
+{% endif %}
+
+{# Twitter/X Pixel base code #}
+{% if let Some(pixel_id) = analytics.twitter_pixel_id.as_ref() %}
+<script>
+!function(e,t,n,s,u,a){e.twq||(s=e.twq=function(){s.exe?s.exe.apply(s,arguments):s.queue.push(arguments);
+},s.version='1.1',s.queue=[],u=t.createElement(n),u.async=!0,u.src='https://static.ads-twitter.com/uwt.js',
+a=t.getElementsByTagName(n)[0],a.parentNode.insertBefore(u,a))}(window,document,'script');
+twq('config','{{ pixel_id }}');
+</script>
+{% endif %}
+
+{# Mixpanel Product Analytics SDK #}
+{% if let Some(token) = analytics.mixpanel_project_token.as_ref() %}
+<script>(function(f,b){if(!b.__SV){var e,g,i,h;window.mixpanel=b;b._i=[];b.init=function(e,f,c){function g(a,d){var b=d.split(".");2==b.length&&(a=a[b[0]],d=b[1]);a[d]=function(){a.push([d].concat(Array.prototype.slice.call(arguments,0)))}}var a=b;"undefined"!==typeof c?a=b[c]=[]:c="mixpanel";a.people=a.people||[];a.toString=function(a){var d="mixpanel";"mixpanel"!==c&&(d+="."+c);a||(d+=" (stub)");return d};a.people.toString=function(){return a.toString(1)+".people (stub)"};i="disable time_event track track_pageview track_links track_forms track_with_groups add_group set_group remove_group register register_once alias unregister identify name_tag set_config reset opt_in_tracking opt_out_tracking has_opted_in_tracking has_opted_out_tracking clear_opt_in_out_tracking start_batch_senders people.set people.set_once people.unset people.increment people.append people.union people.track_charge people.clear_charges people.delete_user people.remove".split(" ");for(h=0;h<i.length;h++)g(a,i[h]);var j="set set_once union unset remove delete".split(" ");a.get_group=function(){function b(c){d[c]=function(){call2_args=arguments;call2=[c].concat(Array.prototype.slice.call(call2_args,0));a.push([e,call2])}}for(var d={},e=["get_group"].concat(Array.prototype.slice.call(arguments,0)),c=0;c<j.length;c++)b(j[c]);return d};b._i.push([e,f,c])};b.__SV=1.2;e=f.createElement("script");e.type="text/javascript";e.async=!0;e.src="https://cdn.mxpnl.com/libs/mixpanel-2-latest.min.js";g=f.getElementsByTagName("script")[0];g.parentNode.insertBefore(e,g)}})(document,window.mixpanel||[]);
+mixpanel.init('{{ token }}', {
+    track_pageview: false,
+    persistence: 'localStorage'
+});
+</script>
+{% endif %}
+
+{# Crazy Egg Heatmaps, Session Recordings & A/B Testing #}
+{% if let Some(account_id) = analytics.crazy_egg_account_id.as_ref() %}
+<script type="text/javascript" src="//script.crazyegg.com/pages/scripts/{{ account_id }}.js" async="async"></script>
+{% endif %}

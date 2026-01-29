@@ -1,4 +1,7 @@
 {% extends "layouts/base.html" %}
+{% import "macros/analytics_data.html" as analytics_macro %}
+
+{% block body_data %}{{ analytics_macro::body_attrs(analytics=analytics) }}{% endblock %}
 
 {% block title %}Addresses | Naked Pineapple{% endblock %}
 

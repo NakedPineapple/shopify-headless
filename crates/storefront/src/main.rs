@@ -31,10 +31,12 @@ use std::path::Path;
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::http::header::{CACHE_CONTROL, HeaderValue};
+use axum::middleware::from_fn;
 use axum::{Router, routing::get};
 use tower::ServiceBuilder;
 use tower_http::services::ServeDir;
 use tower_http::set_header::SetResponseHeaderLayer;
+use tower_http::trace::TraceLayer;
 
 /// Sets cache-control header only on successful (2xx) responses.
 /// This prevents Cloudflare from caching 404s with immutable headers.
@@ -102,6 +104,76 @@ fn sentry_event_filter(metadata: &tracing::Metadata<'_>) -> sentry_tracing::Even
     }
 }
 
+/// Build the static file service routes with appropriate cache headers.
+fn build_static_routes() -> Router<AppState> {
+    // Cache control headers for static assets
+    // Optimized images - immutable (filenames include size suffix, content never changes)
+    let cache_immutable = HeaderValue::from_static("public, max-age=31536000, immutable");
+    // Vendor libraries - long cache (versioned, rarely change)
+    let cache_long = HeaderValue::from_static("public, max-age=2592000");
+    // CSS/JS - short cache (may change between deploys)
+    let cache_short = HeaderValue::from_static("public, max-age=86400, must-revalidate");
+
+    Router::new()
+        // Optimized images - immutable (1 year cache, only on success)
+        .nest_service(
+            "/static/images/derived",
+            ServiceBuilder::new()
+                .map_response(cache_on_success(cache_immutable))
+                .service(ServeDir::new("crates/storefront/static/images/derived")),
+        )
+        // Original images fallback (for development) - short cache
+        .nest_service(
+            "/static/images/original",
+            ServiceBuilder::new()
+                .layer(SetResponseHeaderLayer::if_not_present(
+                    CACHE_CONTROL,
+                    cache_short.clone(),
+                ))
+                .service(ServeDir::new("crates/storefront/static/images/original")),
+        )
+        // Vendor libraries (htmx, swiper, fonts) - long cache
+        .nest_service(
+            "/static/vendor",
+            ServiceBuilder::new()
+                .layer(SetResponseHeaderLayer::if_not_present(
+                    CACHE_CONTROL,
+                    cache_long,
+                ))
+                .service(ServeDir::new("crates/storefront/static/vendor")),
+        )
+        // CSS - short cache with revalidation
+        .nest_service(
+            "/static/css",
+            ServiceBuilder::new()
+                .layer(SetResponseHeaderLayer::if_not_present(
+                    CACHE_CONTROL,
+                    cache_short.clone(),
+                ))
+                .service(ServeDir::new("crates/storefront/static/css")),
+        )
+        // JS - short cache with revalidation
+        .nest_service(
+            "/static/js",
+            ServiceBuilder::new()
+                .layer(SetResponseHeaderLayer::if_not_present(
+                    CACHE_CONTROL,
+                    cache_short.clone(),
+                ))
+                .service(ServeDir::new("crates/storefront/static/js")),
+        )
+        // Fallback for any other static files
+        .nest_service(
+            "/static",
+            ServiceBuilder::new()
+                .layer(SetResponseHeaderLayer::if_not_present(
+                    CACHE_CONTROL,
+                    cache_short,
+                ))
+                .service(ServeDir::new("crates/storefront/static")),
+        )
+}
+
 #[tokio::main]
 async fn main() {
     // Load configuration from environment (needed for Sentry init)
@@ -147,80 +219,27 @@ async fn main() {
     // Create session layer
     let session_layer = middleware::create_session_layer(state.pool(), state.config());
 
-    // Cache control headers for static assets
-    // Optimized images - immutable (filenames include size suffix, content never changes)
-    let cache_immutable = HeaderValue::from_static("public, max-age=31536000, immutable");
-    // Vendor libraries - long cache (versioned, rarely change)
-    let cache_long = HeaderValue::from_static("public, max-age=2592000");
-    // CSS/JS - short cache (may change between deploys)
-    let cache_short = HeaderValue::from_static("public, max-age=86400, must-revalidate");
-
     // Build router with cache-controlled static file serving
     let app = Router::new()
         .route("/health", get(health))
         .route("/health/ready", get(readiness))
         .merge(routes::routes())
-        // Optimized images - immutable (1 year cache, only on success)
-        .nest_service(
-            "/static/images/derived",
-            ServiceBuilder::new()
-                .map_response(cache_on_success(cache_immutable.clone()))
-                .service(ServeDir::new("crates/storefront/static/images/derived")),
-        )
-        // Original images fallback (for development) - short cache
-        .nest_service(
-            "/static/images/original",
-            ServiceBuilder::new()
-                .layer(SetResponseHeaderLayer::if_not_present(
-                    CACHE_CONTROL,
-                    cache_short.clone(),
-                ))
-                .service(ServeDir::new("crates/storefront/static/images/original")),
-        )
-        // Vendor libraries (htmx, swiper, fonts) - long cache
-        .nest_service(
-            "/static/vendor",
-            ServiceBuilder::new()
-                .layer(SetResponseHeaderLayer::if_not_present(
-                    CACHE_CONTROL,
-                    cache_long.clone(),
-                ))
-                .service(ServeDir::new("crates/storefront/static/vendor")),
-        )
-        // CSS - short cache with revalidation
-        .nest_service(
-            "/static/css",
-            ServiceBuilder::new()
-                .layer(SetResponseHeaderLayer::if_not_present(
-                    CACHE_CONTROL,
-                    cache_short.clone(),
-                ))
-                .service(ServeDir::new("crates/storefront/static/css")),
-        )
-        // JS - short cache with revalidation
-        .nest_service(
-            "/static/js",
-            ServiceBuilder::new()
-                .layer(SetResponseHeaderLayer::if_not_present(
-                    CACHE_CONTROL,
-                    cache_short.clone(),
-                ))
-                .service(ServeDir::new("crates/storefront/static/js")),
-        )
-        // Fallback for any other static files
-        .nest_service(
-            "/static",
-            ServiceBuilder::new()
-                .layer(SetResponseHeaderLayer::if_not_present(
-                    CACHE_CONTROL,
-                    cache_short,
-                ))
-                .service(ServeDir::new("crates/storefront/static")),
-        )
+        .merge(build_static_routes())
         .layer(session_layer)
         .layer(axum::middleware::from_fn(
             middleware::security_headers_middleware,
         ))
+        .layer(from_fn(middleware::request_id_middleware))
+        .layer(
+            TraceLayer::new_for_http().make_span_with(|request: &axum::http::Request<_>| {
+                tracing::info_span!(
+                    "http_request",
+                    method = %request.method(),
+                    uri = %request.uri(),
+                    request_id = tracing::field::Empty,
+                )
+            }),
+        )
         .with_state(state)
         // Sentry layers (outermost for full request coverage)
         .layer(sentry_tower::NewSentryLayer::new_from_top())

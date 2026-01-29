@@ -9,6 +9,7 @@ use axum::{Router, extract::State, http::StatusCode, response::IntoResponse, rou
 use chrono::NaiveDate;
 use tracing::instrument;
 
+use crate::config::AnalyticsConfig;
 use crate::filters;
 use crate::state::AppState;
 
@@ -19,32 +20,44 @@ use crate::state::AppState;
 /// About page template.
 #[derive(Template, WebTemplate)]
 #[template(path = "pages/about.html")]
-pub struct AboutTemplate {}
+pub struct AboutTemplate {
+    pub analytics: AnalyticsConfig,
+}
 
 /// Wholesale page template.
 #[derive(Template, WebTemplate)]
 #[template(path = "pages/wholesale.html")]
-pub struct WholesaleTemplate {}
+pub struct WholesaleTemplate {
+    pub analytics: AnalyticsConfig,
+}
 
 /// Model Program page template.
 #[derive(Template, WebTemplate)]
 #[template(path = "pages/model_program.html")]
-pub struct ModelProgramTemplate {}
+pub struct ModelProgramTemplate {
+    pub analytics: AnalyticsConfig,
+}
 
 /// Affiliate Program page template.
 #[derive(Template, WebTemplate)]
 #[template(path = "pages/affiliate.html")]
-pub struct AffiliateTemplate {}
+pub struct AffiliateTemplate {
+    pub analytics: AnalyticsConfig,
+}
 
 /// Teen Program page template.
 #[derive(Template, WebTemplate)]
 #[template(path = "pages/teen_program.html")]
-pub struct TeenProgramTemplate {}
+pub struct TeenProgramTemplate {
+    pub analytics: AnalyticsConfig,
+}
 
 /// Subscriptions page template.
 #[derive(Template, WebTemplate)]
 #[template(path = "pages/subscriptions.html")]
-pub struct SubscriptionsTemplate {}
+pub struct SubscriptionsTemplate {
+    pub analytics: AnalyticsConfig,
+}
 
 // =============================================================================
 // Markdown-based Content Pages
@@ -58,6 +71,7 @@ pub struct ContentPageTemplate {
     pub description: String,
     pub updated_at: Option<NaiveDate>,
     pub content_html: String,
+    pub analytics: AnalyticsConfig,
 }
 
 /// Serve a content page by slug.
@@ -72,6 +86,7 @@ fn serve_content_page(state: &AppState, slug: &str) -> Result<ContentPageTemplat
         description: page.meta.description.clone().unwrap_or_default(),
         updated_at: page.meta.updated_at,
         content_html: page.content_html.clone(),
+        analytics: state.config().analytics.clone(),
     })
 }
 
@@ -80,33 +95,45 @@ fn serve_content_page(state: &AppState, slug: &str) -> Result<ContentPageTemplat
 // =============================================================================
 
 /// Display the About page.
-pub async fn about() -> AboutTemplate {
-    AboutTemplate {}
+pub async fn about(State(state): State<AppState>) -> AboutTemplate {
+    AboutTemplate {
+        analytics: state.config().analytics.clone(),
+    }
 }
 
 /// Display the Wholesale page.
-pub async fn wholesale() -> WholesaleTemplate {
-    WholesaleTemplate {}
+pub async fn wholesale(State(state): State<AppState>) -> WholesaleTemplate {
+    WholesaleTemplate {
+        analytics: state.config().analytics.clone(),
+    }
 }
 
 /// Display the Model Program page.
-pub async fn model_program() -> ModelProgramTemplate {
-    ModelProgramTemplate {}
+pub async fn model_program(State(state): State<AppState>) -> ModelProgramTemplate {
+    ModelProgramTemplate {
+        analytics: state.config().analytics.clone(),
+    }
 }
 
 /// Display the Affiliate Program page.
-pub async fn affiliate_program() -> AffiliateTemplate {
-    AffiliateTemplate {}
+pub async fn affiliate_program(State(state): State<AppState>) -> AffiliateTemplate {
+    AffiliateTemplate {
+        analytics: state.config().analytics.clone(),
+    }
 }
 
 /// Display the Teen Program page.
-pub async fn teen_program() -> TeenProgramTemplate {
-    TeenProgramTemplate {}
+pub async fn teen_program(State(state): State<AppState>) -> TeenProgramTemplate {
+    TeenProgramTemplate {
+        analytics: state.config().analytics.clone(),
+    }
 }
 
 /// Display the Subscriptions page.
-pub async fn subscriptions() -> SubscriptionsTemplate {
-    SubscriptionsTemplate {}
+pub async fn subscriptions(State(state): State<AppState>) -> SubscriptionsTemplate {
+    SubscriptionsTemplate {
+        analytics: state.config().analytics.clone(),
+    }
 }
 
 // =============================================================================

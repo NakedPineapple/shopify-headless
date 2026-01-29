@@ -15,6 +15,7 @@ use serde::Deserialize;
 use tower_sessions::Session;
 use tracing::instrument;
 
+use crate::config::AnalyticsConfig;
 use crate::filters;
 use crate::models::session_keys;
 use crate::shopify::types::{Cart as ShopifyCart, CartLineInput, CartLineUpdateInput, Money};
@@ -148,6 +149,7 @@ pub struct RemoveFromCartForm {
 #[template(path = "cart/show.html")]
 pub struct CartShowTemplate {
     pub cart: CartView,
+    pub analytics: AnalyticsConfig,
 }
 
 /// Cart items fragment template (for HTMX).
@@ -182,7 +184,10 @@ pub async fn show(State(state): State<AppState>, session: Session) -> impl IntoR
         None => CartView::empty(),
     };
 
-    CartShowTemplate { cart }
+    CartShowTemplate {
+        cart,
+        analytics: state.config().analytics.clone(),
+    }
 }
 
 /// Add item to cart (HTMX).

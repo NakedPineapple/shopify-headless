@@ -10,6 +10,7 @@ use axum::{
 use serde::Deserialize;
 use tracing::instrument;
 
+use crate::config::AnalyticsConfig;
 use crate::filters;
 use crate::shopify::ShopifyError;
 use crate::shopify::types::{Money, Product as ShopifyProduct, ProductRecommendationIntent};
@@ -110,6 +111,7 @@ pub struct ProductsIndexTemplate {
     pub current_page: u32,
     pub total_pages: u32,
     pub has_more_pages: bool,
+    pub analytics: AnalyticsConfig,
 }
 
 /// Product detail page template.
@@ -118,6 +120,7 @@ pub struct ProductsIndexTemplate {
 pub struct ProductShowTemplate {
     pub product: ProductView,
     pub related_products: Vec<ProductView>,
+    pub analytics: AnalyticsConfig,
 }
 
 /// Quick view fragment template.
@@ -161,6 +164,7 @@ pub async fn index(
                     current_page
                 },
                 has_more_pages: has_more,
+                analytics: state.config().analytics.clone(),
             }
             .into_response()
         }
@@ -172,6 +176,7 @@ pub async fn index(
                 current_page: 1,
                 total_pages: 1,
                 has_more_pages: false,
+                analytics: state.config().analytics.clone(),
             }
             .into_response()
         }
@@ -202,6 +207,7 @@ pub async fn show(State(state): State<AppState>, Path(handle): Path<String>) -> 
             ProductShowTemplate {
                 product,
                 related_products,
+                analytics: state.config().analytics.clone(),
             }
             .into_response()
         }
@@ -222,6 +228,7 @@ pub async fn show(State(state): State<AppState>, Path(handle): Path<String>) -> 
                         ingredients: None,
                     },
                     related_products: Vec::new(),
+                    analytics: state.config().analytics.clone(),
                 },
             )
                 .into_response()
@@ -243,6 +250,7 @@ pub async fn show(State(state): State<AppState>, Path(handle): Path<String>) -> 
                         ingredients: None,
                     },
                     related_products: Vec::new(),
+                    analytics: state.config().analytics.clone(),
                 },
             )
                 .into_response()

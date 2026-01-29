@@ -12,6 +12,7 @@ use axum::{
 use chrono::NaiveDate;
 use tracing::instrument;
 
+use crate::config::AnalyticsConfig;
 use crate::content::Post;
 use crate::filters;
 use crate::state::AppState;
@@ -51,6 +52,7 @@ impl From<&Post> for PostView {
 #[template(path = "blog/index.html")]
 pub struct BlogIndexTemplate {
     pub posts: Vec<PostView>,
+    pub analytics: AnalyticsConfig,
 }
 
 /// Blog post detail template.
@@ -59,6 +61,7 @@ pub struct BlogIndexTemplate {
 pub struct BlogShowTemplate {
     pub post: PostView,
     pub recent_posts: Vec<PostView>,
+    pub analytics: AnalyticsConfig,
 }
 
 /// Number of recent posts to show in sidebar.
@@ -72,7 +75,10 @@ pub async fn index(State(state): State<AppState>) -> impl IntoResponse {
         .get_published_posts()
         .map(PostView::from)
         .collect();
-    BlogIndexTemplate { posts }
+    BlogIndexTemplate {
+        posts,
+        analytics: state.config().analytics.clone(),
+    }
 }
 
 /// Display a single blog post by slug.
@@ -105,6 +111,7 @@ pub async fn show(
     Ok(BlogShowTemplate {
         post: PostView::from(post),
         recent_posts,
+        analytics: state.config().analytics.clone(),
     })
 }
 

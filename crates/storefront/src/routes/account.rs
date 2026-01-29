@@ -23,6 +23,7 @@ use axum::{
 };
 use serde::Deserialize;
 
+use crate::config::AnalyticsConfig;
 use crate::filters;
 use crate::middleware::RequireShopifyCustomer;
 use crate::shopify::Money;
@@ -70,6 +71,7 @@ pub struct AccountIndexTemplate {
     pub passkey_count: u32,
     pub default_address: Option<AddressView>,
     pub subscription_count: u32,
+    pub analytics: AnalyticsConfig,
 }
 
 /// Order history page template.
@@ -77,6 +79,7 @@ pub struct AccountIndexTemplate {
 #[template(path = "account/orders.html")]
 pub struct OrdersTemplate {
     pub orders: Vec<Order>,
+    pub analytics: AnalyticsConfig,
 }
 
 /// Addresses list page template.
@@ -85,6 +88,7 @@ pub struct OrdersTemplate {
 pub struct AddressesTemplate {
     pub addresses: Vec<Address>,
     pub default_address_id: Option<String>,
+    pub analytics: AnalyticsConfig,
 }
 
 impl AddressesTemplate {
@@ -105,6 +109,7 @@ pub struct AddressFormTemplate {
     pub address_id: Option<String>,
     pub address: Option<Address>,
     pub error: Option<String>,
+    pub analytics: AnalyticsConfig,
 }
 
 // =============================================================================
@@ -212,6 +217,7 @@ pub async fn index(
         passkey_count: 0, // TODO: Fetch from database
         default_address,
         subscription_count: 0, // TODO: Implement subscriptions
+        analytics: state.config().analytics.clone(),
     }
     .into_response()
 }
@@ -233,7 +239,10 @@ pub async fn orders(
         }
     };
 
-    OrdersTemplate { orders }
+    OrdersTemplate {
+        orders,
+        analytics: state.config().analytics.clone(),
+    }
 }
 
 /// Display addresses list page.
@@ -267,6 +276,7 @@ pub async fn addresses(
     AddressesTemplate {
         addresses,
         default_address_id,
+        analytics: state.config().analytics.clone(),
     }
 }
 
@@ -276,6 +286,7 @@ pub async fn addresses(
 ///
 /// `GET /account/addresses/new`
 pub async fn new_address(
+    State(state): State<AppState>,
     RequireShopifyCustomer(_token): RequireShopifyCustomer,
 ) -> impl IntoResponse {
     AddressFormTemplate {
@@ -283,6 +294,7 @@ pub async fn new_address(
         address_id: None,
         address: None,
         error: None,
+        analytics: state.config().analytics.clone(),
     }
 }
 
@@ -311,6 +323,7 @@ pub async fn create_address(
                 address_id: None,
                 address: None,
                 error: Some(e.to_string()),
+                analytics: state.config().analytics.clone(),
             }
             .into_response()
         }
@@ -350,6 +363,7 @@ pub async fn edit_address(
         address_id: Some(addr.id.clone()),
         address: Some(addr),
         error: None,
+        analytics: state.config().analytics.clone(),
     }
     .into_response()
 }
@@ -388,6 +402,7 @@ pub async fn update_address(
                 address_id: Some(address_id),
                 address,
                 error: Some(e.to_string()),
+                analytics: state.config().analytics.clone(),
             }
             .into_response()
         }

@@ -10,6 +10,7 @@ use axum::{
 use serde::Deserialize;
 use tracing::instrument;
 
+use crate::config::AnalyticsConfig;
 use crate::filters;
 use crate::shopify::ShopifyError;
 use crate::shopify::types::Collection as ShopifyCollection;
@@ -60,6 +61,7 @@ impl From<&ShopifyCollection> for CollectionView {
 #[template(path = "collections/index.html")]
 pub struct CollectionsIndexTemplate {
     pub collections: Vec<CollectionView>,
+    pub analytics: AnalyticsConfig,
 }
 
 /// Collection detail page template.
@@ -71,6 +73,7 @@ pub struct CollectionShowTemplate {
     pub current_page: u32,
     pub total_pages: u32,
     pub has_more_pages: bool,
+    pub analytics: AnalyticsConfig,
 }
 
 /// Products per page for collection view.
@@ -93,12 +96,17 @@ pub async fn index(State(state): State<AppState>) -> Response {
                 .map(CollectionView::from)
                 .collect();
 
-            CollectionsIndexTemplate { collections }.into_response()
+            CollectionsIndexTemplate {
+                collections,
+                analytics: state.config().analytics.clone(),
+            }
+            .into_response()
         }
         Err(e) => {
             tracing::error!("Failed to fetch collections: {e}");
             CollectionsIndexTemplate {
                 collections: Vec::new(),
+                analytics: state.config().analytics.clone(),
             }
             .into_response()
         }
@@ -145,6 +153,7 @@ pub async fn show(
                     current_page
                 },
                 has_more_pages: has_more,
+                analytics: state.config().analytics.clone(),
             }
             .into_response()
         }
@@ -161,6 +170,7 @@ pub async fn show(
                 current_page: 1,
                 total_pages: 1,
                 has_more_pages: false,
+                analytics: state.config().analytics.clone(),
             },
         )
             .into_response(),
@@ -179,6 +189,7 @@ pub async fn show(
                     current_page: 1,
                     total_pages: 1,
                     has_more_pages: false,
+                    analytics: state.config().analytics.clone(),
                 },
             )
                 .into_response()
