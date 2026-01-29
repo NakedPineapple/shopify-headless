@@ -88,8 +88,8 @@
                 </button>
                 {% endif %}
             </div>
-            <div class="overflow-x-auto">
-                <table class="w-full">
+            <div class="overflow-hidden md:overflow-x-auto">
+                <table class="w-full data-table-cards">
                     <thead class="bg-muted">
                         <tr>
                             {% if collection.rule_set.is_none() && (collection.sort_order == "MANUAL" || collection.sort_order == "Manual") %}
@@ -116,11 +116,11 @@
                         {% for product in products %}
                         <tr class="hover:bg-accent transition-colors product-row" data-product-id="{{ product.id }}">
                             {% if collection.rule_set.is_none() && (collection.sort_order == "MANUAL" || collection.sort_order == "Manual") %}
-                            <td class="px-2 py-4 cursor-move drag-handle">
+                            <td class="px-2 py-4 cursor-move drag-handle mobile-hidden" data-label="">
                                 <i class="ph ph-dots-six-vertical text-muted-foreground hover:text-foreground"></i>
                             </td>
                             {% endif %}
-                            <td class="px-6 py-4">
+                            <td class="px-6 py-4 card-header" data-label="">
                                 <div class="flex items-center gap-3">
                                     {% if let Some(url) = product.image_url %}
                                     <img src="{{ url }}" alt="{{ product.title }}" class="w-10 h-10 rounded-lg object-cover pointer-events-none">
@@ -136,20 +136,20 @@
                                     </div>
                                 </div>
                             </td>
-                            <td class="px-6 py-4">
+                            <td class="px-6 py-4" data-label="Status">
                                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium {{ product.status_class }}">
                                     {{ product.status }}
                                 </span>
                             </td>
-                            <td class="px-6 py-4 text-sm {% if product.inventory <= 10 %}text-warning{% else %}text-foreground{% endif %}">
+                            <td class="px-6 py-4 text-sm {% if product.inventory <= 10 %}text-warning{% else %}text-foreground{% endif %}" data-label="Inventory">
                                 {{ product.inventory }}
                                 {% if product.inventory <= 10 %}
                                 <i class="ph ph-warning ml-1 text-warning"></i>
                                 {% endif %}
                             </td>
-                            <td class="px-6 py-4 text-sm text-foreground">{{ product.price }}</td>
+                            <td class="px-6 py-4 text-sm text-foreground" data-label="Price">{{ product.price }}</td>
                             {% if collection.rule_set.is_none() %}
-                            <td class="px-6 py-4 text-right">
+                            <td class="px-6 py-4 text-right card-actions" data-label="">
                                 <button hx-post="/collections/{{ collection.id|extract_id }}/products/remove"
                                         hx-vals='{"product_ids": ["{{ product.id }}"]}'
                                         hx-target="#products-section"

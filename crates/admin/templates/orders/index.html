@@ -213,8 +213,8 @@
     </div>
 
     <!-- Table -->
-    <div class="overflow-x-auto">
-        <table class="w-full">
+    <div class="overflow-hidden md:overflow-x-auto">
+        <table class="w-full data-table-cards">
             <thead class="bg-muted">
                 <tr>
                     <!-- Select All Checkbox -->
@@ -338,14 +338,14 @@
                 {% for order in orders %}
                 <tr class="hover:bg-accent transition-colors" data-row="{{ order.short_id }}">
                     <!-- Checkbox -->
-                    <td class="px-6 py-4">
+                    <td class="px-6 py-4 card-checkbox" data-label="">
                         <input type="checkbox"
                                data-row-id="{{ order.short_id }}"
                                class="rounded border-border text-primary focus:ring-primary">
                     </td>
 
                     <!-- Order -->
-                    <td data-column="order" class="px-6 py-4 {% if !col_visible.order %}hidden{% endif %}">
+                    <td data-column="order" data-label="" class="px-6 py-4 card-header {% if !col_visible.order %}hidden{% endif %}">
                         <a href="/orders/{{ order.short_id }}" class="group">
                             <div class="flex items-center gap-2">
                                 <p class="font-medium text-foreground group-hover:text-primary transition-colors">{{ order.name }}</p>
@@ -361,7 +361,7 @@
                     </td>
 
                     <!-- Customer -->
-                    <td data-column="customer" class="px-6 py-4 {% if !col_visible.customer %}hidden{% endif %}">
+                    <td data-column="customer" data-label="Customer" class="px-6 py-4 {% if !col_visible.customer %}hidden{% endif %}">
                         <div>
                             <p class="text-sm font-medium text-foreground">{{ order.customer_name }}</p>
                             {% if let Some(email) = order.customer_email %}
@@ -371,21 +371,21 @@
                     </td>
 
                     <!-- Payment -->
-                    <td data-column="payment" class="px-6 py-4 {% if !col_visible.payment %}hidden{% endif %}">
+                    <td data-column="payment" data-label="Payment" class="px-6 py-4 {% if !col_visible.payment %}hidden{% endif %}">
                         <span class="{{ order.payment_status_class }}">
                             {{ order.payment_status }}
                         </span>
                     </td>
 
                     <!-- Fulfillment -->
-                    <td data-column="fulfillment" class="px-6 py-4 {% if !col_visible.fulfillment %}hidden{% endif %}">
+                    <td data-column="fulfillment" data-label="Fulfillment" class="px-6 py-4 {% if !col_visible.fulfillment %}hidden{% endif %}">
                         <span class="{{ order.fulfillment_status_class }}">
                             {{ order.fulfillment_status }}
                         </span>
                     </td>
 
                     <!-- Return -->
-                    <td data-column="return" class="px-6 py-4 {% if !col_visible.return_status %}hidden{% endif %}">
+                    <td data-column="return" data-label="Return" class="px-6 py-4 mobile-hidden {% if !col_visible.return_status %}hidden{% endif %}">
                         {% if let Some(status) = order.return_status %}
                         <span class="{{ order.return_status_class }}">
                             {{ status }}
@@ -396,17 +396,17 @@
                     </td>
 
                     <!-- Items -->
-                    <td data-column="items" class="px-6 py-4 text-sm text-foreground {% if !col_visible.items %}hidden{% endif %}">
+                    <td data-column="items" data-label="Items" class="px-6 py-4 text-sm text-foreground mobile-hidden {% if !col_visible.items %}hidden{% endif %}">
                         {{ order.item_count }}
                     </td>
 
                     <!-- Total -->
-                    <td data-column="total" class="px-6 py-4 text-sm font-medium text-foreground {% if !col_visible.total %}hidden{% endif %}">
+                    <td data-column="total" data-label="Total" class="px-6 py-4 text-sm font-medium text-foreground {% if !col_visible.total %}hidden{% endif %}">
                         {{ order.total }}
                     </td>
 
                     <!-- Delivery -->
-                    <td data-column="delivery" class="px-6 py-4 text-sm text-muted-foreground {% if !col_visible.delivery %}hidden{% endif %}">
+                    <td data-column="delivery" data-label="Delivery" class="px-6 py-4 text-sm text-muted-foreground mobile-hidden {% if !col_visible.delivery %}hidden{% endif %}">
                         {% if let Some(method) = order.delivery_method %}
                         <span class="flex items-center gap-1">
                             <i class="ph {% if method == "Shipping" %}ph-truck{% elif method == "Pickup" %}ph-storefront{% else %}ph-package{% endif %} text-xs"></i>
@@ -418,7 +418,7 @@
                     </td>
 
                     <!-- Channel -->
-                    <td data-column="channel" class="px-6 py-4 text-sm text-muted-foreground {% if !col_visible.channel %}hidden{% endif %}">
+                    <td data-column="channel" data-label="Channel" class="px-6 py-4 text-sm text-muted-foreground mobile-hidden {% if !col_visible.channel %}hidden{% endif %}">
                         {% if let Some(channel) = order.channel %}
                         {{ channel }}
                         {% else %}
@@ -427,7 +427,7 @@
                     </td>
 
                     <!-- Tags -->
-                    <td data-column="tags" class="px-6 py-4 {% if !col_visible.tags %}hidden{% endif %}">
+                    <td data-column="tags" data-label="Tags" class="px-6 py-4 mobile-hidden {% if !col_visible.tags %}hidden{% endif %}">
                         {% if order.tags.is_empty() %}
                         <span class="text-sm text-muted-foreground/50">-</span>
                         {% else %}
@@ -443,7 +443,7 @@
                     </td>
 
                     <!-- Risk -->
-                    <td data-column="risk" class="px-6 py-4 {% if !col_visible.risk %}hidden{% endif %}">
+                    <td data-column="risk" data-label="Risk" class="px-6 py-4 mobile-hidden {% if !col_visible.risk %}hidden{% endif %}">
                         {% if let Some(risk) = order.risk_level %}
                         <span class="{{ order.risk_class }}">
                             <i class="ph ph-warning-circle mr-1"></i>
@@ -455,7 +455,7 @@
                     </td>
 
                     <!-- Destination -->
-                    <td data-column="destination" class="px-6 py-4 text-sm text-muted-foreground {% if !col_visible.destination %}hidden{% endif %}">
+                    <td data-column="destination" data-label="Destination" class="px-6 py-4 text-sm text-muted-foreground mobile-hidden {% if !col_visible.destination %}hidden{% endif %}">
                         {% if let Some(dest) = order.destination %}
                         <span class="flex items-center gap-1">
                             <i class="ph ph-map-pin text-xs"></i>
@@ -467,7 +467,7 @@
                     </td>
 
                     <!-- Actions -->
-                    <td class="px-6 py-4 text-right">
+                    <td class="px-6 py-4 text-right card-actions" data-label="">
                         <div class="flex items-center justify-end gap-2">
                             <a href="/orders/{{ order.short_id }}"
                                class="p-2 text-muted-foreground hover:text-foreground transition-colors"

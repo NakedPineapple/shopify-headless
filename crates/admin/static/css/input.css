@@ -412,9 +412,19 @@
      ───────────────────────────────────────────────────────────────────────── */
   .sidebar {
     @apply bg-sidebar text-sidebar-foreground;
-    transition: width 0.2s ease-in-out;
+    width: 16rem;
+    left: -16rem; /* Hidden by default (mobile) */
+    transition: width 0.2s ease-in-out, left 0.3s ease-out;
   }
 
+  /* Desktop: sidebar visible by default */
+  @media (min-width: 64rem) {
+    .sidebar {
+      left: 0;
+    }
+  }
+
+  /* Desktop: collapsed state */
   .sidebar.collapsed {
     width: 4rem;
   }
@@ -506,6 +516,165 @@
 
   .table tbody tr:hover {
     @apply bg-accent/50;
+  }
+
+  /* ─────────────────────────────────────────────────────────────────────────
+     Mobile Card Layout for Tables
+     ───────────────────────────────────────────────────────────────────────── */
+  @media (max-width: 47.9375rem) {
+
+
+    .data-table-cards {
+      display: block;
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
+    }
+
+    .data-table-cards thead {
+      display: none;
+    }
+
+    .data-table-cards tbody {
+      display: block;
+      padding: 0.5rem;
+      max-width: 100%;
+      box-sizing: border-box;
+    }
+
+    .data-table-cards tr {
+      display: block;
+      margin-bottom: 1rem;
+      padding: 0.75rem;
+      background: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+      overflow: hidden;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+      max-width: 100%;
+      box-sizing: border-box;
+    }
+
+    .data-table-cards tr:last-child {
+      margin-bottom: 0.5rem;
+    }
+
+    .data-table-cards tr:hover {
+      background: var(--card);
+    }
+
+    .data-table-cards td {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 0.5rem 0;
+      border: none;
+      gap: 0.75rem;
+      min-width: 0;
+      max-width: 100%;
+      box-sizing: border-box;
+    }
+
+    .data-table-cards td[class*="px-"] {
+      padding-left: 0;
+      padding-right: 0;
+    }
+
+    /* Override fixed widths inside cards */
+    .data-table-cards td .max-w-xs,
+    .data-table-cards td .max-w-sm,
+    .data-table-cards td .max-w-md {
+      max-width: 100%;
+    }
+
+    /* Ensure flex containers inside cards don't overflow */
+    .data-table-cards td > * {
+      min-width: 0;
+      max-width: 100%;
+      overflow-wrap: anywhere;
+    }
+
+    .data-table-cards td .flex {
+      flex-wrap: wrap;
+    }
+
+    /* Ensure monospace text truncates */
+    .data-table-cards td .font-mono {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 100%;
+      display: block;
+    }
+
+    .data-table-cards td > * {
+      min-width: 0;
+      max-width: 100%;
+    }
+
+    .data-table-cards td::before {
+      content: attr(data-label);
+      font-weight: 500;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted-foreground);
+      flex-shrink: 0;
+      width: 5rem;
+    }
+
+    .data-table-cards td:empty::before,
+    .data-table-cards td[data-label=""]::before {
+      display: none;
+    }
+
+    /* Card header cell (primary info) */
+    .data-table-cards td.card-header {
+      display: block;
+      padding-bottom: 0.75rem;
+      margin-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .data-table-cards td.card-header::before {
+      display: none;
+    }
+
+    /* Checkbox cell in cards */
+    .data-table-cards td.card-checkbox {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      padding: 0;
+    }
+
+    .data-table-cards td.card-checkbox::before {
+      display: none;
+    }
+
+    .data-table-cards tr:has(td.card-checkbox) {
+      position: relative;
+      padding-right: 3rem;
+    }
+
+    /* Actions cell */
+    .data-table-cards td.card-actions {
+      justify-content: flex-end;
+      padding-top: 0.75rem;
+      margin-top: 0.5rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .data-table-cards td.card-actions::before {
+      display: none;
+    }
+
+    /* Hide columns on mobile */
+    .data-table-cards td.mobile-hidden {
+      display: none;
+    }
   }
 
   /* ─────────────────────────────────────────────────────────────────────────

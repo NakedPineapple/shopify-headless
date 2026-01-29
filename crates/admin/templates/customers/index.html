@@ -194,8 +194,8 @@
     </div>
 
     <!-- Table -->
-    <div class="overflow-x-auto">
-        <table class="w-full">
+    <div class="overflow-hidden md:overflow-x-auto">
+        <table class="w-full data-table-cards">
             <thead class="bg-muted">
                 <tr>
                     <!-- Select All Checkbox -->
@@ -242,14 +242,14 @@
                 {% for customer in customers %}
                 <tr class="hover:bg-accent transition-colors" data-row="{{ customer.short_id }}">
                     <!-- Checkbox -->
-                    <td class="px-6 py-4">
+                    <td class="px-6 py-4 card-checkbox" data-label="">
                         <input type="checkbox"
                                data-row-id="{{ customer.short_id }}"
                                class="rounded border-border text-primary focus:ring-primary">
                     </td>
 
                     <!-- Customer -->
-                    <td data-column="customer" class="px-6 py-4 {% if !col_visible.customer %}hidden{% endif %}">
+                    <td data-column="customer" data-label="" class="px-6 py-4 card-header {% if !col_visible.customer %}hidden{% endif %}">
                         <a href="/customers/{{ customer.short_id }}" class="flex items-center gap-4 group">
                             <div class="w-10 h-10 rounded-full bg-muted flex items-center justify-center shrink-0">
                                 <i class="ph ph-user text-muted-foreground"></i>
@@ -264,7 +264,7 @@
                     </td>
 
                     <!-- Phone -->
-                    <td data-column="phone" class="px-6 py-4 text-sm text-muted-foreground {% if !col_visible.phone %}hidden{% endif %}">
+                    <td data-column="phone" data-label="Phone" class="px-6 py-4 text-sm text-muted-foreground mobile-hidden {% if !col_visible.phone %}hidden{% endif %}">
                         {% if let Some(phone) = customer.phone %}
                         {{ phone }}
                         {% else %}
@@ -273,7 +273,7 @@
                     </td>
 
                     <!-- Location -->
-                    <td data-column="location" class="px-6 py-4 text-sm text-muted-foreground {% if !col_visible.location %}hidden{% endif %}">
+                    <td data-column="location" data-label="Location" class="px-6 py-4 text-sm text-muted-foreground mobile-hidden {% if !col_visible.location %}hidden{% endif %}">
                         {% if let Some(loc) = customer.location %}
                         <span class="flex items-center gap-1">
                             <i class="ph ph-map-pin text-xs"></i>
@@ -285,17 +285,17 @@
                     </td>
 
                     <!-- Orders -->
-                    <td data-column="orders" class="px-6 py-4 text-sm text-foreground {% if !col_visible.orders %}hidden{% endif %}">
+                    <td data-column="orders" data-label="Orders" class="px-6 py-4 text-sm text-foreground {% if !col_visible.orders %}hidden{% endif %}">
                         {{ customer.orders_count }}
                     </td>
 
                     <!-- Spent -->
-                    <td data-column="spent" class="px-6 py-4 text-sm font-medium text-foreground {% if !col_visible.spent %}hidden{% endif %}">
+                    <td data-column="spent" data-label="Total Spent" class="px-6 py-4 text-sm font-medium text-foreground {% if !col_visible.spent %}hidden{% endif %}">
                         {{ customer.total_spent }}
                     </td>
 
                     <!-- State -->
-                    <td data-column="state" class="px-6 py-4 {% if !col_visible.state %}hidden{% endif %}">
+                    <td data-column="state" data-label="State" class="px-6 py-4 {% if !col_visible.state %}hidden{% endif %}">
                         <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium {{ customer.state_class }}">
                             <span class="w-1.5 h-1.5 rounded-full bg-current opacity-70"></span>
                             {{ customer.state }}
@@ -303,7 +303,7 @@
                     </td>
 
                     <!-- Tags -->
-                    <td data-column="tags" class="px-6 py-4 {% if !col_visible.tags %}hidden{% endif %}">
+                    <td data-column="tags" data-label="Tags" class="px-6 py-4 mobile-hidden {% if !col_visible.tags %}hidden{% endif %}">
                         {% if customer.tags.is_empty() %}
                         <span class="text-sm text-muted-foreground/50">-</span>
                         {% else %}
@@ -319,7 +319,7 @@
                     </td>
 
                     <!-- Marketing -->
-                    <td data-column="marketing" class="px-6 py-4 {% if !col_visible.marketing %}hidden{% endif %}">
+                    <td data-column="marketing" data-label="Marketing" class="px-6 py-4 mobile-hidden {% if !col_visible.marketing %}hidden{% endif %}">
                         {% if customer.accepts_marketing %}
                         <span class="inline-flex items-center gap-1 text-sm text-green-600 dark:text-green-400">
                             <i class="ph ph-check-circle"></i>
@@ -331,17 +331,17 @@
                     </td>
 
                     <!-- Created -->
-                    <td data-column="created" class="px-6 py-4 text-sm text-muted-foreground {% if !col_visible.created %}hidden{% endif %}">
+                    <td data-column="created" data-label="Created" class="px-6 py-4 text-sm text-muted-foreground mobile-hidden {% if !col_visible.created %}hidden{% endif %}">
                         {{ customer.created_at }}
                     </td>
 
                     <!-- Updated -->
-                    <td data-column="updated" class="px-6 py-4 text-sm text-muted-foreground {% if !col_visible.updated %}hidden{% endif %}">
+                    <td data-column="updated" data-label="Updated" class="px-6 py-4 text-sm text-muted-foreground mobile-hidden {% if !col_visible.updated %}hidden{% endif %}">
                         {{ customer.updated_at }}
                     </td>
 
                     <!-- Actions -->
-                    <td class="px-6 py-4 text-right">
+                    <td class="px-6 py-4 text-right card-actions" data-label="">
                         <div class="flex items-center justify-end gap-2">
                             <a href="/customers/{{ customer.short_id }}"
                                class="p-2 text-muted-foreground hover:text-foreground transition-colors"
