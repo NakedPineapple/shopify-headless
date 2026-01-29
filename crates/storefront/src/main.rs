@@ -218,6 +218,9 @@ async fn main() {
                 .service(ServeDir::new("crates/storefront/static")),
         )
         .layer(session_layer)
+        .layer(axum::middleware::from_fn(
+            middleware::security_headers_middleware,
+        ))
         .with_state(state)
         // Sentry layers (outermost for full request coverage)
         .layer(sentry_tower::NewSentryLayer::new_from_top())
