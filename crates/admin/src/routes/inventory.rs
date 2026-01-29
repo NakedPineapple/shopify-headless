@@ -15,7 +15,9 @@ use crate::{
     components::data_table::{DataTableConfig, FilterType, inventory_table_config},
     filters,
     middleware::auth::RequireAdminAuth,
-    shopify::types::{InventoryItem, InventoryItemConnection, Location, ProductStatus},
+    shopify::types::{
+        InventoryItem, InventoryItemConnection, InventoryItemUpdateInput, Location, ProductStatus,
+    },
     state::AppState,
 };
 
@@ -318,6 +320,149 @@ pub struct InventoryRowTemplate {
     /// Selected location ID (for form submissions).
     pub selected_location_id: Option<String>,
     pub col_visible: ColumnVisibility,
+}
+
+/// Detailed inventory item view for show/edit pages.
+#[derive(Debug, Clone)]
+pub struct InventoryItemDetailView {
+    pub id: String,
+    pub product_id: Option<String>,
+    pub product_title: String,
+    pub product_handle: Option<String>,
+    pub product_image_url: Option<String>,
+    pub variant_id: Option<String>,
+    pub variant_title: String,
+    pub sku: Option<String>,
+    pub tracked: bool,
+    pub requires_shipping: bool,
+    pub unit_cost: Option<String>,
+    pub unit_cost_amount: Option<String>,
+    pub unit_cost_currency: Option<String>,
+    pub harmonized_system_code: Option<String>,
+    pub country_code_of_origin: Option<String>,
+    pub province_code_of_origin: Option<String>,
+    pub status: String,
+    pub status_class: String,
+    pub inventory_levels: Vec<InventoryLevelView>,
+    pub total_on_hand: i64,
+    pub total_available: i64,
+}
+
+/// Inventory level view for detail pages.
+#[derive(Debug, Clone)]
+pub struct InventoryLevelView {
+    pub location_id: String,
+    pub location_name: String,
+    pub available: i64,
+    pub on_hand: i64,
+    pub committed: i64,
+    pub incoming: i64,
+    pub reserved: i64,
+    pub damaged: i64,
+    pub updated_at: Option<String>,
+}
+
+impl From<&InventoryItem> for InventoryItemDetailView {
+    fn from(item: &InventoryItem) -> Self {
+        let (product_id, product_title, product_handle, product_image_url, status, status_class) =
+            extract_product_info(item);
+
+        let variant_id = item.variant.as_ref().map(|v| v.id.clone());
+        let variant_title = item
+            .variant
+            .as_ref()
+            .map_or_else(|| "Default Title".to_string(), |v| v.title.clone());
+
+        // Parse unit cost
+        let (unit_cost, unit_cost_amount, unit_cost_currency) =
+            item.unit_cost.as_ref().map_or((None, None, None), |cost| {
+                (
+                    Some(format!("{} {}", cost.amount, cost.currency_code)),
+                    Some(cost.amount.clone()),
+                    Some(cost.currency_code.clone()),
+                )
+            });
+
+        // Convert inventory levels
+        let inventory_levels: Vec<InventoryLevelView> = item
+            .inventory_levels
+            .iter()
+            .map(|level| {
+                let available = level.available;
+                let on_hand = level.on_hand;
+                let incoming = level.incoming;
+                let committed = on_hand.saturating_sub(available);
+
+                InventoryLevelView {
+                    location_id: level.location_id.clone(),
+                    location_name: level.location_name.clone().unwrap_or_default(),
+                    available,
+                    on_hand,
+                    committed,
+                    incoming,
+                    reserved: 0,
+                    damaged: 0,
+                    updated_at: level.updated_at.clone(),
+                }
+            })
+            .collect();
+
+        let total_on_hand: i64 = inventory_levels.iter().map(|l| l.on_hand).sum();
+        let total_available: i64 = inventory_levels.iter().map(|l| l.available).sum();
+
+        Self {
+            id: item.id.clone(),
+            product_id,
+            product_title,
+            product_handle,
+            product_image_url,
+            variant_id,
+            variant_title,
+            sku: item.sku.clone(),
+            tracked: item.tracked,
+            requires_shipping: item.requires_shipping,
+            unit_cost,
+            unit_cost_amount,
+            unit_cost_currency,
+            harmonized_system_code: item.harmonized_system_code.clone(),
+            country_code_of_origin: item.country_code_of_origin.clone(),
+            province_code_of_origin: item.province_code_of_origin.clone(),
+            status,
+            status_class,
+            inventory_levels,
+            total_on_hand,
+            total_available,
+        }
+    }
+}
+
+/// Inventory item detail page template.
+#[derive(Template)]
+#[template(path = "inventory/show.html")]
+pub struct InventoryShowTemplate {
+    pub admin_user: AdminUserView,
+    pub current_path: String,
+    pub item: InventoryItemDetailView,
+    pub locations: Vec<LocationView>,
+}
+
+/// Inventory item edit page template.
+#[derive(Template)]
+#[template(path = "inventory/edit.html")]
+pub struct InventoryEditTemplate {
+    pub admin_user: AdminUserView,
+    pub current_path: String,
+    pub item: InventoryItemDetailView,
+}
+
+/// Form input for inventory item update.
+#[derive(Debug, Deserialize)]
+pub struct InventoryUpdateForm {
+    pub tracked: Option<String>,
+    pub requires_shipping: Option<String>,
+    pub harmonized_system_code: Option<String>,
+    pub country_code_of_origin: Option<String>,
+    pub province_code_of_origin: Option<String>,
 }
 
 // =============================================================================
@@ -644,6 +789,127 @@ pub async fn set(
                     r#"<span class="text-red-600 dark:text-red-400">Error: {e}</span>"#
                 )),
             )
+        }
+    }
+}
+
+/// GET /inventory/:id - Inventory item detail page.
+#[instrument(skip(admin, state))]
+pub async fn show(
+    RequireAdminAuth(admin): RequireAdminAuth,
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> impl IntoResponse {
+    // Fetch inventory item and locations in parallel
+    let item_future = state.shopify().get_inventory_item(&id);
+    let locations_future = state.shopify().get_locations();
+
+    let (item_result, locations_result) = tokio::join!(item_future, locations_future);
+
+    let item = match item_result {
+        Ok(item) => InventoryItemDetailView::from(&item),
+        Err(e) => {
+            tracing::error!(id = %id, error = %e, "Failed to fetch inventory item");
+            return (
+                StatusCode::NOT_FOUND,
+                Html("Inventory item not found".to_string()),
+            )
+                .into_response();
+        }
+    };
+
+    let locations: Vec<LocationView> = match locations_result {
+        Ok(conn) => conn
+            .locations
+            .iter()
+            .filter(|l| l.is_active)
+            .map(LocationView::from)
+            .collect(),
+        Err(e) => {
+            tracing::error!("Failed to fetch locations: {e}");
+            vec![]
+        }
+    };
+
+    let template = InventoryShowTemplate {
+        admin_user: AdminUserView::from(&admin),
+        current_path: format!("/inventory/{id}"),
+        item,
+        locations,
+    };
+
+    Html(template.render().unwrap_or_else(|e| {
+        tracing::error!("Template render error: {}", e);
+        "Internal Server Error".to_string()
+    }))
+    .into_response()
+}
+
+/// GET /inventory/:id/edit - Inventory item edit page.
+#[instrument(skip(admin, state))]
+pub async fn edit(
+    RequireAdminAuth(admin): RequireAdminAuth,
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> impl IntoResponse {
+    let item = match state.shopify().get_inventory_item(&id).await {
+        Ok(item) => InventoryItemDetailView::from(&item),
+        Err(e) => {
+            tracing::error!(id = %id, error = %e, "Failed to fetch inventory item");
+            return (
+                StatusCode::NOT_FOUND,
+                Html("Inventory item not found".to_string()),
+            )
+                .into_response();
+        }
+    };
+
+    let template = InventoryEditTemplate {
+        admin_user: AdminUserView::from(&admin),
+        current_path: format!("/inventory/{id}/edit"),
+        item,
+    };
+
+    Html(template.render().unwrap_or_else(|e| {
+        tracing::error!("Template render error: {}", e);
+        "Internal Server Error".to_string()
+    }))
+    .into_response()
+}
+
+/// POST /inventory/:id - Update inventory item.
+#[instrument(skip(_admin, state))]
+pub async fn update(
+    RequireAdminAuth(_admin): RequireAdminAuth,
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    Form(form): Form<InventoryUpdateForm>,
+) -> impl IntoResponse {
+    let input = InventoryItemUpdateInput {
+        sku: None, // SKU updates require variant mutation
+        tracked: form.tracked.as_deref().map(|v| v == "on" || v == "true"),
+        requires_shipping: form
+            .requires_shipping
+            .as_deref()
+            .map(|v| v == "on" || v == "true"),
+        cost: None, // Cost updates handled separately
+        harmonized_system_code: form.harmonized_system_code.clone(),
+        country_code_of_origin: form.country_code_of_origin.clone(),
+        province_code_of_origin: form.province_code_of_origin.clone(),
+    };
+
+    match state.shopify().update_inventory_item(&id, &input).await {
+        Ok(_) => {
+            tracing::info!(id = %id, "Inventory item updated");
+            axum::response::Redirect::to(&format!("/inventory/{id}")).into_response()
+        }
+        Err(e) => {
+            tracing::error!(id = %id, error = %e, "Failed to update inventory item");
+            (
+                StatusCode::BAD_REQUEST,
+                Html(format!("Failed to update: {e}")),
+            )
+                .into_response()
         }
     }
 }

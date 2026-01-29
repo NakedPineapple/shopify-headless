@@ -60,7 +60,7 @@ use queries::{
     OrderEditUpdateShippingLine, OrderMarkAsPaid, OrderOpen, OrderTagsAdd, OrderTagsRemove,
     OrderUpdate, ProductCreate, ProductDelete, ProductReorderMedia, ProductSetMedia, ProductUpdate,
     ProductVariantsBulkUpdate, PublishablePublish, PublishableUnpublish, RefundCreate,
-    ReturnCreate, StagedUploadsCreate, SuggestedRefund, TagsAdd, TagsRemove,
+    ReturnCreate, StagedUploadsCreate, SuggestedRefund, TagsAdd, TagsRemove, UpdateInventoryItem,
 };
 
 /// OAuth token for Admin API access.
@@ -4966,6 +4966,85 @@ impl AdminClient {
         }
 
         Ok(())
+    }
+
+    /// Update inventory item properties.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - Inventory item ID
+    /// * `input` - Fields to update
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails or returns user errors.
+    #[instrument(skip(self, input), fields(id = %id))]
+    pub async fn update_inventory_item(
+        &self,
+        id: &str,
+        input: &super::types::InventoryItemUpdateInput,
+    ) -> Result<InventoryItem, AdminShopifyError> {
+        use queries::update_inventory_item::{CountryCode, InventoryItemInput};
+
+        // Convert country code string to enum
+        let country_code = input
+            .country_code_of_origin
+            .as_ref()
+            .map(|code| match code.as_str() {
+                "US" => CountryCode::US,
+                "CN" => CountryCode::CN,
+                "VN" => CountryCode::VN,
+                "BD" => CountryCode::BD,
+                "IN" => CountryCode::IN,
+                "ID" => CountryCode::ID,
+                "TH" => CountryCode::TH,
+                "PK" => CountryCode::PK,
+                "TR" => CountryCode::TR,
+                "KH" => CountryCode::KH,
+                "MX" => CountryCode::MX,
+                "IT" => CountryCode::IT,
+                "PT" => CountryCode::PT,
+                "ES" => CountryCode::ES,
+                "GB" => CountryCode::GB,
+                "CA" => CountryCode::CA,
+                "AU" => CountryCode::AU,
+                "JP" => CountryCode::JP,
+                "KR" => CountryCode::KR,
+                "TW" => CountryCode::TW,
+                _ => CountryCode::Other(code.clone()),
+            });
+
+        let variables = queries::update_inventory_item::Variables {
+            id: id.to_string(),
+            input: InventoryItemInput {
+                tracked: input.tracked,
+                country_code_of_origin: country_code,
+                province_code_of_origin: input.province_code_of_origin.clone(),
+                harmonized_system_code: input.harmonized_system_code.clone(),
+                cost: None,
+                country_harmonized_system_codes: None,
+                measurement: None,
+                requires_shipping: input.requires_shipping,
+                sku: None, // SKU updates require variant mutation
+            },
+        };
+
+        let response = self.execute::<UpdateInventoryItem>(variables).await?;
+
+        // Check for user errors
+        if let Some(ref payload) = response.inventory_item_update
+            && !payload.user_errors.is_empty()
+        {
+            let error_messages: Vec<String> = payload
+                .user_errors
+                .iter()
+                .map(|e| e.message.clone())
+                .collect();
+            return Err(AdminShopifyError::UserError(error_messages.join("; ")));
+        }
+
+        // Re-fetch the item to get the full updated data
+        self.get_inventory_item(id).await
     }
 
     // =========================================================================

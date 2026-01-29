@@ -1,0 +1,149 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Edit {{ item.product_title }} - Inventory{% endblock %}
+
+{% block page_title %}
+<nav class="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+    <a href="/inventory" class="hover:text-foreground transition-colors">Inventory</a>
+    <i class="ph ph-caret-right text-xs"></i>
+    <a href="/inventory/{{ item.id }}" class="hover:text-foreground transition-colors">{{ item.sku.as_deref().unwrap_or("No SKU") }}</a>
+    <i class="ph ph-caret-right text-xs"></i>
+    <span class="text-foreground">Edit</span>
+</nav>
+<h1 class="text-2xl font-semibold text-foreground">Edit Inventory Item</h1>
+{% endblock %}
+
+{% block content %}
+<form method="POST" action="/inventory/{{ item.id }}" class="max-w-2xl space-y-6">
+    <!-- Product Info (Read-only) -->
+    <div class="bg-card rounded-xl border border-border p-6">
+        <h2 class="text-lg font-medium text-foreground mb-4">Product</h2>
+        <div class="flex items-center gap-4">
+            {% if let Some(url) = item.product_image_url %}
+            <img src="{{ url }}" alt="{{ item.product_title }}" class="w-16 h-16 rounded-lg object-cover">
+            {% else %}
+            <div class="w-16 h-16 rounded-lg bg-muted flex items-center justify-center">
+                <i class="ph ph-package text-2xl text-muted-foreground"></i>
+            </div>
+            {% endif %}
+            <div>
+                <p class="font-medium text-foreground">{{ item.product_title }}</p>
+                {% if item.variant_title != "Default Title" %}
+                <p class="text-sm text-muted-foreground">{{ item.variant_title }}</p>
+                {% endif %}
+                <p class="text-sm text-muted-foreground mt-1">SKU: {{ item.sku.as_deref().unwrap_or("-") }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tracking Settings -->
+    <div class="bg-card rounded-xl border border-border p-6">
+        <h2 class="text-lg font-medium text-foreground mb-4">Tracking</h2>
+        <div class="space-y-4">
+            <label class="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox"
+                       name="tracked"
+                       value="true"
+                       {% if item.tracked %}checked{% endif %}
+                       class="w-5 h-5 rounded border-border text-primary focus:ring-primary">
+                <div>
+                    <p class="font-medium text-foreground">Track quantity</p>
+                    <p class="text-sm text-muted-foreground">Track inventory levels for this item</p>
+                </div>
+            </label>
+            <label class="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox"
+                       name="requires_shipping"
+                       value="true"
+                       {% if item.requires_shipping %}checked{% endif %}
+                       class="w-5 h-5 rounded border-border text-primary focus:ring-primary">
+                <div>
+                    <p class="font-medium text-foreground">Requires shipping</p>
+                    <p class="text-sm text-muted-foreground">This is a physical product that needs to be shipped</p>
+                </div>
+            </label>
+        </div>
+    </div>
+
+    <!-- Customs Information -->
+    <div class="bg-card rounded-xl border border-border p-6">
+        <h2 class="text-lg font-medium text-foreground mb-4">Customs Information</h2>
+        <p class="text-sm text-muted-foreground mb-4">Required for international shipping</p>
+        <div class="space-y-4">
+            <!-- HS Code -->
+            <div>
+                <label for="harmonized_system_code" class="block text-sm font-medium text-foreground mb-1">
+                    Harmonized System (HS) Code
+                </label>
+                <input type="text"
+                       id="harmonized_system_code"
+                       name="harmonized_system_code"
+                       value="{{ item.harmonized_system_code.as_deref().unwrap_or("") }}"
+                       placeholder="e.g., 6109.10"
+                       pattern="[0-9]{4}(\.[0-9]{2})?"
+                       class="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-ring focus:border-ring font-mono">
+                <p class="text-xs text-muted-foreground mt-1">6-digit code identifying the product category</p>
+            </div>
+
+            <!-- Country of Origin -->
+            <div>
+                <label for="country_code_of_origin" class="block text-sm font-medium text-foreground mb-1">
+                    Country of Origin
+                </label>
+                <select id="country_code_of_origin"
+                        name="country_code_of_origin"
+                        class="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-ring focus:border-ring">
+                    <option value="">Select country...</option>
+                    <option value="US" {% if item.country_code_of_origin.as_deref() == Some("US") %}selected{% endif %}>United States</option>
+                    <option value="CN" {% if item.country_code_of_origin.as_deref() == Some("CN") %}selected{% endif %}>China</option>
+                    <option value="VN" {% if item.country_code_of_origin.as_deref() == Some("VN") %}selected{% endif %}>Vietnam</option>
+                    <option value="BD" {% if item.country_code_of_origin.as_deref() == Some("BD") %}selected{% endif %}>Bangladesh</option>
+                    <option value="IN" {% if item.country_code_of_origin.as_deref() == Some("IN") %}selected{% endif %}>India</option>
+                    <option value="ID" {% if item.country_code_of_origin.as_deref() == Some("ID") %}selected{% endif %}>Indonesia</option>
+                    <option value="TH" {% if item.country_code_of_origin.as_deref() == Some("TH") %}selected{% endif %}>Thailand</option>
+                    <option value="PK" {% if item.country_code_of_origin.as_deref() == Some("PK") %}selected{% endif %}>Pakistan</option>
+                    <option value="TR" {% if item.country_code_of_origin.as_deref() == Some("TR") %}selected{% endif %}>Turkey</option>
+                    <option value="KH" {% if item.country_code_of_origin.as_deref() == Some("KH") %}selected{% endif %}>Cambodia</option>
+                    <option value="MX" {% if item.country_code_of_origin.as_deref() == Some("MX") %}selected{% endif %}>Mexico</option>
+                    <option value="IT" {% if item.country_code_of_origin.as_deref() == Some("IT") %}selected{% endif %}>Italy</option>
+                    <option value="PT" {% if item.country_code_of_origin.as_deref() == Some("PT") %}selected{% endif %}>Portugal</option>
+                    <option value="ES" {% if item.country_code_of_origin.as_deref() == Some("ES") %}selected{% endif %}>Spain</option>
+                    <option value="GB" {% if item.country_code_of_origin.as_deref() == Some("GB") %}selected{% endif %}>United Kingdom</option>
+                    <option value="CA" {% if item.country_code_of_origin.as_deref() == Some("CA") %}selected{% endif %}>Canada</option>
+                    <option value="AU" {% if item.country_code_of_origin.as_deref() == Some("AU") %}selected{% endif %}>Australia</option>
+                    <option value="JP" {% if item.country_code_of_origin.as_deref() == Some("JP") %}selected{% endif %}>Japan</option>
+                    <option value="KR" {% if item.country_code_of_origin.as_deref() == Some("KR") %}selected{% endif %}>South Korea</option>
+                    <option value="TW" {% if item.country_code_of_origin.as_deref() == Some("TW") %}selected{% endif %}>Taiwan</option>
+                </select>
+                <p class="text-xs text-muted-foreground mt-1">Where the product was manufactured</p>
+            </div>
+
+            <!-- Province of Origin (optional) -->
+            <div>
+                <label for="province_code_of_origin" class="block text-sm font-medium text-foreground mb-1">
+                    Province/State of Origin <span class="text-muted-foreground">(optional)</span>
+                </label>
+                <input type="text"
+                       id="province_code_of_origin"
+                       name="province_code_of_origin"
+                       value="{{ item.province_code_of_origin.as_deref().unwrap_or("") }}"
+                       placeholder="e.g., CA, NY"
+                       class="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-ring focus:border-ring">
+                <p class="text-xs text-muted-foreground mt-1">Two-letter province/state code (if applicable)</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Form Actions -->
+    <div class="flex items-center justify-end gap-3">
+        <a href="/inventory/{{ item.id }}"
+           class="px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+            Cancel
+        </a>
+        <button type="submit"
+                class="px-6 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors">
+            Save Changes
+        </button>
+    </div>
+</form>
+{% endblock %}

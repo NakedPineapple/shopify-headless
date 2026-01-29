@@ -1,0 +1,245 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}{{ item.product_title }} - Inventory{% endblock %}
+
+{% block page_title %}
+<nav class="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+    <a href="/inventory" class="hover:text-foreground transition-colors">Inventory</a>
+    <i class="ph ph-caret-right text-xs"></i>
+    <span class="text-foreground">{{ item.sku.as_deref().unwrap_or("No SKU") }}</span>
+</nav>
+<div class="flex items-center gap-4">
+    {% if let Some(url) = item.product_image_url %}
+    <img src="{{ url }}" alt="{{ item.product_title }}" class="w-16 h-16 rounded-xl object-cover border border-border">
+    {% else %}
+    <div class="w-16 h-16 rounded-xl bg-muted flex items-center justify-center border border-border">
+        <i class="ph ph-package text-2xl text-muted-foreground"></i>
+    </div>
+    {% endif %}
+    <div>
+        <h1 class="text-2xl font-semibold text-foreground">{{ item.product_title }}</h1>
+        {% if item.variant_title != "Default Title" %}
+        <p class="text-muted-foreground">{{ item.variant_title }}</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block page_actions %}
+<a href="/inventory/{{ item.id }}/edit"
+   class="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors">
+    <i class="ph ph-pencil"></i>
+    Edit
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Main Content -->
+    <div class="lg:col-span-2 space-y-6">
+        <!-- Product Info Card -->
+        {% if let Some(product_id) = item.product_id %}
+        <div class="bg-card rounded-xl border border-border p-6">
+            <h2 class="text-lg font-medium text-foreground mb-4">Product</h2>
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    {% if let Some(url) = item.product_image_url %}
+                    <img src="{{ url }}" alt="{{ item.product_title }}" class="w-12 h-12 rounded-lg object-cover">
+                    {% else %}
+                    <div class="w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
+                        <i class="ph ph-package text-muted-foreground"></i>
+                    </div>
+                    {% endif %}
+                    <div>
+                        <p class="font-medium text-foreground">{{ item.product_title }}</p>
+                        {% if item.variant_title != "Default Title" %}
+                        <p class="text-sm text-muted-foreground">{{ item.variant_title }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ item.status_class }}">
+                        {{ item.status }}
+                    </span>
+                    <a href="/products/{{ product_id }}"
+                       class="p-2 text-muted-foreground hover:text-foreground transition-colors"
+                       title="View product">
+                        <i class="ph ph-arrow-square-out"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Quantities by Location -->
+        <div class="bg-card rounded-xl border border-border overflow-hidden">
+            <div class="px-6 py-4 border-b border-border">
+                <h2 class="text-lg font-medium text-foreground">Quantities by Location</h2>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-muted">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Location</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">On Hand</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Available</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Committed</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Incoming</th>
+                            <th class="px-6 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-border">
+                        {% if item.inventory_levels.is_empty() %}
+                        <tr>
+                            <td colspan="6" class="px-6 py-8 text-center text-muted-foreground">
+                                <i class="ph ph-map-pin text-3xl mb-2 block"></i>
+                                <p>Not stocked at any locations</p>
+                            </td>
+                        </tr>
+                        {% else %}
+                        {% for level in item.inventory_levels %}
+                        <tr class="hover:bg-accent/50 transition-colors">
+                            <td class="px-6 py-4">
+                                <div class="flex items-center gap-2">
+                                    <i class="ph ph-map-pin text-muted-foreground"></i>
+                                    <span class="font-medium text-foreground">{{ level.location_name }}</span>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 text-right tabular-nums text-foreground">{{ level.on_hand }}</td>
+                            <td class="px-6 py-4 text-right tabular-nums">
+                                <span class="{% if level.available == 0 %}text-destructive{% elif level.available <= 10 %}text-warning{% else %}text-foreground{% endif %} font-medium">
+                                    {{ level.available }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 text-right tabular-nums text-muted-foreground">{{ level.committed }}</td>
+                            <td class="px-6 py-4 text-right tabular-nums">
+                                {% if level.incoming > 0 %}
+                                <span class="text-blue-600 dark:text-blue-400">+{{ level.incoming }}</span>
+                                {% else %}
+                                <span class="text-muted-foreground">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 text-center">
+                                <div class="flex items-center justify-center gap-1">
+                                    <form hx-post="/inventory/adjust"
+                                          hx-swap="none"
+                                          class="flex items-center gap-1">
+                                        <input type="hidden" name="inventory_item_id" value="{{ item.id }}">
+                                        <input type="hidden" name="location_id" value="{{ level.location_id }}">
+                                        <input type="hidden" name="delta" value="-1">
+                                        <button type="submit" class="w-7 h-7 rounded bg-muted hover:bg-accent flex items-center justify-center transition-colors" title="Decrease">
+                                            <i class="ph ph-minus text-sm text-muted-foreground"></i>
+                                        </button>
+                                    </form>
+                                    <form hx-post="/inventory/adjust"
+                                          hx-swap="none"
+                                          class="flex items-center gap-1">
+                                        <input type="hidden" name="inventory_item_id" value="{{ item.id }}">
+                                        <input type="hidden" name="location_id" value="{{ level.location_id }}">
+                                        <input type="hidden" name="delta" value="1">
+                                        <button type="submit" class="w-7 h-7 rounded bg-muted hover:bg-accent flex items-center justify-center transition-colors" title="Increase">
+                                            <i class="ph ph-plus text-sm text-muted-foreground"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        <!-- Totals Row -->
+                        <tr class="bg-muted/50 font-medium">
+                            <td class="px-6 py-3 text-foreground">Total</td>
+                            <td class="px-6 py-3 text-right tabular-nums text-foreground">{{ item.total_on_hand }}</td>
+                            <td class="px-6 py-3 text-right tabular-nums text-foreground">{{ item.total_available }}</td>
+                            <td class="px-6 py-3 text-right tabular-nums text-muted-foreground">-</td>
+                            <td class="px-6 py-3 text-right tabular-nums text-muted-foreground">-</td>
+                            <td class="px-6 py-3"></td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="space-y-6">
+        <!-- Item Properties Card -->
+        <div class="bg-card rounded-xl border border-border p-6">
+            <h3 class="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-4">Item Properties</h3>
+            <dl class="space-y-4">
+                <div class="flex justify-between">
+                    <dt class="text-muted-foreground">SKU</dt>
+                    <dd class="text-foreground font-mono">{{ item.sku.as_deref().unwrap_or("-") }}</dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt class="text-muted-foreground">Tracked</dt>
+                    <dd>
+                        {% if item.tracked %}
+                        <span class="inline-flex items-center gap-1 text-green-600 dark:text-green-400">
+                            <i class="ph ph-check-circle"></i> Yes
+                        </span>
+                        {% else %}
+                        <span class="text-muted-foreground">No</span>
+                        {% endif %}
+                    </dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt class="text-muted-foreground">Requires Shipping</dt>
+                    <dd>
+                        {% if item.requires_shipping %}
+                        <span class="inline-flex items-center gap-1 text-green-600 dark:text-green-400">
+                            <i class="ph ph-check-circle"></i> Yes
+                        </span>
+                        {% else %}
+                        <span class="text-muted-foreground">No</span>
+                        {% endif %}
+                    </dd>
+                </div>
+            </dl>
+        </div>
+
+        <!-- Cost Card -->
+        <div class="bg-card rounded-xl border border-border p-6">
+            <h3 class="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-4">Cost</h3>
+            <dl class="space-y-4">
+                <div class="flex justify-between">
+                    <dt class="text-muted-foreground">Unit Cost</dt>
+                    <dd class="text-foreground font-medium">{{ item.unit_cost.as_deref().unwrap_or("-") }}</dd>
+                </div>
+            </dl>
+        </div>
+
+        <!-- Customs Information Card -->
+        <div class="bg-card rounded-xl border border-border p-6">
+            <h3 class="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-4">Customs Information</h3>
+            <dl class="space-y-4">
+                <div class="flex justify-between">
+                    <dt class="text-muted-foreground">HS Code</dt>
+                    <dd class="text-foreground font-mono">{{ item.harmonized_system_code.as_deref().unwrap_or("-") }}</dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt class="text-muted-foreground">Country of Origin</dt>
+                    <dd class="text-foreground">{{ item.country_code_of_origin.as_deref().unwrap_or("-") }}</dd>
+                </div>
+                {% if let Some(province) = item.province_code_of_origin %}
+                <div class="flex justify-between">
+                    <dt class="text-muted-foreground">Province of Origin</dt>
+                    <dd class="text-foreground">{{ province }}</dd>
+                </div>
+                {% endif %}
+            </dl>
+        </div>
+    </div>
+</div>
+
+<script>
+// Reload page after HTMX adjustment
+document.body.addEventListener('htmx:afterRequest', function(evt) {
+    if (evt.detail.successful) {
+        setTimeout(function() {
+            location.reload();
+        }, 500);
+    }
+});
+</script>
+{% endblock %}
