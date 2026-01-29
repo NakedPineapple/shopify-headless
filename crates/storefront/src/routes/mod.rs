@@ -65,9 +65,12 @@ use axum::{
     routing::{get, post},
 };
 
+use crate::middleware::{api_rate_limiter, auth_rate_limiter};
 use crate::state::AppState;
 
 /// Create the auth routes router.
+///
+/// Rate limited to ~10 requests per minute per IP to prevent brute force attacks.
 pub fn auth_routes() -> Router<AppState> {
     Router::new()
         // Login/Register/Logout
@@ -89,9 +92,12 @@ pub fn auth_routes() -> Router<AppState> {
         .route("/shopify/login", get(shopify_auth::login))
         .route("/shopify/callback", get(shopify_auth::callback))
         .route("/shopify/logout", post(shopify_auth::logout))
+        .layer(auth_rate_limiter())
 }
 
 /// Create the `WebAuthn` API routes router.
+///
+/// Rate limited to ~10 requests per minute per IP to prevent credential enumeration.
 pub fn webauthn_api_routes() -> Router<AppState> {
     Router::new()
         .route("/register/start", post(api::webauthn::start_registration))
@@ -104,6 +110,7 @@ pub fn webauthn_api_routes() -> Router<AppState> {
             "/authenticate/finish",
             post(api::webauthn::finish_authentication),
         )
+        .layer(auth_rate_limiter())
 }
 
 /// Create the product routes router.
@@ -122,6 +129,8 @@ pub fn collection_routes() -> Router<AppState> {
 }
 
 /// Create the cart routes router.
+///
+/// Rate limited to ~100 requests per minute per IP to prevent cart abuse.
 pub fn cart_routes() -> Router<AppState> {
     Router::new()
         .route("/", get(cart::show))
@@ -129,6 +138,7 @@ pub fn cart_routes() -> Router<AppState> {
         .route("/update", post(cart::update))
         .route("/remove", post(cart::remove))
         .route("/count", get(cart::count))
+        .layer(api_rate_limiter())
 }
 
 /// Create the account routes router.

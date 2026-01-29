@@ -11,10 +11,12 @@
 //! 7. Rate limiting (governor)
 
 pub mod auth;
+pub mod rate_limit;
 pub mod session;
 pub mod shopify_customer;
 
 pub use auth::{OptionalAuth, RequireAuth, clear_current_customer, set_current_customer};
+pub use rate_limit::{api_rate_limiter, auth_rate_limiter};
 pub use session::create_session_layer;
 pub use shopify_customer::{
     OptionalShopifyCustomer, RequireShopifyCustomer, clear_shopify_customer_token,
