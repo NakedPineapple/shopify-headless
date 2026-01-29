@@ -456,12 +456,9 @@ fn build_preserve_params(query: &OrdersQuery) -> String {
     {
         params.push(format!("query={}", urlencoding::encode(q)));
     }
-    if let Some(s) = &query.sort {
-        params.push(format!("sort={s}"));
-    }
-    if let Some(d) = &query.dir {
-        params.push(format!("dir={d}"));
-    }
+    // Note: sort and dir are intentionally excluded here because they are
+    // set explicitly in the sort column header links. Including them would
+    // create duplicate query parameters.
     if let Some(fs) = &query.financial_status {
         params.push(format!("financial_status={fs}"));
     }
