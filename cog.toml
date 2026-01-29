@@ -1,0 +1,22 @@
+# https://docs.cocogitto.io/config
+
+scopes = ["gateway", "config", "docker", "docs", "deps"]
+
+from_latest_tag = true
+ignore_merge_commits = true
+
+[commit_types]
+build = { changelog_title = "Build System" }
+chore = { changelog_title = "Chores" }
+ci = { changelog_title = "Continuous Integration" }
+docs = { changelog_title = "Documentation" }
+feat = { changelog_title = "Features" }
+fix = { changelog_title = "Bug Fixes" }
+perf = { changelog_title = "Performance" }
+refactor = { changelog_title = "Refactoring" }
+revert = { changelog_title = "Reverts" }
+style = { changelog_title = "Styles" }
+test = { changelog_title = "Tests" }
+
+[changelog]
+path = "CHANGELOG.md"
