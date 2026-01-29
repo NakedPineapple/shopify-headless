@@ -1,0 +1,109 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Sales Channels{% endblock %}
+
+{% block page_title %}Sales Channels{% endblock %}
+
+{% block page_subtitle %}
+<p class="text-sm text-muted-foreground mt-1">Manage where your products are sold</p>
+{% endblock %}
+
+{% block content %}
+<!-- Breadcrumb -->
+<div class="mb-6">
+    <nav class="flex items-center gap-2 text-sm">
+        <a href="/analytics" class="text-muted-foreground hover:text-foreground transition-colors">
+            <i class="ph ph-chart-bar mr-1"></i>
+            Analytics
+        </a>
+        <i class="ph ph-caret-right text-muted-foreground"></i>
+        <span class="text-foreground">Sales Channels</span>
+    </nav>
+</div>
+
+<!-- Summary Card -->
+<div class="mb-6 bg-gradient-to-r from-coral/10 to-honey/10 border border-coral/20 rounded-xl p-6">
+    <div class="flex items-center gap-4">
+        <div class="w-12 h-12 rounded-full bg-coral/20 flex items-center justify-center">
+            <i class="ph ph-storefront text-2xl text-coral"></i>
+        </div>
+        <div>
+            <p class="text-sm text-muted-foreground">Total Sales Channels</p>
+            <p class="text-2xl font-bold text-foreground">{{ channel_count }}</p>
+        </div>
+    </div>
+</div>
+
+<!-- Channels List -->
+<div class="bg-card rounded-xl border border-border overflow-hidden">
+    <div class="px-6 py-4 border-b border-border">
+        <h3 class="font-semibold text-foreground">All Sales Channels</h3>
+    </div>
+
+    <div class="divide-y divide-border">
+        {% if channels.is_empty() %}
+        <div class="px-6 py-12 text-center text-muted-foreground">
+            <i class="ph ph-storefront text-4xl mb-2 block"></i>
+            <p class="font-medium">No sales channels configured</p>
+            <p class="text-sm mt-1">Add sales channels in your Shopify admin to start selling across multiple platforms.</p>
+        </div>
+        {% else %}
+        {% for channel in channels %}
+        <div class="px-6 py-4 hover:bg-accent transition-colors">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-lg bg-coral/10 flex items-center justify-center">
+                        <i class="ph ph-storefront text-2xl text-coral"></i>
+                    </div>
+                    <div>
+                        <p class="font-medium text-foreground">{{ channel.name }}</p>
+                        {% if let Some(app) = channel.app_title %}
+                        <p class="text-sm text-muted-foreground">{{ app }}</p>
+                        {% else %}
+                        <p class="text-sm text-muted-foreground">Custom channel</p>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="flex items-center gap-4">
+                    {% if channel.auto_publish %}
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                        <i class="ph ph-check-circle mr-1"></i>
+                        Auto-publish
+                    </span>
+                    {% else %}
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+                        Manual
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+        {% endif %}
+    </div>
+</div>
+
+<!-- Info Card -->
+<div class="mt-6 bg-muted/50 rounded-xl p-6">
+    <div class="flex items-start gap-4">
+        <div class="w-10 h-10 rounded-lg bg-secondary/20 flex items-center justify-center shrink-0">
+            <i class="ph ph-info text-xl text-secondary"></i>
+        </div>
+        <div>
+            <p class="font-medium text-foreground mb-1">About Sales Channels</p>
+            <p class="text-sm text-muted-foreground">
+                Sales channels are the different places where you sell your products, such as your online store,
+                Point of Sale, Facebook Shop, Instagram Shopping, and third-party marketplaces. Each channel
+                can have different visibility settings for your products.
+            </p>
+            <a href="https://help.shopify.com/en/manual/online-sales-channels"
+               target="_blank"
+               rel="noopener noreferrer"
+               class="inline-flex items-center gap-1 text-sm text-primary hover:underline mt-2">
+                Learn more about sales channels
+                <i class="ph ph-arrow-square-out"></i>
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

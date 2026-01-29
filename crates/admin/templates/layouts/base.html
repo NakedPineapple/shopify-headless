@@ -103,6 +103,11 @@
                         <i class="ph ph-wallet text-xl"></i>
                         <span class="sidebar-text">Payouts</span>
                     </a>
+                    <a href="/analytics"
+                       class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors {% if current_path.starts_with("/analytics") %}bg-coral text-white{% else %}text-sidebar-foreground hover:bg-sidebar-accent hover:text-white{% endif %}">
+                        <i class="ph ph-chart-bar text-xl"></i>
+                        <span class="sidebar-text">Analytics</span>
+                    </a>
                 </div>
 
                 <div class="mt-6 pt-6 border-t border-sidebar-border">

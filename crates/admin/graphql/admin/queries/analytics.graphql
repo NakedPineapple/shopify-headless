@@ -1,0 +1,154 @@
+# Analytics queries for Shopify Admin API
+# Uses ShopifyQL for sales analytics and Publications for channel listing
+
+# =============================================================================
+# ShopifyQL Analytics Query
+# =============================================================================
+
+# Execute a ShopifyQL query to analyze store data
+# Returns tabular data with columns and rows
+# Requires read_reports scope
+#
+# Example queries:
+# - "FROM sales SHOW total_sales, orders GROUP BY sales_channel SINCE -30d"
+# - "FROM sales SHOW total_sales GROUP BY day SINCE -7d ORDER BY day"
+query ShopifyqlQuery($query: String!) {
+  shopifyqlQuery(query: $query) {
+    parseErrors
+    tableData {
+      columns {
+        name
+        dataType
+        displayName
+      }
+      rows
+    }
+  }
+}
+
+# =============================================================================
+# Sales Channels (via Publications API)
+# =============================================================================
+
+# Get paginated list of sales channels for analytics
+# Uses publications endpoint which lists all available sales channels
+query GetSalesChannels($first: Int = 50, $after: String) {
+  publications(first: $first, after: $after) {
+    edges {
+      cursor
+      node {
+        id
+        name
+        app {
+          id
+          title
+          handle
+        }
+        autoPublish
+        supportsFuturePublishing
+      }
+    }
+    pageInfo {
+      hasNextPage
+      hasPreviousPage
+      startCursor
+      endCursor
+    }
+  }
+}
+
+# Get count of sales channels
+query GetSalesChannelsCount {
+  publicationsCount {
+    count
+  }
+}
+
+# =============================================================================
+# Marketing Activities
+# =============================================================================
+
+# Get paginated list of marketing activities (campaigns)
+query GetMarketingActivities($first: Int = 50, $after: String) {
+  marketingActivities(first: $first, after: $after) {
+    edges {
+      cursor
+      node {
+        id
+        title
+        activityListUrl
+        status
+        statusBadgeType
+        sourceAndMedium
+        budget {
+          budgetType
+          total {
+            amount
+            currencyCode
+          }
+        }
+        adSpend {
+          amount
+          currencyCode
+        }
+        marketingChannelType
+        tactic
+        marketingEvent {
+          id
+          type
+          startedAt
+          endedAt
+          scheduledToEndAt
+          utmCampaign
+          utmMedium
+          utmSource
+        }
+        createdAt
+        updatedAt
+      }
+    }
+    pageInfo {
+      hasNextPage
+      hasPreviousPage
+      startCursor
+      endCursor
+    }
+  }
+}
+
+# Get a single marketing activity by ID
+query GetMarketingActivity($id: ID!) {
+  marketingActivity(id: $id) {
+    id
+    title
+    activityListUrl
+    status
+    statusBadgeType
+    sourceAndMedium
+    budget {
+      budgetType
+      total {
+        amount
+        currencyCode
+      }
+    }
+    adSpend {
+      amount
+      currencyCode
+    }
+    marketingChannelType
+    tactic
+    marketingEvent {
+      id
+      type
+      startedAt
+      endedAt
+      scheduledToEndAt
+      utmCampaign
+      utmMedium
+      utmSource
+    }
+    createdAt
+    updatedAt
+  }
+}

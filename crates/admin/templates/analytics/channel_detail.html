@@ -1,0 +1,179 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}{{ channel.name }} - Analytics{% endblock %}
+
+{% block page_title %}{{ channel.name }}{% endblock %}
+
+{% block page_subtitle %}
+<p class="text-sm text-muted-foreground mt-1">Channel performance details</p>
+{% endblock %}
+
+{% block content %}
+<!-- Breadcrumb -->
+<div class="mb-6">
+    <nav class="flex items-center gap-2 text-sm">
+        <a href="/analytics" class="text-muted-foreground hover:text-foreground transition-colors">
+            <i class="ph ph-chart-bar mr-1"></i>
+            Analytics
+        </a>
+        <i class="ph ph-caret-right text-muted-foreground"></i>
+        <a href="/analytics/channels" class="text-muted-foreground hover:text-foreground transition-colors">
+            Channels
+        </a>
+        <i class="ph ph-caret-right text-muted-foreground"></i>
+        <span class="text-foreground">{{ channel.name }}</span>
+    </nav>
+</div>
+
+<!-- Date Range Selector -->
+<div class="mb-6 flex items-center gap-2">
+    <a href="/analytics/channels/{{ channel.name }}?range=7d"
+       class="px-4 py-2 text-sm rounded-lg transition-colors {% if current_range == "7d" %}bg-coral text-white{% else %}bg-muted text-foreground hover:bg-accent{% endif %}">
+        Last 7 Days
+    </a>
+    <a href="/analytics/channels/{{ channel.name }}?range=30d"
+       class="px-4 py-2 text-sm rounded-lg transition-colors {% if current_range == "30d" %}bg-coral text-white{% else %}bg-muted text-foreground hover:bg-accent{% endif %}">
+        Last 30 Days
+    </a>
+    <a href="/analytics/channels/{{ channel.name }}?range=90d"
+       class="px-4 py-2 text-sm rounded-lg transition-colors {% if current_range == "90d" %}bg-coral text-white{% else %}bg-muted text-foreground hover:bg-accent{% endif %}">
+        Last 90 Days
+    </a>
+    <a href="/analytics/channels/{{ channel.name }}?range=ytd"
+       class="px-4 py-2 text-sm rounded-lg transition-colors {% if current_range == "ytd" %}bg-coral text-white{% else %}bg-muted text-foreground hover:bg-accent{% endif %}">
+        Year to Date
+    </a>
+</div>
+
+<!-- Channel Info Card -->
+<div class="mb-6 bg-gradient-to-r from-coral/10 to-honey/10 border border-coral/20 rounded-xl p-6">
+    <div class="flex items-center gap-4">
+        <div class="w-12 h-12 rounded-full bg-coral/20 flex items-center justify-center">
+            <i class="ph ph-storefront text-2xl text-coral"></i>
+        </div>
+        <div>
+            <p class="text-2xl font-bold text-foreground">{{ channel.name }}</p>
+            {% if let Some(app) = channel.app_title %}
+            <p class="text-sm text-muted-foreground">{{ app }}</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Sales Trend -->
+<div class="bg-card rounded-xl border border-border">
+    <div class="px-6 py-4 border-b border-border">
+        <h3 class="font-semibold text-foreground">Sales Trend</h3>
+    </div>
+    <div class="p-6">
+        {% if trend.is_empty() %}
+        <div class="text-center text-muted-foreground py-12">
+            <i class="ph ph-chart-line text-4xl mb-2"></i>
+            <p class="font-medium">No sales data available</p>
+            <p class="text-sm mt-1">Sales data will appear once orders come through this channel.</p>
+        </div>
+        {% else %}
+        <!-- Trend visualization -->
+        <div class="space-y-3">
+            {% for day in trend %}
+            <div class="flex items-center gap-4">
+                <span class="text-xs text-muted-foreground w-24 shrink-0 tabular-nums">{{ day.date }}</span>
+                <div class="flex-1 h-6 bg-muted rounded-full overflow-hidden">
+                    <div class="h-full bg-gradient-to-r from-coral to-honey rounded-full transition-all"
+                         style="width: 50%"
+                         data-sales="{{ day.total_sales_raw }}"></div>
+                </div>
+                <span class="text-sm font-medium text-foreground w-20 text-right tabular-nums">{{ day.total_sales }}</span>
+                <span class="text-xs text-muted-foreground w-16 text-right tabular-nums">{{ day.orders }} orders</span>
+            </div>
+            {% endfor %}
+        </div>
+        <script>
+            // Calculate and set bar widths based on max value
+            (function() {
+                const bars = document.querySelectorAll('[data-sales]');
+                if (bars.length === 0) return;
+                const values = Array.from(bars).map(b => parseFloat(b.dataset.sales) || 0);
+                const max = Math.max(...values);
+                if (max > 0) {
+                    bars.forEach(bar => {
+                        const pct = (parseFloat(bar.dataset.sales) / max * 100).toFixed(0);
+                        bar.style.width = pct + '%';
+                    });
+                }
+            })();
+        </script>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Summary Stats -->
+{% if !trend.is_empty() %}
+<div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+    <!-- Total Sales for Period -->
+    <div class="bg-card rounded-xl p-6 border border-border">
+        <div class="flex items-center gap-3 mb-3">
+            <div class="w-10 h-10 rounded-lg bg-coral/10 flex items-center justify-center">
+                <i class="ph ph-currency-dollar text-xl text-coral"></i>
+            </div>
+            <span class="text-sm text-muted-foreground">Period Sales</span>
+        </div>
+        <p class="text-2xl font-semibold text-foreground tabular-nums" id="period-sales">
+            --
+        </p>
+    </div>
+
+    <!-- Total Orders for Period -->
+    <div class="bg-card rounded-xl p-6 border border-border">
+        <div class="flex items-center gap-3 mb-3">
+            <div class="w-10 h-10 rounded-lg bg-honey/20 flex items-center justify-center">
+                <i class="ph ph-receipt text-xl text-honey"></i>
+            </div>
+            <span class="text-sm text-muted-foreground">Period Orders</span>
+        </div>
+        <p class="text-2xl font-semibold text-foreground tabular-nums" id="period-orders">
+            --
+        </p>
+    </div>
+
+    <!-- Days with Sales -->
+    <div class="bg-card rounded-xl p-6 border border-border">
+        <div class="flex items-center gap-3 mb-3">
+            <div class="w-10 h-10 rounded-lg bg-leaf/10 flex items-center justify-center">
+                <i class="ph ph-calendar-check text-xl text-leaf"></i>
+            </div>
+            <span class="text-sm text-muted-foreground">Active Days</span>
+        </div>
+        <p class="text-2xl font-semibold text-foreground tabular-nums" id="active-days">
+            {{ trend.len() }} days
+        </p>
+    </div>
+</div>
+<script>
+    // Calculate summary stats from trend data
+    (function() {
+        const bars = document.querySelectorAll('[data-sales]');
+        if (bars.length === 0) return;
+
+        let totalSales = 0;
+        let totalOrders = 0;
+        let activeDays = 0;
+
+        bars.forEach(bar => {
+            const sales = parseFloat(bar.dataset.sales) || 0;
+            totalSales += sales;
+            // Get orders from sibling element
+            const row = bar.closest('.flex');
+            const ordersText = row.querySelector('.w-16')?.textContent || '0';
+            const orders = parseInt(ordersText) || 0;
+            totalOrders += orders;
+            if (orders > 0) activeDays++;
+        });
+
+        document.getElementById('period-sales').textContent = '$' + totalSales.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        document.getElementById('period-orders').textContent = totalOrders.toLocaleString();
+        document.getElementById('active-days').textContent = activeDays + ' / ' + bars.length + ' days';
+    })();
+</script>
+{% endif %}
+{% endblock %}

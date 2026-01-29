@@ -16,6 +16,7 @@ use super::types::{Customer, Payout};
 use super::{AdminShopifyError, GraphQLError, GraphQLErrorLocation};
 
 // Domain-specific operations split into separate modules
+mod analytics;
 mod collections;
 mod conversions;
 mod customers;

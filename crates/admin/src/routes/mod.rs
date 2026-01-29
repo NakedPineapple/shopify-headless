@@ -46,6 +46,7 @@
 //! ```
 
 pub mod admin_users;
+pub mod analytics;
 pub mod api;
 pub mod auth;
 pub mod chat;
@@ -346,6 +347,10 @@ pub fn routes() -> Router<AppState> {
             "/gift-cards/bulk/deactivate",
             post(gift_cards::bulk_deactivate),
         )
+        // Analytics
+        .route("/analytics", get(analytics::index))
+        .route("/analytics/channels", get(analytics::channels))
+        .route("/analytics/channels/{name}", get(analytics::channel_detail))
         // Payouts
         .route("/payouts", get(payouts::index))
         .route("/payouts/disputes", get(payouts::disputes_index))

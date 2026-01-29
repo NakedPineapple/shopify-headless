@@ -3,6 +3,7 @@
 //! These types provide a clean, ergonomic API separate from the raw
 //! `graphql_client` generated types.
 
+pub mod analytics;
 pub mod common;
 pub mod customer;
 pub mod discount;
@@ -15,6 +16,7 @@ pub mod product;
 pub mod refund;
 
 // Re-export all types for convenience
+pub use analytics::*;
 pub use common::*;
 pub use customer::*;
 pub use discount::*;

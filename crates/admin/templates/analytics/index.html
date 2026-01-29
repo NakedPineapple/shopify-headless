@@ -1,0 +1,267 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Analytics{% endblock %}
+
+{% block page_title %}Analytics{% endblock %}
+
+{% block page_subtitle %}
+<p class="text-sm text-muted-foreground mt-1">Channel performance and sales insights</p>
+{% endblock %}
+
+{% block content %}
+<!-- Date Range Selector -->
+<div class="mb-6 flex items-center justify-between">
+    <div class="flex items-center gap-2">
+        <a href="/analytics?range=7d"
+           class="px-4 py-2 text-sm rounded-lg transition-colors {% if current_range == "7d" %}bg-coral text-white{% else %}bg-muted text-foreground hover:bg-accent{% endif %}">
+            Last 7 Days
+        </a>
+        <a href="/analytics?range=30d"
+           class="px-4 py-2 text-sm rounded-lg transition-colors {% if current_range == "30d" %}bg-coral text-white{% else %}bg-muted text-foreground hover:bg-accent{% endif %}">
+            Last 30 Days
+        </a>
+        <a href="/analytics?range=90d"
+           class="px-4 py-2 text-sm rounded-lg transition-colors {% if current_range == "90d" %}bg-coral text-white{% else %}bg-muted text-foreground hover:bg-accent{% endif %}">
+            Last 90 Days
+        </a>
+        <a href="/analytics?range=ytd"
+           class="px-4 py-2 text-sm rounded-lg transition-colors {% if current_range == "ytd" %}bg-coral text-white{% else %}bg-muted text-foreground hover:bg-accent{% endif %}">
+            Year to Date
+        </a>
+    </div>
+
+    <a href="/analytics/channels" class="inline-flex items-center gap-2 px-4 py-2 text-sm text-primary hover:underline">
+        <i class="ph ph-storefront"></i>
+        View All Channels
+    </a>
+</div>
+
+<!-- Summary Metrics Cards -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+    <!-- Total Sales -->
+    <div class="bg-card rounded-xl p-6 border border-border">
+        <div class="flex items-center justify-between mb-4">
+            <div class="w-12 h-12 rounded-lg bg-coral/10 flex items-center justify-center">
+                <i class="ph ph-currency-dollar text-2xl text-coral"></i>
+            </div>
+        </div>
+        <p class="text-2xl font-semibold text-foreground tabular-nums">{{ summary.total_sales }}</p>
+        <p class="text-sm text-muted-foreground mt-1">Total Sales</p>
+    </div>
+
+    <!-- Net Sales -->
+    <div class="bg-card rounded-xl p-6 border border-border">
+        <div class="flex items-center justify-between mb-4">
+            <div class="w-12 h-12 rounded-lg bg-leaf/10 flex items-center justify-center">
+                <i class="ph ph-chart-line-up text-2xl text-leaf"></i>
+            </div>
+        </div>
+        <p class="text-2xl font-semibold text-foreground tabular-nums">{{ summary.total_net_sales }}</p>
+        <p class="text-sm text-muted-foreground mt-1">Net Sales</p>
+    </div>
+
+    <!-- Total Orders -->
+    <div class="bg-card rounded-xl p-6 border border-border">
+        <div class="flex items-center justify-between mb-4">
+            <div class="w-12 h-12 rounded-lg bg-honey/20 flex items-center justify-center">
+                <i class="ph ph-receipt text-2xl text-honey"></i>
+            </div>
+        </div>
+        <p class="text-2xl font-semibold text-foreground tabular-nums">{{ summary.total_orders }}</p>
+        <p class="text-sm text-muted-foreground mt-1">Orders</p>
+    </div>
+
+    <!-- Units Sold -->
+    <div class="bg-card rounded-xl p-6 border border-border">
+        <div class="flex items-center justify-between mb-4">
+            <div class="w-12 h-12 rounded-lg bg-secondary/20 flex items-center justify-center">
+                <i class="ph ph-package text-2xl text-secondary"></i>
+            </div>
+        </div>
+        <p class="text-2xl font-semibold text-foreground tabular-nums">{{ summary.total_units }}</p>
+        <p class="text-sm text-muted-foreground mt-1">Units Sold</p>
+    </div>
+
+    <!-- Average Order Value -->
+    <div class="bg-card rounded-xl p-6 border border-border">
+        <div class="flex items-center justify-between mb-4">
+            <div class="w-12 h-12 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                <i class="ph ph-shopping-cart text-2xl text-purple-500"></i>
+            </div>
+        </div>
+        <p class="text-2xl font-semibold text-foreground tabular-nums">{{ summary.average_order_value }}</p>
+        <p class="text-sm text-muted-foreground mt-1">Avg Order Value</p>
+    </div>
+</div>
+
+<div class="grid lg:grid-cols-3 gap-6">
+    <!-- Sales Trend Chart -->
+    <div class="lg:col-span-2 bg-card rounded-xl border border-border">
+        <div class="px-6 py-4 border-b border-border">
+            <h3 class="font-semibold text-foreground">Sales Trend</h3>
+        </div>
+        <div class="p-6">
+            {% if trend.is_empty() %}
+            <div class="text-center text-muted-foreground py-12">
+                <i class="ph ph-chart-line text-4xl mb-2"></i>
+                <p>No trend data available</p>
+            </div>
+            {% else %}
+            <!-- Simple visual representation of trend data -->
+            <div class="space-y-3">
+                {% for day in trend %}
+                <div class="flex items-center gap-4">
+                    <span class="text-xs text-muted-foreground w-24 shrink-0 tabular-nums">{{ day.date }}</span>
+                    <div class="flex-1 h-6 bg-muted rounded-full overflow-hidden">
+                        <div class="h-full bg-gradient-to-r from-coral to-honey rounded-full transition-all"
+                             style="width: 50%"
+                             data-sales="{{ day.total_sales_raw }}"></div>
+                    </div>
+                    <span class="text-sm font-medium text-foreground w-20 text-right tabular-nums">{{ day.total_sales }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            <script>
+                // Calculate and set bar widths based on max value
+                (function() {
+                    const bars = document.querySelectorAll('[data-sales]');
+                    if (bars.length === 0) return;
+                    const values = Array.from(bars).map(b => parseFloat(b.dataset.sales) || 0);
+                    const max = Math.max(...values);
+                    if (max > 0) {
+                        bars.forEach(bar => {
+                            const pct = (parseFloat(bar.dataset.sales) / max * 100).toFixed(0);
+                            bar.style.width = pct + '%';
+                        });
+                    }
+                })();
+            </script>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Channel Breakdown -->
+    <div class="bg-card rounded-xl border border-border">
+        <div class="px-6 py-4 border-b border-border flex items-center justify-between">
+            <h3 class="font-semibold text-foreground">Sales by Channel</h3>
+        </div>
+        <div class="p-6">
+            {% if summary.channels.is_empty() %}
+            <div class="text-center text-muted-foreground py-8">
+                <i class="ph ph-storefront text-4xl mb-2"></i>
+                <p>No channel data</p>
+            </div>
+            {% else %}
+            <div class="space-y-4">
+                {% for channel in summary.channels %}
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-coral/10 flex items-center justify-center">
+                            <i class="ph ph-storefront text-coral"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-foreground">{{ channel.channel_name }}</p>
+                            <p class="text-xs text-muted-foreground">{{ channel.orders }} orders</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-sm font-medium text-foreground tabular-nums">{{ channel.total_sales }}</p>
+                        <p class="text-xs text-muted-foreground">{{ channel.percentage_of_total }}</p>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Channel Performance Table -->
+<div class="mt-8 bg-card rounded-xl border border-border overflow-hidden">
+    <div class="px-6 py-4 border-b border-border">
+        <h3 class="font-semibold text-foreground">Channel Performance</h3>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full">
+            <thead class="bg-muted">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Channel</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Total Sales</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Net Sales</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Orders</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Units</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">AOV</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">% of Total</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-border">
+                {% if summary.channels.is_empty() %}
+                <tr>
+                    <td colspan="7" class="px-6 py-12 text-center text-muted-foreground">
+                        <i class="ph ph-chart-bar text-4xl mb-2 block"></i>
+                        <p>No channel data available</p>
+                        <p class="text-sm mt-1">Sales data will appear once orders come through your channels.</p>
+                    </td>
+                </tr>
+                {% else %}
+                {% for channel in summary.channels %}
+                <tr class="hover:bg-accent transition-colors cursor-pointer" onclick="window.location='/analytics/channels/{{ channel.channel_name }}'">
+                    <td class="px-6 py-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg bg-coral/10 flex items-center justify-center">
+                                <i class="ph ph-storefront text-coral"></i>
+                            </div>
+                            <a href="/analytics/channels/{{ channel.channel_name }}" class="text-sm font-medium text-foreground hover:text-primary">{{ channel.channel_name }}</a>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 text-sm text-right text-foreground tabular-nums">{{ channel.total_sales }}</td>
+                    <td class="px-6 py-4 text-sm text-right text-foreground tabular-nums">{{ channel.net_sales }}</td>
+                    <td class="px-6 py-4 text-sm text-right text-foreground tabular-nums">{{ channel.orders }}</td>
+                    <td class="px-6 py-4 text-sm text-right text-foreground tabular-nums">{{ channel.units_sold }}</td>
+                    <td class="px-6 py-4 text-sm text-right text-foreground tabular-nums">{{ channel.average_order_value }}</td>
+                    <td class="px-6 py-4 text-sm text-right text-muted-foreground tabular-nums">{{ channel.percentage_of_total }}</td>
+                </tr>
+                {% endfor %}
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Active Sales Channels -->
+<div class="mt-8 bg-card rounded-xl border border-border">
+    <div class="px-6 py-4 border-b border-border flex items-center justify-between">
+        <h3 class="font-semibold text-foreground">Active Sales Channels</h3>
+        <span class="text-sm text-muted-foreground">{{ channels.len() }} channels</span>
+    </div>
+    <div class="p-6">
+        {% if channels.is_empty() %}
+        <div class="text-center text-muted-foreground py-8">
+            <i class="ph ph-storefront text-4xl mb-2"></i>
+            <p>No sales channels configured</p>
+        </div>
+        {% else %}
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {% for channel in channels %}
+            <div class="flex items-center gap-4 p-4 bg-muted rounded-lg">
+                <div class="w-10 h-10 rounded-lg bg-coral/10 flex items-center justify-center">
+                    <i class="ph ph-storefront text-xl text-coral"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="font-medium text-foreground truncate">{{ channel.name }}</p>
+                    {% if let Some(app) = channel.app_title %}
+                    <p class="text-xs text-muted-foreground truncate">{{ app }}</p>
+                    {% endif %}
+                </div>
+                {% if channel.auto_publish %}
+                <span class="px-2 py-0.5 text-xs rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                    Auto
+                </span>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

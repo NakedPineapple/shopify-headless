@@ -34,6 +34,10 @@ type Date = String;
 /// Formatted string (rich text/HTML).
 type FormattedString = String;
 
+/// JSON value (for `ShopifyQL` results).
+#[allow(clippy::upper_case_acronyms)]
+type JSON = serde_json::Value;
+
 // =============================================================================
 // Product queries
 // =============================================================================
@@ -1145,3 +1149,47 @@ pub struct GetBankAccounts;
     response_derives = "Debug, Clone"
 )]
 pub struct GetPayoutSchedule;
+
+// =============================================================================
+// Analytics queries (ShopifyQL and channel data)
+// =============================================================================
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/analytics.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct ShopifyqlQuery;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/analytics.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct GetSalesChannels;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/analytics.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct GetSalesChannelsCount;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/analytics.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct GetMarketingActivities;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/analytics.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct GetMarketingActivity;
