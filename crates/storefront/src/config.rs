@@ -79,6 +79,8 @@ pub struct StorefrontConfig {
     pub shopify: ShopifyStorefrontConfig,
     /// Analytics tracking configuration
     pub analytics: AnalyticsConfig,
+    /// Klaviyo configuration (optional - for unsubscribe functionality)
+    pub klaviyo: Option<KlaviyoConfig>,
     /// Sentry DSN for error tracking (server-side)
     pub sentry_dsn: Option<String>,
     /// Sentry DSN for frontend error tracking (public, safe to expose in browser)
@@ -89,6 +91,35 @@ pub struct StorefrontConfig {
     pub sentry_sample_rate: f32,
     /// Sentry traces sample rate for performance monitoring (0.0 to 1.0)
     pub sentry_traces_sample_rate: f32,
+}
+
+/// Klaviyo API configuration.
+#[derive(Clone)]
+pub struct KlaviyoConfig {
+    /// Klaviyo private API key.
+    pub api_key: SecretString,
+    /// Klaviyo list ID for the newsletter.
+    pub list_id: String,
+}
+
+impl std::fmt::Debug for KlaviyoConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("KlaviyoConfig")
+            .field("api_key", &"[REDACTED]")
+            .field("list_id", &self.list_id)
+            .finish()
+    }
+}
+
+impl KlaviyoConfig {
+    fn from_env() -> Option<Self> {
+        let api_key = get_optional_env("KLAVIYO_API_KEY")?;
+        let list_id = get_optional_env("KLAVIYO_LIST_ID")?;
+        Some(Self {
+            api_key: SecretString::from(api_key),
+            list_id,
+        })
+    }
 }
 
 /// Shopify Storefront API configuration.
@@ -183,6 +214,7 @@ impl StorefrontConfig {
 
         let shopify = ShopifyStorefrontConfig::from_env()?;
         let analytics = AnalyticsConfig::from_env();
+        let klaviyo = KlaviyoConfig::from_env();
         let sentry_dsn = get_optional_env("SENTRY_DSN");
         let sentry_dsn_public = get_optional_env("SENTRY_DSN_PUBLIC");
         let sentry_environment = get_optional_env("SENTRY_ENVIRONMENT");
@@ -201,6 +233,7 @@ impl StorefrontConfig {
             session_secret,
             shopify,
             analytics,
+            klaviyo,
             sentry_dsn,
             sentry_dsn_public,
             sentry_environment,
@@ -465,6 +498,7 @@ mod tests {
                 customer_client_secret: SecretString::from("client_secret"),
             },
             analytics: AnalyticsConfig::default(),
+            klaviyo: None,
             sentry_dsn: None,
             sentry_dsn_public: None,
             sentry_environment: None,

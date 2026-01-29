@@ -193,4 +193,8 @@ pub fn routes() -> Router<AppState> {
         .nest("/api/auth/webauthn", webauthn_api_routes())
         // Newsletter routes
         .route("/newsletter/subscribe", post(newsletter::subscribe))
+        .route(
+            "/newsletter/unsubscribe",
+            get(newsletter::unsubscribe_page).post(newsletter::unsubscribe),
+        )
 }
