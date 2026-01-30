@@ -25,6 +25,8 @@ pub struct AdminUser {
     /// `WebAuthn` user ID for discoverable credentials (passkey login without email).
     /// This UUID is stored in the passkey and returned during authentication.
     pub webauthn_user_id: Uuid,
+    /// Slack user ID for receiving DM notifications (e.g., "U0123456789").
+    pub slack_user_id: Option<String>,
     /// When the admin was created.
     pub created_at: DateTime<Utc>,
     /// When the admin was last updated.

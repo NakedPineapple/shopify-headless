@@ -53,6 +53,7 @@ pub struct SettingsTemplate {
     pub admin_user: AdminUserView,
     pub current_path: String,
     pub passkeys: Vec<PasskeyView>,
+    pub slack_user_id: Option<String>,
     pub success_message: Option<String>,
     pub error_message: Option<String>,
 }
@@ -69,6 +70,8 @@ pub fn router() -> Router<AppState> {
         .route("/api/settings/email/verify", post(verify_email))
         // Passkey API
         .route("/api/settings/passkeys/{id}", delete(delete_passkey))
+        // Slack API
+        .route("/api/settings/slack", post(update_slack_user_id))
 }
 
 // =============================================================================
@@ -148,6 +151,19 @@ pub struct DeletePasskeyResponse {
     pub success: bool,
 }
 
+/// Request to update Slack user ID.
+#[derive(Debug, Deserialize)]
+pub struct UpdateSlackUserIdRequest {
+    pub slack_user_id: Option<String>,
+}
+
+/// Response after updating Slack user ID.
+#[derive(Debug, Serialize)]
+pub struct UpdateSlackUserIdResponse {
+    pub success: bool,
+    pub slack_user_id: Option<String>,
+}
+
 // =============================================================================
 // Settings Page
 // =============================================================================
@@ -182,6 +198,15 @@ async fn settings_page(
         })
         .collect();
 
+    // Get admin user's Slack user ID
+    let repo = AdminUserRepository::new(state.pool());
+    let slack_user_id = repo
+        .get_by_id(admin.id)
+        .await
+        .ok()
+        .flatten()
+        .and_then(|u| u.slack_user_id);
+
     // Map success/error messages
     let success_message = params.success.map(|s| match s.as_str() {
         "profile_updated" => "Your profile has been updated.".to_owned(),
@@ -201,6 +226,7 @@ async fn settings_page(
         admin_user: AdminUserView::from(&admin),
         current_path: "/settings".to_owned(),
         passkeys,
+        slack_user_id,
         success_message,
         error_message,
     };
@@ -449,4 +475,66 @@ async fn delete_passkey(
         })?;
 
     Ok(Json(DeletePasskeyResponse { success: true }))
+}
+
+// =============================================================================
+// Slack API
+// =============================================================================
+
+/// Validate a Slack user ID format.
+///
+/// Slack user IDs start with 'U' followed by uppercase alphanumeric characters.
+fn validate_slack_user_id(id: &str) -> Result<(), &'static str> {
+    if id.is_empty() {
+        return Ok(()); // Empty is allowed (clears the setting)
+    }
+    if !id.starts_with('U') {
+        return Err("Slack user ID must start with 'U'");
+    }
+    if !id.chars().skip(1).all(|c| c.is_ascii_alphanumeric()) {
+        return Err("Slack user ID must contain only letters and numbers");
+    }
+    if id.len() < 9 || id.len() > 12 {
+        return Err("Slack user ID should be 9-12 characters");
+    }
+    Ok(())
+}
+
+/// Update the admin's Slack user ID.
+///
+/// POST /api/settings/slack
+#[instrument(skip(state))]
+async fn update_slack_user_id(
+    State(state): State<AppState>,
+    RequireAdminAuth(admin): RequireAdminAuth,
+    Json(req): Json<UpdateSlackUserIdRequest>,
+) -> Result<Json<UpdateSlackUserIdResponse>, ApiError> {
+    // Normalize: trim and uppercase
+    let slack_user_id = req
+        .slack_user_id
+        .as_deref()
+        .map(str::trim)
+        .map(str::to_uppercase);
+
+    // Validate format if provided and non-empty
+    if let Some(ref id) = slack_user_id
+        && !id.is_empty()
+    {
+        validate_slack_user_id(id).map_err(ApiError::new)?;
+    }
+
+    // Convert empty string to None
+    let slack_user_id = slack_user_id.filter(|s| !s.is_empty());
+
+    // Update in database
+    let repo = AdminUserRepository::new(state.pool());
+    let updated_user = repo
+        .update_slack_user_id(admin.id, slack_user_id.as_deref())
+        .await
+        .map_err(|e| ApiError::new(format!("Failed to update Slack ID: {e}")))?;
+
+    Ok(Json(UpdateSlackUserIdResponse {
+        success: true,
+        slack_user_id: updated_user.slack_user_id,
+    }))
 }

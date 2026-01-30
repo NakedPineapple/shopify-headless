@@ -130,6 +130,42 @@
     </div>
 </div>
 
+<!-- Notifications Section -->
+<div class="bg-card rounded-xl border border-border overflow-hidden mb-8">
+    <div class="px-6 py-4 border-b border-border">
+        <h2 class="text-lg font-semibold text-foreground">Notifications</h2>
+        <p class="text-sm text-muted-foreground mt-0.5">Configure how you receive action confirmations</p>
+    </div>
+    <div class="p-6 space-y-6">
+        <!-- Slack User ID -->
+        <div id="slack-section">
+            <label class="block text-sm font-medium text-foreground mb-2">Slack User ID</label>
+            <p class="text-sm text-muted-foreground mb-3">
+                Enter your Slack user ID to receive action confirmations via direct message instead of the shared channel.
+                <a href="https://help.slack.com/articles/206819278" target="_blank" rel="noopener"
+                   class="text-coral hover:underline">How to find your Slack user ID</a>
+            </p>
+            <div class="flex items-center gap-3">
+                <input type="text"
+                       id="slack-user-id"
+                       value="{{ slack_user_id.as_deref().unwrap_or_default() }}"
+                       placeholder="U0123456789"
+                       class="flex-1 px-3 py-2 text-sm bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-coral/50 focus:border-coral font-mono">
+                <button type="button"
+                        onclick="saveSlackUserId()"
+                        class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-coral hover:bg-coral/90 rounded-lg transition-colors">
+                    <i class="ph ph-check text-lg"></i>
+                    Save
+                </button>
+            </div>
+            <p id="slack-feedback" class="mt-2 text-sm hidden"></p>
+            <p class="mt-2 text-xs text-muted-foreground">
+                Leave empty to receive confirmations in the default Slack channel.
+            </p>
+        </div>
+    </div>
+</div>
+
 <!-- Passkeys Section -->
 <div class="bg-card rounded-xl border border-border overflow-hidden">
     <div class="px-6 py-4 border-b border-border flex items-center justify-between">
@@ -364,6 +400,39 @@ async function deletePasskey(id, name) {
         window.location.href = '/settings?success=passkey_deleted';
     } catch (error) {
         alert('An error occurred while deleting passkey');
+    }
+}
+
+// Slack user ID save
+async function saveSlackUserId() {
+    const input = document.getElementById('slack-user-id');
+    const feedback = document.getElementById('slack-feedback');
+    const slackUserId = input.value.trim().toUpperCase();
+
+    // Client-side validation
+    if (slackUserId && !slackUserId.match(/^U[A-Z0-9]+$/)) {
+        showFeedback(feedback, 'Slack user ID must start with U followed by letters/numbers', 'error');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/settings/slack', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ slack_user_id: slackUserId || null })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            showFeedback(feedback, data.error || 'Failed to update Slack ID', 'error');
+            return;
+        }
+
+        input.value = data.slack_user_id || '';
+        showFeedback(feedback, slackUserId ? 'Slack user ID saved' : 'Slack user ID cleared', 'success');
+    } catch (error) {
+        showFeedback(feedback, 'An error occurred', 'error');
     }
 }
 

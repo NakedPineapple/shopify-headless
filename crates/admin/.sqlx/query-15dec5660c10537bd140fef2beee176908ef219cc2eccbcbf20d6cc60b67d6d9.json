@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            UPDATE admin.admin_user\n            SET role = $1\n            WHERE id = $2\n            RETURNING id, email, name, role as \"role: AdminRole\",\n                      webauthn_user_id,\n                      created_at as \"created_at: DateTime<Utc>\",\n                      updated_at as \"updated_at: DateTime<Utc>\"\n            ",
+  "query": "\n            UPDATE admin.admin_user\n            SET email = $1\n            WHERE id = $2\n            RETURNING id, email, name, role as \"role: AdminRole\",\n                      webauthn_user_id, slack_user_id,\n                      created_at as \"created_at: DateTime<Utc>\",\n                      updated_at as \"updated_at: DateTime<Utc>\"\n            ",
   "describe": {
     "columns": [
       {
@@ -46,11 +46,16 @@
       },
       {
         "ordinal": 5,
+        "name": "slack_user_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
         "name": "created_at: DateTime<Utc>",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 6,
+        "ordinal": 7,
         "name": "updated_at: DateTime<Utc>",
         "type_info": "Timestamptz"
       }
@@ -59,14 +64,8 @@
       "Left": [
         {
           "Custom": {
-            "name": "admin.admin_role",
-            "kind": {
-              "Enum": [
-                "super_admin",
-                "admin",
-                "viewer"
-              ]
-            }
+            "name": "citext",
+            "kind": "Simple"
           }
         },
         "Int4"
@@ -78,9 +77,10 @@
       false,
       false,
       false,
+      true,
       false,
       false
     ]
   },
-  "hash": "bf7511d469ad74d07bba02904cf6a4ea1debb057a364efe89a3230f89de6cb1e"
+  "hash": "15dec5660c10537bd140fef2beee176908ef219cc2eccbcbf20d6cc60b67d6d9"
 }

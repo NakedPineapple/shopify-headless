@@ -29,6 +29,8 @@ pub struct EnqueueParams {
     pub admin_user_id: i32,
     /// Admin user's display name.
     pub admin_name: String,
+    /// Admin user's Slack user ID for DM notifications.
+    pub admin_slack_user_id: Option<String>,
     /// Tool name to execute.
     pub tool_name: String,
     /// Tool input parameters.
@@ -88,7 +90,13 @@ impl ActionQueueService {
         // Send Slack confirmation if configured
         let slack_sent = if let Some(slack) = &self.slack {
             match self
-                .send_slack_confirmation(slack, &action, &params.admin_name, &params.domain)
+                .send_slack_confirmation(
+                    slack,
+                    &action,
+                    &params.admin_name,
+                    params.admin_slack_user_id.as_deref(),
+                    &params.domain,
+                )
                 .await
             {
                 Ok(()) => true,
@@ -110,11 +118,15 @@ impl ActionQueueService {
     }
 
     /// Send Slack confirmation message.
+    ///
+    /// If `admin_slack_user_id` is provided, sends a DM to that user.
+    /// Otherwise falls back to the default channel.
     async fn send_slack_confirmation(
         &self,
         slack: &SlackClient,
         action: &PendingAction,
         admin_name: &str,
+        admin_slack_user_id: Option<&str>,
         domain: &str,
     ) -> Result<(), AppError> {
         let blocks = build_confirmation_message(
@@ -125,7 +137,8 @@ impl ActionQueueService {
             domain,
         );
 
-        let channel = slack.default_channel();
+        // Use admin's Slack user ID for DM, or fall back to default channel
+        let channel = admin_slack_user_id.unwrap_or_else(|| slack.default_channel());
         let response = slack
             .post_message(
                 channel,

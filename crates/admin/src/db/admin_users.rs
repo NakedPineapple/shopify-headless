@@ -25,6 +25,7 @@ struct AdminUserRow {
     name: String,
     role: AdminRole,
     webauthn_user_id: Uuid,
+    slack_user_id: Option<String>,
     created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
 }
@@ -43,6 +44,7 @@ impl TryFrom<AdminUserRow> for AdminUser {
             name: row.name,
             role: row.role,
             webauthn_user_id: row.webauthn_user_id,
+            slack_user_id: row.slack_user_id,
             created_at: row.created_at,
             updated_at: row.updated_at,
         })
@@ -105,7 +107,7 @@ impl<'a> AdminUserRepository<'a> {
             AdminUserRow,
             r#"
             SELECT id, email, name, role as "role: AdminRole",
-                   webauthn_user_id,
+                   webauthn_user_id, slack_user_id,
                    created_at as "created_at: DateTime<Utc>",
                    updated_at as "updated_at: DateTime<Utc>"
             FROM admin.admin_user
@@ -129,7 +131,7 @@ impl<'a> AdminUserRepository<'a> {
             AdminUserRow,
             r#"
             SELECT id, email, name, role as "role: AdminRole",
-                   webauthn_user_id,
+                   webauthn_user_id, slack_user_id,
                    created_at as "created_at: DateTime<Utc>",
                    updated_at as "updated_at: DateTime<Utc>"
             FROM admin.admin_user
@@ -154,7 +156,7 @@ impl<'a> AdminUserRepository<'a> {
             AdminUserRow,
             r#"
             SELECT id, email, name, role as "role: AdminRole",
-                   webauthn_user_id,
+                   webauthn_user_id, slack_user_id,
                    created_at as "created_at: DateTime<Utc>",
                    updated_at as "updated_at: DateTime<Utc>"
             FROM admin.admin_user
@@ -182,7 +184,7 @@ impl<'a> AdminUserRepository<'a> {
             AdminUserRow,
             r#"
             SELECT id, email, name, role as "role: AdminRole",
-                   webauthn_user_id,
+                   webauthn_user_id, slack_user_id,
                    created_at as "created_at: DateTime<Utc>",
                    updated_at as "updated_at: DateTime<Utc>"
             FROM admin.admin_user
@@ -219,7 +221,7 @@ impl<'a> AdminUserRepository<'a> {
             INSERT INTO admin.admin_user (email, name, role, webauthn_user_id)
             VALUES ($1, $2, $3, $4)
             RETURNING id, email, name, role as "role: AdminRole",
-                      webauthn_user_id,
+                      webauthn_user_id, slack_user_id,
                       created_at as "created_at: DateTime<Utc>",
                       updated_at as "updated_at: DateTime<Utc>"
             "#,
@@ -417,7 +419,7 @@ impl<'a> AdminUserRepository<'a> {
             SET name = $1
             WHERE id = $2
             RETURNING id, email, name, role as "role: AdminRole",
-                      webauthn_user_id,
+                      webauthn_user_id, slack_user_id,
                       created_at as "created_at: DateTime<Utc>",
                       updated_at as "updated_at: DateTime<Utc>"
             "#,
@@ -450,7 +452,7 @@ impl<'a> AdminUserRepository<'a> {
             SET email = $1
             WHERE id = $2
             RETURNING id, email, name, role as "role: AdminRole",
-                      webauthn_user_id,
+                      webauthn_user_id, slack_user_id,
                       created_at as "created_at: DateTime<Utc>",
                       updated_at as "updated_at: DateTime<Utc>"
             "#,
@@ -545,11 +547,45 @@ impl<'a> AdminUserRepository<'a> {
             SET role = $1
             WHERE id = $2
             RETURNING id, email, name, role as "role: AdminRole",
-                      webauthn_user_id,
+                      webauthn_user_id, slack_user_id,
                       created_at as "created_at: DateTime<Utc>",
                       updated_at as "updated_at: DateTime<Utc>"
             "#,
             role as AdminRole,
+            id.as_i32()
+        )
+        .fetch_optional(self.pool)
+        .await?
+        .ok_or(RepositoryError::NotFound)?;
+
+        row.try_into()
+    }
+
+    /// Update an admin user's Slack user ID.
+    ///
+    /// Pass `None` to clear the Slack user ID.
+    ///
+    /// # Errors
+    ///
+    /// Returns `RepositoryError::NotFound` if the user doesn't exist.
+    /// Returns `RepositoryError::Database` for other database errors.
+    pub async fn update_slack_user_id(
+        &self,
+        id: AdminUserId,
+        slack_user_id: Option<&str>,
+    ) -> Result<AdminUser, RepositoryError> {
+        let row = sqlx::query_as!(
+            AdminUserRow,
+            r#"
+            UPDATE admin.admin_user
+            SET slack_user_id = $1
+            WHERE id = $2
+            RETURNING id, email, name, role as "role: AdminRole",
+                      webauthn_user_id, slack_user_id,
+                      created_at as "created_at: DateTime<Utc>",
+                      updated_at as "updated_at: DateTime<Utc>"
+            "#,
+            slack_user_id,
             id.as_i32()
         )
         .fetch_optional(self.pool)
