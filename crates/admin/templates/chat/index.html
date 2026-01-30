@@ -136,6 +136,24 @@
     border-color: hsl(45 45% 35%);
 }
 .dark .pending-action-msg .action-label { color: hsl(45 70% 60%); }
+
+/* =============================================================================
+   Debug Panel Styles (POC-style inline per-message debug)
+   Dark theme colors that work regardless of app theme
+   ============================================================================= */
+.debug-bg { background-color: #1e1e1e; }
+.debug-bg-header { background-color: #2d2d2d; }
+.debug-bg-header:hover { background-color: #3d3d3d; }
+.debug-text { color: #d4d4d4; }
+.debug-text-muted { color: #9ca3af; }
+.debug-text-dimmed { color: #6b7280; }
+/* Color-coded left borders for entry types */
+.debug-border-request { border-left: 3px solid #3b82f6; }
+.debug-border-response { border-left: 3px solid #22c55e; }
+.debug-border-tool_call { border-left: 3px solid #a855f7; }
+.debug-border-tool_result { border-left: 3px solid #f59e0b; }
+.debug-border-error { border-left: 3px solid #ef4444; }
+.debug-border-final { border-left: 3px solid #22c55e; }
 </style>
 {% endblock %}
 
@@ -276,6 +294,7 @@
     let currentSessionId = null;
     let isLoading = false;
     let debugPanelOpen = false;
+    let currentDebugInfo = null; // Stores debug info for current session
     const isSuperAdmin = {{ admin_user.is_super_admin }};
 
     // DOM elements
@@ -373,6 +392,7 @@
 
     async function selectSession(sessionId) {
         currentSessionId = sessionId;
+        currentDebugInfo = null;
 
         // Update UI
         sessionsListEl.querySelectorAll('.session-item').forEach(item => {
@@ -383,16 +403,26 @@
         sendBtn.disabled = false;
         emptyStateEl.classList.add('hidden');
 
-        // Load messages
+        // Load messages and debug info in parallel for super admins
         try {
-            const response = await fetch(`/chat/sessions/${sessionId}`);
-            const data = await response.json();
+            const requests = [fetch(`/chat/sessions/${sessionId}`)];
+            if (isSuperAdmin) {
+                requests.push(fetch(`/chat/sessions/${sessionId}/debug`));
+            }
+
+            const responses = await Promise.all(requests);
+            const data = await responses[0].json();
+
+            // Load debug info for super admins
+            if (isSuperAdmin && responses[1]?.ok) {
+                currentDebugInfo = await responses[1].json();
+            }
 
             renderMessages(data.messages);
 
-            // Load debug info if panel is open
-            if (isSuperAdmin && debugPanelOpen) {
-                loadDebugInfo(sessionId);
+            // Update sidebar debug panel if open
+            if (isSuperAdmin && debugPanelOpen && currentDebugInfo) {
+                renderDebugInfo(currentDebugInfo);
             }
         } catch (error) {
             showStatus('Failed to load messages', 'error');
@@ -409,8 +439,8 @@
             if (!response.ok) {
                 throw new Error('Failed to load debug info');
             }
-            const data = await response.json();
-            renderDebugInfo(data);
+            currentDebugInfo = await response.json();
+            renderDebugInfo(currentDebugInfo);
         } catch (error) {
             debugContent.innerHTML = '<div class="text-sm text-destructive">Failed to load debug info</div>';
         }
@@ -553,17 +583,94 @@
         }
 
         emptyStateEl.classList.add('hidden');
-        messagesEl.innerHTML = messages.map(msg => renderMessage(msg)).join('');
+        // Build debug entries for each message from the debug info
+        const messageDebugMap = buildMessageDebugMap(messages);
+        messagesEl.innerHTML = messages.map(msg => renderMessage(msg, messageDebugMap.get(msg.id))).join('');
         messagesEl.scrollTop = messagesEl.scrollHeight;
+
+        // Add click handlers for debug toggles
+        messagesEl.querySelectorAll('.debug-toggle-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const content = this.nextElementSibling;
+                const arrow = this.querySelector('.debug-arrow');
+                content.classList.toggle('hidden');
+                arrow.classList.toggle('rotate-90');
+            });
+        });
     }
 
-    function renderMessage(msg) {
+    // Build a map of message ID -> debug entries for that message
+    function buildMessageDebugMap(messages) {
+        const map = new Map();
+        if (!isSuperAdmin || !currentDebugInfo) return map;
+
+        // Find API calls that correspond to each assistant message
+        const apiCallsByMsgId = new Map();
+        for (const call of currentDebugInfo.api_calls || []) {
+            if (!apiCallsByMsgId.has(call.message_id)) {
+                apiCallsByMsgId.set(call.message_id, []);
+            }
+            apiCallsByMsgId.get(call.message_id).push(call);
+        }
+
+        // Build debug entries for each message
+        for (let i = 0; i < messages.length; i++) {
+            const msg = messages[i];
+            const entries = [];
+            const apiCalls = apiCallsByMsgId.get(msg.id) || [];
+
+            if (msg.role === 'assistant' && apiCalls.length > 0) {
+                // Add API call entries
+                for (const call of apiCalls) {
+                    entries.push({
+                        type: 'response',
+                        content: `Model: ${call.model}\nStop reason: ${call.stop_reason || 'unknown'}`,
+                        tokens: { input: call.input_tokens, output: call.output_tokens }
+                    });
+                }
+            }
+
+            if (msg.role === 'tooluse') {
+                entries.push({
+                    type: 'tool_call',
+                    content: `Tool: ${msg.content.name || 'unknown'}\nInput:\n${JSON.stringify(msg.content.input, null, 2)}`,
+                    tokens: null
+                });
+            }
+
+            if (msg.role === 'toolresult') {
+                entries.push({
+                    type: 'tool_result',
+                    content: truncateForDebug(msg.content.content || '', 2000),
+                    tokens: null,
+                    isError: msg.content.is_error
+                });
+            }
+
+            if (entries.length > 0) {
+                // Calculate totals for this message
+                const totalIn = apiCalls.reduce((sum, c) => sum + c.input_tokens, 0);
+                const totalOut = apiCalls.reduce((sum, c) => sum + c.output_tokens, 0);
+                map.set(msg.id, { entries, totalIn, totalOut });
+            }
+        }
+
+        return map;
+    }
+
+    function truncateForDebug(s, maxLen) {
+        if (s.length <= maxLen) return s;
+        return s.substring(0, maxLen) + `...\n[truncated, ${s.length} total chars]`;
+    }
+
+    function renderMessage(msg, debugInfo) {
         const isUser = msg.role === 'user';
         const isToolUse = msg.role === 'tooluse';
         const isToolResult = msg.role === 'toolresult';
         const isPendingAction = msg.role === 'pending_action';
 
         if (isToolUse) {
+            const debugPanel = isSuperAdmin && debugInfo ? renderInlineDebugPanel(debugInfo) : '';
             return `
                 <div class="flex justify-start">
                     <div class="tool-use-msg border rounded-lg px-4 py-2 max-w-2xl">
@@ -572,6 +679,7 @@
                             Using tool: ${escapeHtml(msg.content.name || 'unknown')}
                         </div>
                         <pre class="text-xs overflow-x-auto">${escapeHtml(JSON.stringify(msg.content.input, null, 2))}</pre>
+                        ${debugPanel}
                     </div>
                 </div>
             `;
@@ -579,6 +687,7 @@
 
         if (isToolResult) {
             const isError = msg.content.is_error;
+            const debugPanel = isSuperAdmin && debugInfo ? renderInlineDebugPanel(debugInfo) : '';
             return `
                 <div class="flex justify-start">
                     <div class="${isError ? 'tool-result-error' : 'tool-result-success'} border rounded-lg px-4 py-2 max-w-2xl">
@@ -587,6 +696,7 @@
                             Tool ${isError ? 'error' : 'result'}
                         </div>
                         <pre class="text-xs overflow-x-auto whitespace-pre-wrap">${escapeHtml(msg.content.content || '')}</pre>
+                        ${debugPanel}
                     </div>
                 </div>
             `;
@@ -609,7 +719,6 @@
         const text = msg.content.text || '';
 
         if (isUser) {
-            // User messages: plain text, no markdown
             return `
                 <div class="flex justify-end">
                     <div class="bg-primary text-primary-foreground rounded-lg px-4 py-3 max-w-2xl">
@@ -619,14 +728,65 @@
             `;
         }
 
-        // Assistant messages: render markdown
+        // Assistant messages: render markdown + debug panel
+        const debugPanel = isSuperAdmin && debugInfo ? renderInlineDebugPanel(debugInfo) : '';
         return `
             <div class="flex justify-start">
                 <div class="bg-card border border-border text-foreground rounded-lg px-4 py-3 max-w-2xl">
                     <div class="markdown-content">${renderMarkdown(text)}</div>
+                    ${debugPanel}
                 </div>
             </div>
         `;
+    }
+
+    function renderInlineDebugPanel(debugInfo) {
+        const { entries, totalIn, totalOut } = debugInfo;
+        if (!entries || entries.length === 0) return '';
+
+        const entriesHtml = entries.map(entry => {
+            const icon = getDebugEntryIcon(entry.type);
+            const borderClass = `debug-border-${entry.type}`;
+            const tokensHtml = entry.tokens
+                ? `<span class="ml-auto debug-text-dimmed text-[0.65rem]">${entry.tokens.input} in / ${entry.tokens.output} out</span>`
+                : '';
+
+            return `
+                <div class="debug-bg rounded-lg overflow-hidden">
+                    <div class="flex items-center gap-2 px-3 py-2 debug-bg-header ${borderClass}">
+                        ${icon}
+                        <span class="debug-text-muted font-medium uppercase text-xs">${entry.type.replace('_', ' ')}</span>
+                        ${tokensHtml}
+                    </div>
+                    <pre class="m-0 px-3 py-2 debug-bg debug-text text-[0.7rem] leading-relaxed overflow-x-auto max-h-48 overflow-y-auto whitespace-pre-wrap break-words">${escapeHtml(entry.content)}</pre>
+                </div>
+            `;
+        }).join('');
+
+        return `
+            <div class="border-t border-dashed border-border/50 pt-3 mt-3">
+                <button type="button" class="debug-toggle-btn flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                    <i class="ph ph-caret-right debug-arrow text-xs transition-transform"></i>
+                    <span>Debug Info</span>
+                    <span class="text-muted-foreground/60">(${totalIn} in / ${totalOut} out tokens)</span>
+                </button>
+                <div class="hidden mt-2 space-y-2">
+                    ${entriesHtml}
+                </div>
+            </div>
+        `;
+    }
+
+    function getDebugEntryIcon(type) {
+        switch (type) {
+            case 'request': return '<i class="ph ph-arrow-right text-blue-500"></i>';
+            case 'response': return '<i class="ph ph-arrow-left text-green-500"></i>';
+            case 'tool_call': return '<i class="ph ph-wrench text-purple-500"></i>';
+            case 'tool_result': return '<i class="ph ph-database text-amber-500"></i>';
+            case 'error': return '<i class="ph ph-warning text-red-500"></i>';
+            case 'final': return '<i class="ph ph-check-circle text-green-500"></i>';
+            default: return '<i class="ph ph-info text-gray-400"></i>';
+        }
     }
 
     async function handleSubmit(event) {
@@ -706,9 +866,24 @@
             hideStatus();
             await loadSessions(); // Refresh session list for updated titles
 
-            // Refresh debug panel if open
-            if (isSuperAdmin && debugPanelOpen && currentSessionId) {
-                loadDebugInfo(currentSessionId);
+            // Refresh debug info and re-render messages with debug panels
+            if (isSuperAdmin && currentSessionId) {
+                try {
+                    const debugResponse = await fetch(`/chat/sessions/${currentSessionId}/debug`);
+                    if (debugResponse.ok) {
+                        currentDebugInfo = await debugResponse.json();
+                        // Re-render to add debug panels
+                        const msgResponse = await fetch(`/chat/sessions/${currentSessionId}`);
+                        const msgData = await msgResponse.json();
+                        renderMessages(msgData.messages);
+                        // Update sidebar debug panel if open
+                        if (debugPanelOpen) {
+                            renderDebugInfo(currentDebugInfo);
+                        }
+                    }
+                } catch (e) {
+                    console.error('Failed to refresh debug info:', e);
+                }
             }
         } catch (error) {
             showStatus('Failed to send message: ' + error.message, 'error');
