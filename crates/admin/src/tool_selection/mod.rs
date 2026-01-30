@@ -42,6 +42,7 @@ pub use selector::ToolSelector;
 
 /// Available tool domains.
 pub const DOMAINS: &[&str] = &[
+    "analytics",
     "orders",
     "customers",
     "products",
@@ -56,6 +57,10 @@ pub const DOMAINS: &[&str] = &[
 
 /// Domain descriptions for the classifier.
 pub const DOMAIN_DESCRIPTIONS: &[(&str, &str)] = &[
+    (
+        "analytics",
+        "Business analytics: sales summaries, revenue trends, top products, customer insights, inventory reports",
+    ),
     (
         "orders",
         "Order management: viewing, searching, updating, canceling, refunding orders",

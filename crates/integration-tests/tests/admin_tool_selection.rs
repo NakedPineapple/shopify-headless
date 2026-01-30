@@ -18,22 +18,25 @@ use naked_pineapple_admin::tool_selection::{
 #[test]
 fn test_all_tools_count() {
     let tools = all_shopify_tools();
-    // 38 read + 73 write = 111 total
-    assert_eq!(tools.len(), 111, "Should have 111 tools total");
+    // 15 analytics + 111 low-level Shopify = 126 total
+    assert_eq!(tools.len(), 126, "Should have 126 tools total");
 }
 
 #[test]
 fn test_read_tools_dont_require_confirmation() {
     // Sample of read tools that should not require confirmation
     let read_tools = [
-        "get_order",
-        "get_orders",
-        "get_customer",
-        "get_products",
-        "get_inventory_levels",
-        "get_collections",
-        "get_discounts",
-        "get_payouts",
+        "get_order_low_level_shopify",
+        "get_orders_low_level_shopify",
+        "get_customer_low_level_shopify",
+        "get_products_low_level_shopify",
+        "get_inventory_levels_low_level_shopify",
+        "get_collections_low_level_shopify",
+        "get_discounts_low_level_shopify",
+        "get_payouts_low_level_shopify",
+        // Analytics tools (high-level)
+        "get_sales_summary",
+        "get_top_products",
     ];
 
     for tool_name in read_tools {
@@ -48,14 +51,14 @@ fn test_read_tools_dont_require_confirmation() {
 fn test_write_tools_require_confirmation() {
     // Sample of write tools that should require confirmation
     let write_tools = [
-        "cancel_order",
-        "create_customer",
-        "delete_product",
-        "adjust_inventory",
-        "create_collection",
-        "create_discount",
-        "create_gift_card",
-        "create_fulfillment",
+        "cancel_order_low_level_shopify",
+        "create_customer_low_level_shopify",
+        "delete_product_low_level_shopify",
+        "adjust_inventory_low_level_shopify",
+        "create_collection_low_level_shopify",
+        "create_discount_low_level_shopify",
+        "create_gift_card_low_level_shopify",
+        "create_fulfillment_low_level_shopify",
     ];
 
     for tool_name in write_tools {
@@ -68,10 +71,10 @@ fn test_write_tools_require_confirmation() {
 
 #[test]
 fn test_get_tool_by_name_found() {
-    let tool = get_tool_by_name("get_orders");
+    let tool = get_tool_by_name("get_orders_low_level_shopify");
     assert!(tool.is_some());
     let tool = tool.expect("tool should exist");
-    assert_eq!(tool.name, "get_orders");
+    assert_eq!(tool.name, "get_orders_low_level_shopify");
 }
 
 #[test]
@@ -82,14 +85,21 @@ fn test_get_tool_by_name_not_found() {
 
 #[test]
 fn test_get_tool_domain() {
-    assert_eq!(get_tool_domain("get_orders"), Some("orders".to_string()));
     assert_eq!(
-        get_tool_domain("get_customers"),
+        get_tool_domain("get_orders_low_level_shopify"),
+        Some("orders".to_string())
+    );
+    assert_eq!(
+        get_tool_domain("get_customers_low_level_shopify"),
         Some("customers".to_string())
     );
     assert_eq!(
-        get_tool_domain("get_products"),
+        get_tool_domain("get_products_low_level_shopify"),
         Some("products".to_string())
+    );
+    assert_eq!(
+        get_tool_domain("get_sales_summary"),
+        Some("analytics".to_string())
     );
     assert_eq!(get_tool_domain("nonexistent"), None);
 }
@@ -120,26 +130,26 @@ fn test_get_tools_by_domain_all_domains() {
 #[test]
 fn test_filter_tools_by_names() {
     let names = vec![
-        "get_orders".to_string(),
-        "get_customers".to_string(),
-        "cancel_order".to_string(),
+        "get_orders_low_level_shopify".to_string(),
+        "get_customers_low_level_shopify".to_string(),
+        "cancel_order_low_level_shopify".to_string(),
     ];
 
     let tools = filter_tools_by_names(&names);
     assert_eq!(tools.len(), 3);
 
     let tool_names: Vec<&str> = tools.iter().map(|t| t.name.as_str()).collect();
-    assert!(tool_names.contains(&"get_orders"));
-    assert!(tool_names.contains(&"get_customers"));
-    assert!(tool_names.contains(&"cancel_order"));
+    assert!(tool_names.contains(&"get_orders_low_level_shopify"));
+    assert!(tool_names.contains(&"get_customers_low_level_shopify"));
+    assert!(tool_names.contains(&"cancel_order_low_level_shopify"));
 }
 
 #[test]
 fn test_filter_tools_by_names_ignores_unknown() {
     let names = vec![
-        "get_orders".to_string(),
+        "get_orders_low_level_shopify".to_string(),
         "unknown_tool".to_string(),
-        "get_customers".to_string(),
+        "get_customers_low_level_shopify".to_string(),
     ];
 
     let tools = filter_tools_by_names(&names);
@@ -154,7 +164,7 @@ fn test_filter_tools_by_names_ignores_unknown() {
 fn test_validate_config_valid() {
     let mut config = ToolExamplesConfig::new();
     config.insert(
-        "get_orders".to_string(),
+        "get_orders_low_level_shopify".to_string(),
         ToolExampleConfig {
             domain: "orders".to_string(),
             examples: vec![
@@ -191,7 +201,7 @@ fn test_validate_config_unknown_tool() {
 fn test_validate_config_invalid_domain() {
     let mut config = ToolExamplesConfig::new();
     config.insert(
-        "get_orders".to_string(),
+        "get_orders_low_level_shopify".to_string(),
         ToolExampleConfig {
             domain: "invalid_domain".to_string(),
             examples: vec!["Some query".to_string()],
@@ -207,7 +217,7 @@ fn test_validate_config_invalid_domain() {
 fn test_validate_config_empty_examples() {
     let mut config = ToolExamplesConfig::new();
     config.insert(
-        "get_orders".to_string(),
+        "get_orders_low_level_shopify".to_string(),
         ToolExampleConfig {
             domain: "orders".to_string(),
             examples: vec![],
@@ -223,7 +233,7 @@ fn test_validate_config_empty_examples() {
 fn test_validate_config_empty_example_string() {
     let mut config = ToolExamplesConfig::new();
     config.insert(
-        "get_orders".to_string(),
+        "get_orders_low_level_shopify".to_string(),
         ToolExampleConfig {
             domain: "orders".to_string(),
             examples: vec!["Valid query".to_string(), "   ".to_string()],
@@ -242,13 +252,13 @@ fn test_validate_config_empty_example_string() {
 #[test]
 fn test_parse_yaml_config() {
     let yaml = r#"
-get_orders:
+get_orders_low_level_shopify:
   domain: orders
   examples:
     - "Show me recent orders"
     - "What orders came in today?"
 
-cancel_order:
+cancel_order_low_level_shopify:
   domain: orders
   examples:
     - "Cancel order #1001"
@@ -257,13 +267,15 @@ cancel_order:
     let config: ToolExamplesConfig = serde_yaml::from_str(yaml).expect("Should parse YAML");
     assert_eq!(config.len(), 2);
 
-    let get_orders = config.get("get_orders").expect("Should have get_orders");
+    let get_orders = config
+        .get("get_orders_low_level_shopify")
+        .expect("Should have get_orders_low_level_shopify");
     assert_eq!(get_orders.domain, "orders");
     assert_eq!(get_orders.examples.len(), 2);
 
     let cancel_order = config
-        .get("cancel_order")
-        .expect("Should have cancel_order");
+        .get("cancel_order_low_level_shopify")
+        .expect("Should have cancel_order_low_level_shopify");
     assert_eq!(cancel_order.examples.len(), 1);
 }
 
@@ -274,6 +286,7 @@ cancel_order:
 #[test]
 fn test_all_domains_exist() {
     let expected_domains = [
+        "analytics",
         "orders",
         "customers",
         "products",
