@@ -81,7 +81,7 @@ fn render_system_prompt() -> String {
     let yesterday_date = yesterday.format("%Y-%m-%d").to_string();
 
     // This week: Monday of current week
-    let days_since_monday = now.weekday().num_days_from_monday() as i64;
+    let days_since_monday = i64::from(now.weekday().num_days_from_monday());
     let this_week_monday = now - Duration::days(days_since_monday);
     let this_week_start_date = this_week_monday.format("%Y-%m-%d").to_string();
 
@@ -101,7 +101,14 @@ fn render_system_prompt() -> String {
     // Last month: 1st to last day of previous month
     let last_month_last_day = this_month_first - Duration::days(1);
     let last_month_first = Local
-        .with_ymd_and_hms(last_month_last_day.year(), last_month_last_day.month(), 1, 0, 0, 0)
+        .with_ymd_and_hms(
+            last_month_last_day.year(),
+            last_month_last_day.month(),
+            1,
+            0,
+            0,
+            0,
+        )
         .single()
         .expect("valid date");
     let last_month_start_date = last_month_first.format("%Y-%m-%d").to_string();

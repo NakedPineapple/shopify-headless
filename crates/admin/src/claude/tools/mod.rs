@@ -1,9 +1,18 @@
 //! Shopify tool definitions organized by domain.
 //!
-//! This module provides 111 Shopify tools for Claude to use:
+//! This module provides two tiers of tools:
+//!
+//! **High-level analytics tools (12 total):**
+//! Summarized, aggregate data for answering business questions.
+//! These return compact responses ideal for questions like "what's our revenue?"
+//!
+//! **Low-level Shopify API tools (111 total):**
 //! - 38 read operations (execute immediately)
 //! - 73 write operations (require confirmation via Slack)
+//!
+//! These return detailed data for specific lookups and modifications.
 
+mod analytics;
 mod collections;
 mod customers;
 mod discounts;
@@ -15,6 +24,7 @@ mod order_editing;
 mod orders;
 mod products;
 
+pub use analytics::analytics_tools;
 pub use collections::collection_tools;
 pub use customers::customer_tools;
 pub use discounts::discount_tools;
@@ -34,10 +44,16 @@ use crate::shopify::AdminClient;
 use super::error::ClaudeError;
 use super::types::Tool;
 
-/// Get all Shopify tools (111 total).
+/// Get all tools (126 total: 15 high-level analytics + 111 low-level Shopify).
+///
+/// High-level analytics tools are listed first as they should be preferred
+/// for answering common business questions.
 #[must_use]
 pub fn all_shopify_tools() -> Vec<Tool> {
-    let mut tools = Vec::with_capacity(111);
+    let mut tools = Vec::with_capacity(126);
+    // High-level analytics tools (preferred for business questions)
+    tools.extend(analytics_tools());
+    // Low-level Shopify API tools (for specific lookups and modifications)
     tools.extend(order_tools());
     tools.extend(customer_tools());
     tools.extend(product_tools());
@@ -167,6 +183,24 @@ impl<'a> ToolExecutor<'a> {
         input: &serde_json::Value,
     ) -> Result<String, ClaudeError> {
         match name {
+            // High-level analytics tools (15 total)
+            "get_sales_summary" => self.get_sales_summary(input).await,
+            "get_sales_by_channel" => self.get_sales_by_channel(input).await,
+            "get_sales_by_product" => self.get_sales_by_product(input).await,
+            "get_sales_by_location" => self.get_sales_by_location(input).await,
+            "get_sales_by_discount" => self.get_sales_by_discount(input).await,
+            "get_order_summary" => self.get_order_summary(input).await,
+            "get_customer_summary" => self.get_customer_summary(input).await,
+            "get_top_customers" => self.get_top_customers(input).await,
+            "get_customers_by_location" => self.get_customers_by_location(input).await,
+            "get_product_catalog" => self.get_product_catalog(input).await,
+            "get_inventory_summary" => self.get_inventory_summary(input).await,
+            "get_profit_summary" => self.get_profit_summary(input).await,
+            "get_payout_summary" => self.get_payout_summary(input).await,
+            "get_gift_card_summary" => self.get_gift_card_summary(input).await,
+            "get_fulfillment_summary" => self.get_fulfillment_summary(input).await,
+
+            // Low-level Shopify API tools
             // Orders (read)
             "get_order" => self.get_order(input).await,
             "get_orders" => self.get_orders(input).await,
@@ -376,4 +410,5 @@ impl ToolResult {
 }
 
 // Include the executor implementations
+mod analytics_executor;
 mod executor;

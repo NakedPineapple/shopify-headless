@@ -50,6 +50,4 @@ fn hash_css() {
 
     let derived_path = derived_dir.join(format!("main.{short_hash}.css"));
     fs::copy(&css_path, &derived_path).expect("Failed to copy CSS to derived directory");
-
-    println!("cargo:warning=CSS hash: {short_hash}");
 }
