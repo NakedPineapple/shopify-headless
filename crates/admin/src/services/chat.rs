@@ -19,7 +19,7 @@ use std::time::Instant;
 
 use askama::Template;
 use async_stream::stream;
-use chrono::Utc;
+use chrono::{Datelike, Duration, Local, TimeZone, Utc};
 use futures::{Stream, StreamExt};
 use serde::Serialize;
 use sqlx::PgPool;
@@ -40,15 +40,97 @@ use crate::shopify::AdminClient;
 /// System prompt template for the Claude chat assistant.
 #[derive(Template)]
 #[template(path = "claude/system_prompt.txt")]
-struct SystemPromptTemplate;
+struct SystemPromptTemplate {
+    /// Current timestamp with timezone.
+    current_timestamp: String,
+    /// Timezone offset (e.g., "-07:00").
+    tz_offset: String,
+    /// Today's date (YYYY-MM-DD).
+    today_date: String,
+    /// Yesterday's date (YYYY-MM-DD).
+    yesterday_date: String,
+    /// Start of this week (Monday) date.
+    this_week_start_date: String,
+    /// Start of last week (Monday) date.
+    last_week_start_date: String,
+    /// End of last week (Sunday) date.
+    last_week_end_date: String,
+    /// Start of this month date.
+    this_month_start_date: String,
+    /// Start of last month date.
+    last_month_start_date: String,
+    /// End of last month date.
+    last_month_end_date: String,
+    /// Date 7 days ago.
+    last_7_days_start_date: String,
+    /// Date 30 days ago.
+    last_30_days_start_date: String,
+}
 
-/// Render the system prompt template.
+/// Render the system prompt template with current date context.
 fn render_system_prompt() -> String {
-    // This is a static template with no variables, so it cannot fail.
-    // Using a const assertion would be ideal but Askama doesn't support that.
-    SystemPromptTemplate
-        .render()
-        .unwrap_or_else(|_| String::from("You are a helpful assistant."))
+    let now = Local::now();
+    let tz_offset = now.format("%:z").to_string();
+    let current_timestamp = now.format("%Y-%m-%d %H:%M:%S %z").to_string();
+
+    // Today's date
+    let today_date = now.format("%Y-%m-%d").to_string();
+
+    // Yesterday
+    let yesterday = now - Duration::days(1);
+    let yesterday_date = yesterday.format("%Y-%m-%d").to_string();
+
+    // This week: Monday of current week
+    let days_since_monday = now.weekday().num_days_from_monday() as i64;
+    let this_week_monday = now - Duration::days(days_since_monday);
+    let this_week_start_date = this_week_monday.format("%Y-%m-%d").to_string();
+
+    // Last week: Monday to Sunday of previous week
+    let last_week_monday = now - Duration::days(days_since_monday + 7);
+    let last_week_sunday = now - Duration::days(days_since_monday + 1);
+    let last_week_start_date = last_week_monday.format("%Y-%m-%d").to_string();
+    let last_week_end_date = last_week_sunday.format("%Y-%m-%d").to_string();
+
+    // This month: 1st of current month
+    let this_month_first = Local
+        .with_ymd_and_hms(now.year(), now.month(), 1, 0, 0, 0)
+        .single()
+        .expect("valid date");
+    let this_month_start_date = this_month_first.format("%Y-%m-%d").to_string();
+
+    // Last month: 1st to last day of previous month
+    let last_month_last_day = this_month_first - Duration::days(1);
+    let last_month_first = Local
+        .with_ymd_and_hms(last_month_last_day.year(), last_month_last_day.month(), 1, 0, 0, 0)
+        .single()
+        .expect("valid date");
+    let last_month_start_date = last_month_first.format("%Y-%m-%d").to_string();
+    let last_month_end_date = last_month_last_day.format("%Y-%m-%d").to_string();
+
+    // Last 7 days
+    let seven_days_ago = now - Duration::days(7);
+    let last_7_days_start_date = seven_days_ago.format("%Y-%m-%d").to_string();
+
+    // Last 30 days
+    let thirty_days_ago = now - Duration::days(30);
+    let last_30_days_start_date = thirty_days_ago.format("%Y-%m-%d").to_string();
+
+    SystemPromptTemplate {
+        current_timestamp,
+        tz_offset,
+        today_date,
+        yesterday_date,
+        this_week_start_date,
+        last_week_start_date,
+        last_week_end_date,
+        this_month_start_date,
+        last_month_start_date,
+        last_month_end_date,
+        last_7_days_start_date,
+        last_30_days_start_date,
+    }
+    .render()
+    .unwrap_or_else(|_| String::from("You are a helpful assistant."))
 }
 
 /// Maximum number of tool use iterations to prevent infinite loops.
