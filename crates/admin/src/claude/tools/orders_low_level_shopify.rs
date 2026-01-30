@@ -16,7 +16,7 @@ pub fn order_tools() -> Vec<Tool> {
 fn order_read_tools() -> Vec<Tool> {
     vec![
         Tool {
-            name: "get_order".to_string(),
+            name: "get_order_low_level_shopify".to_string(),
             description: "Get a single order by ID. Returns full order details including \
                 customer info, line items, totals, fulfillment status, and payment status."
                 .to_string(),
@@ -34,7 +34,7 @@ fn order_read_tools() -> Vec<Tool> {
             requires_confirmation: false,
         },
         Tool {
-            name: "get_orders".to_string(),
+            name: "get_orders_low_level_shopify".to_string(),
             description: "Get recent orders from the store. Returns order summaries including \
                 customer info, line items, totals, and fulfillment status. Use query parameter \
                 to filter by status, email, date, etc."
@@ -58,7 +58,7 @@ fn order_read_tools() -> Vec<Tool> {
             requires_confirmation: false,
         },
         Tool {
-            name: "get_order_detail".to_string(),
+            name: "get_order_detail_low_level_shopify".to_string(),
             description: "Get detailed order information including full line item details, \
                 customer addresses, transactions, fulfillments, and refunds."
                 .to_string(),
@@ -76,7 +76,7 @@ fn order_read_tools() -> Vec<Tool> {
             requires_confirmation: false,
         },
         Tool {
-            name: "get_orders_list".to_string(),
+            name: "get_orders_list_low_level_shopify".to_string(),
             description: "Get a paginated list of orders with sorting. Supports cursor-based \
                 pagination for browsing large result sets."
                 .to_string(),
@@ -129,7 +129,7 @@ fn order_write_tools() -> Vec<Tool> {
 
 fn order_note_tool() -> Tool {
     Tool {
-        name: "update_order_note".to_string(),
+        name: "update_order_note_low_level_shopify".to_string(),
         description: "Update the internal note on an order. Notes are only visible to staff."
             .to_string(),
         input_schema: json!({
@@ -147,7 +147,7 @@ fn order_note_tool() -> Tool {
 
 fn order_tags_tool() -> Tool {
     Tool {
-        name: "update_order_tags".to_string(),
+        name: "update_order_tags_low_level_shopify".to_string(),
         description: "Replace all tags on an order. Tags help organize and filter orders."
             .to_string(),
         input_schema: json!({
@@ -169,7 +169,7 @@ fn order_tags_tool() -> Tool {
 
 fn order_mark_paid_tool() -> Tool {
     Tool {
-        name: "mark_order_as_paid".to_string(),
+        name: "mark_order_as_paid_low_level_shopify".to_string(),
         description: "Mark an order as paid. Use for manual payment methods like cash or check."
             .to_string(),
         input_schema: json!({
@@ -186,7 +186,7 @@ fn order_mark_paid_tool() -> Tool {
 
 fn order_cancel_tool() -> Tool {
     Tool {
-        name: "cancel_order".to_string(),
+        name: "cancel_order_low_level_shopify".to_string(),
         description: "Cancel an order. Can optionally refund the customer, restock items, \
             and send notification email."
             .to_string(),
@@ -212,7 +212,7 @@ fn order_cancel_tool() -> Tool {
 
 fn order_archive_tool() -> Tool {
     Tool {
-        name: "archive_order".to_string(),
+        name: "archive_order_low_level_shopify".to_string(),
         description: "Archive an order. Archived orders are hidden from the default order list."
             .to_string(),
         input_schema: json!({
@@ -229,7 +229,7 @@ fn order_archive_tool() -> Tool {
 
 fn order_unarchive_tool() -> Tool {
     Tool {
-        name: "unarchive_order".to_string(),
+        name: "unarchive_order_low_level_shopify".to_string(),
         description: "Unarchive an order to restore it to the active order list.".to_string(),
         input_schema: json!({
             "type": "object",
@@ -245,7 +245,7 @@ fn order_unarchive_tool() -> Tool {
 
 fn order_capture_payment_tool() -> Tool {
     Tool {
-        name: "capture_order_payment".to_string(),
+        name: "capture_order_payment_low_level_shopify".to_string(),
         description: "Capture payment for an order that was authorized but not captured. \
             Can capture full or partial amount."
             .to_string(),
@@ -264,7 +264,7 @@ fn order_capture_payment_tool() -> Tool {
 
 fn order_add_tags_tool() -> Tool {
     Tool {
-        name: "add_tags_to_order".to_string(),
+        name: "add_tags_to_order_low_level_shopify".to_string(),
         description: "Add tags to an order without removing existing tags.".to_string(),
         input_schema: json!({
             "type": "object",
@@ -285,7 +285,7 @@ fn order_add_tags_tool() -> Tool {
 
 fn order_remove_tags_tool() -> Tool {
     Tool {
-        name: "remove_tags_from_order".to_string(),
+        name: "remove_tags_from_order_low_level_shopify".to_string(),
         description: "Remove specific tags from an order.".to_string(),
         input_schema: json!({
             "type": "object",

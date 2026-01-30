@@ -10,14 +10,171 @@
 #       - "Example query 1"
 #       - "Example query 2"
 #
-# Domains: orders, customers, products, inventory, collections, discounts,
-#          gift_cards, fulfillment, finance, order_editing
+# Domains: analytics, orders, customers, products, inventory, collections,
+#          discounts, gift_cards, fulfillment, finance, order_editing
+
+# =============================================================================
+# HIGH-LEVEL ANALYTICS TOOLS (15 tools - preferred for summary questions)
+# =============================================================================
+
+get_sales_summary:
+  domain: analytics
+  examples:
+    - "How are sales doing"
+    - "What's our revenue this month"
+    - "Show me sales overview"
+    - "How much did we sell today"
+    - "Give me a sales report"
+    - "What's the total revenue"
+    - "Sales performance summary"
+
+get_sales_by_channel:
+  domain: analytics
+  examples:
+    - "Sales breakdown by channel"
+    - "How much from online store vs POS"
+    - "Which sales channel is performing best"
+    - "Revenue by sales channel"
+    - "Compare online and in-store sales"
+
+get_sales_by_product:
+  domain: analytics
+  examples:
+    - "Which products are selling best"
+    - "Top selling products"
+    - "Sales by product"
+    - "What's our best seller"
+    - "Product sales breakdown"
+    - "Which items sell the most"
+
+get_sales_by_location:
+  domain: analytics
+  examples:
+    - "Sales by location"
+    - "Which store location has most sales"
+    - "Revenue breakdown by warehouse"
+    - "Compare sales across locations"
+    - "Location performance"
+
+get_sales_by_discount:
+  domain: analytics
+  examples:
+    - "How are discounts performing"
+    - "Sales from discount codes"
+    - "Which promotions are working"
+    - "Discount code effectiveness"
+    - "Revenue from promotions"
+
+get_order_summary:
+  domain: analytics
+  examples:
+    - "Order summary"
+    - "How many orders today"
+    - "Order statistics"
+    - "Orders overview"
+    - "What's our order count this week"
+    - "Average order value"
+
+get_customer_summary:
+  domain: analytics
+  examples:
+    - "Customer overview"
+    - "How many customers do we have"
+    - "Customer statistics"
+    - "New vs returning customers"
+    - "Customer growth"
+    - "Customer metrics"
+
+get_top_customers:
+  domain: analytics
+  examples:
+    - "Who are our best customers"
+    - "Top spending customers"
+    - "VIP customers"
+    - "Highest value customers"
+    - "Customer leaderboard"
+    - "Most loyal customers"
+
+get_customers_by_location:
+  domain: analytics
+  examples:
+    - "Where are our customers from"
+    - "Customer distribution by location"
+    - "Customers by region"
+    - "Geographic customer breakdown"
+    - "Customer locations"
+
+get_product_catalog:
+  domain: analytics
+  examples:
+    - "Show me all products"
+    - "Product catalog overview"
+    - "What products do we sell"
+    - "List our product lineup"
+    - "Product summary"
+
+get_inventory_summary:
+  domain: analytics
+  examples:
+    - "Inventory overview"
+    - "Stock levels summary"
+    - "What's in stock"
+    - "Low stock items"
+    - "Inventory status"
+    - "Stock report"
+
+get_profit_summary:
+  domain: analytics
+  examples:
+    - "What's our profit"
+    - "Profit margins"
+    - "How profitable are we"
+    - "Revenue vs costs"
+    - "Profit report"
+    - "Earnings summary"
+
+get_payout_summary:
+  domain: analytics
+  examples:
+    - "Payout overview"
+    - "When do we get paid"
+    - "Upcoming payouts"
+    - "Payout summary"
+    - "Money coming in"
+    - "Expected deposits"
+
+get_gift_card_summary:
+  domain: analytics
+  examples:
+    - "Gift card overview"
+    - "Outstanding gift card balance"
+    - "Gift card liability"
+    - "How many gift cards issued"
+    - "Gift card summary"
+
+get_fulfillment_summary:
+  domain: analytics
+  examples:
+    - "Fulfillment overview"
+    - "What needs to be shipped"
+    - "Pending shipments"
+    - "Fulfillment status"
+    - "Orders waiting to ship"
+    - "Shipping backlog"
+
+# =============================================================================
+# LOW-LEVEL SHOPIFY API TOOLS
+# =============================================================================
+# These tools provide direct access to Shopify's API for specific lookups
+# and modifications. For summary/overview questions, prefer the analytics
+# tools above.
+# =============================================================================
 
 # =============================================================================
 # ORDERS DOMAIN (13 tools: 4 read, 9 write)
 # =============================================================================
 
-get_order:
+get_order_low_level_shopify:
   domain: orders
   examples:
     - "Show me order #1001"
@@ -27,7 +184,7 @@ get_order:
     - "What's the status of order #5678"
     - "Pull up order information"
 
-get_orders:
+get_orders_low_level_shopify:
   domain: orders
   examples:
     - "Show me recent orders"
@@ -38,7 +195,7 @@ get_orders:
     - "List pending orders"
     - "Show me all open orders"
 
-get_order_detail:
+get_order_detail_low_level_shopify:
   domain: orders
   examples:
     - "Show complete order details"
@@ -47,7 +204,7 @@ get_order_detail:
     - "Show order with shipping details"
     - "Get order timeline and history"
 
-get_orders_list:
+get_orders_list_low_level_shopify:
   domain: orders
   examples:
     - "List orders with basic info"
@@ -56,7 +213,7 @@ get_orders_list:
     - "Quick order list"
     - "Orders table view"
 
-update_order_note:
+update_order_note_low_level_shopify:
   domain: orders
   examples:
     - "Add a note to this order"
@@ -66,7 +223,7 @@ update_order_note:
     - "Change the order note"
     - "Leave a note on this order"
 
-update_order_tags:
+update_order_tags_low_level_shopify:
   domain: orders
   examples:
     - "Tag this order as VIP"
@@ -75,7 +232,7 @@ update_order_tags:
     - "Label this order"
     - "Set order tags"
 
-mark_order_as_paid:
+mark_order_as_paid_low_level_shopify:
   domain: orders
   examples:
     - "Mark this order as paid"
@@ -84,7 +241,7 @@ mark_order_as_paid:
     - "Order has been paid"
     - "Record payment for this order"
 
-cancel_order:
+cancel_order_low_level_shopify:
   domain: orders
   examples:
     - "Cancel order #1001"
@@ -94,7 +251,7 @@ cancel_order:
     - "Void this order"
     - "Stop this order from processing"
 
-archive_order:
+archive_order_low_level_shopify:
   domain: orders
   examples:
     - "Archive this order"
@@ -102,7 +259,7 @@ archive_order:
     - "Close and archive order"
     - "Archive old order"
 
-unarchive_order:
+unarchive_order_low_level_shopify:
   domain: orders
   examples:
     - "Unarchive order"
@@ -110,7 +267,7 @@ unarchive_order:
     - "Bring back archived order"
     - "Reopen archived order"
 
-capture_order_payment:
+capture_order_payment_low_level_shopify:
   domain: orders
   examples:
     - "Capture payment for this order"
@@ -119,7 +276,7 @@ capture_order_payment:
     - "Complete payment capture"
     - "Finalize the payment"
 
-add_tags_to_order:
+add_tags_to_order_low_level_shopify:
   domain: orders
   examples:
     - "Add rush tag to order"
@@ -127,7 +284,7 @@ add_tags_to_order:
     - "Add fragile tag"
     - "Mark order with special handling"
 
-remove_tags_from_order:
+remove_tags_from_order_low_level_shopify:
   domain: orders
   examples:
     - "Remove tag from order"
@@ -139,7 +296,7 @@ remove_tags_from_order:
 # CUSTOMERS DOMAIN (17 tools: 4 read, 13 write)
 # =============================================================================
 
-get_customer:
+get_customer_low_level_shopify:
   domain: customers
   examples:
     - "Look up customer john@example.com"
@@ -149,7 +306,7 @@ get_customer:
     - "Pull up customer information"
     - "Who is this customer"
 
-get_customers:
+get_customers_low_level_shopify:
   domain: customers
   examples:
     - "List all customers"
@@ -159,7 +316,7 @@ get_customers:
     - "Search customers"
     - "Show VIP customers"
 
-generate_customer_activation_url:
+generate_customer_activation_url_low_level_shopify:
   domain: customers
   examples:
     - "Generate activation link for customer"
@@ -167,7 +324,7 @@ generate_customer_activation_url:
     - "Get customer activation link"
     - "Send activation email"
 
-get_customer_segments:
+get_customer_segments_low_level_shopify:
   domain: customers
   examples:
     - "Show customer segments"
@@ -175,7 +332,7 @@ get_customer_segments:
     - "Get customer groups"
     - "Show segment details"
 
-create_customer:
+create_customer_low_level_shopify:
   domain: customers
   examples:
     - "Create a new customer"
@@ -184,7 +341,7 @@ create_customer:
     - "Create customer account"
     - "Add customer john@example.com"
 
-update_customer:
+update_customer_low_level_shopify:
   domain: customers
   examples:
     - "Update customer information"
@@ -193,7 +350,7 @@ update_customer:
     - "Modify customer details"
     - "Update customer phone number"
 
-delete_customer:
+delete_customer_low_level_shopify:
   domain: customers
   examples:
     - "Delete this customer"
@@ -201,7 +358,7 @@ delete_customer:
     - "Delete customer account"
     - "Permanently remove customer"
 
-add_customer_tags:
+add_customer_tags_low_level_shopify:
   domain: customers
   examples:
     - "Tag customer as VIP"
@@ -209,7 +366,7 @@ add_customer_tags:
     - "Label customer as preferred"
     - "Add tag to customer profile"
 
-remove_customer_tags:
+remove_customer_tags_low_level_shopify:
   domain: customers
   examples:
     - "Remove VIP tag from customer"
@@ -217,7 +374,7 @@ remove_customer_tags:
     - "Untag customer"
     - "Remove label from customer"
 
-send_customer_invite:
+send_customer_invite_low_level_shopify:
   domain: customers
   examples:
     - "Send account invite to customer"
@@ -225,7 +382,7 @@ send_customer_invite:
     - "Send customer invitation email"
     - "Email customer account setup link"
 
-create_customer_address:
+create_customer_address_low_level_shopify:
   domain: customers
   examples:
     - "Add new address for customer"
@@ -233,7 +390,7 @@ create_customer_address:
     - "Add billing address"
     - "Save new customer address"
 
-update_customer_address:
+update_customer_address_low_level_shopify:
   domain: customers
   examples:
     - "Update customer address"
@@ -241,21 +398,21 @@ update_customer_address:
     - "Fix address for customer"
     - "Correct customer address"
 
-delete_customer_address:
+delete_customer_address_low_level_shopify:
   domain: customers
   examples:
     - "Delete customer address"
     - "Remove old address"
     - "Delete shipping address"
 
-set_customer_default_address:
+set_customer_default_address_low_level_shopify:
   domain: customers
   examples:
     - "Set default address for customer"
     - "Make this the primary address"
     - "Set default shipping address"
 
-update_customer_email_marketing:
+update_customer_email_marketing_low_level_shopify:
   domain: customers
   examples:
     - "Update email marketing consent"
@@ -263,7 +420,7 @@ update_customer_email_marketing:
     - "Unsubscribe from email marketing"
     - "Change email marketing preferences"
 
-update_customer_sms_marketing:
+update_customer_sms_marketing_low_level_shopify:
   domain: customers
   examples:
     - "Update SMS marketing consent"
@@ -271,7 +428,7 @@ update_customer_sms_marketing:
     - "Opt out of text messages"
     - "Change SMS preferences"
 
-merge_customers:
+merge_customers_low_level_shopify:
   domain: customers
   examples:
     - "Merge duplicate customers"
@@ -283,7 +440,7 @@ merge_customers:
 # PRODUCTS DOMAIN (6 tools: 2 read, 4 write)
 # =============================================================================
 
-get_product:
+get_product_low_level_shopify:
   domain: products
   examples:
     - "Show product details"
@@ -293,7 +450,7 @@ get_product:
     - "Show me the beach hat"
     - "What's the price of this product"
 
-get_products:
+get_products_low_level_shopify:
   domain: products
   examples:
     - "List all products"
@@ -303,7 +460,7 @@ get_products:
     - "Show products in stock"
     - "List active products"
 
-create_product:
+create_product_low_level_shopify:
   domain: products
   examples:
     - "Create new product"
@@ -312,7 +469,7 @@ create_product:
     - "Add new product listing"
     - "Create product called Summer Dress"
 
-update_product:
+update_product_low_level_shopify:
   domain: products
   examples:
     - "Update product title"
@@ -321,7 +478,7 @@ update_product:
     - "Modify product details"
     - "Update product SEO"
 
-delete_product:
+delete_product_low_level_shopify:
   domain: products
   examples:
     - "Delete product"
@@ -329,7 +486,7 @@ delete_product:
     - "Delete this item"
     - "Remove product listing"
 
-update_variant:
+update_variant_low_level_shopify:
   domain: products
   examples:
     - "Update variant price"
@@ -342,7 +499,7 @@ update_variant:
 # INVENTORY DOMAIN (10 tools: 4 read, 6 write)
 # =============================================================================
 
-get_locations:
+get_locations_low_level_shopify:
   domain: inventory
   examples:
     - "Show all locations"
@@ -350,7 +507,7 @@ get_locations:
     - "Get store locations"
     - "Show inventory locations"
 
-get_inventory_levels:
+get_inventory_levels_low_level_shopify:
   domain: inventory
   examples:
     - "Check inventory levels"
@@ -359,7 +516,7 @@ get_inventory_levels:
     - "Get stock levels"
     - "How much inventory do we have"
 
-get_inventory_items:
+get_inventory_items_low_level_shopify:
   domain: inventory
   examples:
     - "List inventory items"
@@ -367,7 +524,7 @@ get_inventory_items:
     - "Get inventory item details"
     - "Search inventory items"
 
-get_inventory_item:
+get_inventory_item_low_level_shopify:
   domain: inventory
   examples:
     - "Get specific inventory item"
@@ -375,7 +532,7 @@ get_inventory_item:
     - "Look up inventory item"
     - "Find inventory item by ID"
 
-adjust_inventory:
+adjust_inventory_low_level_shopify:
   domain: inventory
   examples:
     - "Adjust inventory count"
@@ -384,7 +541,7 @@ adjust_inventory:
     - "Correct inventory count"
     - "Stock adjustment needed"
 
-set_inventory:
+set_inventory_low_level_shopify:
   domain: inventory
   examples:
     - "Set inventory to 100 units"
@@ -392,7 +549,7 @@ set_inventory:
     - "Set exact inventory level"
     - "Override inventory count"
 
-update_inventory_item:
+update_inventory_item_low_level_shopify:
   domain: inventory
   examples:
     - "Update inventory item"
@@ -400,7 +557,7 @@ update_inventory_item:
     - "Edit inventory item details"
     - "Modify inventory settings"
 
-move_inventory:
+move_inventory_low_level_shopify:
   domain: inventory
   examples:
     - "Move inventory between locations"
@@ -408,7 +565,7 @@ move_inventory:
     - "Move units from store to warehouse"
     - "Relocate inventory"
 
-activate_inventory:
+activate_inventory_low_level_shopify:
   domain: inventory
   examples:
     - "Activate inventory tracking"
@@ -416,7 +573,7 @@ activate_inventory:
     - "Turn on inventory tracking"
     - "Start tracking inventory"
 
-deactivate_inventory:
+deactivate_inventory_low_level_shopify:
   domain: inventory
   examples:
     - "Deactivate inventory tracking"
@@ -428,7 +585,7 @@ deactivate_inventory:
 # COLLECTIONS DOMAIN (15 tools: 4 read, 11 write)
 # =============================================================================
 
-get_collection:
+get_collection_low_level_shopify:
   domain: collections
   examples:
     - "Show collection details"
@@ -436,7 +593,7 @@ get_collection:
     - "Look up collection"
     - "Find collection by ID"
 
-get_collections:
+get_collections_low_level_shopify:
   domain: collections
   examples:
     - "List all collections"
@@ -444,7 +601,7 @@ get_collections:
     - "Get collection list"
     - "Search collections"
 
-get_collection_with_products:
+get_collection_with_products_low_level_shopify:
   domain: collections
   examples:
     - "Show collection with its products"
@@ -452,7 +609,7 @@ get_collection_with_products:
     - "What products are in this collection"
     - "List items in collection"
 
-get_publications:
+get_publications_low_level_shopify:
   domain: collections
   examples:
     - "Show publication channels"
@@ -460,7 +617,7 @@ get_publications:
     - "Get publishing destinations"
     - "Where can I publish collections"
 
-create_collection:
+create_collection_low_level_shopify:
   domain: collections
   examples:
     - "Create new collection"
@@ -468,7 +625,7 @@ create_collection:
     - "Add collection"
     - "Create product collection"
 
-update_collection:
+update_collection_low_level_shopify:
   domain: collections
   examples:
     - "Update collection title"
@@ -476,7 +633,7 @@ update_collection:
     - "Edit collection details"
     - "Modify collection settings"
 
-update_collection_sort_order:
+update_collection_sort_order_low_level_shopify:
   domain: collections
   examples:
     - "Change collection sort order"
@@ -484,14 +641,14 @@ update_collection_sort_order:
     - "Set collection sorting"
     - "Change how products are sorted"
 
-delete_collection:
+delete_collection_low_level_shopify:
   domain: collections
   examples:
     - "Delete collection"
     - "Remove collection"
     - "Delete this product group"
 
-update_collection_image:
+update_collection_image_low_level_shopify:
   domain: collections
   examples:
     - "Update collection image"
@@ -499,14 +656,14 @@ update_collection_image:
     - "Set collection banner"
     - "Upload collection image"
 
-delete_collection_image:
+delete_collection_image_low_level_shopify:
   domain: collections
   examples:
     - "Delete collection image"
     - "Remove collection photo"
     - "Clear collection banner"
 
-add_products_to_collection:
+add_products_to_collection_low_level_shopify:
   domain: collections
   examples:
     - "Add products to collection"
@@ -514,14 +671,14 @@ add_products_to_collection:
     - "Add items to Summer Sale collection"
     - "Include product in collection"
 
-remove_products_from_collection:
+remove_products_from_collection_low_level_shopify:
   domain: collections
   examples:
     - "Remove products from collection"
     - "Take products out of collection"
     - "Delete items from collection"
 
-reorder_collection_products:
+reorder_collection_products_low_level_shopify:
   domain: collections
   examples:
     - "Reorder products in collection"
@@ -529,7 +686,7 @@ reorder_collection_products:
     - "Rearrange collection items"
     - "Sort products manually"
 
-publish_collection:
+publish_collection_low_level_shopify:
   domain: collections
   examples:
     - "Publish collection"
@@ -537,7 +694,7 @@ publish_collection:
     - "Publish to online store"
     - "Enable collection on storefront"
 
-unpublish_collection:
+unpublish_collection_low_level_shopify:
   domain: collections
   examples:
     - "Unpublish collection"
@@ -549,7 +706,7 @@ unpublish_collection:
 # DISCOUNTS DOMAIN (12 tools: 3 read, 9 write)
 # =============================================================================
 
-get_discounts:
+get_discounts_low_level_shopify:
   domain: discounts
   examples:
     - "List all discounts"
@@ -557,7 +714,7 @@ get_discounts:
     - "Get current promotions"
     - "What discounts are running"
 
-get_discount:
+get_discount_low_level_shopify:
   domain: discounts
   examples:
     - "Show discount details"
@@ -565,7 +722,7 @@ get_discount:
     - "Look up SUMMER20 discount"
     - "Find discount by code"
 
-get_discounts_for_list:
+get_discounts_for_list_low_level_shopify:
   domain: discounts
   examples:
     - "Get discount summary list"
@@ -573,7 +730,7 @@ get_discounts_for_list:
     - "List discounts briefly"
     - "Quick discount list"
 
-create_discount:
+create_discount_low_level_shopify:
   domain: discounts
   examples:
     - "Create new discount code"
@@ -582,7 +739,7 @@ create_discount:
     - "Add new promotion"
     - "Create free shipping discount"
 
-update_discount:
+update_discount_low_level_shopify:
   domain: discounts
   examples:
     - "Update discount amount"
@@ -590,7 +747,7 @@ update_discount:
     - "Edit discount conditions"
     - "Modify discount code"
 
-deactivate_discount:
+deactivate_discount_low_level_shopify:
   domain: discounts
   examples:
     - "Deactivate discount code"
@@ -598,7 +755,7 @@ deactivate_discount:
     - "Disable promotion"
     - "Stop discount from working"
 
-activate_discount:
+activate_discount_low_level_shopify:
   domain: discounts
   examples:
     - "Activate discount code"
@@ -606,14 +763,14 @@ activate_discount:
     - "Turn on promotion"
     - "Reactivate discount"
 
-deactivate_automatic_discount:
+deactivate_automatic_discount_low_level_shopify:
   domain: discounts
   examples:
     - "Deactivate automatic discount"
     - "Turn off auto discount"
     - "Disable automatic promotion"
 
-delete_discount:
+delete_discount_low_level_shopify:
   domain: discounts
   examples:
     - "Delete discount code"
@@ -621,21 +778,21 @@ delete_discount:
     - "Delete promotion"
     - "Permanently remove coupon"
 
-bulk_activate_code_discounts:
+bulk_activate_code_discounts_low_level_shopify:
   domain: discounts
   examples:
     - "Activate all discount codes"
     - "Enable multiple discounts"
     - "Bulk activate coupons"
 
-bulk_deactivate_code_discounts:
+bulk_deactivate_code_discounts_low_level_shopify:
   domain: discounts
   examples:
     - "Deactivate all discount codes"
     - "Disable multiple discounts"
     - "Bulk turn off coupons"
 
-bulk_delete_code_discounts:
+bulk_delete_code_discounts_low_level_shopify:
   domain: discounts
   examples:
     - "Delete all expired discounts"
@@ -646,7 +803,7 @@ bulk_delete_code_discounts:
 # GIFT CARDS DOMAIN (11 tools: 4 read, 7 write)
 # =============================================================================
 
-get_gift_cards:
+get_gift_cards_low_level_shopify:
   domain: gift_cards
   examples:
     - "List all gift cards"
@@ -654,7 +811,7 @@ get_gift_cards:
     - "Get active gift cards"
     - "Search gift cards"
 
-get_gift_cards_count:
+get_gift_cards_count_low_level_shopify:
   domain: gift_cards
   examples:
     - "How many gift cards exist"
@@ -662,7 +819,7 @@ get_gift_cards_count:
     - "Total gift cards issued"
     - "Gift card count"
 
-get_gift_card_detail:
+get_gift_card_detail_low_level_shopify:
   domain: gift_cards
   examples:
     - "Show gift card details"
@@ -670,14 +827,14 @@ get_gift_card_detail:
     - "Look up gift card"
     - "Find gift card by code"
 
-get_gift_card_configuration:
+get_gift_card_configuration_low_level_shopify:
   domain: gift_cards
   examples:
     - "Show gift card settings"
     - "Get gift card configuration"
     - "What are the gift card options"
 
-create_gift_card:
+create_gift_card_low_level_shopify:
   domain: gift_cards
   examples:
     - "Create new gift card"
@@ -685,7 +842,7 @@ create_gift_card:
     - "Generate gift card"
     - "Create gift card for customer"
 
-deactivate_gift_card:
+deactivate_gift_card_low_level_shopify:
   domain: gift_cards
   examples:
     - "Deactivate gift card"
@@ -693,14 +850,14 @@ deactivate_gift_card:
     - "Cancel gift card"
     - "Turn off gift card"
 
-update_gift_card:
+update_gift_card_low_level_shopify:
   domain: gift_cards
   examples:
     - "Update gift card"
     - "Change gift card expiry"
     - "Edit gift card note"
 
-credit_gift_card:
+credit_gift_card_low_level_shopify:
   domain: gift_cards
   examples:
     - "Add credit to gift card"
@@ -708,21 +865,21 @@ credit_gift_card:
     - "Add $25 to gift card"
     - "Top up gift card"
 
-debit_gift_card:
+debit_gift_card_low_level_shopify:
   domain: gift_cards
   examples:
     - "Debit gift card"
     - "Remove balance from gift card"
     - "Reduce gift card value"
 
-send_gift_card_notification_to_customer:
+send_gift_card_notification_to_customer_low_level_shopify:
   domain: gift_cards
   examples:
     - "Send gift card to customer email"
     - "Email gift card to purchaser"
     - "Notify customer about gift card"
 
-send_gift_card_notification_to_recipient:
+send_gift_card_notification_to_recipient_low_level_shopify:
   domain: gift_cards
   examples:
     - "Send gift card to recipient"
@@ -733,7 +890,7 @@ send_gift_card_notification_to_recipient:
 # FULFILLMENT DOMAIN (8 tools: 2 read, 6 write)
 # =============================================================================
 
-get_fulfillment_orders:
+get_fulfillment_orders_low_level_shopify:
   domain: fulfillment
   examples:
     - "Show fulfillment orders"
@@ -741,7 +898,7 @@ get_fulfillment_orders:
     - "Get pending fulfillments"
     - "What orders need shipping"
 
-get_suggested_refund:
+get_suggested_refund_low_level_shopify:
   domain: fulfillment
   examples:
     - "Calculate suggested refund"
@@ -749,7 +906,7 @@ get_suggested_refund:
     - "Get refund amount"
     - "Calculate return refund"
 
-create_fulfillment:
+create_fulfillment_low_level_shopify:
   domain: fulfillment
   examples:
     - "Create fulfillment for order"
@@ -758,7 +915,7 @@ create_fulfillment:
     - "Ship the order"
     - "Create shipment"
 
-update_fulfillment_tracking:
+update_fulfillment_tracking_low_level_shopify:
   domain: fulfillment
   examples:
     - "Update tracking number"
@@ -766,7 +923,7 @@ update_fulfillment_tracking:
     - "Change tracking number"
     - "Update shipment tracking"
 
-hold_fulfillment_order:
+hold_fulfillment_order_low_level_shopify:
   domain: fulfillment
   examples:
     - "Put fulfillment on hold"
@@ -774,7 +931,7 @@ hold_fulfillment_order:
     - "Pause fulfillment"
     - "Stop fulfillment temporarily"
 
-release_fulfillment_order_hold:
+release_fulfillment_order_hold_low_level_shopify:
   domain: fulfillment
   examples:
     - "Release fulfillment hold"
@@ -782,7 +939,7 @@ release_fulfillment_order_hold:
     - "Unhold shipment"
     - "Continue with fulfillment"
 
-create_refund:
+create_refund_low_level_shopify:
   domain: fulfillment
   examples:
     - "Create refund"
@@ -791,7 +948,7 @@ create_refund:
     - "Process refund"
     - "Refund customer"
 
-create_return:
+create_return_low_level_shopify:
   domain: fulfillment
   examples:
     - "Create return"
@@ -804,7 +961,7 @@ create_return:
 # FINANCE DOMAIN (8 tools: 8 read, 0 write)
 # =============================================================================
 
-get_payouts:
+get_payouts_low_level_shopify:
   domain: finance
   examples:
     - "Show recent payouts"
@@ -812,7 +969,7 @@ get_payouts:
     - "Get payout history"
     - "When were we paid"
 
-get_payout:
+get_payout_low_level_shopify:
   domain: finance
   examples:
     - "Get payout details"
@@ -820,7 +977,7 @@ get_payout:
     - "Look up payout"
     - "Find payout by ID"
 
-get_payout_detail:
+get_payout_detail_low_level_shopify:
   domain: finance
   examples:
     - "Show full payout details"
@@ -828,7 +985,7 @@ get_payout_detail:
     - "Payout complete information"
     - "Detailed payout view"
 
-get_payout_transactions:
+get_payout_transactions_low_level_shopify:
   domain: finance
   examples:
     - "Show payout transactions"
@@ -836,7 +993,7 @@ get_payout_transactions:
     - "List payout transactions"
     - "Get transaction details for payout"
 
-get_payout_schedule:
+get_payout_schedule_low_level_shopify:
   domain: finance
   examples:
     - "Show payout schedule"
@@ -844,7 +1001,7 @@ get_payout_schedule:
     - "Get payout timing"
     - "Payout frequency"
 
-get_bank_accounts:
+get_bank_accounts_low_level_shopify:
   domain: finance
   examples:
     - "Show bank accounts"
@@ -852,7 +1009,7 @@ get_bank_accounts:
     - "Get payout destinations"
     - "Where do payouts go"
 
-get_disputes:
+get_disputes_low_level_shopify:
   domain: finance
   examples:
     - "Show disputes"
@@ -860,7 +1017,7 @@ get_disputes:
     - "Get open disputes"
     - "Any payment disputes"
 
-get_dispute:
+get_dispute_low_level_shopify:
   domain: finance
   examples:
     - "Get dispute details"
@@ -872,7 +1029,7 @@ get_dispute:
 # ORDER EDITING DOMAIN (11 tools: 1 read, 10 write)
 # =============================================================================
 
-order_edit_begin:
+order_edit_begin_low_level_shopify:
   domain: order_editing
   examples:
     - "Start editing order"
@@ -880,7 +1037,7 @@ order_edit_begin:
     - "Open order for editing"
     - "Modify this order"
 
-order_edit_add_variant:
+order_edit_add_variant_low_level_shopify:
   domain: order_editing
   examples:
     - "Add product to order"
@@ -888,7 +1045,7 @@ order_edit_add_variant:
     - "Include another product"
     - "Add variant to order"
 
-order_edit_add_custom_item:
+order_edit_add_custom_item_low_level_shopify:
   domain: order_editing
   examples:
     - "Add custom item to order"
@@ -896,7 +1053,7 @@ order_edit_add_custom_item:
     - "Include custom product"
     - "Add one-off item"
 
-order_edit_set_quantity:
+order_edit_set_quantity_low_level_shopify:
   domain: order_editing
   examples:
     - "Change item quantity"
@@ -904,7 +1061,7 @@ order_edit_set_quantity:
     - "Set quantity to 3"
     - "Adjust item count"
 
-order_edit_add_line_item_discount:
+order_edit_add_line_item_discount_low_level_shopify:
   domain: order_editing
   examples:
     - "Add discount to line item"
@@ -912,21 +1069,21 @@ order_edit_add_line_item_discount:
     - "Give discount on this item"
     - "Add item-level discount"
 
-order_edit_update_discount:
+order_edit_update_discount_low_level_shopify:
   domain: order_editing
   examples:
     - "Update line item discount"
     - "Change discount amount"
     - "Modify item discount"
 
-order_edit_remove_discount:
+order_edit_remove_discount_low_level_shopify:
   domain: order_editing
   examples:
     - "Remove discount from item"
     - "Delete line item discount"
     - "Remove item discount"
 
-order_edit_add_shipping_line:
+order_edit_add_shipping_line_low_level_shopify:
   domain: order_editing
   examples:
     - "Add shipping to order"
@@ -934,21 +1091,21 @@ order_edit_add_shipping_line:
     - "Add delivery fee"
     - "Add shipping line"
 
-order_edit_update_shipping_line:
+order_edit_update_shipping_line_low_level_shopify:
   domain: order_editing
   examples:
     - "Update shipping cost"
     - "Change shipping amount"
     - "Modify delivery fee"
 
-order_edit_remove_shipping_line:
+order_edit_remove_shipping_line_low_level_shopify:
   domain: order_editing
   examples:
     - "Remove shipping charge"
     - "Delete shipping line"
     - "Remove delivery fee"
 
-order_edit_commit:
+order_edit_commit_low_level_shopify:
   domain: order_editing
   examples:
     - "Save order changes"

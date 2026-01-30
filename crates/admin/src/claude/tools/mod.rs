@@ -13,28 +13,28 @@
 //! These return detailed data for specific lookups and modifications.
 
 mod analytics;
-mod collections;
-mod customers;
-mod discounts;
-mod finance;
-mod fulfillment;
-mod gift_cards;
-mod inventory;
-mod order_editing;
-mod orders;
-mod products;
+mod collections_low_level_shopify;
+mod customers_low_level_shopify;
+mod discounts_low_level_shopify;
+mod finance_low_level_shopify;
+mod fulfillment_low_level_shopify;
+mod gift_cards_low_level_shopify;
+mod inventory_low_level_shopify;
+mod order_editing_low_level_shopify;
+mod orders_low_level_shopify;
+mod products_low_level_shopify;
 
 pub use analytics::analytics_tools;
-pub use collections::collection_tools;
-pub use customers::customer_tools;
-pub use discounts::discount_tools;
-pub use finance::finance_tools;
-pub use fulfillment::fulfillment_tools;
-pub use gift_cards::gift_card_tools;
-pub use inventory::inventory_tools;
-pub use order_editing::order_editing_tools;
-pub use orders::order_tools;
-pub use products::product_tools;
+pub use collections_low_level_shopify::collection_tools;
+pub use customers_low_level_shopify::customer_tools;
+pub use discounts_low_level_shopify::discount_tools;
+pub use finance_low_level_shopify::finance_tools;
+pub use fulfillment_low_level_shopify::fulfillment_tools;
+pub use gift_cards_low_level_shopify::gift_card_tools;
+pub use inventory_low_level_shopify::inventory_tools;
+pub use order_editing_low_level_shopify::order_editing_tools;
+pub use orders_low_level_shopify::order_tools;
+pub use products_low_level_shopify::product_tools;
 
 use serde_json::json;
 use tracing::instrument;
@@ -73,13 +73,15 @@ pub fn get_tool_by_name(name: &str) -> Option<Tool> {
     all_shopify_tools().into_iter().find(|t| t.name == name)
 }
 
-/// Get all tools for a specific domain.
+/// Get all tools for a specific domain, with low-level Shopify tools sorted last.
 #[must_use]
 pub fn get_tools_by_domain(domain: &str) -> Vec<Tool> {
-    all_shopify_tools()
+    let mut tools: Vec<Tool> = all_shopify_tools()
         .into_iter()
         .filter(|t| t.domain.as_deref() == Some(domain))
-        .collect()
+        .collect();
+    sort_tools_high_level_first(&mut tools);
+    tools
 }
 
 /// Get tool names from a list of tools.
@@ -100,14 +102,29 @@ pub fn get_tool_domain(tool_name: &str) -> Option<String> {
     get_tool_by_name(tool_name).and_then(|t| t.domain)
 }
 
-/// Filter tools by names.
+/// Filter tools by names, with low-level Shopify tools sorted last.
+///
+/// This ensures high-level analytics tools appear before low-level API tools
+/// when tools are presented to the LLM.
 #[must_use]
 pub fn filter_tools_by_names(names: &[String]) -> Vec<Tool> {
     let all = all_shopify_tools();
-    names
+    let mut tools: Vec<Tool> = names
         .iter()
         .filter_map(|name| all.iter().find(|t| &t.name == name).cloned())
-        .collect()
+        .collect();
+    sort_tools_high_level_first(&mut tools);
+    tools
+}
+
+/// Sort tools so that high-level analytics tools come first and
+/// low-level Shopify API tools (ending in `_low_level_shopify`) come last.
+fn sort_tools_high_level_first(tools: &mut [Tool]) {
+    tools.sort_by(|a, b| {
+        let a_is_low_level = a.name.ends_with("_low_level_shopify");
+        let b_is_low_level = b.name.ends_with("_low_level_shopify");
+        a_is_low_level.cmp(&b_is_low_level)
+    });
 }
 
 /// Executor for Shopify tools.
@@ -202,62 +219,68 @@ impl<'a> ToolExecutor<'a> {
 
             // Low-level Shopify API tools
             // Orders (read)
-            "get_order" => self.get_order(input).await,
-            "get_orders" => self.get_orders(input).await,
-            "get_order_detail" => self.get_order_detail(input).await,
-            "get_orders_list" => self.get_orders_list(input).await,
+            "get_order_low_level_shopify" => self.get_order(input).await,
+            "get_orders_low_level_shopify" => self.get_orders(input).await,
+            "get_order_detail_low_level_shopify" => self.get_order_detail(input).await,
+            "get_orders_list_low_level_shopify" => self.get_orders_list(input).await,
 
             // Customers (read)
-            "get_customer" => self.get_customer(input).await,
-            "get_customers" => self.get_customers(input).await,
-            "generate_customer_activation_url" => {
+            "get_customer_low_level_shopify" => self.get_customer(input).await,
+            "get_customers_low_level_shopify" => self.get_customers(input).await,
+            "generate_customer_activation_url_low_level_shopify" => {
                 self.generate_customer_activation_url(input).await
             }
-            "get_customer_segments" => self.get_customer_segments(input).await,
+            "get_customer_segments_low_level_shopify" => self.get_customer_segments(input).await,
 
             // Products (read)
-            "get_product" => self.get_product(input).await,
-            "get_products" => self.get_products(input).await,
+            "get_product_low_level_shopify" => self.get_product(input).await,
+            "get_products_low_level_shopify" => self.get_products(input).await,
 
             // Inventory (read)
-            "get_locations" => self.get_locations().await,
-            "get_inventory_levels" => self.get_inventory_levels(input).await,
-            "get_inventory_items" => self.get_inventory_items(input).await,
-            "get_inventory_item" => self.get_inventory_item(input).await,
+            "get_locations_low_level_shopify" => self.get_locations().await,
+            "get_inventory_levels_low_level_shopify" => self.get_inventory_levels(input).await,
+            "get_inventory_items_low_level_shopify" => self.get_inventory_items(input).await,
+            "get_inventory_item_low_level_shopify" => self.get_inventory_item(input).await,
 
             // Collections (read)
-            "get_collection" => self.get_collection(input).await,
-            "get_collections" => self.get_collections(input).await,
-            "get_collection_with_products" => self.get_collection_with_products(input).await,
-            "get_publications" => self.get_publications().await,
+            "get_collection_low_level_shopify" => self.get_collection(input).await,
+            "get_collections_low_level_shopify" => self.get_collections(input).await,
+            "get_collection_with_products_low_level_shopify" => {
+                self.get_collection_with_products(input).await
+            }
+            "get_publications_low_level_shopify" => self.get_publications().await,
 
             // Discounts (read)
-            "get_discounts" => self.get_discounts(input).await,
-            "get_discount" => self.get_discount(input).await,
-            "get_discounts_for_list" => self.get_discounts_for_list(input).await,
+            "get_discounts_low_level_shopify" => self.get_discounts(input).await,
+            "get_discount_low_level_shopify" => self.get_discount(input).await,
+            "get_discounts_for_list_low_level_shopify" => self.get_discounts_for_list(input).await,
 
             // Gift Cards (read)
-            "get_gift_cards" => self.get_gift_cards(input).await,
-            "get_gift_cards_count" => self.get_gift_cards_count(input).await,
-            "get_gift_card_detail" => self.get_gift_card_detail(input).await,
-            "get_gift_card_configuration" => self.get_gift_card_configuration().await,
+            "get_gift_cards_low_level_shopify" => self.get_gift_cards(input).await,
+            "get_gift_cards_count_low_level_shopify" => self.get_gift_cards_count(input).await,
+            "get_gift_card_detail_low_level_shopify" => self.get_gift_card_detail(input).await,
+            "get_gift_card_configuration_low_level_shopify" => {
+                self.get_gift_card_configuration().await
+            }
 
             // Fulfillment (read)
-            "get_fulfillment_orders" => self.get_fulfillment_orders(input).await,
-            "get_suggested_refund" => self.get_suggested_refund(input).await,
+            "get_fulfillment_orders_low_level_shopify" => self.get_fulfillment_orders(input).await,
+            "get_suggested_refund_low_level_shopify" => self.get_suggested_refund(input).await,
 
             // Finance (read)
-            "get_payouts" => self.get_payouts(input).await,
-            "get_payout" => self.get_payout(input).await,
-            "get_payout_detail" => self.get_payout_detail(input).await,
-            "get_payout_transactions" => self.get_payout_transactions(input).await,
-            "get_payout_schedule" => self.get_payout_schedule().await,
-            "get_bank_accounts" => self.get_bank_accounts().await,
-            "get_disputes" => self.get_disputes(input).await,
-            "get_dispute" => self.get_dispute(input).await,
+            "get_payouts_low_level_shopify" => self.get_payouts(input).await,
+            "get_payout_low_level_shopify" => self.get_payout(input).await,
+            "get_payout_detail_low_level_shopify" => self.get_payout_detail(input).await,
+            "get_payout_transactions_low_level_shopify" => {
+                self.get_payout_transactions(input).await
+            }
+            "get_payout_schedule_low_level_shopify" => self.get_payout_schedule().await,
+            "get_bank_accounts_low_level_shopify" => self.get_bank_accounts().await,
+            "get_disputes_low_level_shopify" => self.get_disputes(input).await,
+            "get_dispute_low_level_shopify" => self.get_dispute(input).await,
 
             // Order Editing (read - begin only)
-            "order_edit_begin" => self.order_edit_begin(input).await,
+            "order_edit_begin_low_level_shopify" => self.order_edit_begin(input).await,
 
             _ => Err(ClaudeError::ToolExecution(format!("Unknown tool: {name}"))),
         }
@@ -269,110 +292,277 @@ impl<'a> ToolExecutor<'a> {
         name: &str,
         input: &serde_json::Value,
     ) -> Result<String, ClaudeError> {
-        match name {
-            // Orders (write)
-            "update_order_note" => self.update_order_note(input).await,
-            "update_order_tags" => self.update_order_tags(input).await,
-            "mark_order_as_paid" => self.mark_order_as_paid(input).await,
-            "cancel_order" => self.cancel_order(input).await,
-            "archive_order" => self.archive_order(input).await,
-            "unarchive_order" => self.unarchive_order(input).await,
-            "capture_order_payment" => self.capture_order_payment(input).await,
-            "add_tags_to_order" => self.add_tags_to_order(input).await,
-            "remove_tags_from_order" => self.remove_tags_from_order(input).await,
+        // Try each domain's write operations
+        if let Some(result) = self.execute_write_orders(name, input).await {
+            return result;
+        }
+        if let Some(result) = self.execute_write_customers(name, input).await {
+            return result;
+        }
+        if let Some(result) = self.execute_write_products(name, input).await {
+            return result;
+        }
+        if let Some(result) = self.execute_write_inventory(name, input).await {
+            return result;
+        }
+        if let Some(result) = self.execute_write_collections(name, input).await {
+            return result;
+        }
+        if let Some(result) = self.execute_write_discounts(name, input).await {
+            return result;
+        }
+        if let Some(result) = self.execute_write_gift_cards(name, input).await {
+            return result;
+        }
+        if let Some(result) = self.execute_write_fulfillment(name, input).await {
+            return result;
+        }
+        if let Some(result) = self.execute_write_order_editing(name, input).await {
+            return result;
+        }
 
-            // Customers (write)
-            "create_customer" => self.create_customer(input).await,
-            "update_customer" => self.update_customer(input).await,
-            "delete_customer" => self.delete_customer(input).await,
-            "add_customer_tags" => self.add_customer_tags(input).await,
-            "remove_customer_tags" => self.remove_customer_tags(input).await,
-            "send_customer_invite" => self.send_customer_invite(input).await,
-            "create_customer_address" => self.create_customer_address(input).await,
-            "update_customer_address" => self.update_customer_address(input).await,
-            "delete_customer_address" => self.delete_customer_address(input).await,
-            "set_customer_default_address" => self.set_customer_default_address(input).await,
-            "update_customer_email_marketing" => self.update_customer_email_marketing(input).await,
-            "update_customer_sms_marketing" => self.update_customer_sms_marketing(input).await,
-            "merge_customers" => self.merge_customers(input).await,
+        Err(ClaudeError::ToolExecution(format!(
+            "Unknown write tool: {name}"
+        )))
+    }
 
-            // Products (write)
-            "create_product" => self.create_product(input).await,
-            "update_product" => self.update_product(input).await,
-            "delete_product" => self.delete_product(input).await,
-            "update_variant" => self.update_variant(input).await,
+    /// Execute order write operations.
+    async fn execute_write_orders(
+        &self,
+        name: &str,
+        input: &serde_json::Value,
+    ) -> Option<Result<String, ClaudeError>> {
+        let result = match name {
+            "update_order_note_low_level_shopify" => self.update_order_note(input).await,
+            "update_order_tags_low_level_shopify" => self.update_order_tags(input).await,
+            "mark_order_as_paid_low_level_shopify" => self.mark_order_as_paid(input).await,
+            "cancel_order_low_level_shopify" => self.cancel_order(input).await,
+            "archive_order_low_level_shopify" => self.archive_order(input).await,
+            "unarchive_order_low_level_shopify" => self.unarchive_order(input).await,
+            "capture_order_payment_low_level_shopify" => self.capture_order_payment(input).await,
+            "add_tags_to_order_low_level_shopify" => self.add_tags_to_order(input).await,
+            "remove_tags_from_order_low_level_shopify" => self.remove_tags_from_order(input).await,
+            _ => return None,
+        };
+        Some(result)
+    }
 
-            // Inventory (write)
-            "adjust_inventory" => self.adjust_inventory(input).await,
-            "set_inventory" => self.set_inventory(input).await,
-            "update_inventory_item" => self.update_inventory_item(input).await,
-            "move_inventory" => self.move_inventory(input).await,
-            "activate_inventory" => self.activate_inventory(input).await,
-            "deactivate_inventory" => self.deactivate_inventory(input).await,
+    /// Execute customer write operations.
+    async fn execute_write_customers(
+        &self,
+        name: &str,
+        input: &serde_json::Value,
+    ) -> Option<Result<String, ClaudeError>> {
+        let result = match name {
+            "create_customer_low_level_shopify" => self.create_customer(input).await,
+            "update_customer_low_level_shopify" => self.update_customer(input).await,
+            "delete_customer_low_level_shopify" => self.delete_customer(input).await,
+            "add_customer_tags_low_level_shopify" => self.add_customer_tags(input).await,
+            "remove_customer_tags_low_level_shopify" => self.remove_customer_tags(input).await,
+            "send_customer_invite_low_level_shopify" => self.send_customer_invite(input).await,
+            "create_customer_address_low_level_shopify" => {
+                self.create_customer_address(input).await
+            }
+            "update_customer_address_low_level_shopify" => {
+                self.update_customer_address(input).await
+            }
+            "delete_customer_address_low_level_shopify" => {
+                self.delete_customer_address(input).await
+            }
+            "set_customer_default_address_low_level_shopify" => {
+                self.set_customer_default_address(input).await
+            }
+            "update_customer_email_marketing_low_level_shopify" => {
+                self.update_customer_email_marketing(input).await
+            }
+            "update_customer_sms_marketing_low_level_shopify" => {
+                self.update_customer_sms_marketing(input).await
+            }
+            "merge_customers_low_level_shopify" => self.merge_customers(input).await,
+            _ => return None,
+        };
+        Some(result)
+    }
 
-            // Collections (write)
-            "create_collection" => self.create_collection(input).await,
-            "update_collection" => self.update_collection(input).await,
-            "update_collection_sort_order" => self.update_collection_sort_order(input).await,
-            "delete_collection" => self.delete_collection(input).await,
-            "update_collection_image" => self.update_collection_image(input).await,
-            "delete_collection_image" => self.delete_collection_image(input).await,
-            "add_products_to_collection" => self.add_products_to_collection(input).await,
-            "remove_products_from_collection" => self.remove_products_from_collection(input).await,
-            "reorder_collection_products" => self.reorder_collection_products(input).await,
-            "publish_collection" => self.publish_collection(input).await,
-            "unpublish_collection" => self.unpublish_collection(input).await,
+    /// Execute product write operations.
+    async fn execute_write_products(
+        &self,
+        name: &str,
+        input: &serde_json::Value,
+    ) -> Option<Result<String, ClaudeError>> {
+        let result = match name {
+            "create_product_low_level_shopify" => self.create_product(input).await,
+            "update_product_low_level_shopify" => self.update_product(input).await,
+            "delete_product_low_level_shopify" => self.delete_product(input).await,
+            "update_variant_low_level_shopify" => self.update_variant(input).await,
+            _ => return None,
+        };
+        Some(result)
+    }
 
-            // Discounts (write)
-            "create_discount" => self.create_discount(input).await,
-            "update_discount" => self.update_discount(input).await,
-            "deactivate_discount" => self.deactivate_discount(input).await,
-            "activate_discount" => self.activate_discount(input).await,
-            "deactivate_automatic_discount" => self.deactivate_automatic_discount(input).await,
-            "delete_discount" => self.delete_discount(input).await,
-            "bulk_activate_code_discounts" => self.bulk_activate_code_discounts(input).await,
-            "bulk_deactivate_code_discounts" => self.bulk_deactivate_code_discounts(input).await,
-            "bulk_delete_code_discounts" => self.bulk_delete_code_discounts(input).await,
+    /// Execute inventory write operations.
+    async fn execute_write_inventory(
+        &self,
+        name: &str,
+        input: &serde_json::Value,
+    ) -> Option<Result<String, ClaudeError>> {
+        let result = match name {
+            "adjust_inventory_low_level_shopify" => self.adjust_inventory(input).await,
+            "set_inventory_low_level_shopify" => self.set_inventory(input).await,
+            "update_inventory_item_low_level_shopify" => self.update_inventory_item(input).await,
+            "move_inventory_low_level_shopify" => self.move_inventory(input).await,
+            "activate_inventory_low_level_shopify" => self.activate_inventory(input).await,
+            "deactivate_inventory_low_level_shopify" => self.deactivate_inventory(input).await,
+            _ => return None,
+        };
+        Some(result)
+    }
 
-            // Gift Cards (write)
-            "create_gift_card" => self.create_gift_card(input).await,
-            "deactivate_gift_card" => self.deactivate_gift_card(input).await,
-            "update_gift_card" => self.update_gift_card(input).await,
-            "credit_gift_card" => self.credit_gift_card(input).await,
-            "debit_gift_card" => self.debit_gift_card(input).await,
-            "send_gift_card_notification_to_customer" => {
+    /// Execute collection write operations.
+    async fn execute_write_collections(
+        &self,
+        name: &str,
+        input: &serde_json::Value,
+    ) -> Option<Result<String, ClaudeError>> {
+        let result = match name {
+            "create_collection_low_level_shopify" => self.create_collection(input).await,
+            "update_collection_low_level_shopify" => self.update_collection(input).await,
+            "update_collection_sort_order_low_level_shopify" => {
+                self.update_collection_sort_order(input).await
+            }
+            "delete_collection_low_level_shopify" => self.delete_collection(input).await,
+            "update_collection_image_low_level_shopify" => {
+                self.update_collection_image(input).await
+            }
+            "delete_collection_image_low_level_shopify" => {
+                self.delete_collection_image(input).await
+            }
+            "add_products_to_collection_low_level_shopify" => {
+                self.add_products_to_collection(input).await
+            }
+            "remove_products_from_collection_low_level_shopify" => {
+                self.remove_products_from_collection(input).await
+            }
+            "reorder_collection_products_low_level_shopify" => {
+                self.reorder_collection_products(input).await
+            }
+            "publish_collection_low_level_shopify" => self.publish_collection(input).await,
+            "unpublish_collection_low_level_shopify" => self.unpublish_collection(input).await,
+            _ => return None,
+        };
+        Some(result)
+    }
+
+    /// Execute discount write operations.
+    async fn execute_write_discounts(
+        &self,
+        name: &str,
+        input: &serde_json::Value,
+    ) -> Option<Result<String, ClaudeError>> {
+        let result = match name {
+            "create_discount_low_level_shopify" => self.create_discount(input).await,
+            "update_discount_low_level_shopify" => self.update_discount(input).await,
+            "deactivate_discount_low_level_shopify" => self.deactivate_discount(input).await,
+            "activate_discount_low_level_shopify" => self.activate_discount(input).await,
+            "deactivate_automatic_discount_low_level_shopify" => {
+                self.deactivate_automatic_discount(input).await
+            }
+            "delete_discount_low_level_shopify" => self.delete_discount(input).await,
+            "bulk_activate_code_discounts_low_level_shopify" => {
+                self.bulk_activate_code_discounts(input).await
+            }
+            "bulk_deactivate_code_discounts_low_level_shopify" => {
+                self.bulk_deactivate_code_discounts(input).await
+            }
+            "bulk_delete_code_discounts_low_level_shopify" => {
+                self.bulk_delete_code_discounts(input).await
+            }
+            _ => return None,
+        };
+        Some(result)
+    }
+
+    /// Execute gift card write operations.
+    async fn execute_write_gift_cards(
+        &self,
+        name: &str,
+        input: &serde_json::Value,
+    ) -> Option<Result<String, ClaudeError>> {
+        let result = match name {
+            "create_gift_card_low_level_shopify" => self.create_gift_card(input).await,
+            "deactivate_gift_card_low_level_shopify" => self.deactivate_gift_card(input).await,
+            "update_gift_card_low_level_shopify" => self.update_gift_card(input).await,
+            "credit_gift_card_low_level_shopify" => self.credit_gift_card(input).await,
+            "debit_gift_card_low_level_shopify" => self.debit_gift_card(input).await,
+            "send_gift_card_notification_to_customer_low_level_shopify" => {
                 self.send_gift_card_notification_to_customer(input).await
             }
-            "send_gift_card_notification_to_recipient" => {
+            "send_gift_card_notification_to_recipient_low_level_shopify" => {
                 self.send_gift_card_notification_to_recipient(input).await
             }
+            _ => return None,
+        };
+        Some(result)
+    }
 
-            // Fulfillment (write)
-            "create_fulfillment" => self.create_fulfillment(input).await,
-            "update_fulfillment_tracking" => self.update_fulfillment_tracking(input).await,
-            "hold_fulfillment_order" => self.hold_fulfillment_order(input).await,
-            "release_fulfillment_order_hold" => self.release_fulfillment_order_hold(input).await,
-            "create_refund" => self.create_refund(input).await,
-            "create_return" => self.create_return(input).await,
+    /// Execute fulfillment write operations.
+    async fn execute_write_fulfillment(
+        &self,
+        name: &str,
+        input: &serde_json::Value,
+    ) -> Option<Result<String, ClaudeError>> {
+        let result = match name {
+            "create_fulfillment_low_level_shopify" => self.create_fulfillment(input).await,
+            "update_fulfillment_tracking_low_level_shopify" => {
+                self.update_fulfillment_tracking(input).await
+            }
+            "hold_fulfillment_order_low_level_shopify" => self.hold_fulfillment_order(input).await,
+            "release_fulfillment_order_hold_low_level_shopify" => {
+                self.release_fulfillment_order_hold(input).await
+            }
+            "create_refund_low_level_shopify" => self.create_refund(input).await,
+            "create_return_low_level_shopify" => self.create_return(input).await,
+            _ => return None,
+        };
+        Some(result)
+    }
 
-            // Order Editing (write)
-            "order_edit_add_variant" => self.order_edit_add_variant(input).await,
-            "order_edit_add_custom_item" => self.order_edit_add_custom_item(input).await,
-            "order_edit_set_quantity" => self.order_edit_set_quantity(input).await,
-            "order_edit_add_line_item_discount" => {
+    /// Execute order editing write operations.
+    async fn execute_write_order_editing(
+        &self,
+        name: &str,
+        input: &serde_json::Value,
+    ) -> Option<Result<String, ClaudeError>> {
+        let result = match name {
+            "order_edit_add_variant_low_level_shopify" => self.order_edit_add_variant(input).await,
+            "order_edit_add_custom_item_low_level_shopify" => {
+                self.order_edit_add_custom_item(input).await
+            }
+            "order_edit_set_quantity_low_level_shopify" => {
+                self.order_edit_set_quantity(input).await
+            }
+            "order_edit_add_line_item_discount_low_level_shopify" => {
                 self.order_edit_add_line_item_discount(input).await
             }
-            "order_edit_update_discount" => self.order_edit_update_discount(input).await,
-            "order_edit_remove_discount" => self.order_edit_remove_discount(input).await,
-            "order_edit_add_shipping_line" => self.order_edit_add_shipping_line(input).await,
-            "order_edit_update_shipping_line" => self.order_edit_update_shipping_line(input).await,
-            "order_edit_remove_shipping_line" => self.order_edit_remove_shipping_line(input).await,
-            "order_edit_commit" => self.order_edit_commit(input).await,
-
-            _ => Err(ClaudeError::ToolExecution(format!(
-                "Unknown write tool: {name}"
-            ))),
-        }
+            "order_edit_update_discount_low_level_shopify" => {
+                self.order_edit_update_discount(input).await
+            }
+            "order_edit_remove_discount_low_level_shopify" => {
+                self.order_edit_remove_discount(input).await
+            }
+            "order_edit_add_shipping_line_low_level_shopify" => {
+                self.order_edit_add_shipping_line(input).await
+            }
+            "order_edit_update_shipping_line_low_level_shopify" => {
+                self.order_edit_update_shipping_line(input).await
+            }
+            "order_edit_remove_shipping_line_low_level_shopify" => {
+                self.order_edit_remove_shipping_line(input).await
+            }
+            "order_edit_commit_low_level_shopify" => self.order_edit_commit(input).await,
+            _ => return None,
+        };
+        Some(result)
     }
 }
 
@@ -411,4 +601,4 @@ impl ToolResult {
 
 // Include the executor implementations
 mod analytics_executor;
-mod executor;
+mod executor_low_level_shopify;

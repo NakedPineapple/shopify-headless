@@ -15,7 +15,7 @@ pub fn order_editing_tools() -> Vec<Tool> {
 /// Get order editing read-only tools (begin editing session).
 fn order_editing_read_tools() -> Vec<Tool> {
     vec![Tool {
-        name: "order_edit_begin".to_string(),
+        name: "order_edit_begin_low_level_shopify".to_string(),
         description: "Begin an order editing session. Returns a calculated order with \
             editable fields. Must call order_edit_commit to apply changes."
             .to_string(),
@@ -52,7 +52,7 @@ fn order_editing_write_tools() -> Vec<Tool> {
 
 fn order_edit_add_variant_tool() -> Tool {
     Tool {
-        name: "order_edit_add_variant".to_string(),
+        name: "order_edit_add_variant_low_level_shopify".to_string(),
         description: "Add a product variant to an order being edited.".to_string(),
         input_schema: json!({
             "type": "object",
@@ -79,7 +79,7 @@ fn order_edit_add_variant_tool() -> Tool {
 
 fn order_edit_add_custom_item_tool() -> Tool {
     Tool {
-        name: "order_edit_add_custom_item".to_string(),
+        name: "order_edit_add_custom_item_low_level_shopify".to_string(),
         description: "Add a custom line item (not from catalog) to an order.".to_string(),
         input_schema: json!({
             "type": "object",
@@ -118,7 +118,7 @@ fn order_edit_add_custom_item_tool() -> Tool {
 
 fn order_edit_set_quantity_tool() -> Tool {
     Tool {
-        name: "order_edit_set_quantity".to_string(),
+        name: "order_edit_set_quantity_low_level_shopify".to_string(),
         description: "Change the quantity of a line item in an order.".to_string(),
         input_schema: json!({
             "type": "object",
@@ -145,7 +145,7 @@ fn order_edit_set_quantity_tool() -> Tool {
 
 fn order_edit_add_line_item_discount_tool() -> Tool {
     Tool {
-        name: "order_edit_add_line_item_discount".to_string(),
+        name: "order_edit_add_line_item_discount_low_level_shopify".to_string(),
         description: "Add a discount to a specific line item.".to_string(),
         input_schema: json!({
             "type": "object",
@@ -180,7 +180,7 @@ fn order_edit_add_line_item_discount_tool() -> Tool {
 
 fn order_edit_update_discount_tool() -> Tool {
     Tool {
-        name: "order_edit_update_discount".to_string(),
+        name: "order_edit_update_discount_low_level_shopify".to_string(),
         description: "Update an existing discount on an order.".to_string(),
         input_schema: json!({
             "type": "object",
@@ -215,7 +215,7 @@ fn order_edit_update_discount_tool() -> Tool {
 
 fn order_edit_remove_discount_tool() -> Tool {
     Tool {
-        name: "order_edit_remove_discount".to_string(),
+        name: "order_edit_remove_discount_low_level_shopify".to_string(),
         description: "Remove a discount from an order.".to_string(),
         input_schema: json!({
             "type": "object",
@@ -238,7 +238,7 @@ fn order_edit_remove_discount_tool() -> Tool {
 
 fn order_edit_add_shipping_line_tool() -> Tool {
     Tool {
-        name: "order_edit_add_shipping_line".to_string(),
+        name: "order_edit_add_shipping_line_low_level_shopify".to_string(),
         description: "Add a shipping line to an order.".to_string(),
         input_schema: json!({
             "type": "object",
@@ -265,7 +265,7 @@ fn order_edit_add_shipping_line_tool() -> Tool {
 
 fn order_edit_update_shipping_line_tool() -> Tool {
     Tool {
-        name: "order_edit_update_shipping_line".to_string(),
+        name: "order_edit_update_shipping_line_low_level_shopify".to_string(),
         description: "Update a shipping line on an order.".to_string(),
         input_schema: json!({
             "type": "object",
@@ -296,7 +296,7 @@ fn order_edit_update_shipping_line_tool() -> Tool {
 
 fn order_edit_remove_shipping_line_tool() -> Tool {
     Tool {
-        name: "order_edit_remove_shipping_line".to_string(),
+        name: "order_edit_remove_shipping_line_low_level_shopify".to_string(),
         description: "Remove a shipping line from an order.".to_string(),
         input_schema: json!({
             "type": "object",
@@ -319,7 +319,7 @@ fn order_edit_remove_shipping_line_tool() -> Tool {
 
 fn order_edit_commit_tool() -> Tool {
     Tool {
-        name: "order_edit_commit".to_string(),
+        name: "order_edit_commit_low_level_shopify".to_string(),
         description: "Commit all changes to an order. This finalizes the edit session \
             and applies all modifications to the actual order."
             .to_string(),

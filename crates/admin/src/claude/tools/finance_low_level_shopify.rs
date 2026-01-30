@@ -22,7 +22,7 @@ pub fn finance_tools() -> Vec<Tool> {
 
 fn get_payouts_tool() -> Tool {
     Tool {
-        name: "get_payouts".to_string(),
+        name: "get_payouts_low_level_shopify".to_string(),
         description: "Get payout history (bank deposits).".to_string(),
         input_schema: json!({
             "type": "object",
@@ -45,7 +45,7 @@ fn get_payouts_tool() -> Tool {
 
 fn get_payout_tool() -> Tool {
     Tool {
-        name: "get_payout".to_string(),
+        name: "get_payout_low_level_shopify".to_string(),
         description: "Get a specific payout by ID.".to_string(),
         input_schema: json!({
             "type": "object",
@@ -64,7 +64,7 @@ fn get_payout_tool() -> Tool {
 
 fn get_payout_detail_tool() -> Tool {
     Tool {
-        name: "get_payout_detail".to_string(),
+        name: "get_payout_detail_low_level_shopify".to_string(),
         description: "Get detailed breakdown of a payout including fees and adjustments."
             .to_string(),
         input_schema: json!({
@@ -84,7 +84,7 @@ fn get_payout_detail_tool() -> Tool {
 
 fn get_payout_transactions_tool() -> Tool {
     Tool {
-        name: "get_payout_transactions".to_string(),
+        name: "get_payout_transactions_low_level_shopify".to_string(),
         description: "Get transactions included in a specific payout.".to_string(),
         input_schema: json!({
             "type": "object",
@@ -107,7 +107,7 @@ fn get_payout_transactions_tool() -> Tool {
 
 fn get_payout_schedule_tool() -> Tool {
     Tool {
-        name: "get_payout_schedule".to_string(),
+        name: "get_payout_schedule_low_level_shopify".to_string(),
         description: "Get the current payout schedule settings.".to_string(),
         input_schema: json!({
             "type": "object",
@@ -120,7 +120,7 @@ fn get_payout_schedule_tool() -> Tool {
 
 fn get_bank_accounts_tool() -> Tool {
     Tool {
-        name: "get_bank_accounts".to_string(),
+        name: "get_bank_accounts_low_level_shopify".to_string(),
         description: "Get configured bank accounts for payouts.".to_string(),
         input_schema: json!({
             "type": "object",
@@ -133,7 +133,7 @@ fn get_bank_accounts_tool() -> Tool {
 
 fn get_disputes_tool() -> Tool {
     Tool {
-        name: "get_disputes".to_string(),
+        name: "get_disputes_low_level_shopify".to_string(),
         description: "Get chargebacks and disputes.".to_string(),
         input_schema: json!({
             "type": "object",
@@ -156,7 +156,7 @@ fn get_disputes_tool() -> Tool {
 
 fn get_dispute_tool() -> Tool {
     Tool {
-        name: "get_dispute".to_string(),
+        name: "get_dispute_low_level_shopify".to_string(),
         description: "Get details of a specific dispute/chargeback.".to_string(),
         input_schema: json!({
             "type": "object",

@@ -16,7 +16,7 @@ pub fn product_tools() -> Vec<Tool> {
 fn product_read_tools() -> Vec<Tool> {
     vec![
         Tool {
-            name: "get_product".to_string(),
+            name: "get_product_low_level_shopify".to_string(),
             description: "Get a single product by ID. Returns product details including \
                 title, description, variants, pricing, inventory, and media."
                 .to_string(),
@@ -34,7 +34,7 @@ fn product_read_tools() -> Vec<Tool> {
             requires_confirmation: false,
         },
         Tool {
-            name: "get_products".to_string(),
+            name: "get_products_low_level_shopify".to_string(),
             description: "Get products from the store. Returns product summaries including \
                 title, status, variants, and inventory levels."
                 .to_string(),
@@ -71,7 +71,7 @@ fn product_write_tools() -> Vec<Tool> {
 
 fn product_create_tool() -> Tool {
     Tool {
-        name: "create_product".to_string(),
+        name: "create_product_low_level_shopify".to_string(),
         description: "Create a new product in the store.".to_string(),
         input_schema: json!({
             "type": "object",
@@ -124,7 +124,7 @@ fn product_create_tool() -> Tool {
 
 fn product_update_tool() -> Tool {
     Tool {
-        name: "update_product".to_string(),
+        name: "update_product_low_level_shopify".to_string(),
         description: "Update an existing product. Only provided fields will be changed."
             .to_string(),
         input_schema: json!({
@@ -170,7 +170,7 @@ fn product_update_tool() -> Tool {
 
 fn product_delete_tool() -> Tool {
     Tool {
-        name: "delete_product".to_string(),
+        name: "delete_product_low_level_shopify".to_string(),
         description: "Delete a product from the store. This action cannot be undone.".to_string(),
         input_schema: json!({
             "type": "object",
@@ -189,7 +189,7 @@ fn product_delete_tool() -> Tool {
 
 fn variant_update_tool() -> Tool {
     Tool {
-        name: "update_variant".to_string(),
+        name: "update_variant_low_level_shopify".to_string(),
         description: "Update a product variant's price, SKU, or other attributes.".to_string(),
         input_schema: json!({
             "type": "object",

@@ -16,7 +16,7 @@ pub fn gift_card_tools() -> Vec<Tool> {
 fn gift_card_read_tools() -> Vec<Tool> {
     vec![
         Tool {
-            name: "get_gift_cards".to_string(),
+            name: "get_gift_cards_low_level_shopify".to_string(),
             description: "Get gift cards from the store.".to_string(),
             input_schema: json!({
                 "type": "object",
@@ -35,7 +35,7 @@ fn gift_card_read_tools() -> Vec<Tool> {
             requires_confirmation: false,
         },
         Tool {
-            name: "get_gift_cards_count".to_string(),
+            name: "get_gift_cards_count_low_level_shopify".to_string(),
             description: "Get the total count of gift cards.".to_string(),
             input_schema: json!({
                 "type": "object",
@@ -45,7 +45,7 @@ fn gift_card_read_tools() -> Vec<Tool> {
             requires_confirmation: false,
         },
         Tool {
-            name: "get_gift_card_detail".to_string(),
+            name: "get_gift_card_detail_low_level_shopify".to_string(),
             description: "Get detailed information about a specific gift card.".to_string(),
             input_schema: json!({
                 "type": "object",
@@ -61,7 +61,7 @@ fn gift_card_read_tools() -> Vec<Tool> {
             requires_confirmation: false,
         },
         Tool {
-            name: "get_gift_card_configuration".to_string(),
+            name: "get_gift_card_configuration_low_level_shopify".to_string(),
             description: "Get the store's gift card configuration settings.".to_string(),
             input_schema: json!({
                 "type": "object",
@@ -88,7 +88,7 @@ fn gift_card_write_tools() -> Vec<Tool> {
 
 fn gift_card_create_tool() -> Tool {
     Tool {
-        name: "create_gift_card".to_string(),
+        name: "create_gift_card_low_level_shopify".to_string(),
         description: "Create a new gift card.".to_string(),
         input_schema: json!({
             "type": "object",
@@ -123,7 +123,7 @@ fn gift_card_create_tool() -> Tool {
 
 fn gift_card_deactivate_tool() -> Tool {
     Tool {
-        name: "deactivate_gift_card".to_string(),
+        name: "deactivate_gift_card_low_level_shopify".to_string(),
         description: "Deactivate a gift card so it can no longer be used.".to_string(),
         input_schema: json!({
             "type": "object",
@@ -142,7 +142,7 @@ fn gift_card_deactivate_tool() -> Tool {
 
 fn gift_card_update_tool() -> Tool {
     Tool {
-        name: "update_gift_card".to_string(),
+        name: "update_gift_card_low_level_shopify".to_string(),
         description: "Update a gift card's expiration date or note.".to_string(),
         input_schema: json!({
             "type": "object",
@@ -169,7 +169,7 @@ fn gift_card_update_tool() -> Tool {
 
 fn gift_card_credit_tool() -> Tool {
     Tool {
-        name: "credit_gift_card".to_string(),
+        name: "credit_gift_card_low_level_shopify".to_string(),
         description: "Add balance to a gift card.".to_string(),
         input_schema: json!({
             "type": "object",
@@ -192,7 +192,7 @@ fn gift_card_credit_tool() -> Tool {
 
 fn gift_card_debit_tool() -> Tool {
     Tool {
-        name: "debit_gift_card".to_string(),
+        name: "debit_gift_card_low_level_shopify".to_string(),
         description: "Remove balance from a gift card.".to_string(),
         input_schema: json!({
             "type": "object",
@@ -215,7 +215,7 @@ fn gift_card_debit_tool() -> Tool {
 
 fn gift_card_notify_customer_tool() -> Tool {
     Tool {
-        name: "send_gift_card_notification_to_customer".to_string(),
+        name: "send_gift_card_notification_to_customer_low_level_shopify".to_string(),
         description: "Send the gift card details to the associated customer via email.".to_string(),
         input_schema: json!({
             "type": "object",
@@ -234,7 +234,7 @@ fn gift_card_notify_customer_tool() -> Tool {
 
 fn gift_card_notify_recipient_tool() -> Tool {
     Tool {
-        name: "send_gift_card_notification_to_recipient".to_string(),
+        name: "send_gift_card_notification_to_recipient_low_level_shopify".to_string(),
         description: "Send the gift card details to a specified recipient email.".to_string(),
         input_schema: json!({
             "type": "object",

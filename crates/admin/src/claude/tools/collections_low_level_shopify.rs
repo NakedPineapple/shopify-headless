@@ -16,7 +16,7 @@ pub fn collection_tools() -> Vec<Tool> {
 fn collection_read_tools() -> Vec<Tool> {
     vec![
         Tool {
-            name: "get_collection".to_string(),
+            name: "get_collection_low_level_shopify".to_string(),
             description: "Get a single collection by ID.".to_string(),
             input_schema: json!({
                 "type": "object",
@@ -32,7 +32,7 @@ fn collection_read_tools() -> Vec<Tool> {
             requires_confirmation: false,
         },
         Tool {
-            name: "get_collections".to_string(),
+            name: "get_collections_low_level_shopify".to_string(),
             description: "Get collections from the store. Returns collection summaries."
                 .to_string(),
             input_schema: json!({
@@ -52,7 +52,7 @@ fn collection_read_tools() -> Vec<Tool> {
             requires_confirmation: false,
         },
         Tool {
-            name: "get_collection_with_products".to_string(),
+            name: "get_collection_with_products_low_level_shopify".to_string(),
             description: "Get a collection with its products.".to_string(),
             input_schema: json!({
                 "type": "object",
@@ -72,7 +72,7 @@ fn collection_read_tools() -> Vec<Tool> {
             requires_confirmation: false,
         },
         Tool {
-            name: "get_publications".to_string(),
+            name: "get_publications_low_level_shopify".to_string(),
             description: "Get all sales channels/publications where collections can be published."
                 .to_string(),
             input_schema: json!({
@@ -104,7 +104,7 @@ fn collection_write_tools() -> Vec<Tool> {
 
 fn collection_create_tool() -> Tool {
     Tool {
-        name: "create_collection".to_string(),
+        name: "create_collection_low_level_shopify".to_string(),
         description: "Create a new collection.".to_string(),
         input_schema: json!({
             "type": "object",
@@ -132,7 +132,7 @@ fn collection_create_tool() -> Tool {
 
 fn collection_update_tool() -> Tool {
     Tool {
-        name: "update_collection".to_string(),
+        name: "update_collection_low_level_shopify".to_string(),
         description: "Update an existing collection's details.".to_string(),
         input_schema: json!({
             "type": "object",
@@ -159,7 +159,7 @@ fn collection_update_tool() -> Tool {
 
 fn collection_sort_order_tool() -> Tool {
     Tool {
-        name: "update_collection_sort_order".to_string(),
+        name: "update_collection_sort_order_low_level_shopify".to_string(),
         description: "Change how products are sorted in a collection.".to_string(),
         input_schema: json!({
             "type": "object",
@@ -183,7 +183,7 @@ fn collection_sort_order_tool() -> Tool {
 
 fn collection_delete_tool() -> Tool {
     Tool {
-        name: "delete_collection".to_string(),
+        name: "delete_collection_low_level_shopify".to_string(),
         description: "Delete a collection. Products remain but are no longer grouped.".to_string(),
         input_schema: json!({
             "type": "object",
@@ -202,7 +202,7 @@ fn collection_delete_tool() -> Tool {
 
 fn collection_image_update_tool() -> Tool {
     Tool {
-        name: "update_collection_image".to_string(),
+        name: "update_collection_image_low_level_shopify".to_string(),
         description: "Set or update a collection's featured image.".to_string(),
         input_schema: json!({
             "type": "object",
@@ -229,7 +229,7 @@ fn collection_image_update_tool() -> Tool {
 
 fn collection_image_delete_tool() -> Tool {
     Tool {
-        name: "delete_collection_image".to_string(),
+        name: "delete_collection_image_low_level_shopify".to_string(),
         description: "Remove a collection's featured image.".to_string(),
         input_schema: json!({
             "type": "object",
@@ -248,7 +248,7 @@ fn collection_image_delete_tool() -> Tool {
 
 fn collection_add_products_tool() -> Tool {
     Tool {
-        name: "add_products_to_collection".to_string(),
+        name: "add_products_to_collection_low_level_shopify".to_string(),
         description: "Add products to a manual collection.".to_string(),
         input_schema: json!({
             "type": "object",
@@ -272,7 +272,7 @@ fn collection_add_products_tool() -> Tool {
 
 fn collection_remove_products_tool() -> Tool {
     Tool {
-        name: "remove_products_from_collection".to_string(),
+        name: "remove_products_from_collection_low_level_shopify".to_string(),
         description: "Remove products from a manual collection.".to_string(),
         input_schema: json!({
             "type": "object",
@@ -296,7 +296,7 @@ fn collection_remove_products_tool() -> Tool {
 
 fn collection_reorder_products_tool() -> Tool {
     Tool {
-        name: "reorder_collection_products".to_string(),
+        name: "reorder_collection_products_low_level_shopify".to_string(),
         description: "Reorder products in a manual collection.".to_string(),
         input_schema: json!({
             "type": "object",
@@ -327,7 +327,7 @@ fn collection_reorder_products_tool() -> Tool {
 
 fn collection_publish_tool() -> Tool {
     Tool {
-        name: "publish_collection".to_string(),
+        name: "publish_collection_low_level_shopify".to_string(),
         description: "Publish a collection to a sales channel.".to_string(),
         input_schema: json!({
             "type": "object",
@@ -350,7 +350,7 @@ fn collection_publish_tool() -> Tool {
 
 fn collection_unpublish_tool() -> Tool {
     Tool {
-        name: "unpublish_collection".to_string(),
+        name: "unpublish_collection_low_level_shopify".to_string(),
         description: "Remove a collection from a sales channel.".to_string(),
         input_schema: json!({
             "type": "object",

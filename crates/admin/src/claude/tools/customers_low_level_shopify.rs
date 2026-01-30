@@ -16,7 +16,7 @@ pub fn customer_tools() -> Vec<Tool> {
 fn customer_read_tools() -> Vec<Tool> {
     vec![
         Tool {
-            name: "get_customer".to_string(),
+            name: "get_customer_low_level_shopify".to_string(),
             description: "Get a single customer by ID. Returns customer details including \
                 name, email, addresses, order history, and marketing preferences."
                 .to_string(),
@@ -34,7 +34,7 @@ fn customer_read_tools() -> Vec<Tool> {
             requires_confirmation: false,
         },
         Tool {
-            name: "get_customers".to_string(),
+            name: "get_customers_low_level_shopify".to_string(),
             description: "Get customers from the store. Returns customer summaries including \
                 name, email, order count, and total spent. Use query to filter by email, name, etc."
                 .to_string(),
@@ -66,7 +66,7 @@ fn customer_read_tools() -> Vec<Tool> {
             requires_confirmation: false,
         },
         Tool {
-            name: "generate_customer_activation_url".to_string(),
+            name: "generate_customer_activation_url_low_level_shopify".to_string(),
             description: "Generate an account activation URL for a customer. Use when customer \
                 needs to set up their account password."
                 .to_string(),
@@ -84,7 +84,7 @@ fn customer_read_tools() -> Vec<Tool> {
             requires_confirmation: false,
         },
         Tool {
-            name: "get_customer_segments".to_string(),
+            name: "get_customer_segments_low_level_shopify".to_string(),
             description: "Get customer segments (saved searches). Segments group customers \
                 based on shared characteristics."
                 .to_string(),
@@ -124,7 +124,7 @@ fn customer_write_tools() -> Vec<Tool> {
 
 fn customer_create_tool() -> Tool {
     Tool {
-        name: "create_customer".to_string(),
+        name: "create_customer_low_level_shopify".to_string(),
         description: "Create a new customer account.".to_string(),
         input_schema: json!({
             "type": "object",
@@ -168,7 +168,7 @@ fn customer_create_tool() -> Tool {
 
 fn customer_update_tool() -> Tool {
     Tool {
-        name: "update_customer".to_string(),
+        name: "update_customer_low_level_shopify".to_string(),
         description: "Update an existing customer's information.".to_string(),
         input_schema: json!({
             "type": "object",
@@ -207,7 +207,7 @@ fn customer_update_tool() -> Tool {
 
 fn customer_delete_tool() -> Tool {
     Tool {
-        name: "delete_customer".to_string(),
+        name: "delete_customer_low_level_shopify".to_string(),
         description: "Delete a customer. This action cannot be undone.".to_string(),
         input_schema: json!({
             "type": "object",
@@ -226,7 +226,7 @@ fn customer_delete_tool() -> Tool {
 
 fn customer_add_tags_tool() -> Tool {
     Tool {
-        name: "add_customer_tags".to_string(),
+        name: "add_customer_tags_low_level_shopify".to_string(),
         description: "Add tags to a customer without removing existing tags.".to_string(),
         input_schema: json!({
             "type": "object",
@@ -250,7 +250,7 @@ fn customer_add_tags_tool() -> Tool {
 
 fn customer_remove_tags_tool() -> Tool {
     Tool {
-        name: "remove_customer_tags".to_string(),
+        name: "remove_customer_tags_low_level_shopify".to_string(),
         description: "Remove specific tags from a customer.".to_string(),
         input_schema: json!({
             "type": "object",
@@ -274,7 +274,7 @@ fn customer_remove_tags_tool() -> Tool {
 
 fn customer_send_invite_tool() -> Tool {
     Tool {
-        name: "send_customer_invite".to_string(),
+        name: "send_customer_invite_low_level_shopify".to_string(),
         description: "Send an account invitation email to a customer.".to_string(),
         input_schema: json!({
             "type": "object",
@@ -293,7 +293,7 @@ fn customer_send_invite_tool() -> Tool {
 
 fn customer_create_address_tool() -> Tool {
     Tool {
-        name: "create_customer_address".to_string(),
+        name: "create_customer_address_low_level_shopify".to_string(),
         description: "Add a new address to a customer's address book.".to_string(),
         input_schema: json!({
             "type": "object",
@@ -340,7 +340,7 @@ fn customer_create_address_tool() -> Tool {
 
 fn customer_update_address_tool() -> Tool {
     Tool {
-        name: "update_customer_address".to_string(),
+        name: "update_customer_address_low_level_shopify".to_string(),
         description: "Update an existing customer address.".to_string(),
         input_schema: json!({
             "type": "object",
@@ -370,7 +370,7 @@ fn customer_update_address_tool() -> Tool {
 
 fn customer_delete_address_tool() -> Tool {
     Tool {
-        name: "delete_customer_address".to_string(),
+        name: "delete_customer_address_low_level_shopify".to_string(),
         description: "Delete an address from a customer's address book.".to_string(),
         input_schema: json!({
             "type": "object",
@@ -393,7 +393,7 @@ fn customer_delete_address_tool() -> Tool {
 
 fn customer_set_default_address_tool() -> Tool {
     Tool {
-        name: "set_customer_default_address".to_string(),
+        name: "set_customer_default_address_low_level_shopify".to_string(),
         description: "Set a customer's default shipping address.".to_string(),
         input_schema: json!({
             "type": "object",
@@ -416,7 +416,7 @@ fn customer_set_default_address_tool() -> Tool {
 
 fn customer_update_email_marketing_tool() -> Tool {
     Tool {
-        name: "update_customer_email_marketing".to_string(),
+        name: "update_customer_email_marketing_low_level_shopify".to_string(),
         description: "Update a customer's email marketing consent status.".to_string(),
         input_schema: json!({
             "type": "object",
@@ -445,7 +445,7 @@ fn customer_update_email_marketing_tool() -> Tool {
 
 fn customer_update_sms_marketing_tool() -> Tool {
     Tool {
-        name: "update_customer_sms_marketing".to_string(),
+        name: "update_customer_sms_marketing_low_level_shopify".to_string(),
         description: "Update a customer's SMS marketing consent status.".to_string(),
         input_schema: json!({
             "type": "object",
@@ -474,7 +474,7 @@ fn customer_update_sms_marketing_tool() -> Tool {
 
 fn customer_merge_tool() -> Tool {
     Tool {
-        name: "merge_customers".to_string(),
+        name: "merge_customers_low_level_shopify".to_string(),
         description: "Merge two customer records into one. The source customer's data \
             will be merged into the destination customer."
             .to_string(),

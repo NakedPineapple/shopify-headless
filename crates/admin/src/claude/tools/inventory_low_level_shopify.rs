@@ -16,7 +16,7 @@ pub fn inventory_tools() -> Vec<Tool> {
 fn inventory_read_tools() -> Vec<Tool> {
     vec![
         Tool {
-            name: "get_locations".to_string(),
+            name: "get_locations_low_level_shopify".to_string(),
             description: "Get all inventory locations (warehouses, stores) for the shop."
                 .to_string(),
             input_schema: json!({
@@ -27,7 +27,7 @@ fn inventory_read_tools() -> Vec<Tool> {
             requires_confirmation: false,
         },
         Tool {
-            name: "get_inventory_levels".to_string(),
+            name: "get_inventory_levels_low_level_shopify".to_string(),
             description: "Get inventory levels at a location. Returns available, on-hand, \
                 and incoming quantities for each item."
                 .to_string(),
@@ -50,7 +50,7 @@ fn inventory_read_tools() -> Vec<Tool> {
             requires_confirmation: false,
         },
         Tool {
-            name: "get_inventory_items".to_string(),
+            name: "get_inventory_items_low_level_shopify".to_string(),
             description: "Get inventory items with their tracking information.".to_string(),
             input_schema: json!({
                 "type": "object",
@@ -65,7 +65,7 @@ fn inventory_read_tools() -> Vec<Tool> {
             requires_confirmation: false,
         },
         Tool {
-            name: "get_inventory_item".to_string(),
+            name: "get_inventory_item_low_level_shopify".to_string(),
             description: "Get a specific inventory item by ID.".to_string(),
             input_schema: json!({
                 "type": "object",
@@ -97,7 +97,7 @@ fn inventory_write_tools() -> Vec<Tool> {
 
 fn inventory_adjust_tool() -> Tool {
     Tool {
-        name: "adjust_inventory".to_string(),
+        name: "adjust_inventory_low_level_shopify".to_string(),
         description: "Adjust inventory quantity by a delta (positive or negative). \
             Use for inventory corrections or manual adjustments."
             .to_string(),
@@ -130,7 +130,7 @@ fn inventory_adjust_tool() -> Tool {
 
 fn inventory_set_tool() -> Tool {
     Tool {
-        name: "set_inventory".to_string(),
+        name: "set_inventory_low_level_shopify".to_string(),
         description: "Set inventory to an absolute quantity. Use for stock counts.".to_string(),
         input_schema: json!({
             "type": "object",
@@ -161,7 +161,7 @@ fn inventory_set_tool() -> Tool {
 
 fn inventory_item_update_tool() -> Tool {
     Tool {
-        name: "update_inventory_item".to_string(),
+        name: "update_inventory_item_low_level_shopify".to_string(),
         description: "Update inventory item properties like cost, country of origin, etc."
             .to_string(),
         input_schema: json!({
@@ -197,7 +197,7 @@ fn inventory_item_update_tool() -> Tool {
 
 fn inventory_move_tool() -> Tool {
     Tool {
-        name: "move_inventory".to_string(),
+        name: "move_inventory_low_level_shopify".to_string(),
         description: "Move inventory between locations (transfer stock).".to_string(),
         input_schema: json!({
             "type": "object",
@@ -228,7 +228,7 @@ fn inventory_move_tool() -> Tool {
 
 fn inventory_activate_tool() -> Tool {
     Tool {
-        name: "activate_inventory".to_string(),
+        name: "activate_inventory_low_level_shopify".to_string(),
         description: "Activate inventory tracking at a location for an item.".to_string(),
         input_schema: json!({
             "type": "object",
@@ -251,7 +251,7 @@ fn inventory_activate_tool() -> Tool {
 
 fn inventory_deactivate_tool() -> Tool {
     Tool {
-        name: "deactivate_inventory".to_string(),
+        name: "deactivate_inventory_low_level_shopify".to_string(),
         description: "Deactivate inventory tracking at a location for an item.".to_string(),
         input_schema: json!({
             "type": "object",

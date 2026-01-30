@@ -16,7 +16,7 @@ pub fn discount_tools() -> Vec<Tool> {
 fn discount_read_tools() -> Vec<Tool> {
     vec![
         Tool {
-            name: "get_discounts".to_string(),
+            name: "get_discounts_low_level_shopify".to_string(),
             description: "Get discount codes from the store.".to_string(),
             input_schema: json!({
                 "type": "object",
@@ -35,7 +35,7 @@ fn discount_read_tools() -> Vec<Tool> {
             requires_confirmation: false,
         },
         Tool {
-            name: "get_discount".to_string(),
+            name: "get_discount_low_level_shopify".to_string(),
             description: "Get a specific discount by ID.".to_string(),
             input_schema: json!({
                 "type": "object",
@@ -51,7 +51,7 @@ fn discount_read_tools() -> Vec<Tool> {
             requires_confirmation: false,
         },
         Tool {
-            name: "get_discounts_for_list".to_string(),
+            name: "get_discounts_for_list_low_level_shopify".to_string(),
             description: "Get discounts with pagination for listing/browsing.".to_string(),
             input_schema: json!({
                 "type": "object",
@@ -93,7 +93,7 @@ fn discount_write_tools() -> Vec<Tool> {
 
 fn discount_create_tool() -> Tool {
     Tool {
-        name: "create_discount".to_string(),
+        name: "create_discount_low_level_shopify".to_string(),
         description: "Create a new discount code.".to_string(),
         input_schema: json!({
             "type": "object",
@@ -140,7 +140,7 @@ fn discount_create_tool() -> Tool {
 
 fn discount_update_tool() -> Tool {
     Tool {
-        name: "update_discount".to_string(),
+        name: "update_discount_low_level_shopify".to_string(),
         description: "Update an existing discount.".to_string(),
         input_schema: json!({
             "type": "object",
@@ -171,7 +171,7 @@ fn discount_update_tool() -> Tool {
 
 fn discount_deactivate_tool() -> Tool {
     Tool {
-        name: "deactivate_discount".to_string(),
+        name: "deactivate_discount_low_level_shopify".to_string(),
         description: "Deactivate a discount code (can be reactivated later).".to_string(),
         input_schema: json!({
             "type": "object",
@@ -190,7 +190,7 @@ fn discount_deactivate_tool() -> Tool {
 
 fn discount_activate_tool() -> Tool {
     Tool {
-        name: "activate_discount".to_string(),
+        name: "activate_discount_low_level_shopify".to_string(),
         description: "Reactivate a previously deactivated discount.".to_string(),
         input_schema: json!({
             "type": "object",
@@ -209,7 +209,7 @@ fn discount_activate_tool() -> Tool {
 
 fn discount_deactivate_automatic_tool() -> Tool {
     Tool {
-        name: "deactivate_automatic_discount".to_string(),
+        name: "deactivate_automatic_discount_low_level_shopify".to_string(),
         description: "Deactivate an automatic discount.".to_string(),
         input_schema: json!({
             "type": "object",
@@ -228,7 +228,7 @@ fn discount_deactivate_automatic_tool() -> Tool {
 
 fn discount_delete_tool() -> Tool {
     Tool {
-        name: "delete_discount".to_string(),
+        name: "delete_discount_low_level_shopify".to_string(),
         description: "Permanently delete a discount.".to_string(),
         input_schema: json!({
             "type": "object",
@@ -247,7 +247,7 @@ fn discount_delete_tool() -> Tool {
 
 fn discount_bulk_activate_tool() -> Tool {
     Tool {
-        name: "bulk_activate_code_discounts".to_string(),
+        name: "bulk_activate_code_discounts_low_level_shopify".to_string(),
         description: "Activate multiple discount codes at once.".to_string(),
         input_schema: json!({
             "type": "object",
@@ -267,7 +267,7 @@ fn discount_bulk_activate_tool() -> Tool {
 
 fn discount_bulk_deactivate_tool() -> Tool {
     Tool {
-        name: "bulk_deactivate_code_discounts".to_string(),
+        name: "bulk_deactivate_code_discounts_low_level_shopify".to_string(),
         description: "Deactivate multiple discount codes at once.".to_string(),
         input_schema: json!({
             "type": "object",
@@ -287,7 +287,7 @@ fn discount_bulk_deactivate_tool() -> Tool {
 
 fn discount_bulk_delete_tool() -> Tool {
     Tool {
-        name: "bulk_delete_code_discounts".to_string(),
+        name: "bulk_delete_code_discounts_low_level_shopify".to_string(),
         description: "Delete multiple discount codes at once.".to_string(),
         input_schema: json!({
             "type": "object",

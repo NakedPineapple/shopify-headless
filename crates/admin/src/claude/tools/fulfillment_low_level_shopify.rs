@@ -16,7 +16,7 @@ pub fn fulfillment_tools() -> Vec<Tool> {
 fn fulfillment_read_tools() -> Vec<Tool> {
     vec![
         Tool {
-            name: "get_fulfillment_orders".to_string(),
+            name: "get_fulfillment_orders_low_level_shopify".to_string(),
             description: "Get fulfillment orders for an order.".to_string(),
             input_schema: json!({
                 "type": "object",
@@ -32,7 +32,7 @@ fn fulfillment_read_tools() -> Vec<Tool> {
             requires_confirmation: false,
         },
         Tool {
-            name: "get_suggested_refund".to_string(),
+            name: "get_suggested_refund_low_level_shopify".to_string(),
             description: "Get suggested refund amounts for an order (items, shipping, etc.)."
                 .to_string(),
             input_schema: json!({
@@ -65,7 +65,7 @@ fn fulfillment_write_tools() -> Vec<Tool> {
 
 fn fulfillment_create_tool() -> Tool {
     Tool {
-        name: "create_fulfillment".to_string(),
+        name: "create_fulfillment_low_level_shopify".to_string(),
         description: "Create a fulfillment for order line items. Marks items as shipped."
             .to_string(),
         input_schema: json!({
@@ -113,7 +113,7 @@ fn fulfillment_create_tool() -> Tool {
 
 fn fulfillment_update_tracking_tool() -> Tool {
     Tool {
-        name: "update_fulfillment_tracking".to_string(),
+        name: "update_fulfillment_tracking_low_level_shopify".to_string(),
         description: "Update tracking information for an existing fulfillment.".to_string(),
         input_schema: json!({
             "type": "object",
@@ -148,7 +148,7 @@ fn fulfillment_update_tracking_tool() -> Tool {
 
 fn fulfillment_hold_tool() -> Tool {
     Tool {
-        name: "hold_fulfillment_order".to_string(),
+        name: "hold_fulfillment_order_low_level_shopify".to_string(),
         description: "Place a fulfillment order on hold (prevents fulfillment).".to_string(),
         input_schema: json!({
             "type": "object",
@@ -176,7 +176,7 @@ fn fulfillment_hold_tool() -> Tool {
 
 fn fulfillment_release_hold_tool() -> Tool {
     Tool {
-        name: "release_fulfillment_order_hold".to_string(),
+        name: "release_fulfillment_order_hold_low_level_shopify".to_string(),
         description: "Release a fulfillment order from hold.".to_string(),
         input_schema: json!({
             "type": "object",
@@ -195,7 +195,7 @@ fn fulfillment_release_hold_tool() -> Tool {
 
 fn refund_create_tool() -> Tool {
     Tool {
-        name: "create_refund".to_string(),
+        name: "create_refund_low_level_shopify".to_string(),
         description: "Create a refund for an order.".to_string(),
         input_schema: json!({
             "type": "object",
@@ -242,7 +242,7 @@ fn refund_create_tool() -> Tool {
 
 fn return_create_tool() -> Tool {
     Tool {
-        name: "create_return".to_string(),
+        name: "create_return_low_level_shopify".to_string(),
         description: "Create a return for an order (for items being sent back).".to_string(),
         input_schema: json!({
             "type": "object",
