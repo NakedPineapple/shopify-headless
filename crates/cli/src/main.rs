@@ -23,6 +23,12 @@
 //!
 //! # Create admin user directly (no passkey)
 //! np-cli admin create -e admin@example.com -n "Admin Name" -r super_admin
+//!
+//! # Seed tool examples for AI chat
+//! np-cli seed tool-examples --file crates/admin/data/tool_examples.yaml
+//!
+//! # Show tool examples statistics
+//! np-cli seed tool-examples-stats
 //! ```
 //!
 //! # Commands
@@ -31,7 +37,8 @@
 //! - `migrate rollback` - Rollback database migrations
 //! - `admin invite` - Create invite for new admin (recommended)
 //! - `admin create` - Create admin user directly (no passkey)
-//! - `seed` - Seed database with test data (TODO)
+//! - `seed tool-examples` - Seed tool example queries for AI chat
+//! - `seed tool-examples-stats` - Show tool examples statistics
 
 #![cfg_attr(not(test), forbid(unsafe_code))]
 
@@ -58,6 +65,11 @@ enum Commands {
     Admin {
         #[command(subcommand)]
         action: AdminAction,
+    },
+    /// Seed database with data
+    Seed {
+        #[command(subcommand)]
+        action: SeedAction,
     },
 }
 
@@ -123,6 +135,22 @@ enum AdminAction {
     },
 }
 
+#[derive(Subcommand)]
+enum SeedAction {
+    /// Seed tool example queries for AI chat embedding-based selection
+    ToolExamples {
+        /// Path to YAML file containing tool examples
+        #[arg(short, long)]
+        file: String,
+
+        /// Clear existing pre-seeded examples before inserting
+        #[arg(short, long, default_value = "false")]
+        clear: bool,
+    },
+    /// Show statistics about existing tool examples
+    ToolExamplesStats,
+}
+
 #[tokio::main]
 async fn main() {
     // Initialize tracing
@@ -167,6 +195,14 @@ async fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 expires_in_days,
             } => {
                 commands::admin::create_invite(&email, &name, &role, expires_in_days).await?;
+            }
+        },
+        Commands::Seed { action } => match action {
+            SeedAction::ToolExamples { file, clear } => {
+                commands::seed::tool_examples(&file, clear).await?;
+            }
+            SeedAction::ToolExamplesStats => {
+                commands::seed::tool_examples_stats().await?;
             }
         },
     }

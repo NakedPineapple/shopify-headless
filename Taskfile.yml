@@ -236,7 +236,7 @@ tasks:
 
   db:start:
     desc: "Start PostgreSQL in Docker for development"
-    dir: docker-compose
+    dir: docker/docker-compose
     cmds:
       - docker compose -f docker-compose.infra.yml up -d postgres
       - |
@@ -250,7 +250,7 @@ tasks:
 
   db:stop:
     desc: "Stop PostgreSQL Docker container"
-    dir: docker-compose
+    dir: docker/docker-compose
     cmds:
       - docker compose -f docker-compose.infra.yml stop postgres
       - docker compose -f docker-compose.infra.yml rm -f postgres

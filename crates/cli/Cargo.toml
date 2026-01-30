@@ -20,6 +20,7 @@ workspace = true
 
 [dependencies]
 naked-pineapple-core = { workspace = true, features = ["postgres"] }
+naked-pineapple-admin = { path = "../admin" }
 
 # CLI
 clap = { version = "4", features = ["derive"] }
@@ -29,6 +30,12 @@ sqlx = { workspace = true }
 
 # Async runtime
 tokio = { workspace = true }
+
+# Serialization
+serde_yaml = "0.9"
+
+# Security
+secrecy = { workspace = true }
 
 # Utilities
 dotenvy = { workspace = true }

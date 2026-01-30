@@ -1,13 +1,13 @@
 services:
   postgres:
-    image: postgres:18.1-alpine3.23
+    image: pgvector/pgvector:0.8.1-pg18-trixie
     container_name: nakedpineapple-postgres
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: postgres
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql
       - ./init/postgres:/docker-entrypoint-initdb.d:ro
     ports:
       - "5432:5432"

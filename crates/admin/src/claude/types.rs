@@ -65,6 +65,12 @@ pub struct Tool {
     pub description: String,
     /// JSON Schema for the tool's input parameters.
     pub input_schema: serde_json::Value,
+    /// Domain the tool belongs to (internal, not sent to Claude).
+    #[serde(skip)]
+    pub domain: Option<String>,
+    /// Whether this tool requires confirmation before execution (internal).
+    #[serde(skip)]
+    pub requires_confirmation: bool,
 }
 
 /// Request body for the Claude Messages API.

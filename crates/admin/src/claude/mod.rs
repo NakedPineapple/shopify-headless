@@ -6,16 +6,16 @@
 //! # Architecture
 //!
 //! - `ClaudeClient` - HTTP client for the Claude Messages API
-//! - `shopify_tools()` - Tool definitions for Shopify queries
+//! - `all_shopify_tools()` - All 111 Shopify tool definitions
 //! - `ToolExecutor` - Executes tools by calling the Shopify Admin API
 //!
 //! # Example
 //!
 //! ```rust,ignore
-//! use naked_pineapple_admin::claude::{ClaudeClient, shopify_tools, ToolExecutor};
+//! use naked_pineapple_admin::claude::{ClaudeClient, all_shopify_tools, ToolExecutor};
 //!
 //! let client = ClaudeClient::new(&config.claude);
-//! let tools = shopify_tools();
+//! let tools = all_shopify_tools();
 //!
 //! // Send a chat message with tools available
 //! let response = client.chat(
@@ -41,10 +41,13 @@
 
 mod client;
 mod error;
-mod tools;
+pub mod tools;
 pub mod types;
 
 pub use client::ClaudeClient;
 pub use error::ClaudeError;
-pub use tools::{ToolExecutor, shopify_tools};
+pub use tools::{
+    ToolExecutor, ToolResult, all_shopify_tools, filter_tools_by_names, get_tool_by_name,
+    get_tool_domain, get_tools_by_domain, requires_confirmation,
+};
 pub use types::*;

@@ -23,8 +23,10 @@
 pub mod admin_invites;
 pub mod admin_users;
 pub mod chat;
+pub mod pending_actions;
 pub mod settings;
 pub mod shopify;
+pub mod tool_examples;
 
 use std::time::Duration;
 
@@ -56,6 +58,10 @@ pub enum RepositoryError {
     /// Constraint violation (e.g., unique email).
     #[error("constraint violation: {0}")]
     Conflict(String),
+
+    /// Serialization error (e.g., JSON conversion).
+    #[error("serialization error: {0}")]
+    Serialization(String),
 }
 
 /// Create a `PostgreSQL` connection pool with sensible defaults.

@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE admin.pending_actions\n        SET slack_message_ts = $2, slack_channel_id = $3\n        WHERE id = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "1d8380c5986edcbc28d4c049fe1528e3139e5a8a1ab15c04b9f0ac3c7dcf0d17"
+}

@@ -11,6 +11,7 @@ use crate::config::AdminConfig;
 use crate::db::ShopifyTokenRepository;
 use crate::services::EmailService;
 use crate::shopify::{AdminClient, OAuthToken};
+use crate::slack::SlackClient;
 
 /// Error that can occur when creating `AppState`.
 #[derive(Debug, thiserror::Error)]
@@ -41,6 +42,7 @@ struct AppStateInner {
     config: AdminConfig,
     pool: PgPool,
     shopify: AdminClient,
+    slack: Option<SlackClient>,
     webauthn: Webauthn,
     email_service: Option<EmailService>,
 }
@@ -113,11 +115,28 @@ impl AppState {
             }
         };
 
+        // Initialize Slack client (optional - confirmations disabled if not configured)
+        let slack = config.slack.as_ref().map(|slack_config| {
+            tracing::info!("Slack integration initialized");
+            SlackClient::new(
+                slack_config.bot_token.clone(),
+                slack_config.signing_secret.clone(),
+                slack_config.channel_id.clone(),
+            )
+        });
+
+        if slack.is_none() {
+            tracing::warn!(
+                "Slack not configured - write operations will execute without confirmation"
+            );
+        }
+
         Ok(Self {
             inner: Arc::new(AppStateInner {
                 config,
                 pool,
                 shopify,
+                slack,
                 webauthn,
                 email_service,
             }),
@@ -152,5 +171,17 @@ impl AppState {
     #[must_use]
     pub fn email_service(&self) -> Option<&EmailService> {
         self.inner.email_service.as_ref()
+    }
+
+    /// Get a reference to the Slack client (if configured).
+    #[must_use]
+    pub fn slack(&self) -> Option<&SlackClient> {
+        self.inner.slack.as_ref()
+    }
+
+    /// Get the database pool (convenience for cloning).
+    #[must_use]
+    pub fn db(&self) -> PgPool {
+        self.inner.pool.clone()
     }
 }

@@ -28,4 +28,6 @@ pub mod models;
 pub mod routes;
 pub mod services;
 pub mod shopify;
+pub mod slack;
 pub mod state;
+pub mod tool_selection;

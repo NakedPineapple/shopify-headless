@@ -63,6 +63,7 @@ pub mod products;
 pub mod settings;
 pub mod setup;
 pub mod shopify;
+pub mod slack;
 
 use axum::{
     Router,
@@ -250,28 +251,9 @@ fn order_routes() -> Router<AppState> {
         .route("/orders/bulk/cancel", post(orders::bulk_cancel))
 }
 
-/// Build admin user management routes.
-fn admin_user_routes() -> Router<AppState> {
+/// Build discount routes.
+fn discount_routes() -> Router<AppState> {
     Router::new()
-        .route("/admin-users", get(admin_users::index))
-        .route("/admin-users/{id}/role", post(admin_users::update_role))
-        .route("/admin-users/{id}/delete", post(admin_users::delete_user))
-        .route("/admin-users/invites", post(admin_users::create_invite))
-        .route(
-            "/admin-users/invites/{id}/delete",
-            post(admin_users::delete_invite),
-        )
-}
-
-/// Build the complete router for the admin application.
-pub fn routes() -> Router<AppState> {
-    Router::new()
-        .route("/", get(dashboard::dashboard))
-        .merge(product_routes())
-        .merge(order_routes())
-        .merge(customer_routes())
-        .merge(collection_routes())
-        // Discounts CRUD
         .route("/discounts", get(discounts::index).post(discounts::create))
         .route("/discounts/new", get(discounts::new_step1))
         .route("/discounts/new/{method}", get(discounts::new_step2))
@@ -285,14 +267,12 @@ pub fn routes() -> Router<AppState> {
         .route("/discounts/{id}/deactivate", post(discounts::deactivate))
         .route("/discounts/{id}/delete", post(discounts::delete))
         .route("/discounts/{id}/duplicate", post(discounts::duplicate))
-        // Discount bulk actions
         .route("/discounts/bulk/activate", post(discounts::bulk_activate))
         .route(
             "/discounts/bulk/deactivate",
             post(discounts::bulk_deactivate),
         )
         .route("/discounts/bulk/delete", post(discounts::bulk_delete))
-        // Discount API endpoints
         .route("/api/products/search", get(discounts::api_search_products))
         .route(
             "/api/collections/search",
@@ -307,7 +287,11 @@ pub fn routes() -> Router<AppState> {
             get(discounts::api_customer_segments),
         )
         .route("/discounts/{id}/codes", post(discounts::api_add_codes))
-        // Inventory management
+}
+
+/// Build inventory routes.
+fn inventory_routes() -> Router<AppState> {
+    Router::new()
         .route("/inventory", get(inventory::index))
         .route("/inventory/adjust", post(inventory::adjust))
         .route("/inventory/set", post(inventory::set))
@@ -319,7 +303,11 @@ pub fn routes() -> Router<AppState> {
         .route("/inventory/{id}/edit", get(inventory::edit))
         .route("/inventory/{id}/activate", post(inventory::activate))
         .route("/inventory/{id}/deactivate", post(inventory::deactivate))
-        // Gift Cards CRUD
+}
+
+/// Build gift card routes.
+fn gift_card_routes() -> Router<AppState> {
+    Router::new()
         .route(
             "/gift-cards",
             get(gift_cards::index).post(gift_cards::create),
@@ -348,11 +336,19 @@ pub fn routes() -> Router<AppState> {
             "/gift-cards/bulk/deactivate",
             post(gift_cards::bulk_deactivate),
         )
-        // Analytics
+}
+
+/// Build analytics routes.
+fn analytics_routes() -> Router<AppState> {
+    Router::new()
         .route("/analytics", get(analytics::index))
         .route("/analytics/channels", get(analytics::channels))
         .route("/analytics/channels/{name}", get(analytics::channel_detail))
-        // Payouts
+}
+
+/// Build payout routes.
+fn payout_routes() -> Router<AppState> {
+    Router::new()
         .route("/payouts", get(payouts::index))
         .route("/payouts/disputes", get(payouts::disputes_index))
         .route(
@@ -364,7 +360,34 @@ pub fn routes() -> Router<AppState> {
         .route("/payouts/{id}", get(payouts::show))
         .route("/payouts/{id}/transactions", get(payouts::transactions))
         .route("/payouts/{id}/export", get(payouts::export_csv))
-        // Admin management (super_admin only)
+}
+
+/// Build admin user management routes.
+fn admin_user_routes() -> Router<AppState> {
+    Router::new()
+        .route("/admin-users", get(admin_users::index))
+        .route("/admin-users/{id}/role", post(admin_users::update_role))
+        .route("/admin-users/{id}/delete", post(admin_users::delete_user))
+        .route("/admin-users/invites", post(admin_users::create_invite))
+        .route(
+            "/admin-users/invites/{id}/delete",
+            post(admin_users::delete_invite),
+        )
+}
+
+/// Build the complete router for the admin application.
+pub fn routes() -> Router<AppState> {
+    Router::new()
+        .route("/", get(dashboard::dashboard))
+        .merge(product_routes())
+        .merge(order_routes())
+        .merge(customer_routes())
+        .merge(collection_routes())
+        .merge(discount_routes())
+        .merge(inventory_routes())
+        .merge(gift_card_routes())
+        .merge(analytics_routes())
+        .merge(payout_routes())
         .merge(admin_user_routes())
         // Newsletter (Klaviyo)
         .merge(newsletter::router())
@@ -375,6 +398,8 @@ pub fn routes() -> Router<AppState> {
         .merge(chat::router())
         // Shopify OAuth
         .merge(shopify::router())
+        // Slack webhooks
+        .merge(slack::router())
         // Settings
         .merge(settings::router())
 }

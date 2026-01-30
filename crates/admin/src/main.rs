@@ -48,7 +48,9 @@ mod models;
 mod routes;
 mod services;
 mod shopify;
+mod slack;
 mod state;
+mod tool_selection;
 
 use config::AdminConfig;
 use middleware::create_session_layer;

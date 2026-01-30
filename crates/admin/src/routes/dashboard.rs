@@ -20,6 +20,7 @@ const LOW_STOCK_THRESHOLD: i64 = 10;
 /// Admin user view for templates.
 #[derive(Debug, Clone)]
 pub struct AdminUserView {
+    pub id: i32,
     pub name: String,
     pub email: String,
     pub is_super_admin: bool,
@@ -28,6 +29,7 @@ pub struct AdminUserView {
 impl From<&CurrentAdmin> for AdminUserView {
     fn from(admin: &CurrentAdmin) -> Self {
         Self {
+            id: admin.id.as_i32(),
             name: admin.name.clone(),
             email: admin.email.to_string(),
             is_super_admin: admin.role == AdminRole::SuperAdmin,

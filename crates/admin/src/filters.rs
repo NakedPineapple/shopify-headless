@@ -116,3 +116,62 @@ pub fn humanize_datetime_str(dt_str: &str, _env: &dyn askama::Values) -> askama:
 pub fn extract_id(gid: &str, _env: &dyn askama::Values) -> askama::Result<String> {
     Ok(gid.split('/').next_back().unwrap_or(gid).to_string())
 }
+
+/// Format datetime as relative time (e.g., "5 minutes ago").
+///
+/// Usage in templates: `{{ dt|datetime_relative }}`
+#[askama::filter_fn]
+pub fn datetime_relative(dt: &DateTime<Utc>, _env: &dyn askama::Values) -> askama::Result<String> {
+    let now = Utc::now();
+    let duration = now.signed_duration_since(*dt);
+
+    // Past dates
+    if duration.num_days() > 30 {
+        Ok(dt.format("%b %d, %Y").to_string())
+    } else if duration.num_days() > 1 {
+        Ok(format!("{} days ago", duration.num_days()))
+    } else if duration.num_days() == 1 {
+        Ok("yesterday".to_string())
+    } else if duration.num_hours() > 1 {
+        Ok(format!("{} hours ago", duration.num_hours()))
+    } else if duration.num_minutes() > 1 {
+        Ok(format!("{} minutes ago", duration.num_minutes()))
+    } else {
+        Ok("just now".to_string())
+    }
+}
+
+/// Format datetime as short format (e.g., "Jan 15, 2:30 PM").
+///
+/// Usage in templates: `{{ dt|datetime_short }}`
+#[askama::filter_fn]
+pub fn datetime_short(dt: &DateTime<Utc>, _env: &dyn askama::Values) -> askama::Result<String> {
+    Ok(dt.format("%b %d, %l:%M %p").to_string())
+}
+
+/// Extract a string from a JSON Value, or return empty string.
+///
+/// Usage in templates: `{{ value|as_str_or_empty }}`
+#[askama::filter_fn]
+pub fn as_str_or_empty(
+    value: &serde_json::Value,
+    _env: &dyn askama::Values,
+) -> askama::Result<String> {
+    Ok(value.as_str().unwrap_or("").to_string())
+}
+
+/// Pretty print JSON value.
+///
+/// Usage in templates: `{{ value|json_pretty }}`
+#[askama::filter_fn]
+pub fn json_pretty(value: &serde_json::Value, _env: &dyn askama::Values) -> askama::Result<String> {
+    Ok(serde_json::to_string_pretty(value).unwrap_or_else(|_| value.to_string()))
+}
+
+/// Extract a boolean from a JSON Value, or return false.
+///
+/// Usage in templates: `{{ value|as_bool }}`
+#[askama::filter_fn]
+pub fn as_bool(value: &serde_json::Value, _env: &dyn askama::Values) -> askama::Result<bool> {
+    Ok(value.as_bool().unwrap_or(false))
+}

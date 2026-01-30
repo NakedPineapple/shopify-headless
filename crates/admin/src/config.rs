@@ -20,10 +20,16 @@
 //! - `ADMIN_PORT` - Listen port (default: 3001)
 //! - `SHOPIFY_API_VERSION` - API version (default: 2026-01)
 //! - `CLAUDE_MODEL` - Claude model ID (default: claude-sonnet-4-20250514)
+//! - `OPENAI_API_KEY` - `OpenAI` API key (for embeddings, required for tool selection)
 //! - `SMTP_PORT` - SMTP port (default: 587)
 //! - `SENTRY_DSN` - Sentry error tracking DSN
 //! - `KLAVIYO_API_KEY` - Klaviyo private API key (for newsletter campaigns)
 //! - `KLAVIYO_LIST_ID` - Klaviyo newsletter list ID
+//!
+//! ## Optional (Slack - enables write operation confirmations)
+//! - `SLACK_BOT_TOKEN` - Slack bot token (xoxb-...)
+//! - `SLACK_SIGNING_SECRET` - Slack app signing secret
+//! - `SLACK_CHANNEL_ID` - Default channel for confirmation messages
 //!
 //! ## Optional (TLS)
 //! - `ADMIN_TLS_CERT` - PEM-encoded certificate chain
@@ -85,6 +91,10 @@ pub struct AdminConfig {
     pub shopify: ShopifyAdminConfig,
     /// Claude AI configuration
     pub claude: ClaudeConfig,
+    /// `OpenAI` configuration for embeddings (optional, enables tool selection)
+    pub openai: Option<OpenAIConfig>,
+    /// Slack configuration for write operation confirmations (optional)
+    pub slack: Option<SlackConfig>,
     /// Email configuration
     pub email: EmailConfig,
     /// Klaviyo configuration (optional - for newsletter campaigns)
@@ -144,6 +154,48 @@ impl std::fmt::Debug for ClaudeConfig {
         f.debug_struct("ClaudeConfig")
             .field("api_key", &"[REDACTED]")
             .field("model", &self.model)
+            .finish()
+    }
+}
+
+/// `OpenAI` API configuration for embeddings.
+///
+/// Used for tool selection via semantic similarity search.
+/// Implements `Debug` manually to redact the API key.
+#[derive(Clone)]
+pub struct OpenAIConfig {
+    /// `OpenAI` API key
+    pub api_key: SecretString,
+}
+
+impl std::fmt::Debug for OpenAIConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("OpenAIConfig")
+            .field("api_key", &"[REDACTED]")
+            .finish()
+    }
+}
+
+/// Slack configuration for write operation confirmations.
+///
+/// When configured, write operations require Slack approval before execution.
+/// Implements `Debug` manually to redact secrets.
+#[derive(Clone)]
+pub struct SlackConfig {
+    /// Slack bot token (xoxb-...).
+    pub bot_token: SecretString,
+    /// Slack app signing secret for webhook verification.
+    pub signing_secret: SecretString,
+    /// Default channel ID for confirmation messages.
+    pub channel_id: String,
+}
+
+impl std::fmt::Debug for SlackConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SlackConfig")
+            .field("bot_token", &"[REDACTED]")
+            .field("signing_secret", &"[REDACTED]")
+            .field("channel_id", &self.channel_id)
             .finish()
     }
 }
@@ -283,6 +335,8 @@ impl AdminConfig {
 
         let shopify = ShopifyAdminConfig::from_env()?;
         let claude = ClaudeConfig::from_env()?;
+        let openai = OpenAIConfig::from_env();
+        let slack = SlackConfig::from_env();
         let email = EmailConfig::from_env()?;
         let klaviyo = KlaviyoConfig::from_env()?;
         let sentry_dsn = get_optional_env("SENTRY_DSN");
@@ -303,6 +357,8 @@ impl AdminConfig {
             session_secret,
             shopify,
             claude,
+            openai,
+            slack,
             email,
             klaviyo,
             sentry_dsn,
@@ -330,6 +386,24 @@ impl AdminConfig {
     pub const fn klaviyo(&self) -> Option<&KlaviyoConfig> {
         self.klaviyo.as_ref()
     }
+
+    /// Returns a reference to the `OpenAI` configuration, if available.
+    ///
+    /// Returns `None` if `OPENAI_API_KEY` was not set, which disables
+    /// embedding-based tool selection.
+    #[must_use]
+    pub const fn openai(&self) -> Option<&OpenAIConfig> {
+        self.openai.as_ref()
+    }
+
+    /// Returns a reference to the Slack configuration, if available.
+    ///
+    /// Returns `None` if Slack variables are not set, which disables
+    /// write operation confirmations via Slack.
+    #[must_use]
+    pub const fn slack(&self) -> Option<&SlackConfig> {
+        self.slack.as_ref()
+    }
 }
 
 impl ShopifyAdminConfig {
@@ -348,6 +422,49 @@ impl ClaudeConfig {
         Ok(Self {
             api_key: get_validated_secret("CLAUDE_API_KEY")?,
             model: get_env_or_default("CLAUDE_MODEL", DEFAULT_CLAUDE_MODEL),
+        })
+    }
+}
+
+impl OpenAIConfig {
+    /// Load `OpenAI` configuration from environment.
+    ///
+    /// Returns `None` if `OPENAI_API_KEY` is not set (tool selection disabled).
+    fn from_env() -> Option<Self> {
+        get_optional_env("OPENAI_API_KEY").map(|key| {
+            // Validate the key if present
+            if let Err(e) = validate_secret_strength(&key, "OPENAI_API_KEY") {
+                tracing::warn!("OPENAI_API_KEY validation warning: {e}");
+            }
+            Self {
+                api_key: SecretString::from(key),
+            }
+        })
+    }
+}
+
+impl SlackConfig {
+    /// Load Slack configuration from environment.
+    ///
+    /// Returns `None` if Slack variables are not set (confirmations disabled).
+    /// All three variables must be set together.
+    fn from_env() -> Option<Self> {
+        let bot_token = get_optional_env("SLACK_BOT_TOKEN")?;
+        let signing_secret = get_optional_env("SLACK_SIGNING_SECRET")?;
+        let channel_id = get_optional_env("SLACK_CHANNEL_ID")?;
+
+        // Validate secrets if present
+        if let Err(e) = validate_secret_strength(&bot_token, "SLACK_BOT_TOKEN") {
+            tracing::warn!("SLACK_BOT_TOKEN validation warning: {e}");
+        }
+        if let Err(e) = validate_secret_strength(&signing_secret, "SLACK_SIGNING_SECRET") {
+            tracing::warn!("SLACK_SIGNING_SECRET validation warning: {e}");
+        }
+
+        Some(Self {
+            bot_token: SecretString::from(bot_token),
+            signing_secret: SecretString::from(signing_secret),
+            channel_id,
         })
     }
 }
@@ -570,6 +687,8 @@ mod tests {
                 api_key: SecretString::from("sk-ant-test"),
                 model: DEFAULT_CLAUDE_MODEL.to_string(),
             },
+            openai: None,
+            slack: None,
             email: EmailConfig {
                 smtp_host: "smtp.example.com".to_string(),
                 smtp_port: 587,

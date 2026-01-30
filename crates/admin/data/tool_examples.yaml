@@ -1,0 +1,958 @@
+# Tool Example Queries for Embedding-Based Tool Selection
+#
+# This file contains example natural language queries mapped to specific Shopify tools.
+# These examples are embedded and stored in pgvector for similarity search.
+#
+# Format:
+#   tool_name:
+#     domain: <domain_name>
+#     examples:
+#       - "Example query 1"
+#       - "Example query 2"
+#
+# Domains: orders, customers, products, inventory, collections, discounts,
+#          gift_cards, fulfillment, finance, order_editing
+
+# =============================================================================
+# ORDERS DOMAIN (13 tools: 4 read, 9 write)
+# =============================================================================
+
+get_order:
+  domain: orders
+  examples:
+    - "Show me order #1001"
+    - "Get details for order 1234"
+    - "Look up this order"
+    - "Find order by number"
+    - "What's the status of order #5678"
+    - "Pull up order information"
+
+get_orders:
+  domain: orders
+  examples:
+    - "Show me recent orders"
+    - "List all orders from today"
+    - "What orders came in this week"
+    - "Show unfulfilled orders"
+    - "Get orders from the last 24 hours"
+    - "List pending orders"
+    - "Show me all open orders"
+
+get_order_detail:
+  domain: orders
+  examples:
+    - "Show complete order details"
+    - "Get full order information including line items"
+    - "What did this customer order"
+    - "Show order with shipping details"
+    - "Get order timeline and history"
+
+get_orders_list:
+  domain: orders
+  examples:
+    - "List orders with basic info"
+    - "Show order summary list"
+    - "Get orders overview"
+    - "Quick order list"
+    - "Orders table view"
+
+update_order_note:
+  domain: orders
+  examples:
+    - "Add a note to this order"
+    - "Update the order note"
+    - "Add internal note to order #1001"
+    - "Put a note on this order"
+    - "Change the order note"
+    - "Leave a note on this order"
+
+update_order_tags:
+  domain: orders
+  examples:
+    - "Tag this order as VIP"
+    - "Add tags to order"
+    - "Update order tags"
+    - "Label this order"
+    - "Set order tags"
+
+mark_order_as_paid:
+  domain: orders
+  examples:
+    - "Mark this order as paid"
+    - "Set order payment to received"
+    - "Mark payment complete"
+    - "Order has been paid"
+    - "Record payment for this order"
+
+cancel_order:
+  domain: orders
+  examples:
+    - "Cancel order #1001"
+    - "I need to cancel this order"
+    - "Customer wants to cancel"
+    - "Cancel and refund this order"
+    - "Void this order"
+    - "Stop this order from processing"
+
+archive_order:
+  domain: orders
+  examples:
+    - "Archive this order"
+    - "Move order to archive"
+    - "Close and archive order"
+    - "Archive old order"
+
+unarchive_order:
+  domain: orders
+  examples:
+    - "Unarchive order"
+    - "Restore archived order"
+    - "Bring back archived order"
+    - "Reopen archived order"
+
+capture_order_payment:
+  domain: orders
+  examples:
+    - "Capture payment for this order"
+    - "Charge the customer's card"
+    - "Process the payment"
+    - "Complete payment capture"
+    - "Finalize the payment"
+
+add_tags_to_order:
+  domain: orders
+  examples:
+    - "Add rush tag to order"
+    - "Tag order as priority"
+    - "Add fragile tag"
+    - "Mark order with special handling"
+
+remove_tags_from_order:
+  domain: orders
+  examples:
+    - "Remove tag from order"
+    - "Delete the VIP tag"
+    - "Untag this order"
+    - "Remove label from order"
+
+# =============================================================================
+# CUSTOMERS DOMAIN (17 tools: 4 read, 13 write)
+# =============================================================================
+
+get_customer:
+  domain: customers
+  examples:
+    - "Look up customer john@example.com"
+    - "Find customer by email"
+    - "Get customer profile"
+    - "Show customer details"
+    - "Pull up customer information"
+    - "Who is this customer"
+
+get_customers:
+  domain: customers
+  examples:
+    - "List all customers"
+    - "Show recent customers"
+    - "Get customers who signed up this month"
+    - "Find customers by name"
+    - "Search customers"
+    - "Show VIP customers"
+
+generate_customer_activation_url:
+  domain: customers
+  examples:
+    - "Generate activation link for customer"
+    - "Create account activation URL"
+    - "Get customer activation link"
+    - "Send activation email"
+
+get_customer_segments:
+  domain: customers
+  examples:
+    - "Show customer segments"
+    - "List all segments"
+    - "Get customer groups"
+    - "Show segment details"
+
+create_customer:
+  domain: customers
+  examples:
+    - "Create a new customer"
+    - "Add new customer to the system"
+    - "Register new customer"
+    - "Create customer account"
+    - "Add customer john@example.com"
+
+update_customer:
+  domain: customers
+  examples:
+    - "Update customer information"
+    - "Change customer email"
+    - "Edit customer profile"
+    - "Modify customer details"
+    - "Update customer phone number"
+
+delete_customer:
+  domain: customers
+  examples:
+    - "Delete this customer"
+    - "Remove customer from system"
+    - "Delete customer account"
+    - "Permanently remove customer"
+
+add_customer_tags:
+  domain: customers
+  examples:
+    - "Tag customer as VIP"
+    - "Add wholesale tag to customer"
+    - "Label customer as preferred"
+    - "Add tag to customer profile"
+
+remove_customer_tags:
+  domain: customers
+  examples:
+    - "Remove VIP tag from customer"
+    - "Delete customer tag"
+    - "Untag customer"
+    - "Remove label from customer"
+
+send_customer_invite:
+  domain: customers
+  examples:
+    - "Send account invite to customer"
+    - "Invite customer to create account"
+    - "Send customer invitation email"
+    - "Email customer account setup link"
+
+create_customer_address:
+  domain: customers
+  examples:
+    - "Add new address for customer"
+    - "Create shipping address"
+    - "Add billing address"
+    - "Save new customer address"
+
+update_customer_address:
+  domain: customers
+  examples:
+    - "Update customer address"
+    - "Change shipping address"
+    - "Fix address for customer"
+    - "Correct customer address"
+
+delete_customer_address:
+  domain: customers
+  examples:
+    - "Delete customer address"
+    - "Remove old address"
+    - "Delete shipping address"
+
+set_customer_default_address:
+  domain: customers
+  examples:
+    - "Set default address for customer"
+    - "Make this the primary address"
+    - "Set default shipping address"
+
+update_customer_email_marketing:
+  domain: customers
+  examples:
+    - "Update email marketing consent"
+    - "Subscribe customer to newsletter"
+    - "Unsubscribe from email marketing"
+    - "Change email marketing preferences"
+
+update_customer_sms_marketing:
+  domain: customers
+  examples:
+    - "Update SMS marketing consent"
+    - "Subscribe to SMS notifications"
+    - "Opt out of text messages"
+    - "Change SMS preferences"
+
+merge_customers:
+  domain: customers
+  examples:
+    - "Merge duplicate customers"
+    - "Combine customer accounts"
+    - "Merge these two customer profiles"
+    - "Consolidate duplicate accounts"
+
+# =============================================================================
+# PRODUCTS DOMAIN (6 tools: 2 read, 4 write)
+# =============================================================================
+
+get_product:
+  domain: products
+  examples:
+    - "Show product details"
+    - "Get product information"
+    - "Look up product by ID"
+    - "Find product details"
+    - "Show me the beach hat"
+    - "What's the price of this product"
+
+get_products:
+  domain: products
+  examples:
+    - "List all products"
+    - "Show product catalog"
+    - "Search products"
+    - "Find products by title"
+    - "Show products in stock"
+    - "List active products"
+
+create_product:
+  domain: products
+  examples:
+    - "Create new product"
+    - "Add product to catalog"
+    - "Create a new item"
+    - "Add new product listing"
+    - "Create product called Summer Dress"
+
+update_product:
+  domain: products
+  examples:
+    - "Update product title"
+    - "Change product price"
+    - "Edit product description"
+    - "Modify product details"
+    - "Update product SEO"
+
+delete_product:
+  domain: products
+  examples:
+    - "Delete product"
+    - "Remove product from store"
+    - "Delete this item"
+    - "Remove product listing"
+
+update_variant:
+  domain: products
+  examples:
+    - "Update variant price"
+    - "Change variant SKU"
+    - "Edit product variant"
+    - "Modify variant options"
+    - "Update variant inventory policy"
+
+# =============================================================================
+# INVENTORY DOMAIN (10 tools: 4 read, 6 write)
+# =============================================================================
+
+get_locations:
+  domain: inventory
+  examples:
+    - "Show all locations"
+    - "List warehouse locations"
+    - "Get store locations"
+    - "Show inventory locations"
+
+get_inventory_levels:
+  domain: inventory
+  examples:
+    - "Check inventory levels"
+    - "What's the stock count"
+    - "Show inventory by location"
+    - "Get stock levels"
+    - "How much inventory do we have"
+
+get_inventory_items:
+  domain: inventory
+  examples:
+    - "List inventory items"
+    - "Show all inventory"
+    - "Get inventory item details"
+    - "Search inventory items"
+
+get_inventory_item:
+  domain: inventory
+  examples:
+    - "Get specific inventory item"
+    - "Show inventory item details"
+    - "Look up inventory item"
+    - "Find inventory item by ID"
+
+adjust_inventory:
+  domain: inventory
+  examples:
+    - "Adjust inventory count"
+    - "Add 10 units to stock"
+    - "Remove 5 from inventory"
+    - "Correct inventory count"
+    - "Stock adjustment needed"
+
+set_inventory:
+  domain: inventory
+  examples:
+    - "Set inventory to 100 units"
+    - "Update stock count"
+    - "Set exact inventory level"
+    - "Override inventory count"
+
+update_inventory_item:
+  domain: inventory
+  examples:
+    - "Update inventory item"
+    - "Change inventory tracking"
+    - "Edit inventory item details"
+    - "Modify inventory settings"
+
+move_inventory:
+  domain: inventory
+  examples:
+    - "Move inventory between locations"
+    - "Transfer stock to warehouse"
+    - "Move units from store to warehouse"
+    - "Relocate inventory"
+
+activate_inventory:
+  domain: inventory
+  examples:
+    - "Activate inventory tracking"
+    - "Enable inventory for location"
+    - "Turn on inventory tracking"
+    - "Start tracking inventory"
+
+deactivate_inventory:
+  domain: inventory
+  examples:
+    - "Deactivate inventory tracking"
+    - "Disable inventory at location"
+    - "Turn off inventory tracking"
+    - "Stop tracking at this location"
+
+# =============================================================================
+# COLLECTIONS DOMAIN (15 tools: 4 read, 11 write)
+# =============================================================================
+
+get_collection:
+  domain: collections
+  examples:
+    - "Show collection details"
+    - "Get collection information"
+    - "Look up collection"
+    - "Find collection by ID"
+
+get_collections:
+  domain: collections
+  examples:
+    - "List all collections"
+    - "Show product collections"
+    - "Get collection list"
+    - "Search collections"
+
+get_collection_with_products:
+  domain: collections
+  examples:
+    - "Show collection with its products"
+    - "Get collection products"
+    - "What products are in this collection"
+    - "List items in collection"
+
+get_publications:
+  domain: collections
+  examples:
+    - "Show publication channels"
+    - "List sales channels"
+    - "Get publishing destinations"
+    - "Where can I publish collections"
+
+create_collection:
+  domain: collections
+  examples:
+    - "Create new collection"
+    - "Make a new collection called Summer Sale"
+    - "Add collection"
+    - "Create product collection"
+
+update_collection:
+  domain: collections
+  examples:
+    - "Update collection title"
+    - "Change collection description"
+    - "Edit collection details"
+    - "Modify collection settings"
+
+update_collection_sort_order:
+  domain: collections
+  examples:
+    - "Change collection sort order"
+    - "Reorder collection products"
+    - "Set collection sorting"
+    - "Change how products are sorted"
+
+delete_collection:
+  domain: collections
+  examples:
+    - "Delete collection"
+    - "Remove collection"
+    - "Delete this product group"
+
+update_collection_image:
+  domain: collections
+  examples:
+    - "Update collection image"
+    - "Change collection photo"
+    - "Set collection banner"
+    - "Upload collection image"
+
+delete_collection_image:
+  domain: collections
+  examples:
+    - "Delete collection image"
+    - "Remove collection photo"
+    - "Clear collection banner"
+
+add_products_to_collection:
+  domain: collections
+  examples:
+    - "Add products to collection"
+    - "Put these products in the collection"
+    - "Add items to Summer Sale collection"
+    - "Include product in collection"
+
+remove_products_from_collection:
+  domain: collections
+  examples:
+    - "Remove products from collection"
+    - "Take products out of collection"
+    - "Delete items from collection"
+
+reorder_collection_products:
+  domain: collections
+  examples:
+    - "Reorder products in collection"
+    - "Change product order in collection"
+    - "Rearrange collection items"
+    - "Sort products manually"
+
+publish_collection:
+  domain: collections
+  examples:
+    - "Publish collection"
+    - "Make collection visible"
+    - "Publish to online store"
+    - "Enable collection on storefront"
+
+unpublish_collection:
+  domain: collections
+  examples:
+    - "Unpublish collection"
+    - "Hide collection"
+    - "Remove from storefront"
+    - "Make collection private"
+
+# =============================================================================
+# DISCOUNTS DOMAIN (12 tools: 3 read, 9 write)
+# =============================================================================
+
+get_discounts:
+  domain: discounts
+  examples:
+    - "List all discounts"
+    - "Show active discount codes"
+    - "Get current promotions"
+    - "What discounts are running"
+
+get_discount:
+  domain: discounts
+  examples:
+    - "Show discount details"
+    - "Get discount code info"
+    - "Look up SUMMER20 discount"
+    - "Find discount by code"
+
+get_discounts_for_list:
+  domain: discounts
+  examples:
+    - "Get discount summary list"
+    - "Show discount overview"
+    - "List discounts briefly"
+    - "Quick discount list"
+
+create_discount:
+  domain: discounts
+  examples:
+    - "Create new discount code"
+    - "Make a 20% off coupon"
+    - "Create discount SUMMER20"
+    - "Add new promotion"
+    - "Create free shipping discount"
+
+update_discount:
+  domain: discounts
+  examples:
+    - "Update discount amount"
+    - "Change discount percentage"
+    - "Edit discount conditions"
+    - "Modify discount code"
+
+deactivate_discount:
+  domain: discounts
+  examples:
+    - "Deactivate discount code"
+    - "Turn off discount"
+    - "Disable promotion"
+    - "Stop discount from working"
+
+activate_discount:
+  domain: discounts
+  examples:
+    - "Activate discount code"
+    - "Enable discount"
+    - "Turn on promotion"
+    - "Reactivate discount"
+
+deactivate_automatic_discount:
+  domain: discounts
+  examples:
+    - "Deactivate automatic discount"
+    - "Turn off auto discount"
+    - "Disable automatic promotion"
+
+delete_discount:
+  domain: discounts
+  examples:
+    - "Delete discount code"
+    - "Remove discount"
+    - "Delete promotion"
+    - "Permanently remove coupon"
+
+bulk_activate_code_discounts:
+  domain: discounts
+  examples:
+    - "Activate all discount codes"
+    - "Enable multiple discounts"
+    - "Bulk activate coupons"
+
+bulk_deactivate_code_discounts:
+  domain: discounts
+  examples:
+    - "Deactivate all discount codes"
+    - "Disable multiple discounts"
+    - "Bulk turn off coupons"
+
+bulk_delete_code_discounts:
+  domain: discounts
+  examples:
+    - "Delete all expired discounts"
+    - "Bulk remove coupons"
+    - "Delete multiple discount codes"
+
+# =============================================================================
+# GIFT CARDS DOMAIN (11 tools: 4 read, 7 write)
+# =============================================================================
+
+get_gift_cards:
+  domain: gift_cards
+  examples:
+    - "List all gift cards"
+    - "Show gift cards"
+    - "Get active gift cards"
+    - "Search gift cards"
+
+get_gift_cards_count:
+  domain: gift_cards
+  examples:
+    - "How many gift cards exist"
+    - "Count gift cards"
+    - "Total gift cards issued"
+    - "Gift card count"
+
+get_gift_card_detail:
+  domain: gift_cards
+  examples:
+    - "Show gift card details"
+    - "Get gift card balance"
+    - "Look up gift card"
+    - "Find gift card by code"
+
+get_gift_card_configuration:
+  domain: gift_cards
+  examples:
+    - "Show gift card settings"
+    - "Get gift card configuration"
+    - "What are the gift card options"
+
+create_gift_card:
+  domain: gift_cards
+  examples:
+    - "Create new gift card"
+    - "Issue $50 gift card"
+    - "Generate gift card"
+    - "Create gift card for customer"
+
+deactivate_gift_card:
+  domain: gift_cards
+  examples:
+    - "Deactivate gift card"
+    - "Disable gift card"
+    - "Cancel gift card"
+    - "Turn off gift card"
+
+update_gift_card:
+  domain: gift_cards
+  examples:
+    - "Update gift card"
+    - "Change gift card expiry"
+    - "Edit gift card note"
+
+credit_gift_card:
+  domain: gift_cards
+  examples:
+    - "Add credit to gift card"
+    - "Increase gift card balance"
+    - "Add $25 to gift card"
+    - "Top up gift card"
+
+debit_gift_card:
+  domain: gift_cards
+  examples:
+    - "Debit gift card"
+    - "Remove balance from gift card"
+    - "Reduce gift card value"
+
+send_gift_card_notification_to_customer:
+  domain: gift_cards
+  examples:
+    - "Send gift card to customer email"
+    - "Email gift card to purchaser"
+    - "Notify customer about gift card"
+
+send_gift_card_notification_to_recipient:
+  domain: gift_cards
+  examples:
+    - "Send gift card to recipient"
+    - "Email gift card to recipient"
+    - "Deliver gift card to receiver"
+
+# =============================================================================
+# FULFILLMENT DOMAIN (8 tools: 2 read, 6 write)
+# =============================================================================
+
+get_fulfillment_orders:
+  domain: fulfillment
+  examples:
+    - "Show fulfillment orders"
+    - "List orders to ship"
+    - "Get pending fulfillments"
+    - "What orders need shipping"
+
+get_suggested_refund:
+  domain: fulfillment
+  examples:
+    - "Calculate suggested refund"
+    - "What should the refund be"
+    - "Get refund amount"
+    - "Calculate return refund"
+
+create_fulfillment:
+  domain: fulfillment
+  examples:
+    - "Create fulfillment for order"
+    - "Mark order as shipped"
+    - "Fulfill this order"
+    - "Ship the order"
+    - "Create shipment"
+
+update_fulfillment_tracking:
+  domain: fulfillment
+  examples:
+    - "Update tracking number"
+    - "Add tracking info"
+    - "Change tracking number"
+    - "Update shipment tracking"
+
+hold_fulfillment_order:
+  domain: fulfillment
+  examples:
+    - "Put fulfillment on hold"
+    - "Hold this shipment"
+    - "Pause fulfillment"
+    - "Stop fulfillment temporarily"
+
+release_fulfillment_order_hold:
+  domain: fulfillment
+  examples:
+    - "Release fulfillment hold"
+    - "Resume fulfillment"
+    - "Unhold shipment"
+    - "Continue with fulfillment"
+
+create_refund:
+  domain: fulfillment
+  examples:
+    - "Create refund"
+    - "Refund this order"
+    - "Issue refund"
+    - "Process refund"
+    - "Refund customer"
+
+create_return:
+  domain: fulfillment
+  examples:
+    - "Create return"
+    - "Process return request"
+    - "Start return"
+    - "Customer wants to return"
+    - "Initiate return"
+
+# =============================================================================
+# FINANCE DOMAIN (8 tools: 8 read, 0 write)
+# =============================================================================
+
+get_payouts:
+  domain: finance
+  examples:
+    - "Show recent payouts"
+    - "List all payouts"
+    - "Get payout history"
+    - "When were we paid"
+
+get_payout:
+  domain: finance
+  examples:
+    - "Get payout details"
+    - "Show specific payout"
+    - "Look up payout"
+    - "Find payout by ID"
+
+get_payout_detail:
+  domain: finance
+  examples:
+    - "Show full payout details"
+    - "Get payout breakdown"
+    - "Payout complete information"
+    - "Detailed payout view"
+
+get_payout_transactions:
+  domain: finance
+  examples:
+    - "Show payout transactions"
+    - "What orders are in this payout"
+    - "List payout transactions"
+    - "Get transaction details for payout"
+
+get_payout_schedule:
+  domain: finance
+  examples:
+    - "Show payout schedule"
+    - "When is the next payout"
+    - "Get payout timing"
+    - "Payout frequency"
+
+get_bank_accounts:
+  domain: finance
+  examples:
+    - "Show bank accounts"
+    - "List connected accounts"
+    - "Get payout destinations"
+    - "Where do payouts go"
+
+get_disputes:
+  domain: finance
+  examples:
+    - "Show disputes"
+    - "List chargebacks"
+    - "Get open disputes"
+    - "Any payment disputes"
+
+get_dispute:
+  domain: finance
+  examples:
+    - "Get dispute details"
+    - "Show chargeback info"
+    - "Look up dispute"
+    - "Find dispute by ID"
+
+# =============================================================================
+# ORDER EDITING DOMAIN (11 tools: 1 read, 10 write)
+# =============================================================================
+
+order_edit_begin:
+  domain: order_editing
+  examples:
+    - "Start editing order"
+    - "Begin order edit"
+    - "Open order for editing"
+    - "Modify this order"
+
+order_edit_add_variant:
+  domain: order_editing
+  examples:
+    - "Add product to order"
+    - "Add item to order"
+    - "Include another product"
+    - "Add variant to order"
+
+order_edit_add_custom_item:
+  domain: order_editing
+  examples:
+    - "Add custom item to order"
+    - "Add manual line item"
+    - "Include custom product"
+    - "Add one-off item"
+
+order_edit_set_quantity:
+  domain: order_editing
+  examples:
+    - "Change item quantity"
+    - "Update quantity on order"
+    - "Set quantity to 3"
+    - "Adjust item count"
+
+order_edit_add_line_item_discount:
+  domain: order_editing
+  examples:
+    - "Add discount to line item"
+    - "Apply discount to product"
+    - "Give discount on this item"
+    - "Add item-level discount"
+
+order_edit_update_discount:
+  domain: order_editing
+  examples:
+    - "Update line item discount"
+    - "Change discount amount"
+    - "Modify item discount"
+
+order_edit_remove_discount:
+  domain: order_editing
+  examples:
+    - "Remove discount from item"
+    - "Delete line item discount"
+    - "Remove item discount"
+
+order_edit_add_shipping_line:
+  domain: order_editing
+  examples:
+    - "Add shipping to order"
+    - "Include shipping charge"
+    - "Add delivery fee"
+    - "Add shipping line"
+
+order_edit_update_shipping_line:
+  domain: order_editing
+  examples:
+    - "Update shipping cost"
+    - "Change shipping amount"
+    - "Modify delivery fee"
+
+order_edit_remove_shipping_line:
+  domain: order_editing
+  examples:
+    - "Remove shipping charge"
+    - "Delete shipping line"
+    - "Remove delivery fee"
+
+order_edit_commit:
+  domain: order_editing
+  examples:
+    - "Save order changes"
+    - "Commit order edits"
+    - "Finalize order modifications"
+    - "Apply order changes"
+    - "Complete order edit"

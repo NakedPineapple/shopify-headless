@@ -8,7 +8,7 @@ use sqlx::PgPool;
 use naked_pineapple_core::{AdminUserId, ChatMessageId, ChatRole, ChatSessionId};
 
 use super::RepositoryError;
-use crate::models::chat::{ChatMessage, ChatSession};
+use crate::models::chat::{ApiInteraction, ChatMessage, ChatSession};
 
 // =============================================================================
 // Internal Row Types
@@ -45,16 +45,22 @@ struct ChatMessageRow {
     chat_session_id: i32,
     role: ChatRole,
     content: serde_json::Value,
+    api_interaction: Option<serde_json::Value>,
     created_at: DateTime<Utc>,
 }
 
 impl From<ChatMessageRow> for ChatMessage {
     fn from(row: ChatMessageRow) -> Self {
+        let api_interaction = row
+            .api_interaction
+            .and_then(|v| serde_json::from_value::<ApiInteraction>(v).ok());
+
         Self {
             id: ChatMessageId::new(row.id),
             chat_session_id: ChatSessionId::new(row.chat_session_id),
             role: row.role,
             content: row.content,
+            api_interaction,
             created_at: row.created_at,
         }
     }
@@ -201,17 +207,39 @@ impl<'a> ChatRepository<'a> {
         role: ChatRole,
         content: serde_json::Value,
     ) -> Result<ChatMessage, RepositoryError> {
+        self.add_message_with_interaction(chat_session_id, role, content, None)
+            .await
+    }
+
+    /// Add a message to a chat session with API interaction metadata.
+    ///
+    /// # Errors
+    ///
+    /// Returns `RepositoryError::Database` if the query fails.
+    pub async fn add_message_with_interaction(
+        &self,
+        chat_session_id: ChatSessionId,
+        role: ChatRole,
+        content: serde_json::Value,
+        api_interaction: Option<&ApiInteraction>,
+    ) -> Result<ChatMessage, RepositoryError> {
+        let interaction_json = api_interaction
+            .map(serde_json::to_value)
+            .transpose()
+            .map_err(|e| RepositoryError::Serialization(e.to_string()))?;
+
         let row = sqlx::query_as!(
             ChatMessageRow,
             r#"
-            INSERT INTO admin.chat_message (chat_session_id, role, content)
-            VALUES ($1, $2, $3)
+            INSERT INTO admin.chat_message (chat_session_id, role, content, api_interaction)
+            VALUES ($1, $2, $3, $4)
             RETURNING id, chat_session_id, role as "role: ChatRole",
-                      content, created_at as "created_at: DateTime<Utc>"
+                      content, api_interaction, created_at as "created_at: DateTime<Utc>"
             "#,
             chat_session_id.as_i32(),
             role as ChatRole,
-            content
+            content,
+            interaction_json
         )
         .fetch_one(self.pool)
         .await?;
@@ -234,7 +262,7 @@ impl<'a> ChatRepository<'a> {
             ChatMessageRow,
             r#"
             SELECT id, chat_session_id, role as "role: ChatRole",
-                   content, created_at as "created_at: DateTime<Utc>"
+                   content, api_interaction, created_at as "created_at: DateTime<Utc>"
             FROM admin.chat_message
             WHERE chat_session_id = $1
             ORDER BY created_at ASC
@@ -268,5 +296,157 @@ impl<'a> ChatRepository<'a> {
         .await?;
 
         Ok(result.rows_affected() > 0)
+    }
+
+    /// List all chat sessions (for super admin).
+    ///
+    /// Returns sessions ordered by last update (most recent first).
+    ///
+    /// # Errors
+    ///
+    /// Returns `RepositoryError::Database` if the query fails.
+    pub async fn list_all_sessions(&self) -> Result<Vec<ChatSession>, RepositoryError> {
+        let rows = sqlx::query_as!(
+            ChatSessionRow,
+            r#"
+            SELECT id, admin_user_id, title,
+                   created_at as "created_at: DateTime<Utc>",
+                   updated_at as "updated_at: DateTime<Utc>"
+            FROM admin.chat_session
+            ORDER BY updated_at DESC
+            "#
+        )
+        .fetch_all(self.pool)
+        .await?;
+
+        rows.into_iter().map(TryInto::try_into).collect()
+    }
+
+    /// List chat sessions with pagination.
+    ///
+    /// Returns sessions ordered by last update (most recent first).
+    ///
+    /// # Arguments
+    ///
+    /// * `admin_user_id` - If provided, filter to this admin's sessions only
+    /// * `limit` - Maximum number of sessions to return
+    /// * `offset` - Number of sessions to skip
+    ///
+    /// # Errors
+    ///
+    /// Returns `RepositoryError::Database` if the query fails.
+    pub async fn list_sessions_paginated(
+        &self,
+        admin_user_id: Option<AdminUserId>,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<ChatSession>, RepositoryError> {
+        let rows = match admin_user_id {
+            Some(uid) => {
+                sqlx::query_as!(
+                    ChatSessionRow,
+                    r#"
+                    SELECT id, admin_user_id, title,
+                           created_at as "created_at: DateTime<Utc>",
+                           updated_at as "updated_at: DateTime<Utc>"
+                    FROM admin.chat_session
+                    WHERE admin_user_id = $1
+                    ORDER BY updated_at DESC
+                    LIMIT $2 OFFSET $3
+                    "#,
+                    uid.as_i32(),
+                    limit,
+                    offset
+                )
+                .fetch_all(self.pool)
+                .await?
+            }
+            None => {
+                sqlx::query_as!(
+                    ChatSessionRow,
+                    r#"
+                    SELECT id, admin_user_id, title,
+                           created_at as "created_at: DateTime<Utc>",
+                           updated_at as "updated_at: DateTime<Utc>"
+                    FROM admin.chat_session
+                    ORDER BY updated_at DESC
+                    LIMIT $1 OFFSET $2
+                    "#,
+                    limit,
+                    offset
+                )
+                .fetch_all(self.pool)
+                .await?
+            }
+        };
+
+        rows.into_iter().map(TryInto::try_into).collect()
+    }
+
+    /// Count total chat sessions.
+    ///
+    /// # Arguments
+    ///
+    /// * `admin_user_id` - If provided, count only this admin's sessions
+    ///
+    /// # Errors
+    ///
+    /// Returns `RepositoryError::Database` if the query fails.
+    pub async fn count_sessions(
+        &self,
+        admin_user_id: Option<AdminUserId>,
+    ) -> Result<i64, RepositoryError> {
+        let count = match admin_user_id {
+            Some(uid) => {
+                sqlx::query_scalar!(
+                    r#"
+                    SELECT COUNT(*) as "count!"
+                    FROM admin.chat_session
+                    WHERE admin_user_id = $1
+                    "#,
+                    uid.as_i32()
+                )
+                .fetch_one(self.pool)
+                .await?
+            }
+            None => {
+                sqlx::query_scalar!(
+                    r#"
+                    SELECT COUNT(*) as "count!"
+                    FROM admin.chat_session
+                    "#
+                )
+                .fetch_one(self.pool)
+                .await?
+            }
+        };
+
+        Ok(count)
+    }
+
+    /// Check if an admin owns a session.
+    ///
+    /// # Errors
+    ///
+    /// Returns `RepositoryError::Database` if the query fails.
+    pub async fn session_belongs_to_admin(
+        &self,
+        session_id: ChatSessionId,
+        admin_user_id: AdminUserId,
+    ) -> Result<bool, RepositoryError> {
+        let exists = sqlx::query_scalar!(
+            r#"
+            SELECT EXISTS(
+                SELECT 1 FROM admin.chat_session
+                WHERE id = $1 AND admin_user_id = $2
+            ) as "exists!"
+            "#,
+            session_id.as_i32(),
+            admin_user_id.as_i32()
+        )
+        .fetch_one(self.pool)
+        .await?;
+
+        Ok(exists)
     }
 }

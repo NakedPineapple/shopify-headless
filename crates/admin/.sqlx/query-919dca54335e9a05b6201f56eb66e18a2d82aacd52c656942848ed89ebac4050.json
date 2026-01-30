@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE admin.pending_actions\n        SET status = 'approved', approved_by = $2, resolved_at = NOW()\n        WHERE id = $1 AND status = 'pending'\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "919dca54335e9a05b6201f56eb66e18a2d82aacd52c656942848ed89ebac4050"
+}

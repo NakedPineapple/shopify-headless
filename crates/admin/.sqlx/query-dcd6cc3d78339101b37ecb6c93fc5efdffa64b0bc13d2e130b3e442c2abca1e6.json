@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE admin.pending_actions\n        SET status = 'failed', error_message = $2\n        WHERE id = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "dcd6cc3d78339101b37ecb6c93fc5efdffa64b0bc13d2e130b3e442c2abca1e6"
+}

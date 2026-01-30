@@ -1,0 +1,168 @@
+/**
+ * Midnight Lagoon Theme for highlight.js
+ * Based on the Naked Pineapple admin brand identity
+ *
+ * Colors from the Midnight Lagoon palette:
+ * - Deep lagoon backgrounds with coral/ember accents
+ * - Designed for comfortable reading during late-night sessions
+ */
+
+/* Base styling */
+.hljs {
+  background: hsl(var(--muted));
+  color: hsl(var(--foreground));
+  border-radius: 0.5rem;
+  padding: 1rem;
+  overflow-x: auto;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+/* Comments - muted, relaxed */
+.hljs-comment,
+.hljs-quote {
+  color: hsl(var(--muted-foreground));
+  font-style: italic;
+}
+
+/* Keywords - coral ember glow */
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-addition {
+  color: hsl(10 70% 60%); /* Coral/ember */
+}
+
+/* Strings - warm golden honey */
+.hljs-string,
+.hljs-meta .hljs-string,
+.hljs-regexp {
+  color: hsl(40 70% 60%); /* Golden honey */
+}
+
+/* Numbers, constants - teal lagoon */
+.hljs-number,
+.hljs-literal,
+.hljs-variable,
+.hljs-template-variable,
+.hljs-tag .hljs-attr {
+  color: hsl(180 50% 55%); /* Teal lagoon */
+}
+
+/* Built-ins, types - soft coral */
+.hljs-type,
+.hljs-built_in,
+.hljs-builtin-name,
+.hljs-class .hljs-title,
+.hljs-title.class_ {
+  color: hsl(20 60% 65%); /* Soft coral */
+}
+
+/* Functions - bright teal */
+.hljs-function,
+.hljs-title,
+.hljs-title.function_ {
+  color: hsl(175 60% 50%); /* Bright teal */
+}
+
+/* Attributes, properties - light lagoon */
+.hljs-attr,
+.hljs-attribute,
+.hljs-symbol,
+.hljs-bullet {
+  color: hsl(190 50% 65%); /* Light lagoon */
+}
+
+/* Tags, selectors - warm coral */
+.hljs-name,
+.hljs-tag,
+.hljs-selector-id,
+.hljs-selector-class {
+  color: hsl(15 65% 60%); /* Warm coral */
+}
+
+/* Meta, preprocessor - muted teal */
+.hljs-meta,
+.hljs-meta-keyword,
+.hljs-meta-string {
+  color: hsl(185 40% 55%); /* Muted teal */
+}
+
+/* Deletion - error red */
+.hljs-deletion {
+  color: hsl(0 70% 55%);
+  background-color: hsl(0 70% 55% / 0.1);
+}
+
+/* Addition - success green */
+.hljs-addition {
+  color: hsl(145 60% 50%);
+  background-color: hsl(145 60% 50% / 0.1);
+}
+
+/* Section, strong */
+.hljs-section,
+.hljs-strong {
+  color: hsl(var(--foreground));
+  font-weight: 600;
+}
+
+/* Emphasis */
+.hljs-emphasis {
+  font-style: italic;
+}
+
+/* Links */
+.hljs-link {
+  color: hsl(175 60% 50%);
+  text-decoration: underline;
+}
+
+/* Light mode adjustments */
+.light .hljs,
+[data-theme="light"] .hljs {
+  background: hsl(var(--muted));
+  color: hsl(var(--foreground));
+}
+
+.light .hljs-keyword,
+[data-theme="light"] .hljs-keyword,
+.light .hljs-selector-tag,
+[data-theme="light"] .hljs-selector-tag {
+  color: hsl(10 65% 45%);
+}
+
+.light .hljs-string,
+[data-theme="light"] .hljs-string,
+.light .hljs-regexp,
+[data-theme="light"] .hljs-regexp {
+  color: hsl(35 70% 40%);
+}
+
+.light .hljs-number,
+[data-theme="light"] .hljs-number,
+.light .hljs-literal,
+[data-theme="light"] .hljs-literal {
+  color: hsl(180 50% 35%);
+}
+
+.light .hljs-type,
+[data-theme="light"] .hljs-type,
+.light .hljs-built_in,
+[data-theme="light"] .hljs-built_in {
+  color: hsl(20 55% 45%);
+}
+
+.light .hljs-function,
+[data-theme="light"] .hljs-function,
+.light .hljs-title,
+[data-theme="light"] .hljs-title {
+  color: hsl(175 55% 35%);
+}
+
+.light .hljs-comment,
+[data-theme="light"] .hljs-comment,
+.light .hljs-quote,
+[data-theme="light"] .hljs-quote {
+  color: hsl(var(--muted-foreground));
+}

@@ -2,3 +2,4 @@
 
 pub mod admin;
 pub mod migrate;
+pub mod seed;
