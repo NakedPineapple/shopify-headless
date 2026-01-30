@@ -11,7 +11,7 @@ primary_region = "sjc"
 [env]
   ADMIN_HOST = "0.0.0.0"
   ADMIN_PORT = "443"
-  RUST_LOG = "info,naked_pineapple_admin=debug"
+  RUST_LOG = "debug,naked_pineapple_admin=debug,sqlx::query=info,rustls_platform_verifier=info,h2::codec=info,hyper_util=info"
   ADMIN_BASE_URL = "https://staging.admin.nakedpineapple.co"
   SHOPIFY_STORE = "nakedpineapple.myshopify.com"
   SHOPIFY_API_VERSION = "2026-01"
