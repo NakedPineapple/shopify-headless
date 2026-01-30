@@ -1,0 +1,67 @@
+{#
+    Line Item Lot Allocations Partial
+
+    Variables:
+    - item: LineItemView with allocations, allocated_quantity, is_fully_allocated
+    - order: OrderDetailView with short_id
+#}
+
+{% if !item.allocations.is_empty() || item.product_id.is_some() %}
+<div class="mt-2 pt-2 border-t border-border/50">
+    <!-- Allocation Status -->
+    <div class="flex items-center justify-between mb-2">
+        <span class="text-xs font-medium {% if item.is_fully_allocated %}text-success{% else %}text-warning{% endif %}">
+            <i class="ph {% if item.is_fully_allocated %}ph-check-circle{% else %}ph-clock{% endif %} mr-1"></i>
+            {% if item.is_fully_allocated %}
+            Fully allocated ({{ item.allocated_quantity }}/{{ item.quantity }})
+            {% else %}
+            Partially allocated ({{ item.allocated_quantity }}/{{ item.quantity }})
+            {% endif %}
+        </span>
+
+        {% if !item.is_fully_allocated && item.product_id.is_some() %}
+        <div class="flex items-center gap-2">
+            <!-- Auto-allocate button -->
+            <form action="/orders/{{ order.short_id }}/auto-allocate" method="POST" class="inline">
+                <input type="hidden" name="product_id" value="{{ item.product_id.as_ref().unwrap() }}">
+                <input type="hidden" name="line_item_id" value="{{ item.id }}">
+                <input type="hidden" name="quantity" value="{{ item.needed_quantity }}">
+                <button type="submit"
+                        class="text-xs text-primary hover:underline"
+                        title="Auto-allocate from oldest available lot (FIFO)">
+                    <i class="ph ph-magic-wand mr-1"></i>Auto
+                </button>
+            </form>
+            <!-- Manual allocate button -->
+            <button type="button"
+                    onclick="openLotAllocationModal('{{ item.id }}', '{{ item.title }}', {{ item.quantity }}, {{ item.needed_quantity }}, '{{ order.short_id }}')"
+                    class="text-xs text-muted-foreground hover:text-foreground">
+                <i class="ph ph-plus mr-1"></i>Manual
+            </button>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Allocation List -->
+    {% if !item.allocations.is_empty() %}
+    <div class="space-y-1">
+        {% for alloc in item.allocations %}
+        <div class="flex items-center justify-between text-xs bg-muted/30 rounded px-2 py-1">
+            <div class="flex items-center gap-2">
+                <span class="font-mono text-muted-foreground">{{ alloc.lot_number }}</span>
+                <span class="text-muted-foreground">{{ alloc.batch_number }}</span>
+                <span class="font-medium">{{ alloc.quantity }} units</span>
+                <span class="text-muted-foreground">@ {{ alloc.cost_per_unit }}</span>
+            </div>
+            <form action="/orders/{{ order.short_id }}/allocations/{{ alloc.id }}/delete" method="POST" class="inline"
+                  onsubmit="return confirm('Remove this lot allocation?')">
+                <button type="submit" class="text-destructive hover:text-destructive/80" title="Remove allocation">
+                    <i class="ph ph-x"></i>
+                </button>
+            </form>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+{% endif %}

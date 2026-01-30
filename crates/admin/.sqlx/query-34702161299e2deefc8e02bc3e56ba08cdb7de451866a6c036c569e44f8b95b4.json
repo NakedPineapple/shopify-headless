@@ -1,0 +1,83 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                l.id, l.batch_id, l.lot_number, l.quantity,\n                l.received_date as \"received_date: NaiveDate\",\n                l.shopify_location_id, l.notes,\n                l.created_at as \"created_at: DateTime<Utc>\",\n                l.updated_at as \"updated_at: DateTime<Utc>\",\n                (l.quantity - COALESCE(SUM(a.quantity), 0))::bigint as \"quantity_remaining!\"\n            FROM admin.inventory_lot l\n            LEFT JOIN admin.lot_allocation a ON a.lot_id = l.id\n            LEFT JOIN admin.manufacturing_batch b ON b.id = l.batch_id\n            WHERE\n                ($1::int IS NULL OR l.batch_id = $1)\n                AND ($2::text IS NULL OR b.shopify_product_id = $2)\n                AND ($3::text IS NULL OR l.shopify_location_id = $3)\n                AND ($4::date IS NULL OR l.received_date >= $4)\n                AND ($5::date IS NULL OR l.received_date <= $5)\n            GROUP BY l.id\n            HAVING ($6::bool IS NULL OR NOT $6 OR (l.quantity - COALESCE(SUM(a.quantity), 0)) > 0)\n            ORDER BY l.received_date ASC, l.created_at ASC\n            LIMIT $7 OFFSET $8\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "batch_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "lot_number",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "quantity",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 4,
+        "name": "received_date: NaiveDate",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 5,
+        "name": "shopify_location_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "notes",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "created_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "updated_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "quantity_remaining!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Text",
+        "Text",
+        "Date",
+        "Date",
+        "Bool",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "34702161299e2deefc8e02bc3e56ba08cdb7de451866a6c036c569e44f8b95b4"
+}

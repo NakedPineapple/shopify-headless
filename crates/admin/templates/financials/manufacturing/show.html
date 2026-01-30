@@ -1,0 +1,199 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Batch {{ batch.batch_number }}{% endblock %}
+
+{% block page_title %}
+<div class="flex items-center justify-between">
+    <div class="flex items-center gap-4">
+        <a href="/financials/manufacturing" class="text-muted-foreground hover:text-foreground transition-colors">
+            <i class="ph ph-arrow-left text-xl"></i>
+        </a>
+        <div>
+            <h1 class="text-2xl font-semibold text-foreground">{{ batch.batch_number }}</h1>
+            <p class="text-sm text-muted-foreground mt-1">Manufacturing batch details</p>
+        </div>
+    </div>
+    <div class="flex items-center gap-2">
+        <a href="/financials/manufacturing/{{ batch.id }}/edit"
+           class="inline-flex items-center gap-2 px-3 py-2 text-sm bg-muted text-foreground rounded-lg hover:bg-accent transition-colors">
+            <i class="ph ph-pencil"></i>
+            Edit
+        </a>
+        <form action="/financials/manufacturing/{{ batch.id }}/delete" method="POST" class="inline"
+              onsubmit="return confirm('Are you sure you want to delete this batch?')">
+            <button type="submit" class="inline-flex items-center gap-2 px-3 py-2 text-sm bg-destructive/10 text-destructive rounded-lg hover:bg-destructive/20 transition-colors">
+                <i class="ph ph-trash"></i>
+                Delete
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="grid gap-6 lg:grid-cols-3">
+    <!-- Main Content -->
+    <div class="lg:col-span-2 space-y-6">
+        <!-- Product Info Card -->
+        <div class="bg-card rounded-xl border border-border p-6">
+            <h2 class="text-lg font-medium text-foreground mb-4">Product</h2>
+            <div class="flex items-start gap-4">
+                {% if let Some(image_url) = batch.product_image %}
+                <img src="{{ image_url }}" alt="{{ batch.product_title.as_deref().unwrap_or("Product") }}"
+                     class="w-16 h-16 rounded-lg object-cover bg-muted">
+                {% else %}
+                <div class="w-16 h-16 rounded-lg bg-muted flex items-center justify-center">
+                    <i class="ph ph-package text-2xl text-muted-foreground"></i>
+                </div>
+                {% endif %}
+                <div class="flex-1">
+                    {% if let Some(title) = batch.product_title %}
+                    <h3 class="font-medium text-foreground">{{ title }}</h3>
+                    {% else %}
+                    <h3 class="font-medium text-muted-foreground italic">Product not found</h3>
+                    {% endif %}
+                    {% if let Some(variant) = batch.variant_title %}
+                    <p class="text-sm text-muted-foreground">{{ variant }}</p>
+                    {% endif %}
+                    <div class="mt-2 flex items-center gap-3 text-xs">
+                        <a href="/products/{{ batch.product_short_id }}"
+                           class="text-coral hover:underline">
+                            Product #{{ batch.product_short_id }}
+                        </a>
+                        {% if let Some(variant_id) = batch.shopify_variant_id %}
+                        <span class="text-muted-foreground">|</span>
+                        <span class="text-muted-foreground font-mono">Variant: {{ variant_id.split('/').next_back().unwrap_or(&variant_id) }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Batch Info Card -->
+        <div class="bg-card rounded-xl border border-border p-6">
+            <h2 class="text-lg font-medium text-foreground mb-4">Batch Information</h2>
+            <dl class="grid gap-4 sm:grid-cols-2">
+                <div>
+                    <dt class="text-sm text-muted-foreground">Batch Number</dt>
+                    <dd class="text-foreground font-medium">{{ batch.batch_number }}</dd>
+                </div>
+                <div>
+                    <dt class="text-sm text-muted-foreground">Manufacture Date</dt>
+                    <dd class="text-foreground">{{ batch.manufacture_date }}</dd>
+                </div>
+                <div>
+                    <dt class="text-sm text-muted-foreground">Production Quantity</dt>
+                    <dd class="text-foreground font-medium">{{ batch.quantity }} units</dd>
+                </div>
+                <div>
+                    <dt class="text-sm text-muted-foreground">Lots Received</dt>
+                    <dd class="text-foreground">{{ batch.lots_received }} units</dd>
+                </div>
+            </dl>
+            {% if let Some(notes) = batch.notes %}
+            <div class="mt-4 pt-4 border-t border-border">
+                <dt class="text-sm text-muted-foreground mb-1">Notes</dt>
+                <dd class="text-foreground text-sm">{{ notes }}</dd>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Lots Card -->
+        <div class="bg-card rounded-xl border border-border overflow-hidden">
+            <div class="px-6 py-4 border-b border-border flex items-center justify-between">
+                <h2 class="text-lg font-medium text-foreground">Inventory Lots</h2>
+                <a href="/financials/manufacturing/{{ batch.id }}/lots/new"
+                   class="inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-coral text-white rounded-lg hover:bg-coral/90 transition-colors">
+                    <i class="ph ph-plus"></i>
+                    Add Lot
+                </a>
+            </div>
+            {% if lots.is_empty() %}
+            <div class="p-8 text-center">
+                <p class="text-sm text-muted-foreground mb-4">No lots have been received for this batch yet.</p>
+                <a href="/financials/manufacturing/{{ batch.id }}/lots/new"
+                   class="inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-muted text-foreground rounded-lg hover:bg-accent transition-colors">
+                    <i class="ph ph-plus"></i>
+                    Add First Lot
+                </a>
+            </div>
+            {% else %}
+            <table class="w-full">
+                <thead class="bg-muted/50 border-b border-border">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Lot #</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Location</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Received Date</th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase">Quantity</th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase">Remaining</th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-border">
+                    {% for lot in lots %}
+                    <tr class="hover:bg-muted/30 transition-colors">
+                        <td class="px-6 py-4 text-sm font-medium text-foreground">{{ lot.lot_number }}</td>
+                        <td class="px-6 py-4 text-sm text-muted-foreground">
+                            {% if let Some(name) = lot.location_name %}
+                            {{ name }}
+                            {% else if let Some(short_id) = lot.location_short_id %}
+                            <span class="font-mono text-xs">#{{ short_id }}</span>
+                            {% else %}
+                            <span class="text-muted-foreground/50">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-sm text-muted-foreground">{{ lot.received_date }}</td>
+                        <td class="px-6 py-4 text-sm text-foreground text-right">{{ lot.quantity }}</td>
+                        <td class="px-6 py-4 text-sm text-right">
+                            {% if lot.quantity_remaining > 0 %}
+                            <span class="text-green-500">{{ lot.quantity_remaining }}</span>
+                            {% else %}
+                            <span class="text-muted-foreground">0</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-right">
+                            <a href="/financials/manufacturing/{{ batch.id }}/lots/{{ lot.id }}/edit"
+                               class="text-sm text-coral hover:underline">Edit</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="space-y-6">
+        <!-- Cost Breakdown Card -->
+        <div class="bg-card rounded-xl border border-border p-6">
+            <h2 class="text-lg font-medium text-foreground mb-4">Cost Breakdown</h2>
+            <dl class="space-y-3">
+                <div class="flex justify-between">
+                    <dt class="text-sm text-muted-foreground">Raw Cost</dt>
+                    <dd class="text-sm text-foreground">${{ batch.raw_cost_per_item }}/unit</dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt class="text-sm text-muted-foreground">Label Cost</dt>
+                    <dd class="text-sm text-foreground">${{ batch.label_cost_per_item }}/unit</dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt class="text-sm text-muted-foreground">Outer Carton Cost</dt>
+                    <dd class="text-sm text-foreground">${{ batch.outer_carton_cost_per_item }}/unit</dd>
+                </div>
+                <div class="flex justify-between pt-3 border-t border-border">
+                    <dt class="text-sm font-medium text-foreground">Cost per Unit</dt>
+                    <dd class="text-sm font-medium text-coral">${{ batch.cost_per_unit }}</dd>
+                </div>
+            </dl>
+        </div>
+
+        <!-- Total Cost Card -->
+        <div class="bg-gradient-to-r from-coral/10 to-honey/10 border border-coral/20 rounded-xl p-6">
+            <p class="text-sm text-muted-foreground">Total Batch Cost</p>
+            <p class="text-2xl font-bold text-foreground">${{ batch.total_batch_cost }} {{ batch.currency_code }}</p>
+            <p class="text-xs text-muted-foreground mt-1">{{ batch.quantity }} units @ ${{ batch.cost_per_unit }}/unit</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

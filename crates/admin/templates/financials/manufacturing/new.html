@@ -1,0 +1,234 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}New Manufacturing Batch{% endblock %}
+
+{% block page_title %}
+<div class="flex items-center gap-4">
+    <a href="/financials/manufacturing" class="text-muted-foreground hover:text-foreground transition-colors">
+        <i class="ph ph-arrow-left text-xl"></i>
+    </a>
+    <div>
+        <h1 class="text-2xl font-semibold text-foreground">New Manufacturing Batch</h1>
+        <p class="text-sm text-muted-foreground mt-1">Create a new production run</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<form action="/financials/manufacturing" method="POST" class="max-w-2xl">
+    <div class="bg-card rounded-xl border border-border p-6 space-y-6">
+        <!-- Batch Info -->
+        <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+                <label for="batch_number" class="block text-sm font-medium text-foreground mb-1">Batch Number</label>
+                <input type="text" id="batch_number" name="batch_number" required
+                       class="w-full px-3 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-colors"
+                       placeholder="e.g., BATCH-2024-001">
+            </div>
+            <div>
+                <label for="manufacture_date" class="block text-sm font-medium text-foreground mb-1">Manufacture Date</label>
+                <input type="date" id="manufacture_date" name="manufacture_date" required
+                       class="w-full px-3 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-colors">
+            </div>
+        </div>
+
+        <!-- Product Selection -->
+        <div class="border-t border-border pt-6">
+            <h3 class="text-lg font-medium text-foreground mb-4">Product</h3>
+
+            <!-- Hidden inputs for form submission -->
+            <input type="hidden" id="shopify_product_id" name="shopify_product_id" required>
+            <input type="hidden" id="shopify_variant_id" name="shopify_variant_id">
+
+            <!-- Selected Product Display -->
+            <div id="selected-product" class="hidden mb-4 p-4 bg-muted/30 rounded-lg border border-border">
+                <div class="flex items-center gap-3">
+                    <img id="selected-product-image" src="" alt="" class="w-12 h-12 rounded object-cover bg-muted hidden">
+                    <div id="selected-product-no-image" class="w-12 h-12 rounded bg-muted flex items-center justify-center">
+                        <i class="ph ph-package text-muted-foreground"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p id="selected-product-title" class="font-medium text-foreground truncate"></p>
+                        <p id="selected-product-id" class="text-xs text-muted-foreground"></p>
+                    </div>
+                    <button type="button" onclick="clearProduct()" class="text-muted-foreground hover:text-foreground">
+                        <i class="ph ph-x text-lg"></i>
+                    </button>
+                </div>
+                <!-- Variant Selection -->
+                <div id="variant-selector" class="hidden mt-3 pt-3 border-t border-border">
+                    <label for="variant_select" class="block text-sm font-medium text-foreground mb-1">Variant (optional)</label>
+                    <select id="variant_select"
+                            onchange="selectVariant(this.value)"
+                            class="w-full px-3 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-colors">
+                        <option value="">All variants / Default</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Product Picker -->
+            <div id="product-picker">
+                <label class="block text-sm font-medium text-foreground mb-2">Select Product</label>
+                {% if recent_products.is_empty() %}
+                <p class="text-sm text-muted-foreground">No products available. Enter a product ID manually below.</p>
+                <div class="mt-2">
+                    <input type="text" id="manual_product_id"
+                           oninput="setManualProductId(this.value)"
+                           class="w-full px-3 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-colors"
+                           placeholder="gid://shopify/Product/123">
+                </div>
+                {% else %}
+                <div class="grid gap-2 sm:grid-cols-2">
+                    {% for product in recent_products %}
+                    <button type="button"
+                            class="p-3 flex items-center gap-3 bg-muted/30 hover:bg-muted/50 rounded-lg border border-border transition-colors text-left"
+                            onclick="selectProduct('{{ product.id }}', '{{ product.title|escape }}', '{{ product.image_url.as_deref().unwrap_or("") }}', {{ product.variants|json }})">
+                        {% if let Some(image_url) = product.image_url %}
+                        <img src="{{ image_url }}" alt="{{ product.title }}" class="w-10 h-10 rounded object-cover bg-muted">
+                        {% else %}
+                        <div class="w-10 h-10 rounded bg-muted flex items-center justify-center shrink-0">
+                            <i class="ph ph-package text-muted-foreground"></i>
+                        </div>
+                        {% endif %}
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-medium text-foreground truncate">{{ product.title }}</p>
+                            <p class="text-xs text-muted-foreground">{{ product.variants.len() }} variants</p>
+                        </div>
+                    </button>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Quantity -->
+        <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+                <label for="quantity" class="block text-sm font-medium text-foreground mb-1">Production Quantity</label>
+                <input type="number" id="quantity" name="quantity" required min="1"
+                       class="w-full px-3 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-colors"
+                       placeholder="e.g., 1000">
+            </div>
+            <div>
+                <label for="currency_code" class="block text-sm font-medium text-foreground mb-1">Currency</label>
+                <select id="currency_code" name="currency_code"
+                        class="w-full px-3 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-colors">
+                    <option value="USD" selected>USD</option>
+                    <option value="EUR">EUR</option>
+                    <option value="GBP">GBP</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Cost Breakdown -->
+        <div class="border-t border-border pt-6">
+            <h3 class="text-lg font-medium text-foreground mb-4">Cost Breakdown (per unit)</h3>
+            <div class="grid gap-4 sm:grid-cols-3">
+                <div>
+                    <label for="raw_cost_per_item" class="block text-sm font-medium text-foreground mb-1">Raw Cost</label>
+                    <div class="relative">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                        <input type="number" id="raw_cost_per_item" name="raw_cost_per_item" required min="0" step="0.0001"
+                               class="w-full pl-7 pr-3 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-colors"
+                               placeholder="0.0000">
+                    </div>
+                </div>
+                <div>
+                    <label for="label_cost_per_item" class="block text-sm font-medium text-foreground mb-1">Label Cost</label>
+                    <div class="relative">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                        <input type="number" id="label_cost_per_item" name="label_cost_per_item" required min="0" step="0.0001"
+                               class="w-full pl-7 pr-3 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-colors"
+                               placeholder="0.0000" value="0">
+                    </div>
+                </div>
+                <div>
+                    <label for="outer_carton_cost_per_item" class="block text-sm font-medium text-foreground mb-1">Outer Carton Cost</label>
+                    <div class="relative">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                        <input type="number" id="outer_carton_cost_per_item" name="outer_carton_cost_per_item" required min="0" step="0.0001"
+                               class="w-full pl-7 pr-3 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-colors"
+                               placeholder="0.0000" value="0">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notes -->
+        <div>
+            <label for="notes" class="block text-sm font-medium text-foreground mb-1">Notes (optional)</label>
+            <textarea id="notes" name="notes" rows="3"
+                      class="w-full px-3 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-colors resize-none"
+                      placeholder="Add any additional notes about this batch..."></textarea>
+        </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="mt-6 flex items-center justify-end gap-3">
+        <a href="/financials/manufacturing" class="px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors">Cancel</a>
+        <button type="submit" class="px-4 py-2 bg-coral text-white rounded-lg hover:bg-coral/90 transition-colors">
+            Create Batch
+        </button>
+    </div>
+</form>
+
+<script>
+let selectedVariants = [];
+
+function selectProduct(id, title, imageUrl, variants) {
+    document.getElementById('shopify_product_id').value = id;
+    document.getElementById('shopify_variant_id').value = '';
+    document.getElementById('selected-product-title').textContent = title;
+    document.getElementById('selected-product-id').textContent = 'ID: ' + id.split('/').pop();
+
+    // Handle image
+    const imgEl = document.getElementById('selected-product-image');
+    const noImgEl = document.getElementById('selected-product-no-image');
+    if (imageUrl) {
+        imgEl.src = imageUrl;
+        imgEl.classList.remove('hidden');
+        noImgEl.classList.add('hidden');
+    } else {
+        imgEl.classList.add('hidden');
+        noImgEl.classList.remove('hidden');
+    }
+
+    // Handle variants
+    selectedVariants = variants || [];
+    const variantSelector = document.getElementById('variant-selector');
+    const variantSelect = document.getElementById('variant_select');
+
+    if (selectedVariants.length > 1) {
+        variantSelect.innerHTML = '<option value="">All variants / Default</option>';
+        selectedVariants.forEach(v => {
+            const opt = document.createElement('option');
+            opt.value = v.id;
+            opt.textContent = v.title + (v.sku ? ' (' + v.sku + ')' : '') + ' - ' + v.price;
+            variantSelect.appendChild(opt);
+        });
+        variantSelector.classList.remove('hidden');
+    } else {
+        variantSelector.classList.add('hidden');
+    }
+
+    document.getElementById('selected-product').classList.remove('hidden');
+    document.getElementById('product-picker').classList.add('hidden');
+}
+
+function selectVariant(variantId) {
+    document.getElementById('shopify_variant_id').value = variantId;
+}
+
+function clearProduct() {
+    document.getElementById('shopify_product_id').value = '';
+    document.getElementById('shopify_variant_id').value = '';
+    document.getElementById('selected-product').classList.add('hidden');
+    document.getElementById('product-picker').classList.remove('hidden');
+    selectedVariants = [];
+}
+
+function setManualProductId(value) {
+    document.getElementById('shopify_product_id').value = value;
+}
+</script>
+{% endblock %}

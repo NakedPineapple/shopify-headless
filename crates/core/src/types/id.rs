@@ -114,6 +114,12 @@ define_id!(AdminCredentialId);
 define_id!(ChatSessionId);
 define_id!(ChatMessageId);
 
+// Manufacturing & Inventory
+define_id!(ManufacturingBatchId);
+define_id!(BatchMetadataId);
+define_id!(InventoryLotId);
+define_id!(LotAllocationId);
+
 /// A generic placeholder ID type for migration purposes.
 ///
 /// Prefer using specific ID types like `UserId`, `OrderId`, etc.

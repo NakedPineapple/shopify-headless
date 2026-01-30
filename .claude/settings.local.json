@@ -1,0 +1,64 @@
+{
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  },
+  "permissions": {
+    "allow": [
+      "Bash(cargo doc:*)",
+      "Bash(cargo expand:*)",
+      "Bash(cargo search:*)",
+      "Bash(grep:*)",
+      "Bash(htmlq:*)",
+      "Bash(ls:*)",
+      "Bash(python3:*)",
+      "Bash(task build:*)",
+      "Bash(task check:*)",
+      "Bash(task fmt:*)",
+      "Bash(task lint:*)",
+      "Bash(task sqlx:prepare:*)",
+      "Read(~/.claude/plans/)",
+      "Skill(frontend-design)",
+      "Skill(frontend-design:frontend-design)",
+      "WebFetch(domain:askama.readthedocs.io)",
+      "WebFetch(domain:askama.rs)",
+      "WebFetch(domain:community.fly.io)",
+      "WebFetch(domain:community.shopify.com)",
+      "WebFetch(domain:community.shopify.dev)",
+      "WebFetch(domain:developer.shiphero.com)",
+      "WebFetch(domain:developers.klaviyo.com)",
+      "WebFetch(domain:developers.pinterest.com)",
+      "WebFetch(domain:docs.github.com)",
+      "WebFetch(domain:help.klaviyo.com)",
+      "WebFetch(domain:help.shopify.com)",
+      "WebFetch(domain:nakedpineapple.co)",
+      "WebFetch(domain:shopify.dev)",
+      "WebFetch(domain:tailscale.com)",
+      "Bash(cargo tree:*)"
+    ],
+    "deny": [
+      "Bash(cargo build:*)",
+      "Bash(cargo check:*)",
+      "Bash(cargo clippy:*)",
+      "Bash(cargo fmt:*)",
+      "Bash(cargo test:*)",
+      "Bash(task rust:build:*)",
+      "Read(.env)"
+    ],
+    "ask": [
+      "Bash(/bin/rm:*)",
+      "Bash(cp:*)",
+      "Bash(curl:*)",
+      "Bash(git am:*)",
+      "Bash(git commit:*)",
+      "Bash(git filter-branch:*)",
+      "Bash(git stash:*)",
+      "Bash(git worktree remove:*)",
+      "Bash(mv:*)",
+      "Bash(rm:*)",
+      "Bash(sqlite3:*)",
+      "Bash(task test:*)",
+      "Bash(task test:integration:*)"
+    ]
+  }
+}

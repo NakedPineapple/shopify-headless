@@ -733,6 +733,8 @@ pub struct Order {
     pub line_items: Vec<OrderLineItem>,
     /// Fulfillments.
     pub fulfillments: Vec<Fulfillment>,
+    /// Fulfillment orders (pending fulfillment groups).
+    pub fulfillment_orders: Vec<FulfillmentOrderDetail>,
     /// Billing address.
     pub billing_address: Option<Address>,
     /// Shipping address.

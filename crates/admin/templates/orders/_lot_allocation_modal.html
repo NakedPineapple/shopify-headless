@@ -1,0 +1,90 @@
+{#
+    Lot Allocation Modal Partial
+
+    Variables:
+    - order: OrderDetailView with short_id, line_items
+    - available_lots: Vec<AvailableLotView>
+#}
+
+<!-- Lot Allocation Modal -->
+<div id="lot-allocation-modal" class="hidden fixed inset-0 z-50 overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen px-4">
+        <div class="fixed inset-0 bg-black/50" onclick="closeLotAllocationModal()"></div>
+        <div class="relative bg-card rounded-xl border border-border max-w-lg w-full p-6">
+            <h3 class="text-lg font-semibold text-foreground mb-4">
+                <i class="ph ph-package mr-2"></i>Allocate Inventory Lot
+            </h3>
+            <form id="lot-allocation-form" action="" method="POST">
+                <input type="hidden" name="line_item_id" id="alloc-line-item-id" value="">
+
+                <div class="space-y-4">
+                    <!-- Line item info -->
+                    <div class="bg-muted/50 rounded-lg p-3">
+                        <p class="text-sm font-medium text-foreground" id="alloc-line-item-title"></p>
+                        <p class="text-xs text-muted-foreground" id="alloc-line-item-quantity"></p>
+                    </div>
+
+                    <!-- Lot selection -->
+                    <div>
+                        <label class="block text-sm font-medium text-foreground mb-2">Select Lot</label>
+                        <select name="lot_id" required
+                                class="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm text-foreground">
+                            <option value="">Choose a lot...</option>
+                            {% for lot in available_lots %}
+                            <option value="{{ lot.id }}"
+                                    data-remaining="{{ lot.quantity_remaining }}"
+                                    data-cost="{{ lot.cost_per_unit }}">
+                                {{ lot.lot_number }} ({{ lot.batch_number }}) - {{ lot.quantity_remaining }} available @ {{ lot.cost_per_unit }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        {% if available_lots.is_empty() %}
+                        <p class="text-xs text-warning mt-1">
+                            <i class="ph ph-warning mr-1"></i>No inventory lots available for this product
+                        </p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Quantity -->
+                    <div>
+                        <label class="block text-sm font-medium text-foreground mb-2">Quantity to Allocate</label>
+                        <input type="number" name="quantity" id="alloc-quantity" required min="1"
+                               class="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-ring focus:border-ring"
+                               placeholder="Enter quantity...">
+                        <p class="text-xs text-muted-foreground mt-1" id="alloc-remaining-hint"></p>
+                    </div>
+                </div>
+
+                <div class="mt-6 flex items-center justify-end gap-3">
+                    <button type="button" onclick="closeLotAllocationModal()"
+                            class="px-4 py-2 bg-card border border-border rounded-lg text-sm font-medium text-foreground hover:bg-muted transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit"
+                            class="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
+                            {% if available_lots.is_empty() %}disabled{% endif %}>
+                        <i class="ph ph-check mr-2"></i>Allocate
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function openLotAllocationModal(lineItemId, lineItemTitle, quantity, neededQty, orderId) {
+    document.getElementById('alloc-line-item-id').value = lineItemId;
+    document.getElementById('alloc-line-item-title').textContent = lineItemTitle;
+    document.getElementById('alloc-line-item-quantity').textContent =
+        'Ordered: ' + quantity + ' | Still needs allocation: ' + neededQty;
+    document.getElementById('alloc-quantity').max = neededQty;
+    document.getElementById('alloc-quantity').value = neededQty;
+    document.getElementById('alloc-remaining-hint').textContent = 'Max: ' + neededQty + ' units needed';
+    document.getElementById('lot-allocation-form').action = '/orders/' + orderId + '/allocate-lot';
+    document.getElementById('lot-allocation-modal').classList.remove('hidden');
+}
+
+function closeLotAllocationModal() {
+    document.getElementById('lot-allocation-modal').classList.add('hidden');
+}
+</script>

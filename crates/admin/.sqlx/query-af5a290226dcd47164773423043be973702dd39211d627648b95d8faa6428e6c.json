@@ -1,0 +1,76 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                l.id, l.batch_id, l.lot_number, l.quantity,\n                l.received_date as \"received_date: NaiveDate\",\n                l.shopify_location_id, l.notes,\n                l.created_at as \"created_at: DateTime<Utc>\",\n                l.updated_at as \"updated_at: DateTime<Utc>\",\n                (l.quantity - COALESCE(SUM(a.quantity), 0))::bigint as \"quantity_remaining!\"\n            FROM admin.inventory_lot l\n            LEFT JOIN admin.lot_allocation a ON a.lot_id = l.id\n            WHERE l.id = $1\n            GROUP BY l.id\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "batch_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "lot_number",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "quantity",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 4,
+        "name": "received_date: NaiveDate",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 5,
+        "name": "shopify_location_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "notes",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "created_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "updated_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "quantity_remaining!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "af5a290226dcd47164773423043be973702dd39211d627648b95d8faa6428e6c"
+}

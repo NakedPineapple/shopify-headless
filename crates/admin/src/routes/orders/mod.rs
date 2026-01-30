@@ -19,7 +19,8 @@ pub use list::{OrdersIndexTemplate, index};
 
 // Re-export detail handlers
 pub use detail::{
-    CancelFormInput, NoteFormInput, OrderShowTemplate, cancel, mark_paid, show, update_note,
+    AllocateLotFormInput, AutoAllocateFormInput, CancelFormInput, NoteFormInput, OrderShowTemplate,
+    allocate_lot, auto_allocate_lot, cancel, deallocate_lot, mark_paid, show, update_note,
 };
 
 // Re-export bulk handlers
@@ -52,7 +53,7 @@ pub use edit::{
 
 // Re-export additional types from types module that might be needed externally
 pub use types::{
-    AddressView, EditLineItemView, EditShippingLineView, FulfilledLineItemView,
-    FulfillmentOrderLineItemView, FulfillmentOrderView, FulfillmentView, LineItemView,
-    OrderEditView, RiskView, TimelineEventView, TransactionView,
+    AddressView, AvailableLotView, EditLineItemView, EditShippingLineView, FulfilledLineItemView,
+    FulfillmentOrderLineItemView, FulfillmentOrderView, FulfillmentView, LineItemAllocationView,
+    LineItemView, OrderEditView, RiskView, TimelineEventView, TransactionView,
 };

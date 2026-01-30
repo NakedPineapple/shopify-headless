@@ -54,29 +54,33 @@
         <!-- Line Items -->
         <div class="divide-y divide-border">
             {% for item in fo.line_items %}
-            <div class="px-6 py-4 flex items-center gap-4">
-                {% if let Some(image) = item.image %}
-                <img src="{{ image }}" alt="" class="w-12 h-12 rounded-lg object-cover bg-muted">
-                {% else %}
-                <div class="w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
-                    <i class="ph ph-package text-muted-foreground"></i>
-                </div>
-                {% endif %}
-                <div class="flex-1 min-w-0">
-                    <p class="font-medium text-foreground truncate">{{ item.title }}</p>
-                    {% if let Some(variant) = item.variant_title %}
-                    <p class="text-sm text-muted-foreground">{{ variant }}</p>
+            <div class="px-6 py-4">
+                <div class="flex items-center gap-4">
+                    {% if let Some(image) = item.image %}
+                    <img src="{{ image }}" alt="" class="w-12 h-12 rounded-lg object-cover bg-muted">
+                    {% else %}
+                    <div class="w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
+                        <i class="ph ph-package text-muted-foreground"></i>
+                    </div>
                     {% endif %}
-                    {% if let Some(sku) = item.sku %}
-                    <p class="text-xs text-muted-foreground">SKU: {{ sku }}</p>
-                    {% endif %}
+                    <div class="flex-1 min-w-0">
+                        <p class="font-medium text-foreground truncate">{{ item.title }}</p>
+                        {% if let Some(variant) = item.variant_title %}
+                        <p class="text-sm text-muted-foreground">{{ variant }}</p>
+                        {% endif %}
+                        {% if let Some(sku) = item.sku %}
+                        <p class="text-xs text-muted-foreground">SKU: {{ sku }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="text-right">
+                        <p class="text-sm font-medium text-foreground">
+                            {{ item.remaining_quantity }} of {{ item.total_quantity }}
+                        </p>
+                        <p class="text-xs text-muted-foreground">to fulfill</p>
+                    </div>
                 </div>
-                <div class="text-right">
-                    <p class="text-sm font-medium text-foreground">
-                        {{ item.remaining_quantity }} of {{ item.total_quantity }}
-                    </p>
-                    <p class="text-xs text-muted-foreground">to fulfill</p>
-                </div>
+                {# Include lot allocation UI for this line item #}
+                {% include "orders/_line_item_allocations.html" %}
             </div>
             {% endfor %}
         </div>

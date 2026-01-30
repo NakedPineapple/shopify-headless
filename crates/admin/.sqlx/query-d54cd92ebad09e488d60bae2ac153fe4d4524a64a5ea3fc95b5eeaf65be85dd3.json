@@ -1,0 +1,62 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO admin.lot_allocation (\n                lot_id, shopify_order_id, shopify_line_item_id,\n                quantity, allocated_by\n            )\n            VALUES ($1, $2, $3, $4, $5)\n            RETURNING\n                id, lot_id, shopify_order_id, shopify_line_item_id,\n                quantity,\n                allocated_at as \"allocated_at: DateTime<Utc>\",\n                allocated_by\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "lot_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "shopify_order_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "shopify_line_item_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "quantity",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 5,
+        "name": "allocated_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "allocated_by",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Text",
+        "Text",
+        "Int4",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "d54cd92ebad09e488d60bae2ac153fe4d4524a64a5ea3fc95b5eeaf65be85dd3"
+}

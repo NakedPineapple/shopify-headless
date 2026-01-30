@@ -1,0 +1,99 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}New Lot - {{ batch.batch_number }}{% endblock %}
+
+{% block page_title %}
+<div class="flex items-center gap-4">
+    <a href="/financials/manufacturing/{{ batch.id }}" class="text-muted-foreground hover:text-foreground transition-colors">
+        <i class="ph ph-arrow-left text-xl"></i>
+    </a>
+    <div>
+        <h1 class="text-2xl font-semibold text-foreground">Add Inventory Lot</h1>
+        <p class="text-sm text-muted-foreground mt-1">Batch {{ batch.batch_number }}</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<form action="/financials/manufacturing/{{ batch.id }}/lots" method="POST" class="max-w-xl">
+    <div class="bg-card rounded-xl border border-border p-6 space-y-6">
+        <!-- Batch Context -->
+        <div class="flex items-center gap-3 p-3 bg-muted/30 rounded-lg">
+            {% if let Some(image_url) = batch.product_image %}
+            <img src="{{ image_url }}" alt="{{ batch.product_title.as_deref().unwrap_or("Product") }}"
+                 class="w-10 h-10 rounded object-cover bg-muted">
+            {% else %}
+            <div class="w-10 h-10 rounded bg-muted flex items-center justify-center">
+                <i class="ph ph-package text-muted-foreground"></i>
+            </div>
+            {% endif %}
+            <div class="flex-1 min-w-0">
+                {% if let Some(title) = batch.product_title %}
+                <p class="text-sm font-medium text-foreground truncate">{{ title }}</p>
+                {% else %}
+                <p class="text-sm font-medium text-muted-foreground">Product #{{ batch.product_short_id }}</p>
+                {% endif %}
+                <p class="text-xs text-muted-foreground">{{ batch.quantity }} units @ ${{ batch.cost_per_unit }}/unit</p>
+            </div>
+        </div>
+
+        <!-- Lot Info -->
+        <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+                <label for="lot_number" class="block text-sm font-medium text-foreground mb-1">Lot Number</label>
+                <input type="text" id="lot_number" name="lot_number" required
+                       class="w-full px-3 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-colors"
+                       placeholder="e.g., {{ batch.batch_number }}-L1">
+            </div>
+            <div>
+                <label for="received_date" class="block text-sm font-medium text-foreground mb-1">Received Date</label>
+                <input type="date" id="received_date" name="received_date" required
+                       class="w-full px-3 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-colors">
+            </div>
+        </div>
+
+        <!-- Quantity and Location -->
+        <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+                <label for="quantity" class="block text-sm font-medium text-foreground mb-1">Quantity Received</label>
+                <input type="number" id="quantity" name="quantity" required min="1"
+                       class="w-full px-3 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-colors"
+                       placeholder="e.g., 500">
+                <p class="text-xs text-muted-foreground mt-1">Batch quantity: {{ batch.quantity }} | Received so far: {{ batch.lots_received }}</p>
+            </div>
+            <div>
+                <label for="shopify_location_id" class="block text-sm font-medium text-foreground mb-1">Location (optional)</label>
+                {% if locations.is_empty() %}
+                <input type="text" id="shopify_location_id" name="shopify_location_id"
+                       class="w-full px-3 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-colors"
+                       placeholder="gid://shopify/Location/123">
+                {% else %}
+                <select id="shopify_location_id" name="shopify_location_id"
+                        class="w-full px-3 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-colors">
+                    <option value="">No location</option>
+                    {% for location in locations %}
+                    <option value="{{ location.id }}">{{ location.name }}</option>
+                    {% endfor %}
+                </select>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Notes -->
+        <div>
+            <label for="notes" class="block text-sm font-medium text-foreground mb-1">Notes (optional)</label>
+            <textarea id="notes" name="notes" rows="2"
+                      class="w-full px-3 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-colors resize-none"
+                      placeholder="Add any notes about this lot..."></textarea>
+        </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="mt-6 flex items-center justify-end gap-3">
+        <a href="/financials/manufacturing/{{ batch.id }}" class="px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors">Cancel</a>
+        <button type="submit" class="px-4 py-2 bg-coral text-white rounded-lg hover:bg-coral/90 transition-colors">
+            Add Lot
+        </button>
+    </div>
+</form>
+{% endblock %}

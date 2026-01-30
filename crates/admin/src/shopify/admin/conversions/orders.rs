@@ -1,10 +1,12 @@
 //! Order type conversion functions.
 
 use crate::shopify::types::{
-    Address, DeliveryCategory, FinancialStatus, Fulfillment, FulfillmentStatus, Money, Order,
+    Address, DeliveryCategory, FinancialStatus, Fulfillment, FulfillmentOrderAction,
+    FulfillmentOrderDetail, FulfillmentOrderLineItemDetail, FulfillmentStatus, Image, Money, Order,
     OrderChannelInfo, OrderConnection, OrderLineItem, OrderListConnection, OrderListItem,
     OrderReturnStatus, OrderRisk, OrderRiskLevel, OrderShippingLine, PageInfo, TrackingInfo,
 };
+// Note: Image is also imported at bottom of file for order_edit conversions, using same type.
 
 use super::super::queries::{get_order, get_orders};
 use super::currency_code_to_string;
@@ -69,6 +71,12 @@ pub fn convert_order(order: get_order::GetOrderOrder) -> Order {
             .fulfillments
             .into_iter()
             .map(convert_fulfillment_obj_single)
+            .collect(),
+        fulfillment_orders: order
+            .fulfillment_orders
+            .edges
+            .into_iter()
+            .map(|e| convert_fulfillment_order_single(e.node))
             .collect(),
         billing_address: order.billing_address.map(convert_billing_single),
         shipping_address: order.shipping_address.map(convert_shipping_single),
@@ -241,6 +249,78 @@ fn convert_shipping_single(a: get_order::GetOrderOrderShippingAddress) -> Addres
     }
 }
 
+fn convert_fulfillment_order_single(
+    fo: get_order::GetOrderOrderFulfillmentOrdersEdgesNode,
+) -> FulfillmentOrderDetail {
+    FulfillmentOrderDetail {
+        id: fo.id,
+        status: format!("{:?}", fo.status),
+        request_status: Some(format!("{:?}", fo.request_status)),
+        location_id: fo
+            .assigned_location
+            .location
+            .as_ref()
+            .map(|loc| loc.id.clone()),
+        location_name: Some(fo.assigned_location.name),
+        supported_actions: fo
+            .supported_actions
+            .into_iter()
+            .filter_map(|a| convert_fulfillment_order_action(&a.action))
+            .collect(),
+        line_items: fo
+            .line_items
+            .edges
+            .into_iter()
+            .map(|e| convert_fulfillment_order_line_item_single(e.node))
+            .collect(),
+    }
+}
+
+const fn convert_fulfillment_order_action(
+    action: &get_order::FulfillmentOrderAction,
+) -> Option<FulfillmentOrderAction> {
+    match action {
+        get_order::FulfillmentOrderAction::CREATE_FULFILLMENT => {
+            Some(FulfillmentOrderAction::CreateFulfillment)
+        }
+        get_order::FulfillmentOrderAction::REQUEST_FULFILLMENT => {
+            Some(FulfillmentOrderAction::RequestFulfillment)
+        }
+        get_order::FulfillmentOrderAction::CANCEL_FULFILLMENT_ORDER => {
+            Some(FulfillmentOrderAction::CancelFulfillmentOrder)
+        }
+        get_order::FulfillmentOrderAction::MOVE => Some(FulfillmentOrderAction::Move),
+        get_order::FulfillmentOrderAction::HOLD => Some(FulfillmentOrderAction::Hold),
+        get_order::FulfillmentOrderAction::RELEASE_HOLD => {
+            Some(FulfillmentOrderAction::ReleaseHold)
+        }
+        get_order::FulfillmentOrderAction::MARK_AS_OPEN => Some(FulfillmentOrderAction::MarkAsOpen),
+        _ => None,
+    }
+}
+
+fn convert_fulfillment_order_line_item_single(
+    li: get_order::GetOrderOrderFulfillmentOrdersEdgesNodeLineItemsEdgesNode,
+) -> FulfillmentOrderLineItemDetail {
+    let line_item = li.line_item;
+    FulfillmentOrderLineItemDetail {
+        id: li.id,
+        total_quantity: li.total_quantity,
+        remaining_quantity: li.remaining_quantity,
+        line_item_id: line_item.id.clone(),
+        title: line_item.title,
+        variant_title: line_item.variant_title,
+        sku: line_item.sku,
+        image: line_item.image.map(|img| Image {
+            id: None,
+            url: img.url,
+            alt_text: img.alt_text,
+            width: None,
+            height: None,
+        }),
+    }
+}
+
 // =============================================================================
 // GetOrders conversions
 // =============================================================================
@@ -296,6 +376,7 @@ fn convert_order_list(order: get_orders::GetOrdersOrdersEdgesNode) -> Order {
             .into_iter()
             .map(convert_fulfillment_obj_list)
             .collect(),
+        fulfillment_orders: vec![], // GetOrders query doesn't include fulfillment orders
         billing_address: order.billing_address.map(convert_billing_list),
         shipping_address: order.shipping_address.map(convert_shipping_list),
         customer_id: order.customer.map(|c| c.id),
@@ -679,7 +760,7 @@ fn convert_fulfillment_order_line_item(
 use super::super::queries::order_edit_begin;
 use crate::shopify::types::{
     CalculatedDiscountAllocation, CalculatedLineItem, CalculatedOrder, CalculatedShippingLine,
-    CalculatedShippingLineStagedStatus, Image,
+    CalculatedShippingLineStagedStatus,
 };
 
 /// Convert `OrderEditBegin` response to `CalculatedOrder`.

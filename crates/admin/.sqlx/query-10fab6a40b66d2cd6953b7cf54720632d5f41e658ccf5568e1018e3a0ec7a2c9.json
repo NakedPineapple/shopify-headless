@@ -1,0 +1,106 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                id, batch_number, shopify_product_id, shopify_variant_id,\n                quantity,\n                manufacture_date as \"manufacture_date: NaiveDate\",\n                raw_cost_per_item, label_cost_per_item, outer_carton_cost_per_item,\n                cost_per_unit as \"cost_per_unit!: Decimal\",\n                total_batch_cost as \"total_batch_cost!: Decimal\",\n                currency_code, notes,\n                created_at as \"created_at: DateTime<Utc>\",\n                updated_at as \"updated_at: DateTime<Utc>\"\n            FROM admin.manufacturing_batch\n            WHERE id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "batch_number",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "shopify_product_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "shopify_variant_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "quantity",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 5,
+        "name": "manufacture_date: NaiveDate",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 6,
+        "name": "raw_cost_per_item",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 7,
+        "name": "label_cost_per_item",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 8,
+        "name": "outer_carton_cost_per_item",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 9,
+        "name": "cost_per_unit!: Decimal",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 10,
+        "name": "total_batch_cost!: Decimal",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 11,
+        "name": "currency_code",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 12,
+        "name": "notes",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 13,
+        "name": "created_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 14,
+        "name": "updated_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "10fab6a40b66d2cd6953b7cf54720632d5f41e658ccf5568e1018e3a0ec7a2c9"
+}

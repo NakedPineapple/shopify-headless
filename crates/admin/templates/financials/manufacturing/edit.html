@@ -1,0 +1,120 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Edit Batch {{ batch.batch_number }}{% endblock %}
+
+{% block page_title %}
+<div class="flex items-center gap-4">
+    <a href="/financials/manufacturing/{{ batch.id }}" class="text-muted-foreground hover:text-foreground transition-colors">
+        <i class="ph ph-arrow-left text-xl"></i>
+    </a>
+    <div>
+        <h1 class="text-2xl font-semibold text-foreground">Edit {{ batch.batch_number }}</h1>
+        <p class="text-sm text-muted-foreground mt-1">Update batch details</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<form action="/financials/manufacturing/{{ batch.id }}" method="POST" class="max-w-2xl">
+    <div class="bg-card rounded-xl border border-border p-6 space-y-6">
+        <!-- Batch Info -->
+        <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+                <label for="batch_number" class="block text-sm font-medium text-foreground mb-1">Batch Number</label>
+                <input type="text" id="batch_number" name="batch_number"
+                       class="w-full px-3 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-colors"
+                       value="{{ batch.batch_number }}">
+            </div>
+            <div>
+                <label for="manufacture_date" class="block text-sm font-medium text-foreground mb-1">Manufacture Date</label>
+                <input type="date" id="manufacture_date" name="manufacture_date"
+                       class="w-full px-3 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-colors"
+                       value="{{ batch.manufacture_date }}">
+            </div>
+        </div>
+
+        <!-- Product Info (read-only) -->
+        <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+                <label class="block text-sm font-medium text-foreground mb-1">Shopify Product ID</label>
+                <p class="px-3 py-2 bg-muted border border-border rounded-lg text-muted-foreground text-sm font-mono">{{ batch.shopify_product_id }}</p>
+                <p class="text-xs text-muted-foreground mt-1">Cannot be changed after creation</p>
+            </div>
+            {% if let Some(variant_id) = batch.shopify_variant_id %}
+            <div>
+                <label class="block text-sm font-medium text-foreground mb-1">Shopify Variant ID</label>
+                <p class="px-3 py-2 bg-muted border border-border rounded-lg text-muted-foreground text-sm font-mono">{{ variant_id }}</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Quantity -->
+        <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+                <label for="quantity" class="block text-sm font-medium text-foreground mb-1">Production Quantity</label>
+                <input type="number" id="quantity" name="quantity" min="1"
+                       class="w-full px-3 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-colors"
+                       value="{{ batch.quantity }}">
+            </div>
+            <div>
+                <label for="currency_code" class="block text-sm font-medium text-foreground mb-1">Currency</label>
+                <select id="currency_code" name="currency_code"
+                        class="w-full px-3 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-colors">
+                    <option value="USD" {% if batch.currency_code == "USD" %}selected{% endif %}>USD</option>
+                    <option value="EUR" {% if batch.currency_code == "EUR" %}selected{% endif %}>EUR</option>
+                    <option value="GBP" {% if batch.currency_code == "GBP" %}selected{% endif %}>GBP</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Cost Breakdown -->
+        <div class="border-t border-border pt-6">
+            <h3 class="text-lg font-medium text-foreground mb-4">Cost Breakdown (per unit)</h3>
+            <div class="grid gap-4 sm:grid-cols-3">
+                <div>
+                    <label for="raw_cost_per_item" class="block text-sm font-medium text-foreground mb-1">Raw Cost</label>
+                    <div class="relative">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                        <input type="number" id="raw_cost_per_item" name="raw_cost_per_item" min="0" step="0.0001"
+                               class="w-full pl-7 pr-3 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-colors"
+                               value="{{ batch.raw_cost_per_item }}">
+                    </div>
+                </div>
+                <div>
+                    <label for="label_cost_per_item" class="block text-sm font-medium text-foreground mb-1">Label Cost</label>
+                    <div class="relative">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                        <input type="number" id="label_cost_per_item" name="label_cost_per_item" min="0" step="0.0001"
+                               class="w-full pl-7 pr-3 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-colors"
+                               value="{{ batch.label_cost_per_item }}">
+                    </div>
+                </div>
+                <div>
+                    <label for="outer_carton_cost_per_item" class="block text-sm font-medium text-foreground mb-1">Outer Carton Cost</label>
+                    <div class="relative">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                        <input type="number" id="outer_carton_cost_per_item" name="outer_carton_cost_per_item" min="0" step="0.0001"
+                               class="w-full pl-7 pr-3 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-colors"
+                               value="{{ batch.outer_carton_cost_per_item }}">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notes -->
+        <div>
+            <label for="notes" class="block text-sm font-medium text-foreground mb-1">Notes (optional)</label>
+            <textarea id="notes" name="notes" rows="3"
+                      class="w-full px-3 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-colors resize-none">{% if let Some(notes) = batch.notes %}{{ notes }}{% endif %}</textarea>
+        </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="mt-6 flex items-center justify-end gap-3">
+        <a href="/financials/manufacturing/{{ batch.id }}" class="px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors">Cancel</a>
+        <button type="submit" class="px-4 py-2 bg-coral text-white rounded-lg hover:bg-coral/90 transition-colors">
+            Save Changes
+        </button>
+    </div>
+</form>
+{% endblock %}

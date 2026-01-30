@@ -54,6 +54,7 @@ pub mod collections;
 pub mod customers;
 pub mod dashboard;
 pub mod discounts;
+pub mod financials;
 pub mod gift_cards;
 pub mod inventory;
 pub mod newsletter;
@@ -249,6 +250,16 @@ fn order_routes() -> Router<AppState> {
         .route("/orders/bulk/remove-tags", post(orders::bulk_remove_tags))
         .route("/orders/bulk/archive", post(orders::bulk_archive))
         .route("/orders/bulk/cancel", post(orders::bulk_cancel))
+        // Lot allocation routes
+        .route("/orders/{id}/allocate-lot", post(orders::allocate_lot))
+        .route(
+            "/orders/{id}/auto-allocate",
+            post(orders::auto_allocate_lot),
+        )
+        .route(
+            "/orders/{id}/allocations/{allocation_id}/delete",
+            post(orders::deallocate_lot),
+        )
 }
 
 /// Build discount routes.
@@ -389,6 +400,8 @@ pub fn routes() -> Router<AppState> {
         .merge(analytics_routes())
         .merge(payout_routes())
         .merge(admin_user_routes())
+        // Financials (manufacturing, lots)
+        .merge(financials::router())
         // Newsletter (Klaviyo)
         .merge(newsletter::router())
         // Auth

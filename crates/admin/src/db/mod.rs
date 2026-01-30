@@ -23,6 +23,8 @@
 pub mod admin_invites;
 pub mod admin_users;
 pub mod chat;
+pub mod inventory_lot;
+pub mod manufacturing;
 pub mod pending_actions;
 pub mod settings;
 pub mod shopify;
@@ -38,6 +40,8 @@ use thiserror::Error;
 pub use admin_invites::{AdminInvite, AdminInviteRepository};
 pub use admin_users::AdminUserRepository;
 pub use chat::ChatRepository;
+pub use inventory_lot::InventoryLotRepository;
+pub use manufacturing::ManufacturingRepository;
 pub use shopify::ShopifyTokenRepository;
 
 /// Errors that can occur during repository operations.

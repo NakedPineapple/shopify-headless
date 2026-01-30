@@ -121,6 +121,43 @@ query GetOrder($id: ID!, $lineItemCount: Int = 50, $fulfillmentCount: Int = 10) 
       createdAt
       updatedAt
     }
+    fulfillmentOrders(first: 20) {
+      edges {
+        node {
+          id
+          status
+          requestStatus
+          supportedActions {
+            action
+          }
+          assignedLocation {
+            name
+            location {
+              id
+            }
+          }
+          lineItems(first: 50) {
+            edges {
+              node {
+                id
+                totalQuantity
+                remainingQuantity
+                lineItem {
+                  id
+                  title
+                  variantTitle
+                  sku
+                  image {
+                    url
+                    altText
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
   }
 }
 

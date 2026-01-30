@@ -609,15 +609,64 @@ impl From<&Order> for OrderView {
 // Order Detail Views
 // =============================================================================
 
+/// Lot allocation view for line items.
+#[derive(Debug, Clone)]
+pub struct LineItemAllocationView {
+    /// Allocation ID.
+    pub id: i32,
+    /// Lot ID.
+    pub lot_id: i32,
+    /// Lot number display.
+    pub lot_number: String,
+    /// Batch number display.
+    pub batch_number: String,
+    /// Quantity allocated from this lot.
+    pub quantity: i32,
+    /// Cost per unit from the lot's batch.
+    pub cost_per_unit: String,
+    /// When the allocation was made.
+    pub allocated_at: String,
+}
+
+/// Available lot for allocation selection.
+#[derive(Debug, Clone)]
+pub struct AvailableLotView {
+    /// Lot ID.
+    pub id: i32,
+    /// Lot number.
+    pub lot_number: String,
+    /// Batch number.
+    pub batch_number: String,
+    /// Quantity remaining.
+    pub quantity_remaining: i64,
+    /// Cost per unit formatted.
+    pub cost_per_unit: String,
+    /// Received date formatted.
+    pub received_date: String,
+}
+
 /// Line item view for templates.
 #[derive(Debug, Clone)]
 pub struct LineItemView {
+    pub id: String,
     pub title: String,
     pub variant_title: Option<String>,
     pub sku: Option<String>,
     pub quantity: i64,
     pub unit_price: String,
     pub total_price: String,
+    /// Shopify product GID for lot matching.
+    pub product_id: Option<String>,
+    /// Shopify variant GID.
+    pub variant_id: Option<String>,
+    /// Lot allocations for this line item.
+    pub allocations: Vec<LineItemAllocationView>,
+    /// Total quantity allocated from lots.
+    pub allocated_quantity: i64,
+    /// Quantity still needing allocation.
+    pub needed_quantity: i64,
+    /// Whether fully allocated.
+    pub is_fully_allocated: bool,
 }
 
 // Precision loss from i64 -> f64 is acceptable here since order quantities
@@ -633,12 +682,19 @@ impl From<&OrderLineItem> for LineItemView {
             .unwrap_or(0.0)
             * item.quantity as f64;
         Self {
+            id: item.id.clone(),
             title: item.title.clone(),
             variant_title: item.variant_title.clone(),
             sku: item.sku.clone(),
             quantity: item.quantity,
             unit_price,
             total_price: format!("${total:.2}"),
+            product_id: item.product_id.clone(),
+            variant_id: item.variant_id.clone(),
+            allocations: vec![],
+            allocated_quantity: 0,
+            needed_quantity: item.quantity,
+            is_fully_allocated: false,
         }
     }
 }
@@ -756,6 +812,20 @@ pub struct FulfillmentOrderLineItemView {
     pub image: Option<String>,
     pub total_quantity: i64,
     pub remaining_quantity: i64,
+    /// Shopify product GID for lot matching.
+    pub product_id: Option<String>,
+    /// Shopify variant GID.
+    pub variant_id: Option<String>,
+    /// Lot allocations for this line item.
+    pub allocations: Vec<LineItemAllocationView>,
+    /// Total quantity allocated from lots.
+    pub allocated_quantity: i64,
+    /// Quantity still needing allocation (for template compatibility with `LineItemView`).
+    pub needed_quantity: i64,
+    /// Alias for `total_quantity` (for template compatibility with `LineItemView`).
+    pub quantity: i64,
+    /// Whether fully allocated.
+    pub is_fully_allocated: bool,
 }
 
 /// Fulfillment order view for templates.
@@ -898,12 +968,68 @@ pub fn financial_status_display(order: &Order) -> (String, String, bool) {
     }
 }
 
+/// Convert a fulfillment order to view with product ID lookup.
+fn convert_fulfillment_order_to_view(
+    fo: &crate::shopify::types::FulfillmentOrderDetail,
+    line_item_map: &std::collections::HashMap<&str, (&Option<String>, &Option<String>)>,
+) -> FulfillmentOrderView {
+    let line_items = fo
+        .line_items
+        .iter()
+        .map(|li| {
+            let (product_id, variant_id) = line_item_map
+                .get(li.line_item_id.as_str())
+                .map_or((None, None), |(pid, vid)| ((*pid).clone(), (*vid).clone()));
+            FulfillmentOrderLineItemView {
+                // Use line_item_id as id since allocations are stored against it
+                id: li.line_item_id.clone(),
+                title: li.title.clone(),
+                variant_title: li.variant_title.clone(),
+                sku: li.sku.clone(),
+                image: li.image.as_ref().map(|img| img.url.clone()),
+                total_quantity: li.total_quantity,
+                remaining_quantity: li.remaining_quantity,
+                product_id,
+                variant_id,
+                allocations: vec![],
+                allocated_quantity: 0,
+                needed_quantity: li.remaining_quantity,
+                quantity: li.remaining_quantity,
+                is_fully_allocated: false,
+            }
+        })
+        .collect();
+    FulfillmentOrderView {
+        id: fo.id.clone(),
+        status: fo.status.clone(),
+        location_name: fo.location_name.clone(),
+        line_items,
+    }
+}
+
+/// Convert fulfillment orders to views with product ID lookup from line items.
+fn convert_fulfillment_orders(order: &Order) -> Vec<FulfillmentOrderView> {
+    // Build a mapping from line_item_id -> (product_id, variant_id)
+    let line_item_map: std::collections::HashMap<&str, (&Option<String>, &Option<String>)> = order
+        .line_items
+        .iter()
+        .map(|li| (li.id.as_str(), (&li.product_id, &li.variant_id)))
+        .collect();
+
+    order
+        .fulfillment_orders
+        .iter()
+        .map(|fo| convert_fulfillment_order_to_view(fo, &line_item_map))
+        .collect()
+}
+
 impl From<&Order> for OrderDetailView {
     fn from(order: &Order) -> Self {
         let short_id = extract_numeric_id(&order.id);
         let (fulfillment_status, fulfillment_status_class) = fulfillment_status_display(order);
         let (financial_status, financial_status_class, is_paid) = financial_status_display(order);
         let total_str = format_price(&order.total_price);
+        let fulfillment_orders = convert_fulfillment_orders(order);
 
         Self {
             id: order.id.clone(),
@@ -956,7 +1082,7 @@ impl From<&Order> for OrderDetailView {
             tags: vec![],
 
             line_items: order.line_items.iter().map(LineItemView::from).collect(),
-            fulfillment_orders: vec![],
+            fulfillment_orders,
             fulfillments: order
                 .fulfillments
                 .iter()
