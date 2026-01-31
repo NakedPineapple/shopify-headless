@@ -84,7 +84,8 @@ pub struct UnsubscribeForm {
 
 /// Subscribe to newsletter (HTMX).
 ///
-/// Creates a new Shopify customer with `acceptsMarketing: true`.
+/// Creates a new Shopify customer with `acceptsMarketing: true` and
+/// subscribes them to the Klaviyo email list for direct email marketing.
 /// If the email already exists, shows a success message (they're already
 /// in the system and can manage preferences via their account).
 #[instrument(skip(state), fields(email = %form.email))]
@@ -103,7 +104,24 @@ pub async fn subscribe(
         .into_response();
     }
 
-    // Create a new customer with marketing consent
+    // Subscribe to Klaviyo list (primary email marketing platform)
+    if let Some(klaviyo_config) = state.config().klaviyo.as_ref() {
+        match KlaviyoClient::new(klaviyo_config) {
+            Ok(client) => {
+                if let Err(e) = client.subscribe_email(&email).await {
+                    tracing::warn!(email = %email, error = %e, "Klaviyo subscription failed");
+                    // Continue anyway - Shopify sync will eventually add them
+                } else {
+                    tracing::info!(email = %email, "Klaviyo subscription successful");
+                }
+            }
+            Err(e) => {
+                tracing::warn!(error = %e, "Failed to create Klaviyo client");
+            }
+        }
+    }
+
+    // Create a new Shopify customer with marketing consent
     // Using a random password since they won't use it (newsletter-only subscription)
     let password = generate_random_password();
 
@@ -113,7 +131,7 @@ pub async fn subscribe(
         .await
     {
         Ok(_customer) => {
-            tracing::info!(email = %email, "Newsletter subscription successful");
+            tracing::info!(email = %email, "Shopify customer created with marketing consent");
             SubscribeSuccessTemplate {
                 email: email.clone(),
             }
@@ -128,13 +146,13 @@ pub async fn subscribe(
                 || error_message.contains("already exists")
             {
                 // Treat as success - they're already in the system
-                tracing::info!(email = %email, "Email already exists - treating as success");
+                tracing::info!(email = %email, "Email already exists in Shopify - treating as success");
                 SubscribeSuccessTemplate {
                     email: email.clone(),
                 }
                 .into_response()
             } else {
-                tracing::warn!(email = %email, error = %e, "Newsletter subscription failed");
+                tracing::warn!(email = %email, error = %e, "Shopify customer creation failed");
                 SubscribeErrorTemplate {
                     message: "Something went wrong. Please try again.".to_string(),
                     email,

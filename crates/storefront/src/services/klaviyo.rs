@@ -1,7 +1,8 @@
 //! Klaviyo API client for subscription management.
 //!
 //! Provides functionality for managing newsletter subscriptions,
-//! specifically for unsubscribing users from email and SMS lists.
+//! including subscribing users to email lists and unsubscribing from
+//! email and SMS lists.
 
 use reqwest::header::{HeaderMap, HeaderValue};
 use secrecy::ExposeSecret;
@@ -111,6 +112,63 @@ impl KlaviyoClient {
             .into_iter()
             .next()
             .ok_or_else(|| KlaviyoError::ProfileNotFound(email.to_string()))
+    }
+
+    /// Subscribe an email to the newsletter list.
+    ///
+    /// Creates or updates a profile and subscribes them to the configured list.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if the API request fails.
+    pub async fn subscribe_email(&self, email: &str) -> Result<(), KlaviyoError> {
+        let url = format!("{BASE_URL}/profile-subscription-bulk-create-jobs");
+
+        let body = serde_json::json!({
+            "data": {
+                "type": "profile-subscription-bulk-create-job",
+                "attributes": {
+                    "custom_source": "Naked Pineapple Website",
+                    "profiles": {
+                        "data": [{
+                            "type": "profile",
+                            "attributes": {
+                                "email": email,
+                                "subscriptions": {
+                                    "email": {
+                                        "marketing": {
+                                            "consent": "SUBSCRIBED"
+                                        }
+                                    }
+                                }
+                            }
+                        }]
+                    }
+                },
+                "relationships": {
+                    "list": {
+                        "data": {
+                            "type": "list",
+                            "id": self.list_id
+                        }
+                    }
+                }
+            }
+        });
+
+        let response = self.client.post(&url).json(&body).send().await?;
+        let status = response.status();
+
+        // 202 Accepted is the expected response for bulk jobs
+        if !status.is_success() && status.as_u16() != 202 {
+            let message = response.text().await.unwrap_or_default();
+            return Err(KlaviyoError::Api {
+                status: status.as_u16(),
+                message,
+            });
+        }
+
+        Ok(())
     }
 
     /// Unsubscribe a profile from email marketing.
