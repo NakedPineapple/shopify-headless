@@ -1,0 +1,88 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                id,\n                account_name,\n                email,\n                access_token,\n                refresh_token,\n                access_token_expires_at,\n                refresh_token_expires_at,\n                connected_by,\n                connected_at as \"connected_at: DateTime<Utc>\",\n                last_used_at as \"last_used_at: DateTime<Utc>\",\n                created_at as \"created_at: DateTime<Utc>\",\n                updated_at as \"updated_at: DateTime<Utc>\"\n            FROM admin.shiphero_credentials\n            WHERE account_name = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "account_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "email",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "access_token",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "refresh_token",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "access_token_expires_at",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 6,
+        "name": "refresh_token_expires_at",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 7,
+        "name": "connected_by",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 8,
+        "name": "connected_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "last_used_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "created_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 11,
+        "name": "updated_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+      true,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "4151970807244fcd861a7362f8799db2a89dd8c1fa58025b944b83ea3314480b"
+}

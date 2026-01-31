@@ -1,0 +1,148 @@
+# ShipHero Shipment queries for shipment history visibility
+# Note: ShipHero wraps results in QueryResult types with request_id, complexity, and data
+
+# Get recent shipments
+query GetShipments($first: Int = 50, $after: String, $date_from: ISODateTime, $date_to: ISODateTime) {
+  shipments(
+    first: $first
+    after: $after
+    date_from: $date_from
+    date_to: $date_to
+  ) {
+    request_id
+    complexity
+    data {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      edges {
+        node {
+          id
+          legacy_id
+          order_id
+          user_id
+          warehouse_id
+          pending_shipment_id
+          address {
+            name
+            city
+            state
+            country
+            zip
+          }
+          shipped_off_shiphero
+          dropshipment
+          created_date
+          order {
+            order_number
+          }
+          line_items(first: 50) {
+            edges {
+              node {
+                id
+                quantity
+                line_item {
+                  sku
+                  product_name
+                }
+              }
+            }
+          }
+          shipping_labels {
+            id
+            tracking_number
+            carrier
+            shipping_name
+            shipping_method
+            cost
+            created_date
+          }
+          total_packages
+        }
+      }
+    }
+  }
+}
+
+# Get a single shipment by ID
+query GetShipment($id: String!) {
+  shipment(id: $id) {
+    request_id
+    complexity
+    data {
+      id
+      legacy_id
+      order_id
+      user_id
+      warehouse_id
+      pending_shipment_id
+      address {
+        name
+        address1
+        address2
+        city
+        state
+        country
+        zip
+        phone
+      }
+      shipped_off_shiphero
+      dropshipment
+      created_date
+      order {
+        order_number
+      }
+      line_items(first: 100) {
+        edges {
+          node {
+            id
+            quantity
+            line_item {
+              sku
+              product_name
+              price
+            }
+          }
+        }
+      }
+      shipping_labels {
+        id
+        tracking_number
+        carrier
+        shipping_name
+        shipping_method
+        cost
+        created_date
+        status
+      }
+      total_packages
+    }
+  }
+}
+
+# Get packs/shipments per day for dashboard metrics
+query GetPacksPerDay($date_from: ISODateTime!, $date_to: ISODateTime!, $warehouse_id: String) {
+  packs_per_day(
+    date_from: $date_from
+    date_to: $date_to
+    warehouse_id: $warehouse_id
+  ) {
+    request_id
+    complexity
+    data {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      edges {
+        node {
+          id
+          created_at
+          total_items
+          unique_items
+        }
+      }
+    }
+  }
+}

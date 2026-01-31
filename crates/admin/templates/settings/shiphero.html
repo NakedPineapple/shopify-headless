@@ -1,0 +1,275 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}ShipHero Settings{% endblock %}
+
+{% block page_title %}ShipHero Settings{% endblock %}
+
+{% block page_subtitle %}
+<p class="text-sm text-muted-foreground mt-1">Manage your ShipHero warehouse integration</p>
+{% endblock %}
+
+{% block content %}
+<!-- Success/Error Messages -->
+{% if let Some(msg) = success_message %}
+<div class="mb-6 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl">
+    <div class="flex items-center gap-3">
+        <i class="ph ph-check-circle text-xl text-success"></i>
+        <p class="text-sm text-green-700 dark:text-green-300">{{ msg }}</p>
+    </div>
+</div>
+{% endif %}
+
+{% if let Some(msg) = error_message %}
+<div class="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
+    <div class="flex items-center gap-3">
+        <i class="ph ph-warning-circle text-xl text-destructive"></i>
+        <p class="text-sm text-red-700 dark:text-red-300">{{ msg }}</p>
+    </div>
+</div>
+{% endif %}
+
+<!-- Connection Status Card -->
+<div class="bg-card rounded-xl border border-border overflow-hidden">
+    <div class="p-6">
+        <div class="flex items-start justify-between">
+            <div class="flex items-center gap-4">
+                <!-- ShipHero Icon -->
+                <div class="w-14 h-14 rounded-xl bg-blue-600 flex items-center justify-center">
+                    <i class="ph ph-package text-2xl text-white"></i>
+                </div>
+                <div>
+                    <h2 class="text-lg font-semibold text-foreground">ShipHero Warehouse</h2>
+                    {% if connected %}
+                    <div class="flex items-center gap-2 mt-1">
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                            <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+                            Connected
+                        </span>
+                        {% if let Some(email) = email %}
+                        <span class="text-sm text-muted-foreground">{{ email }}</span>
+                        {% endif %}
+                    </div>
+                    {% else %}
+                    <div class="flex items-center gap-2 mt-1">
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+                            <span class="w-1.5 h-1.5 rounded-full bg-muted-foreground"></span>
+                            Not Connected
+                        </span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex items-center gap-2">
+                {% if connected %}
+                <button type="button"
+                        id="test-connection-btn"
+                        class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-foreground bg-muted hover:bg-muted/80 rounded-lg transition-colors">
+                    <i class="ph ph-plugs-connected text-lg"></i>
+                    Test Connection
+                </button>
+                <form action="/settings/shiphero/disconnect" method="POST" class="inline"
+                      onsubmit="return confirm('Are you sure you want to disconnect from ShipHero?')">
+                    <button type="submit"
+                            class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-destructive bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors">
+                        <i class="ph ph-plug text-lg"></i>
+                        Disconnect
+                    </button>
+                </form>
+                {% else %}
+                <button type="button"
+                        id="connect-btn"
+                        class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors">
+                    <i class="ph ph-plug text-lg"></i>
+                    Connect to ShipHero
+                </button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    {% if connected %}
+    <!-- Connected Details -->
+    <div class="border-t border-border bg-muted px-6 py-4">
+        <div class="grid grid-cols-2 gap-4 text-sm">
+            {% if let Some(expires) = expires_at %}
+            <div>
+                <span class="text-muted-foreground">Token Expires:</span>
+                <span class="text-foreground ml-2">{{ expires }}</span>
+            </div>
+            {% endif %}
+            {% if let Some(used) = last_used_at %}
+            <div>
+                <span class="text-muted-foreground">Last Used:</span>
+                <span class="text-foreground ml-2">{{ used }}</span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Connect Modal -->
+<div id="connect-modal" class="fixed inset-0 z-50 hidden">
+    <div class="fixed inset-0 bg-black/50" id="modal-backdrop"></div>
+    <div class="fixed inset-0 flex items-center justify-center p-4">
+        <div class="bg-card rounded-xl border border-border shadow-xl w-full max-w-md">
+            <div class="p-6 border-b border-border">
+                <h3 class="text-lg font-semibold text-foreground">Connect to ShipHero</h3>
+                <p class="text-sm text-muted-foreground mt-1">Enter your ShipHero credentials to connect.</p>
+            </div>
+            <form id="connect-form" class="p-6 space-y-4">
+                <div>
+                    <label for="email" class="block text-sm font-medium text-foreground mb-2">Email</label>
+                    <input type="email"
+                           id="email"
+                           name="email"
+                           required
+                           class="w-full px-3 py-2 bg-background border border-input rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                           placeholder="your@email.com">
+                </div>
+                <div>
+                    <label for="password" class="block text-sm font-medium text-foreground mb-2">Password</label>
+                    <input type="password"
+                           id="password"
+                           name="password"
+                           required
+                           class="w-full px-3 py-2 bg-background border border-input rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                           placeholder="Your ShipHero password">
+                </div>
+                <div id="connect-error" class="hidden p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-700 dark:text-red-300"></div>
+            </form>
+            <div class="p-6 border-t border-border flex justify-end gap-3">
+                <button type="button"
+                        id="cancel-btn"
+                        class="px-4 py-2 text-sm font-medium text-foreground bg-muted hover:bg-muted/80 rounded-lg transition-colors">
+                    Cancel
+                </button>
+                <button type="submit"
+                        form="connect-form"
+                        id="submit-btn"
+                        class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50">
+                    Connect
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Info Section -->
+<div class="mt-8 p-4 bg-muted rounded-xl border border-border">
+    <div class="flex items-start gap-3">
+        <i class="ph ph-info text-xl text-muted-foreground mt-0.5"></i>
+        <div class="text-sm text-muted-foreground">
+            <p class="font-medium text-foreground mb-1">About ShipHero Integration</p>
+            <p>
+                Connecting to ShipHero allows you to view warehouse data including orders awaiting
+                fulfillment, shipment history, and inventory levels directly in this admin panel.
+            </p>
+            <p class="mt-2">
+                <strong class="text-foreground">Note:</strong> Only Super Admins can manage
+                ShipHero settings. Your credentials are used to obtain a JWT token which is stored
+                securely. The password is never stored.
+            </p>
+        </div>
+    </div>
+</div>
+
+<script>
+    const modal = document.getElementById('connect-modal');
+    const connectBtn = document.getElementById('connect-btn');
+    const cancelBtn = document.getElementById('cancel-btn');
+    const backdrop = document.getElementById('modal-backdrop');
+    const form = document.getElementById('connect-form');
+    const submitBtn = document.getElementById('submit-btn');
+    const errorDiv = document.getElementById('connect-error');
+    const testBtn = document.getElementById('test-connection-btn');
+
+    function showModal() {
+        modal.classList.remove('hidden');
+    }
+
+    function hideModal() {
+        modal.classList.add('hidden');
+        form.reset();
+        errorDiv.classList.add('hidden');
+    }
+
+    function showError(message) {
+        errorDiv.textContent = message;
+        errorDiv.classList.remove('hidden');
+    }
+
+    if (connectBtn) {
+        connectBtn.addEventListener('click', showModal);
+    }
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', hideModal);
+    }
+    if (backdrop) {
+        backdrop.addEventListener('click', hideModal);
+    }
+
+    if (form) {
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Connecting...';
+            errorDiv.classList.add('hidden');
+
+            const formData = new FormData(form);
+            try {
+                const response = await fetch('/settings/shiphero/connect', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: formData.get('email'),
+                        password: formData.get('password')
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    window.location.href = '/settings/shiphero?success=connected';
+                } else {
+                    showError(data.error || 'Connection failed');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Connect';
+                }
+            } catch (err) {
+                showError('Network error. Please try again.');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Connect';
+            }
+        });
+    }
+
+    if (testBtn) {
+        testBtn.addEventListener('click', async () => {
+            testBtn.disabled = true;
+            const originalText = testBtn.innerHTML;
+            testBtn.innerHTML = '<i class="ph ph-spinner animate-spin text-lg"></i> Testing...';
+
+            try {
+                const response = await fetch('/settings/shiphero/test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    alert(data.message || 'Connection test successful!');
+                } else {
+                    alert(data.error || 'Connection test failed');
+                }
+            } catch (err) {
+                alert('Network error. Please try again.');
+            } finally {
+                testBtn.disabled = false;
+                testBtn.innerHTML = originalText;
+            }
+        });
+    }
+</script>
+{% endblock %}

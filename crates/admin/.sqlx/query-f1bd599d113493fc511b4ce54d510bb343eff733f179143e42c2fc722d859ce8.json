@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE admin.shiphero_credentials\n            SET\n                access_token = $2,\n                refresh_token = $3,\n                access_token_expires_at = $4,\n                refresh_token_expires_at = $5,\n                updated_at = (CURRENT_TIMESTAMP AT TIME ZONE 'utc')\n            WHERE account_name = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f1bd599d113493fc511b4ce54d510bb343eff733f179143e42c2fc722d859ce8"
+}

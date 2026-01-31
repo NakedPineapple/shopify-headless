@@ -1,0 +1,264 @@
+# ShipHero Inventory queries for warehouse visibility
+# Note: ShipHero wraps results in QueryResult types with request_id, complexity, and data
+
+# Get products with inventory levels
+query GetProducts($first: Int = 50, $after: String, $sku: String) {
+  products(
+    first: $first
+    after: $after
+    sku: $sku
+  ) {
+    request_id
+    complexity
+    data {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      edges {
+        node {
+          id
+          legacy_id
+          sku
+          name
+          barcode
+          country_of_manufacture
+          warehouse_products {
+            warehouse_id
+            on_hand
+            inventory_bin
+            inventory_overstock_bin
+            reserve_inventory
+            replenishment_level
+            reorder_level
+            reorder_amount
+            price
+            value
+            value_currency
+          }
+          images {
+            src
+            position
+          }
+          kit
+          kit_build
+          no_air
+          final_sale
+          customs_value
+          customs_description
+          not_owned
+          dropship
+          needs_serial_number
+          virtual
+          created_at
+          updated_at
+        }
+      }
+    }
+  }
+}
+
+# Get a single product by SKU
+query GetProductBySku($sku: String!) {
+  products(sku: $sku, first: 1) {
+    request_id
+    complexity
+    data {
+      edges {
+        node {
+          id
+          legacy_id
+          sku
+          name
+          barcode
+          warehouse_products {
+            warehouse_id
+            on_hand
+            inventory_bin
+            inventory_overstock_bin
+            reserve_inventory
+            replenishment_level
+            reorder_level
+            reorder_amount
+            price
+            value
+            value_currency
+          }
+          dimensions {
+            weight
+            height
+            width
+            length
+          }
+          tariff_code
+          country_of_manufacture
+          kit
+          kit_build
+          kit_components {
+            sku
+            quantity
+          }
+          vendors {
+            vendor_id
+            vendor_sku
+            price
+          }
+        }
+      }
+    }
+  }
+}
+
+# Get warehouse products with detailed inventory
+query GetWarehouseProducts($warehouse_id: String!, $first: Int = 50, $after: String) {
+  warehouse_products(
+    warehouse_id: $warehouse_id
+    first: $first
+    after: $after
+  ) {
+    request_id
+    complexity
+    data {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      edges {
+        node {
+          id
+          legacy_id
+          sku
+          warehouse_id
+          on_hand
+          allocated
+          available
+          backorder
+          inventory_bin
+          inventory_overstock_bin
+          reserve_inventory
+          replenishment_level
+          reorder_level
+          reorder_amount
+          price
+          value
+        }
+      }
+    }
+  }
+}
+
+# Get locations (bins) in warehouse
+query GetLocations($warehouse_id: String!, $first: Int = 100) {
+  locations(
+    warehouse_id: $warehouse_id
+    first: $first
+  ) {
+    request_id
+    complexity
+    data {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      edges {
+        node {
+          id
+          legacy_id
+          name
+          zone
+          pickable
+          sellable
+          is_cart
+          pick_priority
+          type
+          warehouse_id
+        }
+      }
+    }
+  }
+}
+
+# Get inventory changes/history
+query GetInventoryChanges($sku: String!, $date_from: ISODateTime, $date_to: ISODateTime, $first: Int = 50) {
+  inventory_changes(
+    sku: $sku
+    date_from: $date_from
+    date_to: $date_to
+    first: $first
+  ) {
+    request_id
+    complexity
+    data {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      edges {
+        node {
+          id
+          sku
+          previous_on_hand
+          change_in_on_hand
+          reason
+          cycle_counted
+          location_id
+          location {
+            name
+          }
+          created_at
+          user_id
+        }
+      }
+    }
+  }
+}
+
+# Get lot/batch information for products with expiration
+query GetExpirationLots($sku: String, $warehouse_id: String, $first: Int = 50) {
+  expiration_lots(
+    sku: $sku
+    warehouse_id: $warehouse_id
+    first: $first
+  ) {
+    request_id
+    complexity
+    data {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      edges {
+        node {
+          id
+          legacy_id
+          sku
+          name
+          expires_at
+          is_active
+          created_at
+          updated_at
+        }
+      }
+    }
+  }
+}
+
+# Get inventory snapshot for a point-in-time view
+query GetInventorySnapshot($snapshot_id: String!) {
+  inventory_snapshot(snapshot_id: $snapshot_id) {
+    request_id
+    complexity
+    data {
+      snapshot_id
+      job_user_id
+      warehouse_id
+      status
+      created_at
+      enqueued_at
+      updated_at
+      error
+      snapshot_url
+      snapshot_expiration
+    }
+  }
+}

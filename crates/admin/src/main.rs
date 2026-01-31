@@ -47,6 +47,7 @@ mod middleware;
 mod models;
 mod routes;
 mod services;
+mod shiphero;
 mod shopify;
 mod slack;
 mod state;

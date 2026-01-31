@@ -63,6 +63,7 @@ pub mod payouts;
 pub mod products;
 pub mod settings;
 pub mod setup;
+pub mod shiphero_settings;
 pub mod shopify;
 pub mod slack;
 
@@ -415,4 +416,6 @@ pub fn routes() -> Router<AppState> {
         .merge(slack::router())
         // Settings
         .merge(settings::router())
+        // ShipHero settings (super_admin only)
+        .merge(shiphero_settings::router())
 }

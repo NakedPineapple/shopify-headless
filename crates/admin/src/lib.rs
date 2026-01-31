@@ -27,6 +27,7 @@ pub mod middleware;
 pub mod models;
 pub mod routes;
 pub mod services;
+pub mod shiphero;
 pub mod shopify;
 pub mod slack;
 pub mod state;

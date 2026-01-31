@@ -8,8 +8,10 @@ use url::Url;
 use webauthn_rs::prelude::*;
 
 use crate::config::AdminConfig;
-use crate::db::ShopifyTokenRepository;
+use crate::db::{ShipHeroCredentialsRepository, ShopifyTokenRepository};
 use crate::services::EmailService;
+use crate::shiphero::ShipHeroClient;
+use crate::shiphero::auth::ShipHeroToken;
 use crate::shopify::{AdminClient, OAuthToken};
 use crate::slack::SlackClient;
 
@@ -42,6 +44,7 @@ struct AppStateInner {
     config: AdminConfig,
     pool: PgPool,
     shopify: AdminClient,
+    shiphero: Option<ShipHeroClient>,
     slack: Option<SlackClient>,
     webauthn: Webauthn,
     email_service: Option<EmailService>,
@@ -131,11 +134,22 @@ impl AppState {
             );
         }
 
+        // Initialize ShipHero client (optional - load credentials from database if available)
+        let shiphero = Self::load_shiphero_client(&pool).await;
+        if shiphero.is_some() {
+            tracing::info!("ShipHero client initialized from stored credentials");
+        } else {
+            tracing::info!(
+                "ShipHero not configured - warehouse features disabled until credentials added via /settings/shiphero"
+            );
+        }
+
         Ok(Self {
             inner: Arc::new(AppStateInner {
                 config,
                 pool,
                 shopify,
+                shiphero,
                 slack,
                 webauthn,
                 email_service,
@@ -183,5 +197,43 @@ impl AppState {
     #[must_use]
     pub fn db(&self) -> PgPool {
         self.inner.pool.clone()
+    }
+
+    /// Get a reference to the `ShipHero` client (if configured).
+    #[must_use]
+    pub fn shiphero(&self) -> Option<&ShipHeroClient> {
+        self.inner.shiphero.as_ref()
+    }
+
+    /// Load `ShipHero` client from stored credentials.
+    async fn load_shiphero_client(pool: &PgPool) -> Option<ShipHeroClient> {
+        let repo = ShipHeroCredentialsRepository::new(pool);
+
+        match repo.get_default().await {
+            Ok(Some(creds)) => {
+                // Check if token is still valid
+                let now = chrono::Utc::now().timestamp();
+                if now >= creds.access_token_expires_at - 60 {
+                    tracing::warn!(
+                        "ShipHero token has expired - re-authentication required via /settings/shiphero"
+                    );
+                    return None;
+                }
+
+                let token = ShipHeroToken {
+                    access_token: creds.access_token,
+                    refresh_token: creds.refresh_token,
+                    access_token_expires_at: creds.access_token_expires_at,
+                    refresh_token_expires_at: creds.refresh_token_expires_at,
+                };
+
+                Some(ShipHeroClient::with_token(token))
+            }
+            Ok(None) => None,
+            Err(e) => {
+                tracing::error!(error = %e, "Failed to load ShipHero credentials from database");
+                None
+            }
+        }
     }
 }

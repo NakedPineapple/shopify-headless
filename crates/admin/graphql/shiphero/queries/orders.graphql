@@ -1,0 +1,149 @@
+# ShipHero Order queries for warehouse visibility
+# Note: ShipHero wraps results in QueryResult types with request_id, complexity, and data
+
+# Get orders awaiting fulfillment
+query GetPendingOrders($first: Int = 50, $after: String, $fulfillment_status: String = "pending") {
+  orders(
+    fulfillment_status: $fulfillment_status
+    first: $first
+    after: $after
+  ) {
+    request_id
+    complexity
+    data {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      edges {
+        node {
+          id
+          legacy_id
+          order_number
+          partner_order_id
+          shop_name
+          fulfillment_status
+          order_date
+          total_price
+          shipping_address {
+            first_name
+            last_name
+            city
+            state
+            country
+            zip
+          }
+          line_items(first: 50) {
+            edges {
+              node {
+                id
+                sku
+                product_name
+                quantity
+                price
+              }
+            }
+          }
+          holds {
+            fraud_hold
+            address_hold
+            payment_hold
+            operator_hold
+          }
+        }
+      }
+    }
+  }
+}
+
+# Get a single order by ID
+query GetOrder($id: String!) {
+  order(id: $id) {
+    request_id
+    complexity
+    data {
+      id
+      legacy_id
+      order_number
+      partner_order_id
+      shop_name
+      fulfillment_status
+      order_date
+      total_price
+      subtotal
+      total_discounts
+      total_tax
+      shipping_lines {
+        title
+        price
+        carrier
+        method
+      }
+      shipping_address {
+        first_name
+        last_name
+        company
+        address1
+        address2
+        city
+        state
+        country
+        zip
+        phone
+      }
+      billing_address {
+        first_name
+        last_name
+        company
+        address1
+        address2
+        city
+        state
+        country
+        zip
+        phone
+      }
+      line_items(first: 100) {
+        edges {
+          node {
+            id
+            sku
+            product_name
+            quantity
+            price
+            fulfillment_status
+            warehouse
+          }
+        }
+      }
+      holds {
+        fraud_hold
+        address_hold
+        payment_hold
+        operator_hold
+      }
+    }
+  }
+}
+
+# Get order history/timeline
+query GetOrderHistory($order_id: String!) {
+  order_history(order_id: $order_id, first: 50) {
+    request_id
+    complexity
+    data {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      edges {
+        node {
+          id
+          created_at
+          information
+          username
+        }
+      }
+    }
+  }
+}
