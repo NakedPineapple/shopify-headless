@@ -103,8 +103,16 @@ pub static IMAGE_INFO: LazyLock<HashMap<&'static str, ImageInfo>> = LazyLock::ne
             ("11ebcf60", 1067),
         ),
         (
+            "products/bright-tight-super-serum/NP_SuperSerum_SET",
+            ("c4237b7a", 1000),
+        ),
+        (
             "products/glow-up-bronzing-facial-oil/Model_Program_March_2025_53",
             ("66770f89", 1067),
+        ),
+        (
+            "products/glow-up-bronzing-facial-oil/NP_BronzingOil_SET",
+            ("9af67add", 1000),
         ),
         (
             "products/naked-pineapple-vip-bundle/DSC_7695",
@@ -175,7 +183,6 @@ pub static IMAGE_INFO: LazyLock<HashMap<&'static str, ImageInfo>> = LazyLock::ne
             "products/starter-kit/Model_Program_March_2025_14_536fbe04-c22c-496b-837e-4f1ed60c0717",
             ("367f8dad", 1067),
         ),
-        ("products/starter-kit/StarterKit", ("c9b965a8", 1000)),
         ("testimonials/Maddie_-_After_NP", ("253c7a46", 2400)),
         ("testimonials/Maddie_-_Before_NP", ("27db70ac", 2400)),
     ])
