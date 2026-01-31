@@ -212,6 +212,9 @@ async function discoverUsedImages() {
   // Pattern to match filter-based references like "path/to/image"|image_hash
   const filterPathRegex = /"([^"]+)"\s*\|\s*image_hash/g;
 
+  // Pattern to match Rust function calls like get_image_hash("path/to/image")
+  const rustFunctionRegex = /get_image_hash\("([^"]+)"\)/g;
+
   // Scan HTML templates
   const templateFiles = await fg("crates/storefront/templates/**/*.html", {
     cwd: PROJECT_ROOT,
@@ -256,6 +259,23 @@ async function discoverUsedImages() {
       if (basePath.startsWith("/")) {
         continue;
       }
+
+      // Try to find the actual file with common extensions
+      for (const ext of [".svg", ".ico", ".jpg", ".jpeg", ".png", ".webp"]) {
+        const fullPath = join(ORIGINAL_DIR, basePath + ext);
+        try {
+          await stat(fullPath);
+          usedImages.add(basePath + ext);
+          break;
+        } catch {
+          // File doesn't exist with this extension, try next
+        }
+      }
+    }
+
+    // Find Rust function calls like get_image_hash("path")
+    while ((match = rustFunctionRegex.exec(content)) !== null) {
+      const basePath = match[1];
 
       // Try to find the actual file with common extensions
       for (const ext of [".svg", ".ico", ".jpg", ".jpeg", ".png", ".webp"]) {
