@@ -50,7 +50,8 @@ pub struct GetProductRecommendations;
 #[graphql(
     schema_path = "graphql/storefront/schema.json",
     query_path = "graphql/storefront/queries/collections.graphql",
-    response_derives = "Debug, Clone"
+    response_derives = "Debug, Clone",
+    skip_serializing_none
 )]
 pub struct GetCollectionByHandle;
 

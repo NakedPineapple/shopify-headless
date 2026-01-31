@@ -96,6 +96,8 @@ pub struct CollectionShowTemplate {
     pub filter_price_min: Option<f64>,
     /// Filter: maximum price.
     pub filter_price_max: Option<f64>,
+    /// Whether a price filter is actively applied (not at default 0-200 range).
+    pub has_price_filter: bool,
 }
 
 /// Products per page for collection view.
@@ -161,6 +163,7 @@ fn build_filters(query: &PaginationQuery) -> Option<Vec<ProductFilter>> {
 
     // In-stock filter
     if query.available == Some(true) {
+        tracing::debug!("Adding availability filter: available=true");
         filters.push(ProductFilter {
             available: Some(true),
             category: None,
@@ -175,14 +178,33 @@ fn build_filters(query: &PaginationQuery) -> Option<Vec<ProductFilter>> {
         });
     }
 
-    // Price range filter
-    if query.price_min.is_some() || query.price_max.is_some() {
+    // Price range filter - only apply if not at default values
+    // Default slider range is 0-200, so ignore those values
+    let has_min_filter = query.price_min.is_some_and(|v| v > 0.0);
+    let has_max_filter = query.price_max.is_some_and(|v| v < 200.0);
+
+    tracing::debug!(
+        price_min = ?query.price_min,
+        price_max = ?query.price_max,
+        has_min_filter,
+        has_max_filter,
+        "Evaluating price filter"
+    );
+
+    if has_min_filter || has_max_filter {
+        let min_val = if has_min_filter { query.price_min } else { None };
+        let max_val = if has_max_filter { query.price_max } else { None };
+        tracing::debug!(
+            ?min_val,
+            ?max_val,
+            "Adding price filter"
+        );
         filters.push(ProductFilter {
             available: None,
             category: None,
             price: Some(PriceRangeFilter {
-                min: query.price_min,
-                max: query.price_max,
+                min: min_val,
+                max: max_val,
             }),
             product_metafield: None,
             product_type: None,
@@ -194,11 +216,18 @@ fn build_filters(query: &PaginationQuery) -> Option<Vec<ProductFilter>> {
         });
     }
 
-    if filters.is_empty() {
+    let result = if filters.is_empty() {
         None
     } else {
         Some(filters)
-    }
+    };
+
+    tracing::debug!(
+        filter_count = result.as_ref().map_or(0, |f| f.len()),
+        "build_filters complete"
+    );
+
+    result
 }
 
 /// Parameters for building an error collection template.
@@ -233,6 +262,9 @@ fn build_breadcrumbs(title: &str) -> Vec<BreadcrumbItem> {
 
 /// Create an error response for collection pages.
 fn error_template(params: ErrorParams, state: &AppState, nonce: String) -> Response {
+    let has_price_filter = params.filter_price_min.is_some_and(|v| v > 0.0)
+        || params.filter_price_max.is_some_and(|v| v < 200.0);
+
     (
         params.status,
         CollectionShowTemplate {
@@ -254,6 +286,7 @@ fn error_template(params: ErrorParams, state: &AppState, nonce: String) -> Respo
             filter_available: params.filter_available,
             filter_price_min: params.filter_price_min,
             filter_price_max: params.filter_price_max,
+            has_price_filter,
         },
     )
         .into_response()
@@ -267,6 +300,12 @@ pub async fn show(
     Query(query): Query<PaginationQuery>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> Response {
+    // Debug: Log incoming query parameters
+    tracing::debug!(
+        ?query,
+        "Collection show request"
+    );
+
     let current_page = query.page.unwrap_or(1);
     let current_sort = query
         .sort
@@ -279,6 +318,16 @@ pub async fn show(
     let filter_price_min = query.price_min;
     let filter_price_max = query.price_max;
     let filters = build_filters(&query);
+
+    // Debug: Log the filters being sent to Shopify
+    tracing::debug!(
+        filter_available,
+        ?filter_price_min,
+        ?filter_price_max,
+        has_filters = filters.is_some(),
+        filter_count = filters.as_ref().map_or(0, |f| f.len()),
+        "Built filters for Shopify"
+    );
 
     // Fetch collection and products from Shopify Storefront API
     #[allow(clippy::cast_possible_wrap)]
@@ -294,6 +343,30 @@ pub async fn show(
             filters,
         )
         .await;
+
+    // Debug: Log the result including product prices
+    match &result {
+        Ok(collection) => {
+            let prices: Vec<String> = collection
+                .products
+                .iter()
+                .map(|p| format!("{}: {}", p.title, p.price_range.min_variant_price.amount))
+                .collect();
+            tracing::debug!(
+                success = true,
+                product_count = collection.products.len(),
+                ?prices,
+                "Shopify collection response"
+            );
+        }
+        Err(e) => {
+            tracing::debug!(
+                success = false,
+                error = %e,
+                "Shopify collection response"
+            );
+        }
+    }
 
     let err_params = |status, title, desc| ErrorParams {
         status,
@@ -316,6 +389,10 @@ pub async fn show(
                 .collect();
             let has_more = products.len() >= PRODUCTS_PER_PAGE;
 
+            // Determine if we have an active price filter (not at default 0-200 range)
+            let has_price_filter = filter_price_min.is_some_and(|v| v > 0.0)
+                || filter_price_max.is_some_and(|v| v < 200.0);
+
             CollectionShowTemplate {
                 breadcrumbs: build_breadcrumbs(&collection.title),
                 collection,
@@ -334,6 +411,7 @@ pub async fn show(
                 filter_available,
                 filter_price_min,
                 filter_price_max,
+                has_price_filter,
             }
             .into_response()
         }

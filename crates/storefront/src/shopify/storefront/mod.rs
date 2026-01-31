@@ -113,6 +113,14 @@ impl StorefrontClient {
     {
         let request_body = Q::build_query(variables);
 
+        // Debug: Log the request body being sent to Shopify
+        if let Ok(json) = serde_json::to_string_pretty(&request_body) {
+            tracing::debug!(
+                request_body = %json,
+                "Sending GraphQL request to Shopify"
+            );
+        }
+
         let response = self
             .inner
             .client
@@ -421,6 +429,18 @@ impl StorefrontClient {
             reverse,
             filters,
         };
+
+        // Debug: Log the GraphQL variables being sent
+        debug!(
+            handle = %handle,
+            product_count = ?product_count,
+            sort_key = ?variables.sort_key,
+            reverse = ?variables.reverse,
+            has_filters = variables.filters.is_some(),
+            filter_count = variables.filters.as_ref().map_or(0, |f| f.len()),
+            cache_key = %cache_key,
+            "Sending GraphQL request for collection"
+        );
 
         let data = self.execute::<GetCollectionByHandle>(variables).await?;
 
