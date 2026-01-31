@@ -65,19 +65,30 @@
         </a>
     </div>
 
-    <!-- Total Products -->
+    <!-- Inventory Health -->
     <div class="bg-card rounded-xl border border-border p-6">
-        <div class="flex items-center justify-between">
-            <div>
-                <p class="text-sm text-muted-foreground">Total Products</p>
-                <p class="text-3xl font-bold text-foreground mt-1">{{ total_products }}</p>
+        <div class="flex items-center justify-between mb-4">
+            <p class="text-sm text-muted-foreground">Inventory Health</p>
+            <div class="w-10 h-10 rounded-full bg-info/20 flex items-center justify-center">
+                <i class="ph ph-chart-pie text-xl text-info"></i>
             </div>
-            <div class="w-12 h-12 rounded-full bg-info/20 flex items-center justify-center">
-                <i class="ph ph-barcode text-2xl text-info"></i>
+        </div>
+        <div class="space-y-2">
+            <div class="flex justify-between items-center">
+                <span class="text-sm text-muted-foreground">Total SKUs</span>
+                <span class="text-sm font-semibold text-foreground">{{ total_products }}</span>
+            </div>
+            <div class="flex justify-between items-center">
+                <span class="text-sm text-muted-foreground">In Stock</span>
+                <span class="text-sm font-semibold text-success">{{ items_in_stock }}</span>
+            </div>
+            <div class="flex justify-between items-center">
+                <span class="text-sm text-muted-foreground">Out of Stock</span>
+                <span class="text-sm font-semibold {% if items_at_zero > 0 %}text-destructive{% else %}text-foreground{% endif %}">{{ items_at_zero }}</span>
             </div>
         </div>
         <a href="/warehouse/inventory" class="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mt-4">
-            View all <i class="ph ph-arrow-right"></i>
+            View inventory <i class="ph ph-arrow-right"></i>
         </a>
     </div>
 </div>

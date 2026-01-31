@@ -92,6 +92,8 @@ pub struct WarehouseDashboardTemplate {
     pub shipped_today_count: usize,
     pub low_stock_count: usize,
     pub total_products: usize,
+    pub items_in_stock: usize,
+    pub items_at_zero: usize,
     pub recent_orders: Vec<WarehouseOrder>,
     pub recent_shipments: Vec<Shipment>,
     pub low_stock_items: Vec<LowStockItem>,
@@ -191,15 +193,119 @@ async fn get_current_admin(session: &Session) -> Option<CurrentAdmin> {
 // Dashboard Route
 // =============================================================================
 
+/// Aggregated dashboard data from `ShipHero` API calls.
+struct DashboardData {
+    pending_orders_count: usize,
+    shipped_today_count: usize,
+    low_stock_count: usize,
+    total_products: usize,
+    items_in_stock: usize,
+    items_at_zero: usize,
+    recent_orders: Vec<WarehouseOrder>,
+    recent_shipments: Vec<Shipment>,
+    low_stock_items: Vec<LowStockItem>,
+    error_message: Option<String>,
+}
+
+/// Fetch and process all dashboard data from `ShipHero`.
+async fn fetch_dashboard_data(client: &crate::shiphero::ShipHeroClient) -> DashboardData {
+    let (orders_result, shipments_result, low_stock_result, health_result) = tokio::join!(
+        client.get_pending_orders(Some(10), None, Some("pending".to_string())),
+        client.get_shipments(Some(10), None, None, None),
+        client.get_low_stock(Some(10), None),
+        client.get_inventory_health(),
+    );
+
+    let mut error_message = None;
+
+    let (pending_orders_count, recent_orders) = orders_result.map_or_else(
+        |e| {
+            tracing::error!(error = %e, "Failed to fetch pending orders");
+            error_message = Some(format!("Failed to fetch pending orders: {e}"));
+            (0, Vec::new())
+        },
+        |conn| (conn.orders.len(), conn.orders),
+    );
+
+    let (shipped_today_count, recent_shipments) = shipments_result.map_or_else(
+        |e| {
+            tracing::error!(error = %e, "Failed to fetch shipments");
+            error_message.get_or_insert_with(|| format!("Failed to fetch shipments: {e}"));
+            (0, Vec::new())
+        },
+        |conn| {
+            let today = chrono::Utc::now().format("%Y-%m-%d").to_string();
+            let count = conn
+                .shipments
+                .iter()
+                .filter(|s| {
+                    s.created_date
+                        .as_ref()
+                        .is_some_and(|d| d.starts_with(&today))
+                })
+                .count();
+            (count, conn.shipments)
+        },
+    );
+
+    let low_stock_items: Vec<LowStockItem> = low_stock_result.map_or_else(
+        |e| {
+            tracing::error!(error = %e, "Failed to fetch low stock products");
+            error_message.get_or_insert_with(|| format!("Failed to fetch low stock products: {e}"));
+            Vec::new()
+        },
+        |conn| {
+            conn.products
+                .into_iter()
+                .map(|p| LowStockItem {
+                    sku: p.sku,
+                    name: p.name,
+                    available: p.on_hand,
+                    reorder_level: p.reorder_level,
+                })
+                .collect()
+        },
+    );
+
+    let (total_products, items_in_stock, items_at_zero, low_stock_count) = health_result
+        .map_or_else(
+            |e| {
+                tracing::error!(error = %e, "Failed to fetch inventory health");
+                error_message
+                    .get_or_insert_with(|| format!("Failed to fetch inventory health: {e}"));
+                (0, 0, 0, low_stock_items.len())
+            },
+            |h| {
+                (
+                    h.total_skus,
+                    h.items_in_stock,
+                    h.items_at_zero,
+                    h.low_stock_count,
+                )
+            },
+        );
+
+    DashboardData {
+        pending_orders_count,
+        shipped_today_count,
+        low_stock_count,
+        total_products,
+        items_in_stock,
+        items_at_zero,
+        recent_orders,
+        recent_shipments,
+        low_stock_items,
+        error_message,
+    }
+}
+
 /// GET /warehouse - Warehouse dashboard with key metrics.
 #[instrument(skip(state, session))]
 pub async fn dashboard(State(state): State<AppState>, session: Session) -> Response {
-    // Get current admin from session
     let Some(admin) = get_current_admin(&session).await else {
         return Redirect::to("/auth/login").into_response();
     };
 
-    // Check if ShipHero is connected
     let Some(client) = state.shiphero() else {
         let template = NotConnectedTemplate {
             admin_user: AdminUserView::from(&admin),
@@ -212,93 +318,21 @@ pub async fn dashboard(State(state): State<AppState>, session: Session) -> Respo
         .into_response();
     };
 
-    // Fetch dashboard data concurrently
-    let (orders_result, shipments_result, products_result) = tokio::join!(
-        client.get_pending_orders(Some(10), None, Some("pending".to_string())),
-        client.get_shipments(Some(10), None, None, None),
-        client.get_products(Some(50), None, None),
-    );
-
-    let mut error_message = None;
-
-    // Process pending orders
-    let (pending_orders_count, recent_orders) = match orders_result {
-        Ok(conn) => (conn.orders.len(), conn.orders),
-        Err(e) => {
-            tracing::error!(error = %e, "Failed to fetch pending orders");
-            error_message = Some(format!("Failed to fetch pending orders: {e}"));
-            (0, Vec::new())
-        }
-    };
-
-    // Process shipments - count today's shipments
-    let (shipped_today_count, recent_shipments) = match shipments_result {
-        Ok(conn) => {
-            let today = chrono::Utc::now().format("%Y-%m-%d").to_string();
-            let today_count = conn
-                .shipments
-                .iter()
-                .filter(|s| {
-                    s.created_date
-                        .as_ref()
-                        .is_some_and(|d| d.starts_with(&today))
-                })
-                .count();
-            (today_count, conn.shipments)
-        }
-        Err(e) => {
-            tracing::error!(error = %e, "Failed to fetch shipments");
-            if error_message.is_none() {
-                error_message = Some(format!("Failed to fetch shipments: {e}"));
-            }
-            (0, Vec::new())
-        }
-    };
-
-    // Process products - find low stock items
-    let (total_products, low_stock_items) = match products_result {
-        Ok(conn) => {
-            let low_stock: Vec<LowStockItem> = conn
-                .products
-                .iter()
-                .filter_map(|p| {
-                    let wp = p.warehouse_products.first()?;
-                    let on_hand = wp.on_hand.unwrap_or(0);
-                    let reorder_level = wp.reorder_level.unwrap_or(0);
-                    if reorder_level > 0 && on_hand <= reorder_level {
-                        Some(LowStockItem {
-                            sku: p.sku.clone().unwrap_or_default(),
-                            name: p.name.clone().unwrap_or_default(),
-                            available: on_hand,
-                            reorder_level,
-                        })
-                    } else {
-                        None
-                    }
-                })
-                .collect();
-            (conn.products.len(), low_stock)
-        }
-        Err(e) => {
-            tracing::error!(error = %e, "Failed to fetch products");
-            if error_message.is_none() {
-                error_message = Some(format!("Failed to fetch products: {e}"));
-            }
-            (0, Vec::new())
-        }
-    };
+    let data = fetch_dashboard_data(client).await;
 
     let template = WarehouseDashboardTemplate {
         admin_user: AdminUserView::from(&admin),
         current_path: "/warehouse".to_string(),
-        pending_orders_count,
-        shipped_today_count,
-        low_stock_count: low_stock_items.len(),
-        total_products,
-        recent_orders,
-        recent_shipments,
-        low_stock_items,
-        error_message,
+        pending_orders_count: data.pending_orders_count,
+        shipped_today_count: data.shipped_today_count,
+        low_stock_count: data.low_stock_count,
+        total_products: data.total_products,
+        items_in_stock: data.items_in_stock,
+        items_at_zero: data.items_at_zero,
+        recent_orders: data.recent_orders,
+        recent_shipments: data.recent_shipments,
+        low_stock_items: data.low_stock_items,
+        error_message: data.error_message,
     };
 
     Html(template.render().unwrap_or_else(|e| {

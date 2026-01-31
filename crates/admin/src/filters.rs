@@ -1,6 +1,10 @@
 //! Custom Askama template filters.
 
 #![allow(clippy::unnecessary_wraps)]
+// Allow non_snake_case: The askama::filter_fn macro generates wrapper functions with
+// double underscores (e.g., `with__env`) for multi-argument filters. This is internal
+// to the macro and cannot be changed.
+#![allow(non_snake_case)]
 
 use std::fmt::Display;
 
@@ -174,4 +178,33 @@ pub fn json_pretty(value: &serde_json::Value, _env: &dyn askama::Values) -> aska
 #[askama::filter_fn]
 pub fn as_bool(value: &serde_json::Value, _env: &dyn askama::Values) -> askama::Result<bool> {
     Ok(value.as_bool().unwrap_or(false))
+}
+
+/// Truncate a string to a maximum length.
+///
+/// Usage in templates: `{{ value|truncate(10) }}`
+#[askama::filter_fn]
+pub fn truncate(value: &str, len: usize, _env: &dyn askama::Values) -> askama::Result<String> {
+    if value.len() <= len {
+        Ok(value.to_string())
+    } else {
+        Ok(value.chars().take(len).collect())
+    }
+}
+
+/// Format a datetime string (ISO format) as a short date.
+///
+/// Usage in templates: `{{ dt_str|format_date }}`
+#[askama::filter_fn]
+pub fn format_date(dt_str: &str, _env: &dyn askama::Values) -> askama::Result<String> {
+    // Try to parse ISO 8601 datetime string
+    if let Ok(dt) = DateTime::parse_from_rfc3339(dt_str) {
+        return Ok(dt.format("%b %d, %Y").to_string());
+    }
+    // Try parsing without timezone (ShipHero sometimes returns this format)
+    if let Ok(dt) = chrono::NaiveDateTime::parse_from_str(dt_str, "%Y-%m-%dT%H:%M:%S%.f") {
+        return Ok(dt.format("%b %d, %Y").to_string());
+    }
+    // Return first 10 chars (date portion) as fallback
+    Ok(dt_str.chars().take(10).collect())
 }

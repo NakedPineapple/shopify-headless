@@ -553,6 +553,142 @@ impl ShipHeroClient {
 
         Ok(lots)
     }
+
+    /// Get products that are at or below their reorder level.
+    ///
+    /// This is a convenience method that fetches products and filters for those
+    /// where `on_hand <= reorder_level` and `reorder_level > 0`.
+    ///
+    /// # Errors
+    ///
+    /// Returns `ShipHeroError` if the API call fails.
+    #[instrument(skip(self))]
+    pub async fn get_low_stock(
+        &self,
+        first: Option<i64>,
+        after: Option<String>,
+    ) -> Result<LowStockConnection, ShipHeroError> {
+        // Fetch products - we need to get more than requested since we'll filter
+        let fetch_count = first.map_or(150, |n| n * 3);
+        let result = self.get_products(Some(fetch_count), after, None).await?;
+
+        let limit = usize::try_from(first.unwrap_or(50)).unwrap_or(50);
+        let low_stock_products: Vec<LowStockProduct> = result
+            .products
+            .into_iter()
+            .filter_map(|p| {
+                let wp = p.warehouse_products.first()?;
+                let on_hand = wp.on_hand.unwrap_or(0);
+                let reorder_level = wp.reorder_level.unwrap_or(0);
+
+                // Only include if reorder_level is set and stock is at or below it
+                if reorder_level > 0 && on_hand <= reorder_level {
+                    Some(LowStockProduct {
+                        id: p.id,
+                        sku: p.sku.unwrap_or_default(),
+                        name: p.name.unwrap_or_default(),
+                        on_hand,
+                        reorder_level,
+                        bin_location: wp.inventory_bin.clone(),
+                    })
+                } else {
+                    None
+                }
+            })
+            .take(limit)
+            .collect();
+
+        Ok(LowStockConnection {
+            products: low_stock_products,
+            has_next_page: result.has_next_page,
+            end_cursor: result.end_cursor,
+        })
+    }
+
+    /// Get inventory health metrics (counts of products by stock status).
+    ///
+    /// Returns counts for total products, in-stock items, and out-of-stock items.
+    ///
+    /// # Errors
+    ///
+    /// Returns `ShipHeroError` if the API call fails.
+    #[instrument(skip(self))]
+    pub async fn get_inventory_health(&self) -> Result<InventoryHealth, ShipHeroError> {
+        // Fetch a batch of products to calculate health metrics
+        let result = self.get_products(Some(100), None, None).await?;
+
+        let mut total_skus = 0;
+        let mut items_in_stock = 0;
+        let mut items_at_zero = 0;
+        let mut low_stock_count = 0;
+
+        for product in &result.products {
+            total_skus += 1;
+
+            if let Some(wp) = product.warehouse_products.first() {
+                let on_hand = wp.on_hand.unwrap_or(0);
+                let reorder_level = wp.reorder_level.unwrap_or(0);
+
+                if on_hand > 0 {
+                    items_in_stock += 1;
+                } else {
+                    items_at_zero += 1;
+                }
+
+                if reorder_level > 0 && on_hand <= reorder_level {
+                    low_stock_count += 1;
+                }
+            }
+        }
+
+        Ok(InventoryHealth {
+            total_skus,
+            items_in_stock,
+            items_at_zero,
+            low_stock_count,
+        })
+    }
+}
+
+/// A product that is at or below its reorder level.
+#[derive(Debug, Clone, Serialize)]
+pub struct LowStockProduct {
+    /// Product ID.
+    pub id: String,
+    /// Product SKU.
+    pub sku: String,
+    /// Product name.
+    pub name: String,
+    /// Quantity on hand.
+    pub on_hand: i64,
+    /// Reorder level threshold.
+    pub reorder_level: i64,
+    /// Bin location.
+    pub bin_location: Option<String>,
+}
+
+/// Paginated list of low stock products.
+#[derive(Debug, Clone, Serialize)]
+pub struct LowStockConnection {
+    /// Low stock products in this page.
+    pub products: Vec<LowStockProduct>,
+    /// Whether there are more pages.
+    pub has_next_page: bool,
+    /// Cursor for the next page.
+    pub end_cursor: Option<String>,
+}
+
+/// Inventory health metrics.
+#[derive(Debug, Clone, Serialize)]
+pub struct InventoryHealth {
+    /// Total number of SKUs.
+    pub total_skus: usize,
+    /// Number of SKUs with `on_hand` > 0.
+    pub items_in_stock: usize,
+    /// Number of SKUs with `on_hand` = 0.
+    pub items_at_zero: usize,
+    /// Number of SKUs at or below reorder level.
+    pub low_stock_count: usize,
 }
 
 // =============================================================================

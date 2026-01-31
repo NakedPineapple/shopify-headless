@@ -44,13 +44,14 @@
                     <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">On Hand</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Bin Location</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Reorder Level</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Last Updated</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-border">
                 {% if products.is_empty() %}
                 <tr>
-                    <td colspan="6" class="px-6 py-12 text-center text-muted-foreground">
+                    <td colspan="7" class="px-6 py-12 text-center text-muted-foreground">
                         <i class="ph ph-package text-4xl mb-2"></i>
                         <p>No products found</p>
                     </td>
@@ -117,6 +118,13 @@
                         {% if !product.warehouse_products.is_empty() %}
                         {% let wp = product.warehouse_products.first().unwrap() %}
                         {{ wp.reorder_level.unwrap_or(0) }}
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4 text-xs text-muted-foreground" data-label="Last Updated">
+                        {% if let Some(updated) = product.updated_at.as_deref() %}
+                        {{ updated|format_date }}
                         {% else %}
                         -
                         {% endif %}
