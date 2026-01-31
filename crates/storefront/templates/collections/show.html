@@ -74,7 +74,12 @@
             <div class="flex items-center gap-2">
                 <label for="collection-sort" class="text-sm text-muted-foreground">Sort by:</label>
                 <select id="collection-sort" name="sort" class="input py-2 px-3 w-auto"
-                        data-action-change="update-sort">
+                        hx-get="/collections/{{ collection.handle }}"
+                        hx-target="#collection-products"
+                        hx-select="#collection-products"
+                        hx-swap="outerHTML"
+                        hx-push-url="true"
+                        hx-indicator="#sort-spinner">
                     <option value="best-selling"{% if current_sort == "best-selling" %} selected{% endif %}>Best Selling</option>
                     <option value="price-asc"{% if current_sort == "price-asc" %} selected{% endif %}>Price: Low to High</option>
                     <option value="price-desc"{% if current_sort == "price-desc" %} selected{% endif %}>Price: High to Low</option>
@@ -82,54 +87,52 @@
                     <option value="title-asc"{% if current_sort == "title-asc" %} selected{% endif %}>Name: A to Z</option>
                     <option value="title-desc"{% if current_sort == "title-desc" %} selected{% endif %}>Name: Z to A</option>
                 </select>
+                <span id="sort-spinner" class="htmx-indicator">
+                    <i class="ph ph-spinner animate-spin text-primary"></i>
+                </span>
             </div>
         </div>
 
-        <!-- Products Grid -->
-        {% if products.is_empty() %}
-        <div class="text-center py-16">
-            <i class="ph ph-package text-6xl text-muted-foreground mb-4"></i>
-            <p class="text-muted-foreground mb-6">No products in this collection yet.</p>
-            <a href="/products" class="btn btn-primary">
-                Browse All Products
-            </a>
-        </div>
-        {% else %}
-        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 md:gap-8">
-            {% for product in products %}
-            {% include "partials/product_card.html" %}
-            {% endfor %}
-        </div>
-        {% endif %}
+        <!-- Products Container (swapped by HTMX) -->
+        <div id="collection-products">
+            <!-- Products Grid -->
+            {% if products.is_empty() %}
+            <div class="text-center py-16">
+                <i class="ph ph-package text-6xl text-muted-foreground mb-4"></i>
+                <p class="text-muted-foreground mb-6">No products in this collection yet.</p>
+                <a href="/products" class="btn btn-primary">
+                    Browse All Products
+                </a>
+            </div>
+            {% else %}
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 md:gap-8">
+                {% for product in products %}
+                {% include "partials/product_card.html" %}
+                {% endfor %}
+            </div>
+            {% endif %}
 
-        <!-- Pagination -->
-        {% if has_more_pages %}
-        <div class="flex justify-center mt-12">
-            <nav class="flex items-center gap-2" aria-label="Pagination">
-                {% if current_page > 1 %}
-                <a href="?page={{ current_page - 1 }}&sort={{ current_sort }}" class="btn btn-outline">
-                    <i class="ph ph-caret-left"></i>
-                </a>
-                {% endif %}
-                <span class="px-4 py-2 text-sm text-muted-foreground">
-                    Page {{ current_page }} of {{ total_pages }}
-                </span>
-                {% if current_page < total_pages %}
-                <a href="?page={{ current_page + 1 }}&sort={{ current_sort }}" class="btn btn-outline">
-                    <i class="ph ph-caret-right"></i>
-                </a>
-                {% endif %}
-            </nav>
+            <!-- Pagination -->
+            {% if has_more_pages %}
+            <div class="flex justify-center mt-12">
+                <nav class="flex items-center gap-2" aria-label="Pagination">
+                    {% if current_page > 1 %}
+                    <a href="?page={{ current_page - 1 }}&sort={{ current_sort }}" class="btn btn-outline">
+                        <i class="ph ph-caret-left"></i>
+                    </a>
+                    {% endif %}
+                    <span class="px-4 py-2 text-sm text-muted-foreground">
+                        Page {{ current_page }} of {{ total_pages }}
+                    </span>
+                    {% if current_page < total_pages %}
+                    <a href="?page={{ current_page + 1 }}&sort={{ current_sort }}" class="btn btn-outline">
+                        <i class="ph ph-caret-right"></i>
+                    </a>
+                    {% endif %}
+                </nav>
+            </div>
+            {% endif %}
         </div>
-        {% endif %}
     </div>
 </section>
-
-<script nonce="{{ nonce }}">
-window.updateSort = function(value) {
-    var url = new URL(window.location);
-    url.searchParams.set('sort', value);
-    window.location = url;
-};
-</script>
 {% endblock %}
