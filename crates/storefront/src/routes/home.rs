@@ -334,6 +334,7 @@ pub async fn home(
             None,
             None,
             None,
+            None,
         )
         .await
         .map_or_else(
@@ -350,6 +351,7 @@ pub async fn home(
         .get_collection_by_handle(
             MERCH_COLLECTION,
             Some(PRODUCTS_PER_COLLECTION),
+            None,
             None,
             None,
             None,

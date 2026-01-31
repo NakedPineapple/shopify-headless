@@ -69,8 +69,78 @@
 <!-- Product Grid -->
 <section class="py-12 md:py-16">
     <div class="page-width">
-        <!-- Sort Controls -->
-        <div class="flex items-center justify-end mb-8">
+        <!-- Filter & Sort Controls -->
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+            <!-- Filters -->
+            <div class="flex flex-wrap items-center gap-4">
+                <!-- In Stock Filter -->
+                <label class="flex items-center gap-2 text-sm cursor-pointer select-none">
+                    <input type="checkbox"
+                           name="available"
+                           value="true"
+                           {% if filter_available %}checked{% endif %}
+                           class="w-4 h-4 rounded border-border text-primary focus:ring-primary focus:ring-offset-0"
+                           hx-get="/collections/{{ collection.handle }}"
+                           hx-target="#collection-products"
+                           hx-select="#collection-products"
+                           hx-swap="outerHTML"
+                           hx-push-url="true"
+                           hx-include="[name='sort'], [name='price_min'], [name='price_max']"
+                           hx-indicator="#filter-spinner">
+                    <span class="text-foreground">In Stock Only</span>
+                </label>
+
+                <!-- Price Range Filter -->
+                <div class="flex items-center gap-2">
+                    <span class="text-sm text-muted-foreground">Price:</span>
+                    <div class="flex items-center gap-1">
+                        <span class="text-muted-foreground">$</span>
+                        <input type="number"
+                               name="price_min"
+                               placeholder="Min"
+                               {% if let Some(min) = filter_price_min %}value="{{ min }}"{% endif %}
+                               min="0"
+                               step="1"
+                               class="input py-1.5 px-2 w-20 text-sm">
+                    </div>
+                    <span class="text-muted-foreground">–</span>
+                    <div class="flex items-center gap-1">
+                        <span class="text-muted-foreground">$</span>
+                        <input type="number"
+                               name="price_max"
+                               placeholder="Max"
+                               {% if let Some(max) = filter_price_max %}value="{{ max }}"{% endif %}
+                               min="0"
+                               step="1"
+                               class="input py-1.5 px-2 w-20 text-sm">
+                    </div>
+                    <button type="button"
+                            class="btn btn-outline btn-sm"
+                            hx-get="/collections/{{ collection.handle }}"
+                            hx-target="#collection-products"
+                            hx-select="#collection-products"
+                            hx-swap="outerHTML"
+                            hx-push-url="true"
+                            hx-include="[name='sort'], [name='available']:checked, [name='price_min'], [name='price_max']"
+                            hx-indicator="#filter-spinner">
+                        Apply
+                    </button>
+                </div>
+
+                <!-- Clear Filters -->
+                {% if filter_available || filter_price_min.is_some() || filter_price_max.is_some() %}
+                <a href="/collections/{{ collection.handle }}?sort={{ current_sort }}"
+                   class="text-sm text-primary hover:underline">
+                    Clear filters
+                </a>
+                {% endif %}
+
+                <span id="filter-spinner" class="htmx-indicator">
+                    <i class="ph ph-spinner animate-spin text-primary"></i>
+                </span>
+            </div>
+
+            <!-- Sort -->
             <div class="flex items-center gap-2">
                 <label for="collection-sort" class="text-sm text-muted-foreground">Sort by:</label>
                 <select id="collection-sort" name="sort" class="input py-2 px-3 w-auto"
@@ -79,7 +149,8 @@
                         hx-select="#collection-products"
                         hx-swap="outerHTML"
                         hx-push-url="true"
-                        hx-indicator="#sort-spinner">
+                        hx-include="[name='available']:checked, [name='price_min'], [name='price_max']"
+                        hx-indicator="#filter-spinner">
                     <option value="best-selling"{% if current_sort == "best-selling" %} selected{% endif %}>Best Selling</option>
                     <option value="price-asc"{% if current_sort == "price-asc" %} selected{% endif %}>Price: Low to High</option>
                     <option value="price-desc"{% if current_sort == "price-desc" %} selected{% endif %}>Price: High to Low</option>
@@ -87,9 +158,6 @@
                     <option value="title-asc"{% if current_sort == "title-asc" %} selected{% endif %}>Name: A to Z</option>
                     <option value="title-desc"{% if current_sort == "title-desc" %} selected{% endif %}>Name: Z to A</option>
                 </select>
-                <span id="sort-spinner" class="htmx-indicator">
-                    <i class="ph ph-spinner animate-spin text-primary"></i>
-                </span>
             </div>
         </div>
 
@@ -117,7 +185,7 @@
             <div class="flex justify-center mt-12">
                 <nav class="flex items-center gap-2" aria-label="Pagination">
                     {% if current_page > 1 %}
-                    <a href="?page={{ current_page - 1 }}&sort={{ current_sort }}" class="btn btn-outline">
+                    <a href="?page={{ current_page - 1 }}&sort={{ current_sort }}{% if filter_available %}&available=true{% endif %}{% if let Some(min) = filter_price_min %}&price_min={{ min }}{% endif %}{% if let Some(max) = filter_price_max %}&price_max={{ max }}{% endif %}" class="btn btn-outline">
                         <i class="ph ph-caret-left"></i>
                     </a>
                     {% endif %}
@@ -125,7 +193,7 @@
                         Page {{ current_page }} of {{ total_pages }}
                     </span>
                     {% if current_page < total_pages %}
-                    <a href="?page={{ current_page + 1 }}&sort={{ current_sort }}" class="btn btn-outline">
+                    <a href="?page={{ current_page + 1 }}&sort={{ current_sort }}{% if filter_available %}&available=true{% endif %}{% if let Some(min) = filter_price_min %}&price_min={{ min }}{% endif %}{% if let Some(max) = filter_price_max %}&price_max={{ max }}{% endif %}" class="btn btn-outline">
                         <i class="ph ph-caret-right"></i>
                     </a>
                     {% endif %}

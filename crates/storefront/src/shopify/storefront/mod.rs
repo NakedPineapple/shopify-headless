@@ -359,7 +359,7 @@ impl StorefrontClient {
     /// # Errors
     ///
     /// Returns an error if the collection is not found or the API request fails.
-    #[instrument(skip(self), fields(handle = %handle))]
+    #[instrument(skip(self, filters), fields(handle = %handle))]
     pub async fn get_collection_by_handle(
         &self,
         handle: &str,
@@ -367,6 +367,7 @@ impl StorefrontClient {
         after: Option<String>,
         sort_key: Option<get_collection_by_handle::ProductCollectionSortKeys>,
         reverse: Option<bool>,
+        filters: Option<Vec<get_collection_by_handle::ProductFilter>>,
     ) -> Result<Collection, ShopifyError> {
         // Include sort params in cache key
         let sort_str = sort_key.as_ref().map_or("default", |k| match k {
@@ -377,11 +378,33 @@ impl StorefrontClient {
             _ => "other",
         });
         let reverse_str = reverse.unwrap_or(false);
+        // Include filter state in cache key
+        let filter_str = filters.as_ref().map_or(String::new(), |f| {
+            f.iter()
+                .map(|filter| {
+                    let mut parts = Vec::new();
+                    if let Some(avail) = filter.available {
+                        parts.push(format!("avail:{avail}"));
+                    }
+                    if let Some(ref price) = filter.price {
+                        if let Some(min) = price.min {
+                            parts.push(format!("min:{min}"));
+                        }
+                        if let Some(max) = price.max {
+                            parts.push(format!("max:{max}"));
+                        }
+                    }
+                    parts.join(",")
+                })
+                .collect::<Vec<_>>()
+                .join(";")
+        });
         let cache_key = format!(
-            "collection:{handle}:{}:{}:{}",
+            "collection:{handle}:{}:{}:{}:{}",
             after.as_deref().unwrap_or(""),
             sort_str,
-            reverse_str
+            reverse_str,
+            filter_str
         );
 
         // Check cache
@@ -396,7 +419,7 @@ impl StorefrontClient {
             after: after.clone(),
             sort_key,
             reverse,
-            filters: None,
+            filters,
         };
 
         let data = self.execute::<GetCollectionByHandle>(variables).await?;

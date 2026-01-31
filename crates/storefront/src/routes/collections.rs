@@ -12,9 +12,8 @@ use tracing::instrument;
 
 use crate::config::AnalyticsConfig;
 use crate::filters;
-use crate::shopify::ProductCollectionSortKeys;
-use crate::shopify::ShopifyError;
 use crate::shopify::types::Collection as ShopifyCollection;
+use crate::shopify::{PriceRangeFilter, ProductCollectionSortKeys, ProductFilter, ShopifyError};
 use crate::state::AppState;
 
 pub use super::products::{BreadcrumbItem, ImageView, ProductView};
@@ -28,11 +27,17 @@ pub struct CollectionView {
     pub image: Option<ImageView>,
 }
 
-/// Pagination query parameters.
+/// Pagination and filter query parameters.
 #[derive(Debug, Deserialize)]
 pub struct PaginationQuery {
     pub page: Option<u32>,
     pub sort: Option<String>,
+    /// Filter to show only in-stock products.
+    pub available: Option<bool>,
+    /// Minimum price filter (in dollars).
+    pub price_min: Option<f64>,
+    /// Maximum price filter (in dollars).
+    pub price_max: Option<f64>,
 }
 
 // =============================================================================
@@ -85,6 +90,12 @@ pub struct CollectionShowTemplate {
     pub breadcrumbs: Vec<BreadcrumbItem>,
     /// Current sort option value.
     pub current_sort: String,
+    /// Filter: show only in-stock products.
+    pub filter_available: bool,
+    /// Filter: minimum price.
+    pub filter_price_min: Option<f64>,
+    /// Filter: maximum price.
+    pub filter_price_max: Option<f64>,
 }
 
 /// Products per page for collection view.
@@ -144,6 +155,52 @@ fn parse_sort(sort: Option<&str>) -> (Option<ProductCollectionSortKeys>, Option<
     }
 }
 
+/// Build Shopify product filters from query parameters.
+fn build_filters(query: &PaginationQuery) -> Option<Vec<ProductFilter>> {
+    let mut filters = Vec::new();
+
+    // In-stock filter
+    if query.available == Some(true) {
+        filters.push(ProductFilter {
+            available: Some(true),
+            category: None,
+            price: None,
+            product_metafield: None,
+            product_type: None,
+            product_vendor: None,
+            tag: None,
+            taxonomy_metafield: None,
+            variant_metafield: None,
+            variant_option: None,
+        });
+    }
+
+    // Price range filter
+    if query.price_min.is_some() || query.price_max.is_some() {
+        filters.push(ProductFilter {
+            available: None,
+            category: None,
+            price: Some(PriceRangeFilter {
+                min: query.price_min,
+                max: query.price_max,
+            }),
+            product_metafield: None,
+            product_type: None,
+            product_vendor: None,
+            tag: None,
+            taxonomy_metafield: None,
+            variant_metafield: None,
+            variant_option: None,
+        });
+    }
+
+    if filters.is_empty() {
+        None
+    } else {
+        Some(filters)
+    }
+}
+
 /// Parameters for building an error collection template.
 struct ErrorParams {
     status: StatusCode,
@@ -151,6 +208,27 @@ struct ErrorParams {
     title: &'static str,
     description: Option<&'static str>,
     current_sort: String,
+    filter_available: bool,
+    filter_price_min: Option<f64>,
+    filter_price_max: Option<f64>,
+}
+
+/// Build SEO breadcrumbs for a collection page.
+fn build_breadcrumbs(title: &str) -> Vec<BreadcrumbItem> {
+    vec![
+        BreadcrumbItem {
+            name: "Home".to_string(),
+            url: Some("/".to_string()),
+        },
+        BreadcrumbItem {
+            name: "Collections".to_string(),
+            url: Some("/collections".to_string()),
+        },
+        BreadcrumbItem {
+            name: title.to_string(),
+            url: None,
+        },
+    ]
 }
 
 /// Create an error response for collection pages.
@@ -173,6 +251,9 @@ fn error_template(params: ErrorParams, state: &AppState, nonce: String) -> Respo
             base_url: state.config().base_url.clone(),
             breadcrumbs: Vec::new(),
             current_sort: params.current_sort,
+            filter_available: params.filter_available,
+            filter_price_min: params.filter_price_min,
+            filter_price_max: params.filter_price_max,
         },
     )
         .into_response()
@@ -193,13 +274,37 @@ pub async fn show(
         .unwrap_or_else(|| "best-selling".to_string());
     let (sort_key, reverse) = parse_sort(query.sort.as_deref());
 
+    // Build filters from query params
+    let filter_available = query.available.unwrap_or(false);
+    let filter_price_min = query.price_min;
+    let filter_price_max = query.price_max;
+    let filters = build_filters(&query);
+
     // Fetch collection and products from Shopify Storefront API
     #[allow(clippy::cast_possible_wrap)]
     let products_per_page = PRODUCTS_PER_PAGE as i64;
     let result = state
         .storefront()
-        .get_collection_by_handle(&handle, Some(products_per_page), None, sort_key, reverse)
+        .get_collection_by_handle(
+            &handle,
+            Some(products_per_page),
+            None,
+            sort_key,
+            reverse,
+            filters,
+        )
         .await;
+
+    let err_params = |status, title, desc| ErrorParams {
+        status,
+        handle: handle.clone(),
+        title,
+        description: desc,
+        current_sort: current_sort.clone(),
+        filter_available,
+        filter_price_min,
+        filter_price_max,
+    };
 
     match result {
         Ok(shopify_collection) => {
@@ -209,28 +314,10 @@ pub async fn show(
                 .iter()
                 .map(ProductView::from)
                 .collect();
-
-            // Note: For proper pagination, we'd need to track page info
-            // For now, assume single page of products
             let has_more = products.len() >= PRODUCTS_PER_PAGE;
 
-            // SEO breadcrumbs
-            let breadcrumbs = vec![
-                BreadcrumbItem {
-                    name: "Home".to_string(),
-                    url: Some("/".to_string()),
-                },
-                BreadcrumbItem {
-                    name: "Collections".to_string(),
-                    url: Some("/collections".to_string()),
-                },
-                BreadcrumbItem {
-                    name: collection.title.clone(),
-                    url: None,
-                },
-            ];
-
             CollectionShowTemplate {
+                breadcrumbs: build_breadcrumbs(&collection.title),
                 collection,
                 products,
                 current_page,
@@ -243,32 +330,23 @@ pub async fn show(
                 analytics: state.config().analytics.clone(),
                 nonce,
                 base_url: state.config().base_url.clone(),
-                breadcrumbs,
                 current_sort,
+                filter_available,
+                filter_price_min,
+                filter_price_max,
             }
             .into_response()
         }
         Err(ShopifyError::NotFound(_)) => error_template(
-            ErrorParams {
-                status: StatusCode::NOT_FOUND,
-                handle,
-                title: "Collection Not Found",
-                description: None,
-                current_sort,
-            },
+            err_params(StatusCode::NOT_FOUND, "Collection Not Found", None),
             &state,
             nonce,
         ),
         Err(e) => {
             tracing::error!("Failed to fetch collection {handle}: {e}");
+            let desc = Some("An error occurred loading this collection.");
             error_template(
-                ErrorParams {
-                    status: StatusCode::INTERNAL_SERVER_ERROR,
-                    handle,
-                    title: "Error",
-                    description: Some("An error occurred loading this collection."),
-                    current_sort,
-                },
+                err_params(StatusCode::INTERNAL_SERVER_ERROR, "Error", desc),
                 &state,
                 nonce,
             )
