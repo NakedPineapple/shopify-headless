@@ -164,7 +164,10 @@ async fn main() {
                      latency: std::time::Duration,
                      span: &Span| {
                         span.record("status", response.status().as_u16());
-                        span.record("latency_ms", latency.as_millis() as u64);
+                        span.record(
+                            "latency_ms",
+                            u64::try_from(latency.as_millis()).unwrap_or(u64::MAX),
+                        );
                         DefaultOnResponse::default().on_response(response, latency, span);
                     },
                 ),

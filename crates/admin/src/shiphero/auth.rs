@@ -90,7 +90,11 @@ pub async fn authenticate(
         "Sending ShipHero auth request"
     );
 
-    let response = client.post(AUTH_ENDPOINT).json(&request_body).send().await?;
+    let response = client
+        .post(AUTH_ENDPOINT)
+        .json(&request_body)
+        .send()
+        .await?;
 
     let status = response.status();
     let response_body = response.text().await.unwrap_or_default();
@@ -113,8 +117,8 @@ pub async fn authenticate(
     } else if status == reqwest::StatusCode::UNAUTHORIZED
         || status == reqwest::StatusCode::FORBIDDEN
     {
-        let error_response: AuthErrorResponse =
-            serde_json::from_str(&response_body).unwrap_or_else(|_| AuthErrorResponse {
+        let error_response: AuthErrorResponse = serde_json::from_str(&response_body)
+            .unwrap_or_else(|_| AuthErrorResponse {
                 error: None,
                 message: Some("Invalid credentials".to_string()),
             });

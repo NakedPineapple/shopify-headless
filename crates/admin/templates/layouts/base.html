@@ -88,6 +88,11 @@
                         <i class="ph ph-warehouse text-xl"></i>
                         <span class="sidebar-text">Inventory</span>
                     </a>
+                    <a href="/warehouse"
+                       class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors {% if current_path.starts_with("/warehouse") %}bg-coral text-white{% else %}text-sidebar-foreground hover:bg-sidebar-accent hover:text-white{% endif %}">
+                        <i class="ph ph-buildings text-xl"></i>
+                        <span class="sidebar-text">Warehouse</span>
+                    </a>
                     <a href="/discounts"
                        class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors {% if current_path.starts_with("/discounts") %}bg-coral text-white{% else %}text-sidebar-foreground hover:bg-sidebar-accent hover:text-white{% endif %}">
                         <i class="ph ph-tag text-xl"></i>
@@ -153,6 +158,11 @@
                            class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors {% if current_path.starts_with("/shopify") %}bg-coral text-white{% else %}text-sidebar-foreground hover:bg-sidebar-accent hover:text-white{% endif %}">
                             <i class="ph ph-storefront text-xl"></i>
                             <span class="sidebar-text">Shopify Settings</span>
+                        </a>
+                        <a href="/settings/shiphero"
+                           class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors {% if current_path.starts_with("/settings/shiphero") %}bg-coral text-white{% else %}text-sidebar-foreground hover:bg-sidebar-accent hover:text-white{% endif %}">
+                            <i class="ph ph-buildings text-xl"></i>
+                            <span class="sidebar-text">ShipHero Settings</span>
                         </a>
                     </div>
                 </div>
