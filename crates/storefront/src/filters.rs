@@ -244,3 +244,23 @@ pub fn truncate(value: &str, _env: &dyn askama::Values, max_len: usize) -> askam
     let result: String = value.chars().take(break_point).collect();
     Ok(format!("{}...", result.trim_end()))
 }
+
+// =============================================================================
+// Analytics Filters
+// =============================================================================
+
+/// Cloudflare Web Analytics beacon token, read from `CF_BEACON_TOKEN` env var.
+/// Returns empty string if not set (development).
+static CF_BEACON_TOKEN: LazyLock<String> =
+    LazyLock::new(|| std::env::var("CF_BEACON_TOKEN").unwrap_or_default());
+
+/// Returns the Cloudflare beacon token for Web Analytics.
+///
+/// Returns empty string in development (when `CF_BEACON_TOKEN` is not set).
+///
+/// Usage in templates: `{% let cf_token = ""|cf_beacon_token %}`
+#[allow(clippy::unnecessary_wraps)]
+#[askama::filter_fn]
+pub fn cf_beacon_token(_value: impl Display, _env: &dyn askama::Values) -> askama::Result<String> {
+    Ok(CF_BEACON_TOKEN.clone())
+}
