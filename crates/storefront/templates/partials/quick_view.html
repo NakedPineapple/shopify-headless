@@ -1,20 +1,43 @@
 {# Quick View - Product quick view content for sidebar #}
-{# Expected variables: product (with handle, title, images, price, compare_at_price, description, variants) #}
+{# Expected variables: product, store_url #}
+{% import "macros/picture.html" as img %}
 <div class="space-y-6">
-    <!-- Product Images -->
+    {# Product Images - Swiper Carousel #}
     {% if !product.images.is_empty() %}
     <div class="aspect-square rounded-lg overflow-hidden bg-muted">
+        {% if product.images.len() == 1 %}
+        {# Single image - no carousel needed #}
         <img src="{{ product.images[0].url }}"
              alt="{{ product.images[0].alt }}"
              class="w-full h-full object-cover">
+        {% else %}
+        {# Multiple images - Swiper carousel #}
+        <div class="swiper quick-view-carousel h-full" id="quick-view-swiper">
+            <div class="swiper-wrapper">
+                {% for image in product.images %}
+                <div class="swiper-slide">
+                    <img src="{{ image.url }}"
+                         alt="{{ image.alt }}"
+                         class="w-full h-full object-cover"
+                         loading="{% if loop.first %}eager{% else %}lazy{% endif %}">
+                </div>
+                {% endfor %}
+            </div>
+            {# Pagination dots #}
+            <div class="swiper-pagination"></div>
+            {# Navigation arrows #}
+            <button class="swiper-button-prev !w-8 !h-8 !-mt-4 !left-2 !after:text-sm" aria-label="Previous image"></button>
+            <button class="swiper-button-next !w-8 !h-8 !-mt-4 !right-2 !after:text-sm" aria-label="Next image"></button>
+        </div>
+        {% endif %}
     </div>
     {% endif %}
 
-    <!-- Product Info -->
+    {# Product Info #}
     <div class="space-y-4">
         <h2 class="font-display text-2xl font-semibold text-foreground">{{ product.title }}</h2>
 
-        <!-- Price -->
+        {# Price #}
         <div class="flex items-center gap-3">
             {% if let Some(compare_price) = product.compare_at_price %}
             <span class="text-2xl font-semibold text-primary">{{ product.price }}</span>
@@ -25,64 +48,132 @@
             {% endif %}
         </div>
 
-        <!-- Description (truncated) -->
-        {% if !product.description.is_empty() %}
-        <p class="text-muted-foreground line-clamp-3">{{ product.description }}</p>
+        {# Shop Pay Installments #}
+        {% if let Some(first_variant) = product.variants.first() %}
+        {% if let Some(installments) = first_variant.shop_pay_installments %}
+        {% if installments.eligible %}
+        {% if let Some(count) = installments.installments_count %}
+        {% if let Some(price_per_term) = installments.price_per_term %}
+        <div class="shop-pay-installments flex items-center flex-wrap gap-1.5 text-sm text-muted-foreground"
+             id="quick-view-installments"
+             data-count="{{ count }}"
+             data-price="{{ price_per_term }}">
+            <span>or {{ count }} interest-free payments of</span>
+            <strong class="text-foreground">{{ price_per_term }}</strong>
+            <span>with</span>
+            {{ img::svg(path="/static/images/original/payment/shop-pay.svg", alt="Shop Pay", class="h-5 inline-block") }}
+        </div>
+        {% endif %}
+        {% endif %}
+        {% endif %}
+        {% endif %}
         {% endif %}
 
-        <!-- Variant Selector (if applicable) -->
+        {# Description #}
+        {% if !product.description.is_empty() %}
+        <div class="prose prose-sm text-muted-foreground border-t border-b border-border py-3">
+            {{ product.description|safe }}
+        </div>
+        {% endif %}
+
+        {# Stock Status for single variant #}
+        {% if product.variants.len() == 1 %}
+        {% if let Some(variant) = product.variants.first() %}
+        {% if let Some(qty) = variant.quantity_available %}
+        {% if *qty <= 5 && *qty > 0 %}
+        <p class="text-sm text-amber-600 dark:text-amber-400 font-medium">
+            <i class="ph ph-warning-circle mr-1"></i>
+            Only {{ qty }} left in stock!
+        </p>
+        {% endif %}
+        {% if *qty == 0 && !variant.available_for_sale %}
+        <p class="text-sm text-red-600 dark:text-red-400 font-medium">
+            <i class="ph ph-x-circle mr-1"></i>
+            Out of stock
+        </p>
+        {% endif %}
+        {% endif %}
+        {% endif %}
+        {% endif %}
+
+        {# Variant Selector (if applicable) #}
         {% if product.variants.len() > 1 %}
         <div class="space-y-2">
             <label class="text-sm font-medium text-foreground">Options</label>
             <select name="variant_id" class="input" id="quick-view-variant">
                 {% for variant in product.variants %}
-                <option value="{{ variant.id }}">{{ variant.title }} - {{ variant.price }}</option>
+                <option value="{{ variant.id }}"
+                        data-quantity="{{ variant.quantity_available.unwrap_or(0) }}"
+                        data-available="{{ variant.available_for_sale }}"
+                        data-price="{{ variant.price }}"
+                        {% if !variant.available_for_sale %}disabled{% endif %}>
+                    {{ variant.title }} - {{ variant.price }}
+                    {% if let Some(qty) = variant.quantity_available %}
+                        {% if *qty <= 5 && *qty > 0 %} (Only {{ qty }} left){% endif %}
+                        {% if *qty == 0 %} (Out of Stock){% endif %}
+                    {% endif %}
+                    {% if !variant.available_for_sale %} - Sold Out{% endif %}
+                </option>
                 {% endfor %}
             </select>
         </div>
         {% else %}
         {% if let Some(first_variant) = product.variants.first() %}
-        <input type="hidden" id="quick-view-variant" value="{{ first_variant.id }}">
+        <input type="hidden" id="quick-view-variant" value="{{ first_variant.id }}"
+               data-quantity="{{ first_variant.quantity_available.unwrap_or(0) }}"
+               data-available="{{ first_variant.available_for_sale }}">
         {% endif %}
         {% endif %}
 
-        <!-- Quantity Selector -->
-        <div class="space-y-2">
-            <label class="text-sm font-medium text-foreground">Quantity</label>
-            <div class="quantity-selector inline-flex items-center border border-border rounded-lg">
+        {# Quantity + Add to Cart Row #}
+        {% if let Some(first_variant) = product.variants.first() %}
+        {% if first_variant.available_for_sale %}
+        <div class="flex items-center gap-3">
+            {# Quantity Selector - Pill shaped #}
+            <div class="quantity-selector inline-flex items-center border-2 border-border rounded-full flex-shrink-0">
                 <button type="button"
-                        class="quantity-btn w-10 h-10 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
-                        data-action="decrease">
-                    <i class="ph ph-minus"></i>
+                        class="quantity-btn w-11 h-11 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors rounded-l-full hover:bg-muted"
+                        data-action="decrease"
+                        aria-label="Decrease quantity">
+                    <i class="ph ph-minus text-sm"></i>
                 </button>
                 <input type="number"
-                       class="quantity-input w-16 h-10 text-center border-0 bg-transparent focus:outline-none"
+                       class="quantity-input w-10 h-11 text-center border-0 bg-transparent focus:outline-none text-sm font-medium [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                        value="1"
                        min="1"
                        max="99"
-                       id="quick-view-quantity">
+                       id="quick-view-quantity"
+                       aria-label="Quantity">
                 <button type="button"
-                        class="quantity-btn w-10 h-10 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
-                        data-action="increase">
-                    <i class="ph ph-plus"></i>
+                        class="quantity-btn w-11 h-11 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors rounded-r-full hover:bg-muted"
+                        data-action="increase"
+                        aria-label="Increase quantity">
+                    <i class="ph ph-plus text-sm"></i>
                 </button>
             </div>
-        </div>
 
-        <!-- Add to Cart Button -->
-        {% if !product.variants.is_empty() %}
+            {# Add to Cart Button #}
+            <button type="button"
+                    class="btn btn-primary flex-1 justify-center"
+                    hx-post="/cart/add"
+                    hx-vals='js:{
+                        "variant_id": document.getElementById("quick-view-variant")?.value || "",
+                        "quantity": parseInt(document.getElementById("quick-view-quantity")?.value || 1)
+                    }'
+                    hx-swap="none"
+                    hx-on::after-request="htmx.trigger(document.body, 'cartUpdated'); closeQuickView();">
+                <i class="ph ph-tote mr-2"></i>
+                Add to Cart
+            </button>
+        </div>
+        {% else %}
         <button type="button"
-                class="btn btn-primary w-full justify-center"
-                hx-post="/cart/add"
-                hx-vals='js:{
-                    "variant_id": document.getElementById("quick-view-variant")?.value || "",
-                    "quantity": parseInt(document.getElementById("quick-view-quantity")?.value || 1)
-                }'
-                hx-swap="none"
-                hx-on::after-request="htmx.trigger(document.body, 'cartUpdated'); closeQuickView();">
+                class="btn btn-primary w-full justify-center opacity-50 cursor-not-allowed"
+                disabled>
             <i class="ph ph-tote mr-2"></i>
-            Add to Cart
+            Out of Stock
         </button>
+        {% endif %}
         {% else %}
         <button type="button"
                 class="btn btn-primary w-full justify-center opacity-50 cursor-not-allowed"
@@ -92,12 +183,28 @@
         </button>
         {% endif %}
 
-        <!-- View Full Details Link -->
-        <a href="/products/{{ product.handle }}"
-           class="btn btn-outline w-full justify-center"
-           data-close-quick-view>
-            View Full Details
-            <i class="ph ph-arrow-right ml-2"></i>
+        {# Shop Pay Button - Buy with Shop Pay #}
+        {% if let Some(first_variant) = product.variants.first() %}
+        {% if first_variant.available_for_sale %}
+        <a href="https://{{ store_url }}/cart/{{ first_variant.id }}:1?payment=shop_pay"
+           class="block w-full h-12 rounded-full overflow-hidden transition-all hover:opacity-90 active:scale-[0.98]"
+           id="quick-view-shop-pay-btn"
+           data-base-url="https://{{ store_url }}/cart/"
+           data-variant-id="{{ first_variant.id }}">
+            {{ img::picture(path="/static/images/original/payment/Dynamic Checkout Black@3x.png", alt="Buy with Shop Pay", sizes="400px", class="w-full h-full object-cover object-center", picture_class="block h-full", loading="eager") }}
         </a>
+        {% endif %}
+        {% endif %}
+
     </div>
+</div>
+
+{# View Full Details - Sticky Footer (out-of-band swap) #}
+<div id="quick-view-footer" hx-swap-oob="innerHTML">
+    <a href="/products/{{ product.handle }}"
+       class="group flex items-center justify-between w-full px-6 py-4 border-t border-border text-foreground hover:text-primary hover:bg-muted/50 transition-colors"
+       data-close-quick-view>
+        <span class="font-medium">View Full Details</span>
+        <i class="ph ph-caret-right text-lg transition-transform group-hover:translate-x-1"></i>
+    </a>
 </div>

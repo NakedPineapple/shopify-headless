@@ -133,6 +133,7 @@ fn convert_collection_product(
                 }),
                 selected_options: vec![],
                 image: None,
+                shop_pay_installments: None,
             })
             .collect(),
     }

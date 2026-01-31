@@ -1,8 +1,8 @@
 //! Product type conversion functions.
 
 use crate::shopify::types::{
-    Image, Money, PageInfo, PriceRange, Product, ProductConnection, ProductOption, ProductVariant,
-    SelectedOption, Seo,
+    Image, InstallmentsCount, Money, PageInfo, PriceRange, Product, ProductConnection,
+    ProductOption, ProductVariant, SelectedOption, Seo, ShopPayInstallmentsPricing,
 };
 
 use super::super::queries::{get_product_by_handle, get_product_recommendations, get_products};
@@ -108,6 +108,19 @@ fn convert_option_handle(o: get_product_by_handle::ProductFieldsOptions) -> Prod
     }
 }
 
+fn convert_shop_pay_installments_handle(
+    pricing: get_product_by_handle::ShopPayInstallmentsFields,
+) -> ShopPayInstallmentsPricing {
+    ShopPayInstallmentsPricing {
+        eligible: pricing.eligible,
+        price_per_term: Some(convert_money_handle(pricing.price_per_term)),
+        installments_count: pricing
+            .installments_count
+            .map(|c| InstallmentsCount { count: c.count }),
+        full_price: Some(convert_money_handle(pricing.full_price)),
+    }
+}
+
 fn convert_variant_handle(v: get_product_by_handle::ProductVariantFields) -> ProductVariant {
     ProductVariant {
         id: v.id,
@@ -139,6 +152,9 @@ fn convert_variant_handle(v: get_product_by_handle::ProductVariantFields) -> Pro
             width: i.width,
             height: i.height,
         }),
+        shop_pay_installments: v
+            .shop_pay_installments_pricing
+            .map(convert_shop_pay_installments_handle),
     }
 }
 
@@ -254,6 +270,19 @@ fn convert_option_list(o: get_products::ProductFieldsOptions) -> ProductOption {
     }
 }
 
+fn convert_shop_pay_installments_list(
+    pricing: get_products::ShopPayInstallmentsFields,
+) -> ShopPayInstallmentsPricing {
+    ShopPayInstallmentsPricing {
+        eligible: pricing.eligible,
+        price_per_term: Some(convert_money_list(pricing.price_per_term)),
+        installments_count: pricing
+            .installments_count
+            .map(|c| InstallmentsCount { count: c.count }),
+        full_price: Some(convert_money_list(pricing.full_price)),
+    }
+}
+
 fn convert_variant_list(v: get_products::ProductVariantFields) -> ProductVariant {
     ProductVariant {
         id: v.id,
@@ -285,6 +314,9 @@ fn convert_variant_list(v: get_products::ProductVariantFields) -> ProductVariant
             width: i.width,
             height: i.height,
         }),
+        shop_pay_installments: v
+            .shop_pay_installments_pricing
+            .map(convert_shop_pay_installments_list),
     }
 }
 
@@ -382,6 +414,19 @@ fn convert_option_rec(o: get_product_recommendations::ProductFieldsOptions) -> P
     }
 }
 
+fn convert_shop_pay_installments_rec(
+    pricing: get_product_recommendations::ShopPayInstallmentsFields,
+) -> ShopPayInstallmentsPricing {
+    ShopPayInstallmentsPricing {
+        eligible: pricing.eligible,
+        price_per_term: Some(convert_money_rec(pricing.price_per_term)),
+        installments_count: pricing
+            .installments_count
+            .map(|c| InstallmentsCount { count: c.count }),
+        full_price: Some(convert_money_rec(pricing.full_price)),
+    }
+}
+
 fn convert_variant_rec(v: get_product_recommendations::ProductVariantFields) -> ProductVariant {
     ProductVariant {
         id: v.id,
@@ -413,5 +458,8 @@ fn convert_variant_rec(v: get_product_recommendations::ProductVariantFields) -> 
             width: i.width,
             height: i.height,
         }),
+        shop_pay_installments: v
+            .shop_pay_installments_pricing
+            .map(convert_shop_pay_installments_rec),
     }
 }

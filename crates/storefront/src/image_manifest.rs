@@ -25,7 +25,7 @@ pub static IMAGE_INFO: LazyLock<HashMap<&'static str, ImageInfo>> = LazyLock::ne
         ("branding/Pistachio_MarkOnly", ("a8e348cf", 0)),
         (
             "events/launch-party/IMG_4106_d384f118-38d8-46a4-b92a-9174ba3d357f",
-            ("f612a03c", 1024),
+            ("f612a03c", 1536),
         ),
         (
             "events/launch-party/Launch_Party_-_NP498",
@@ -62,14 +62,14 @@ pub static IMAGE_INFO: LazyLock<HashMap<&'static str, ImageInfo>> = LazyLock::ne
             "merch/dad-hat/042F576F-1C53-4B61-9B30-10D53B5EBE79",
             ("8b888190", 2400),
         ),
-        ("merch/display/Merch_Photos", ("07faeb0a", 1024)),
+        ("merch/display/Merch_Photos", ("07faeb0a", 1067)),
         ("merch/hoodie/DSC_5849", ("ebaceb61", 2400)),
         (
             "merch/other/10_18172443-bd3f-416a-b2fa-6726ca776c28",
-            ("4313f65c", 1024),
+            ("4313f65c", 1067),
         ),
-        ("merch/other/DSC_6659", ("568040b5", 1600)),
-        ("merch/other/NP_Shoot_-_Jan_2025133", ("0c3c68a1", 1024)),
+        ("merch/other/DSC_6659", ("568040b5", 2000)),
+        ("merch/other/NP_Shoot_-_Jan_2025133", ("0c3c68a1", 1067)),
         ("merch/other/NP_Shoot_-_Jan_202547", ("75cdb9f2", 1600)),
         (
             "model-program/Model_Program_Feb_2025_160",
@@ -93,17 +93,18 @@ pub static IMAGE_INFO: LazyLock<HashMap<&'static str, ImageInfo>> = LazyLock::ne
         ),
         ("payment/amex", ("d89ad285", 0)),
         ("payment/apple-pay", ("8720a7d6", 0)),
+        ("payment/Dynamic Checkout Black@3x", ("265645c9", 794)),
         ("payment/google-pay", ("71a6aee7", 0)),
         ("payment/mastercard", ("910f266e", 0)),
         ("payment/shop-pay", ("b7cf386c", 0)),
         ("payment/visa", ("1ef276a5", 0)),
         (
             "products/bright-tight-super-serum/NP_-_Photoshoot_278",
-            ("11ebcf60", 1024),
+            ("11ebcf60", 1067),
         ),
         (
             "products/glow-up-bronzing-facial-oil/Model_Program_March_2025_53",
-            ("66770f89", 1024),
+            ("66770f89", 1067),
         ),
         (
             "products/naked-pineapple-vip-bundle/DSC_7695",
@@ -123,15 +124,15 @@ pub static IMAGE_INFO: LazyLock<HashMap<&'static str, ImageInfo>> = LazyLock::ne
         ),
         (
             "products/naked-pineapple-vip-bundle/NP_-_Photoshoot_2148",
-            ("49c4b90f", 1024),
+            ("49c4b90f", 1067),
         ),
         (
             "products/pineapple-enzyme-cleanser/Model_Program_March_2025_16",
-            ("b7b882ab", 1024),
+            ("b7b882ab", 1067),
         ),
         (
             "products/pineapple-enzyme-cleanser/Model_Program_March_2025_38",
-            ("03c307ab", 1024),
+            ("03c307ab", 1058),
         ),
         (
             "products/pineapple-enzyme-cleanser/NP_-_Photoshoot_262",
@@ -139,16 +140,16 @@ pub static IMAGE_INFO: LazyLock<HashMap<&'static str, ImageInfo>> = LazyLock::ne
         ),
         (
             "products/pineapple-enzyme-cleanser/NP_-_Photoshoot_268",
-            ("dc7b9bed", 1024),
+            ("dc7b9bed", 1067),
         ),
         (
             "products/pineapple-enzyme-cleanser/NP_Cleanser_SET",
-            ("d75fd11d", 640),
+            ("d75fd11d", 1000),
         ),
         ("products/pineapple-facial-oil/DSC_7750", ("60df071e", 2400)),
         (
             "products/pineapple-facial-oil/Model_Program_March_2025_19",
-            ("06579ea4", 1024),
+            ("06579ea4", 1067),
         ),
         (
             "products/pineapple-facial-oil/NP_-_Photoshoot_238",
@@ -156,25 +157,25 @@ pub static IMAGE_INFO: LazyLock<HashMap<&'static str, ImageInfo>> = LazyLock::ne
         ),
         (
             "products/pineapple-facial-oil/NP_TropicalOil_SET",
-            ("5aee8581", 640),
+            ("5aee8581", 1000),
         ),
         (
             "products/skin-tight-exotic-cream/Model_Program_March_2025_44",
-            ("ebd7c8a7", 1024),
+            ("ebd7c8a7", 1067),
         ),
         (
             "products/skin-tight-exotic-cream/NP_-_Photoshoot_280",
-            ("5370aa9a", 1024),
+            ("5370aa9a", 1067),
         ),
         (
             "products/skin-tight-exotic-cream/NP_ExoticCream_SET",
-            ("399be851", 640),
+            ("399be851", 1000),
         ),
         (
             "products/starter-kit/Model_Program_March_2025_14_536fbe04-c22c-496b-837e-4f1ed60c0717",
-            ("367f8dad", 1024),
+            ("367f8dad", 1067),
         ),
-        ("products/starter-kit/StarterKit", ("c9b965a8", 640)),
+        ("products/starter-kit/StarterKit", ("c9b965a8", 1000)),
         ("testimonials/Maddie_-_After_NP", ("253c7a46", 2400)),
         ("testimonials/Maddie_-_Before_NP", ("27db70ac", 2400)),
     ])

@@ -21,6 +21,20 @@ fragment SeoFields on SEO {
   description
 }
 
+# Fragment for Shop Pay Installments pricing
+fragment ShopPayInstallmentsFields on ShopPayInstallmentsProductVariantPricing {
+  eligible
+  pricePerTerm {
+    ...MoneyFields
+  }
+  installmentsCount {
+    count
+  }
+  fullPrice {
+    ...MoneyFields
+  }
+}
+
 # Fragment for product variant fields
 fragment ProductVariantFields on ProductVariant {
   id
@@ -41,6 +55,9 @@ fragment ProductVariantFields on ProductVariant {
   }
   image {
     ...ImageFields
+  }
+  shopPayInstallmentsPricing {
+    ...ShopPayInstallmentsFields
   }
 }
 

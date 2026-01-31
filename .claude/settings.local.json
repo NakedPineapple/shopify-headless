@@ -8,6 +8,7 @@
       "Bash(cargo doc:*)",
       "Bash(cargo expand:*)",
       "Bash(cargo search:*)",
+      "Bash(cargo tree:*)",
       "Bash(grep:*)",
       "Bash(htmlq:*)",
       "Bash(ls:*)",
@@ -34,7 +35,8 @@
       "WebFetch(domain:nakedpineapple.co)",
       "WebFetch(domain:shopify.dev)",
       "WebFetch(domain:tailscale.com)",
-      "Bash(cargo tree:*)"
+      "WebSearch",
+      "WebFetch(domain:webcomponents.shopify.dev)"
     ],
     "deny": [
       "Bash(cargo build:*)",

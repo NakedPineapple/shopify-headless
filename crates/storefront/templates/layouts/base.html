@@ -111,22 +111,22 @@
 
     <!-- Quick View Sidebar -->
     <div id="quick-view-overlay"
-         class="fixed inset-0 bg-black/50 z-40 opacity-0 pointer-events-none transition-opacity duration-300"
+         class="fixed inset-0 bg-black/50 z-[199] opacity-0 pointer-events-none transition-opacity duration-300"
          data-action="close-quick-view"></div>
     <aside id="quick-view-sidebar"
-           class="fixed top-0 right-0 h-full w-full max-w-md bg-background z-50 shadow-2xl transform translate-x-full transition-transform duration-300 ease-out overflow-y-auto"
+           class="fixed top-0 right-0 h-screen w-full max-w-md bg-background z-[200] shadow-2xl transform translate-x-full transition-transform duration-300 ease-out flex flex-col"
            aria-label="Quick view">
-        <div class="sticky top-0 bg-background z-10 flex items-center justify-between p-4 border-b border-border">
-            <h2 class="text-sm font-medium uppercase tracking-wider text-muted-foreground">Quick View</h2>
-            <button type="button"
-                    class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-muted transition-colors"
-                    data-action="close-quick-view"
-                    aria-label="Close quick view">
-                <i class="ph ph-x text-xl"></i>
-            </button>
-        </div>
-        <div id="quick-view-content" class="p-6">
+        <button type="button"
+                class="absolute top-4 right-6 z-10 w-9 h-9 flex items-center justify-center rounded-full bg-background/80 backdrop-blur-sm shadow-md hover:bg-muted transition-colors"
+                data-action="close-quick-view"
+                aria-label="Close quick view">
+            <i class="ph ph-x text-xl"></i>
+        </button>
+        <div id="quick-view-content" class="flex-1 overflow-y-auto p-6">
             <!-- Content loaded via HTMX -->
+        </div>
+        <div id="quick-view-footer" class="flex-shrink-0">
+            <!-- Footer populated via HTMX oob swap -->
         </div>
     </aside>
 
@@ -620,11 +620,97 @@
             }
         };
 
+        // =============================================================================
+        // Quick View Component Initialization
+        // =============================================================================
+
+        // Initialize Quick View Swiper carousel
+        window.initQuickViewSwiper = function() {
+            var container = document.getElementById('quick-view-swiper');
+            if (!container || container.dataset.initialized) return;
+
+            // Destroy existing instance if any
+            if (window._quickViewSwiper) {
+                window._quickViewSwiper.destroy(true, true);
+                window._quickViewSwiper = null;
+            }
+
+            window._quickViewSwiper = new Swiper(container, {
+                loop: false,
+                speed: 300,
+                slidesPerView: 1,
+                spaceBetween: 0,
+                pagination: {
+                    el: '#quick-view-swiper .swiper-pagination',
+                    clickable: true,
+                },
+                navigation: {
+                    nextEl: '#quick-view-swiper .swiper-button-next',
+                    prevEl: '#quick-view-swiper .swiper-button-prev',
+                },
+            });
+            container.dataset.initialized = 'true';
+        };
+
+        // Initialize Shop Pay button variant change handler
+        window.initShopPayComponents = function() {
+            var variantSelect = document.getElementById('quick-view-variant');
+            if (!variantSelect || variantSelect.dataset.shopPayInitialized) return;
+
+            variantSelect.addEventListener('change', function() {
+                var variantId = this.value;
+                var quantity = document.getElementById('quick-view-quantity')?.value || 1;
+
+                // Update custom Shop Pay button link
+                var shopPayBtn = document.getElementById('quick-view-shop-pay-btn');
+                if (shopPayBtn) {
+                    var baseUrl = shopPayBtn.dataset.baseUrl;
+                    shopPayBtn.href = baseUrl + variantId + ':' + quantity + '?payment=shop_pay';
+                }
+            });
+
+            variantSelect.dataset.shopPayInitialized = 'true';
+        };
+
+        // Initialize quick view components when content loads
+        window.initQuickViewComponents = function() {
+            requestAnimationFrame(function() {
+                window.initQuickViewSwiper();
+                window.initShopPayComponents();
+            });
+        };
+
+        // Clean up quick view Swiper on close
+        var originalCloseQuickView = window.closeQuickView;
+        window.closeQuickView = function() {
+            // Destroy Swiper instance when closing
+            if (window._quickViewSwiper) {
+                window._quickViewSwiper.destroy(true, true);
+                window._quickViewSwiper = null;
+            }
+            // Clear initialized flags on content
+            var swiper = document.getElementById('quick-view-swiper');
+            if (swiper) swiper.dataset.initialized = '';
+            var variant = document.getElementById('quick-view-variant');
+            if (variant) variant.dataset.shopPayInitialized = '';
+
+            // Call original close function
+            if (originalCloseQuickView) originalCloseQuickView();
+        };
+
         // Run on initial page load
         window.initPageComponents();
 
         // Run after HTMX swaps content (for hx-boost navigation)
-        document.body.addEventListener('htmx:afterSettle', window.initPageComponents);
+        document.body.addEventListener('htmx:afterSettle', function(event) {
+            window.initPageComponents();
+
+            // Also init quick view if that was the target
+            var target = event.detail.target;
+            if (target && target.id === 'quick-view-content') {
+                window.initQuickViewComponents();
+            }
+        });
     }
     </script>
 

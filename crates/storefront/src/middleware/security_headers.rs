@@ -21,7 +21,7 @@ use super::csp::CspNonce;
 // External domains for analytics and tracking
 // =============================================================================
 
-/// External script sources for analytics platforms.
+/// External script sources for analytics platforms and Shopify.
 const SCRIPT_SRC_EXTERNAL: &[&str] = &[
     "https://www.googletagmanager.com",
     "https://www.google-analytics.com",
@@ -34,6 +34,8 @@ const SCRIPT_SRC_EXTERNAL: &[&str] = &[
     "https://cdn.mxpnl.com",
     "https://script.crazyegg.com",
     "https://static.cloudflareinsights.com",
+    // Shop Pay web components
+    "https://cdn.shopify.com",
 ];
 
 /// External image sources for CDN and tracking pixels.
@@ -49,7 +51,7 @@ const IMG_SRC_EXTERNAL: &[&str] = &[
     "data:",
 ];
 
-/// External connect sources for analytics beacons.
+/// External connect sources for analytics beacons and Shopify.
 const CONNECT_SRC_EXTERNAL: &[&str] = &[
     "https://www.google-analytics.com",
     "https://analytics.google.com",
@@ -59,6 +61,16 @@ const CONNECT_SRC_EXTERNAL: &[&str] = &[
     "https://analytics.tiktok.com",
     "https://googleads.g.doubleclick.net",
     "https://cloudflareinsights.com",
+    // Shop Pay APIs
+    "https://shop.app",
+    "https://*.shopify.com",
+];
+
+/// External frame sources for embedded widgets.
+const FRAME_SRC_EXTERNAL: &[&str] = &[
+    // Shop Pay payment terms iframe
+    "https://cdn.shopify.com",
+    "https://shop.app",
 ];
 
 // =============================================================================
@@ -180,6 +192,7 @@ fn build_csp(nonce: &str) -> String {
     let script_src = SCRIPT_SRC_EXTERNAL.join(" ");
     let img_src = IMG_SRC_EXTERNAL.join(" ");
     let connect_src = CONNECT_SRC_EXTERNAL.join(" ");
+    let frame_src = FRAME_SRC_EXTERNAL.join(" ");
 
     // Note: 'unsafe-eval' is required for HTMX to function (uses Function() internally).
     // All interactive behavior uses event delegation via data-action attributes,
@@ -191,7 +204,7 @@ fn build_csp(nonce: &str) -> String {
          font-src 'self' data:; \
          img-src 'self' {img_src}; \
          connect-src 'self' {connect_src}; \
-         frame-src 'none'; \
+         frame-src {frame_src}; \
          object-src 'none'; \
          base-uri 'self'; \
          form-action 'self'; \

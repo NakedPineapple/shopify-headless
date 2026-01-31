@@ -83,6 +83,34 @@ pub struct ProductOption {
     pub values: Vec<String>,
 }
 
+// =============================================================================
+// Shop Pay Types
+// =============================================================================
+
+/// Number of installments for Shop Pay.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InstallmentsCount {
+    /// Number of payment terms.
+    pub count: i64,
+}
+
+/// Shop Pay installments pricing for a variant.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ShopPayInstallmentsPricing {
+    /// Whether the variant is eligible for Shop Pay installments.
+    pub eligible: bool,
+    /// Price per payment term.
+    pub price_per_term: Option<Money>,
+    /// Number of installments.
+    pub installments_count: Option<InstallmentsCount>,
+    /// Full price (total).
+    pub full_price: Option<Money>,
+}
+
+// =============================================================================
+// Product Types (continued)
+// =============================================================================
+
 /// A product variant (specific combination of options).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProductVariant {
@@ -106,6 +134,8 @@ pub struct ProductVariant {
     pub selected_options: Vec<SelectedOption>,
     /// Variant image.
     pub image: Option<Image>,
+    /// Shop Pay installments pricing.
+    pub shop_pay_installments: Option<ShopPayInstallmentsPricing>,
 }
 
 /// A product in the store.

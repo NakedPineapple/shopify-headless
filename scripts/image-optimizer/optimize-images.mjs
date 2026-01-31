@@ -206,8 +206,8 @@ async function getContentHash(filePath) {
 async function discoverUsedImages() {
   const usedImages = new Set();
 
-  // Pattern to match /static/images/original/ paths
-  const imagePathRegex = /\/static\/images\/original\/([^"'\s)]+\.(jpg|jpeg|png|webp|svg|ico))/gi;
+  // Pattern to match /static/images/original/ paths (allows spaces in filenames)
+  const imagePathRegex = /\/static\/images\/original\/([^"')]+\.(jpg|jpeg|png|webp|svg|ico))/gi;
 
   // Pattern to match filter-based references like "path/to/image"|image_hash
   const filterPathRegex = /"([^"]+)"\s*\|\s*image_hash/g;
@@ -352,12 +352,18 @@ async function processRasterImage(inputPath, outputDir, relativePath, hash) {
   const files = [];
   let maxGeneratedWidth = 0;
 
-  // Generate each size variant (capped at original size)
-  for (const targetWidth of SIZES) {
-    if (targetWidth > originalWidth) {
-      continue; // Skip sizes larger than original
-    }
+  // Build list of sizes to generate: preset sizes + original size if it doesn't match a preset
+  const sizesToGenerate = SIZES.filter((size) => size <= originalWidth);
 
+  // Add original size if it's under the max (2400) and doesn't match an existing preset
+  const maxPreset = SIZES[SIZES.length - 1];
+  if (originalWidth <= maxPreset && !SIZES.includes(originalWidth)) {
+    sizesToGenerate.push(originalWidth);
+    sizesToGenerate.sort((a, b) => a - b);
+  }
+
+  // Generate each size variant
+  for (const targetWidth of sizesToGenerate) {
     maxGeneratedWidth = targetWidth;
 
     const resized = sharp(inputPath).resize(targetWidth, null, {
@@ -501,12 +507,47 @@ pub fn get_image_max_width(base_path: &str) -> u32 {
 }
 
 /**
+ * Check if derived files exist for an image with the given hash
+ */
+async function derivedFilesExist(imagePath, hash) {
+  const ext = extname(imagePath).toLowerCase();
+  const nameWithoutExt = imagePath.slice(0, -ext.length);
+
+  if (COPY_EXTENSIONS.has(ext) || (ext === PNG_EXTENSION && imagePath.startsWith("favicon/"))) {
+    // For copied files, just check the single hashed file exists
+    const derivedPath = join(DERIVED_DIR, `${nameWithoutExt}.${hash}${ext}`);
+    try {
+      await stat(derivedPath);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  // For raster images, check that at least one derived file exists
+  // We check for the smallest size variant in AVIF format as a proxy
+  const smallestSize = SIZES[0];
+  const avifPath = join(DERIVED_DIR, `${nameWithoutExt}.${hash}-${smallestSize}.avif`);
+  try {
+    await stat(avifPath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Main optimization function
  */
 async function optimize() {
   console.log("🍍 Naked Pineapple Image Optimizer (with content hashing)\n");
 
-  // Step 1: Discover used images
+  // Step 1: Load existing manifest for cache checking
+  console.log("📋 Loading existing manifest...");
+  const existingManifest = await loadExistingManifest();
+  console.log(`   Found ${Object.keys(existingManifest).length} existing entries\n`);
+
+  // Step 2: Discover used images
   console.log("📋 Discovering images used in templates and source files...");
   const usedImages = await discoverUsedImages();
   console.log(`   Found ${usedImages.size} unique image references\n`);
@@ -521,13 +562,14 @@ async function optimize() {
     console.log(`   Found ${usedImages.size} images in original/\n`);
   }
 
-  // Step 2: Create derived directory
+  // Step 3: Create derived directory
   await mkdir(DERIVED_DIR, { recursive: true });
 
-  // Step 3: Process each used image and build manifest
+  // Step 4: Process each used image and build manifest
   const manifest = {}; // Maps base path (without extension) to { hash, maxWidth }
   let processedCount = 0;
   let skippedCount = 0;
+  let cachedCount = 0;
   let totalVariants = 0;
 
   for (const imagePath of usedImages) {
@@ -548,6 +590,20 @@ async function optimize() {
 
     // Store in manifest (base path without extension)
     const basePath = imagePath.slice(0, -ext.length);
+
+    // Check if this image was already processed with the same hash
+    const existingEntry = existingManifest[basePath];
+    if (existingEntry && existingEntry.hash === hash) {
+      // Hash matches - check if derived files actually exist
+      const filesExist = await derivedFilesExist(imagePath, hash);
+      if (filesExist) {
+        // Reuse existing manifest entry
+        manifest[basePath] = existingEntry;
+        cachedCount++;
+        continue;
+      }
+      // Files missing, need to regenerate
+    }
 
     try {
       if (COPY_EXTENSIONS.has(ext)) {
@@ -587,12 +643,13 @@ async function optimize() {
     }
   }
 
-  // Step 4: Generate Rust manifest
+  // Step 5: Generate Rust manifest
   await generateRustManifest(manifest);
 
   // Summary
   console.log("\n✅ Optimization complete!");
   console.log(`   Processed: ${processedCount} images`);
+  console.log(`   Cached: ${cachedCount} images (unchanged)`);
   console.log(`   Skipped: ${skippedCount} images`);
   console.log(`   Generated: ${totalVariants} total variants`);
   console.log(`   Output: ${DERIVED_DIR}`);

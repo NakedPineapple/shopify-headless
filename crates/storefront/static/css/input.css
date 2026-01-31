@@ -475,3 +475,30 @@
   font-size: 24px;
   font-weight: 600;
 }
+
+/* ========================================================================
+   QUICK VIEW CAROUSEL — Swiper-generated elements (can't inline these)
+   ======================================================================== */
+
+.quick-view-carousel .swiper-pagination {
+  @apply bottom-3;
+}
+
+.quick-view-carousel .swiper-pagination-bullet {
+  @apply w-2 h-2 bg-foreground/30 opacity-100;
+}
+
+.quick-view-carousel .swiper-pagination-bullet-active {
+  @apply bg-primary;
+}
+
+.quick-view-carousel .swiper-button-prev,
+.quick-view-carousel .swiper-button-next {
+  @apply w-8 h-8 rounded-full bg-white/80 dark:bg-black/50 shadow-sm hover:bg-white dark:hover:bg-black/70;
+}
+
+.quick-view-carousel .swiper-button-prev::after,
+.quick-view-carousel .swiper-button-next::after {
+  @apply text-xs font-semibold text-foreground dark:text-white;
+}
+

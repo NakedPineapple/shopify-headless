@@ -88,13 +88,31 @@ pub fn image_srcset(
 
     let max_width = image_manifest::get_image_max_width(base_path);
 
-    // If max_width is 0 (SVG or not found), include all sizes as fallback
-    let effective_max = if max_width == 0 { 2400 } else { max_width };
+    // If max_width is 0 (SVG or not found), include all preset sizes as fallback
+    if max_width == 0 {
+        let base_url = &*IMAGE_BASE_URL;
+        let srcset: Vec<String> = SIZES
+            .iter()
+            .map(|&size| format!("{base_url}/{base_path}.{hash}-{size}.{format} {size}w"))
+            .collect();
+        return Ok(srcset.join(", "));
+    }
 
+    // Build list of sizes: preset sizes up to max_width + max_width itself if not a preset
     let base_url = &*IMAGE_BASE_URL;
-    let srcset: Vec<String> = SIZES
+    let mut sizes_to_include: Vec<u32> = SIZES
         .iter()
-        .filter(|&&size| size <= effective_max)
+        .filter(|&&size| size <= max_width)
+        .copied()
+        .collect();
+
+    // Add max_width if it's not already a preset size
+    if !SIZES.contains(&max_width) {
+        sizes_to_include.push(max_width);
+    }
+
+    let srcset: Vec<String> = sizes_to_include
+        .iter()
         .map(|&size| format!("{base_url}/{base_path}.{hash}-{size}.{format} {size}w"))
         .collect();
 
@@ -110,20 +128,12 @@ pub fn image_default_size(
     base_path: impl Display,
     _env: &dyn askama::Values,
 ) -> askama::Result<u32> {
-    const SIZES: [u32; 5] = [320, 640, 1024, 1600, 2400];
-
     let base = base_path.to_string();
     let max_width = image_manifest::get_image_max_width(&base);
 
-    // Find the largest size that exists, defaulting to 1024
-    let effective_max = if max_width == 0 { 1024 } else { max_width };
-
-    Ok(SIZES
-        .iter()
-        .rev()
-        .find(|&&size| size <= effective_max)
-        .copied()
-        .unwrap_or(1024))
+    // If max_width is 0 (SVG or not found), default to 1024
+    // Otherwise return the actual max_width (which may be a non-preset size)
+    Ok(if max_width == 0 { 1024 } else { max_width })
 }
 
 /// Converts an original image path to a derived path with hash and size.

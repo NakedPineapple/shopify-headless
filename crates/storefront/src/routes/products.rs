@@ -37,12 +37,26 @@ pub struct ImageView {
     pub alt: String,
 }
 
+/// Shop Pay installments display data for templates.
+#[derive(Clone)]
+pub struct ShopPayInstallmentsView {
+    /// Whether the variant is eligible for Shop Pay installments.
+    pub eligible: bool,
+    /// Price per payment term (formatted, e.g., "$51.75").
+    pub price_per_term: Option<String>,
+    /// Number of installments.
+    pub installments_count: Option<i64>,
+}
+
 /// Variant display data for templates.
 #[derive(Clone)]
 pub struct VariantView {
     pub id: String,
     pub title: String,
     pub price: String,
+    pub available_for_sale: bool,
+    pub quantity_available: Option<i64>,
+    pub shop_pay_installments: Option<ShopPayInstallmentsView>,
 }
 
 /// Breadcrumb item for SEO structured data.
@@ -103,6 +117,15 @@ impl From<&ShopifyProduct> for ProductView {
                     id: v.id.clone(),
                     title: v.title.clone(),
                     price: format_price(&v.price),
+                    available_for_sale: v.available_for_sale,
+                    quantity_available: v.quantity_available,
+                    shop_pay_installments: v.shop_pay_installments.as_ref().map(|sp| {
+                        ShopPayInstallmentsView {
+                            eligible: sp.eligible,
+                            price_per_term: sp.price_per_term.as_ref().map(format_price),
+                            installments_count: sp.installments_count.as_ref().map(|c| c.count),
+                        }
+                    }),
                 })
                 .collect(),
             ingredients: None, // Could parse from metafields if available
@@ -143,6 +166,8 @@ pub struct ProductShowTemplate {
 #[template(path = "partials/quick_view.html")]
 pub struct QuickViewTemplate {
     pub product: ProductView,
+    /// Shopify store URL for Shop Pay button (e.g., "your-store.myshopify.com")
+    pub store_url: String,
 }
 
 /// Products per page for pagination.
@@ -313,28 +338,29 @@ pub async fn quick_view(State(state): State<AppState>, Path(handle): Path<String
     // Fetch product from Shopify Storefront API
     let result = state.storefront().get_product_by_handle(&handle).await;
 
+    // Store URL for Shop Pay button (e.g., "your-store.myshopify.com")
+    let store_url = state.config().shopify.store.clone();
+
     match result {
         Ok(shopify_product) => {
             let product = ProductView::from(&shopify_product);
-            QuickViewTemplate { product }.into_response()
+            QuickViewTemplate { product, store_url }.into_response()
         }
         Err(e) => {
             tracing::error!("Failed to fetch product for quick view {handle}: {e}");
             // Return a minimal error fragment
-            QuickViewTemplate {
-                product: ProductView {
-                    handle,
-                    title: "Product Not Found".to_string(),
-                    description: String::new(),
-                    price: "$0.00".to_string(),
-                    compare_at_price: None,
-                    featured_image: None,
-                    images: Vec::new(),
-                    variants: Vec::new(),
-                    ingredients: None,
-                },
-            }
-            .into_response()
+            let product = ProductView {
+                handle,
+                title: "Product Not Found".to_string(),
+                description: String::new(),
+                price: "$0.00".to_string(),
+                compare_at_price: None,
+                featured_image: None,
+                images: Vec::new(),
+                variants: Vec::new(),
+                ingredients: None,
+            };
+            QuickViewTemplate { product, store_url }.into_response()
         }
     }
 }

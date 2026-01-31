@@ -9,6 +9,7 @@
     - alt: Alt text for accessibility (required)
     - sizes: Responsive sizes attribute, e.g., "(max-width: 768px) 100vw, 50vw"
     - class: Optional CSS classes for the <img> element
+    - picture_class: Optional CSS classes for the <picture> wrapper element
     - loading: "lazy" (default) or "eager" for above-fold images
 
   Usage:
@@ -20,14 +21,14 @@
     /static/images/derived/lifestyle/DSC_1068.a1b2c3d4-320.avif
 #}
 
-{% macro picture(path, alt, sizes, class="", loading="lazy") %}
+{% macro picture(path, alt, sizes, class="", picture_class="", loading="lazy") %}
 {# Extract the base path: remove /static/images/original/ prefix and file extension #}
 {% let base = path.trim_start_matches("/static/images/original/").trim_end_matches(".jpg").trim_end_matches(".jpeg").trim_end_matches(".png").trim_end_matches(".JPG").trim_end_matches(".JPEG").trim_end_matches(".PNG") %}
 {# Get the content hash, default size, and base URL for this image #}
 {% let hash = base|image_hash %}
 {% let default_size = base|image_default_size %}
 {% let img_base_url = ""|image_base_url %}
-<picture>
+<picture{% if !picture_class.is_empty() %} class="{{ picture_class }}"{% endif %}>
   <source type="image/avif"
     srcset="{{ base|image_srcset(hash, "avif") }}"
     sizes="{{ sizes }}">
