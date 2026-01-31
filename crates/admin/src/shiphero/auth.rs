@@ -27,8 +27,14 @@ pub struct ShipHeroToken {
 /// Request body for `ShipHero` authentication.
 #[derive(Serialize)]
 struct AuthRequest<'a> {
-    email: &'a str,
+    username: &'a str,
     password: &'a str,
+}
+
+/// Debug-safe view of request fields (excludes password).
+#[derive(Debug)]
+struct RequestFieldsDebug<'a> {
+    username: &'a str,
 }
 
 /// Response from `ShipHero` authentication endpoint.
@@ -65,7 +71,7 @@ struct AuthErrorResponse {
 /// # Errors
 ///
 /// Returns `ShipHeroError::AuthenticationFailed` if credentials are invalid.
-#[instrument(skip(password), fields(email = %email))]
+#[instrument(skip(client, password))]
 pub async fn authenticate(
     client: &reqwest::Client,
     email: &str,
@@ -73,19 +79,30 @@ pub async fn authenticate(
 ) -> Result<ShipHeroToken, ShipHeroError> {
     let now = chrono::Utc::now().timestamp();
 
-    let response = client
-        .post(AUTH_ENDPOINT)
-        .json(&AuthRequest {
-            email,
-            password: password.expose_secret(),
-        })
-        .send()
-        .await?;
+    let request_body = AuthRequest {
+        username: email,
+        password: password.expose_secret(),
+    };
+
+    tracing::debug!(
+        endpoint = AUTH_ENDPOINT,
+        request_fields = ?RequestFieldsDebug { username: email },
+        "Sending ShipHero auth request"
+    );
+
+    let response = client.post(AUTH_ENDPOINT).json(&request_body).send().await?;
 
     let status = response.status();
+    let response_body = response.text().await.unwrap_or_default();
+
+    tracing::debug!(
+        status = %status,
+        response_body = %response_body,
+        "ShipHero auth response"
+    );
 
     if status.is_success() {
-        let auth_response: AuthResponse = response.json().await?;
+        let auth_response: AuthResponse = serde_json::from_str(&response_body)?;
 
         Ok(ShipHeroToken {
             access_token: SecretString::from(auth_response.access_token),
@@ -97,7 +114,7 @@ pub async fn authenticate(
         || status == reqwest::StatusCode::FORBIDDEN
     {
         let error_response: AuthErrorResponse =
-            response.json().await.unwrap_or_else(|_| AuthErrorResponse {
+            serde_json::from_str(&response_body).unwrap_or_else(|_| AuthErrorResponse {
                 error: None,
                 message: Some("Invalid credentials".to_string()),
             });
@@ -109,13 +126,8 @@ pub async fn authenticate(
 
         Err(ShipHeroError::AuthenticationFailed(message))
     } else {
-        let error_text = response
-            .text()
-            .await
-            .unwrap_or_else(|_| "Unknown error".to_string());
-
         Err(ShipHeroError::AuthenticationFailed(format!(
-            "HTTP {status}: {error_text}"
+            "HTTP {status}: {response_body}"
         )))
     }
 }
