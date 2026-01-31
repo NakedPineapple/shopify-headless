@@ -33,6 +33,7 @@ const SCRIPT_SRC_EXTERNAL: &[&str] = &[
     "https://static.ads-twitter.com",
     "https://cdn.mxpnl.com",
     "https://script.crazyegg.com",
+    "https://static.cloudflareinsights.com",
 ];
 
 /// External image sources for CDN and tracking pixels.
@@ -57,6 +58,7 @@ const CONNECT_SRC_EXTERNAL: &[&str] = &[
     "https://connect.facebook.net",
     "https://analytics.tiktok.com",
     "https://googleads.g.doubleclick.net",
+    "https://cloudflareinsights.com",
 ];
 
 // =============================================================================
