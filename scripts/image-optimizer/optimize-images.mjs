@@ -56,11 +56,14 @@ const QUALITY = {
   jpeg: 85,
 };
 
-// Raster image extensions to process
-const RASTER_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".webp"]);
+// Raster image extensions to process (resize + convert to multiple formats)
+const RASTER_EXTENSIONS = new Set([".jpg", ".jpeg", ".webp"]);
 
-// SVG extension (copy as-is)
-const SVG_EXTENSION = ".svg";
+// PNG extension - check if it's a favicon (copy as-is) or regular image (process)
+const PNG_EXTENSION = ".png";
+
+// Extensions to copy as-is (no processing, just add hash)
+const COPY_EXTENSIONS = new Set([".svg", ".ico"]);
 
 // R2 configuration from environment variables
 const R2_CONFIG = {
@@ -204,7 +207,7 @@ async function discoverUsedImages() {
   const usedImages = new Set();
 
   // Pattern to match /static/images/original/ paths
-  const imagePathRegex = /\/static\/images\/original\/([^"'\s)]+\.(jpg|jpeg|png|webp|svg))/gi;
+  const imagePathRegex = /\/static\/images\/original\/([^"'\s)]+\.(jpg|jpeg|png|webp|svg|ico))/gi;
 
   // Pattern to match filter-based references like "path/to/image"|image_hash
   const filterPathRegex = /"([^"]+)"\s*\|\s*image_hash/g;
@@ -255,7 +258,7 @@ async function discoverUsedImages() {
       }
 
       // Try to find the actual file with common extensions
-      for (const ext of [".svg", ".jpg", ".jpeg", ".png", ".webp"]) {
+      for (const ext of [".svg", ".ico", ".jpg", ".jpeg", ".png", ".webp"]) {
         const fullPath = join(ORIGINAL_DIR, basePath + ext);
         try {
           await stat(fullPath);
@@ -288,7 +291,7 @@ async function getAllImages(dir) {
           await scan(fullPath);
         } else if (entry.isFile()) {
           const ext = extname(entry.name).toLowerCase();
-          if (RASTER_EXTENSIONS.has(ext) || ext === SVG_EXTENSION) {
+          if (RASTER_EXTENSIONS.has(ext) || COPY_EXTENSIONS.has(ext) || ext === PNG_EXTENSION) {
             images.push(fullPath);
           }
         }
@@ -363,9 +366,9 @@ async function processRasterImage(inputPath, outputDir, relativePath, hash) {
 }
 
 /**
- * Copy SVG file with hash in filename
+ * Copy file with hash in filename (for SVG, ICO, favicon PNGs, etc.)
  */
-async function copySvgFile(inputPath, outputDir, relativePath, hash) {
+async function copyFileWithHash(inputPath, outputDir, relativePath, hash) {
   const ext = extname(relativePath);
   const nameWithoutExt = relativePath.slice(0, -ext.length);
   const outputPath = join(outputDir, `${nameWithoutExt}.${hash}${ext}`);
@@ -527,13 +530,19 @@ async function optimize() {
     const basePath = imagePath.slice(0, -ext.length);
 
     try {
-      if (ext === SVG_EXTENSION) {
-        // Copy SVG with hash (maxWidth = 0 for SVGs, they're resolution-independent)
-        const results = await copySvgFile(inputPath, DERIVED_DIR, imagePath, hash);
+      if (COPY_EXTENSIONS.has(ext)) {
+        // Copy SVG/ICO with hash (maxWidth = 0, they're not resized)
+        const results = await copyFileWithHash(inputPath, DERIVED_DIR, imagePath, hash);
         manifest[basePath] = { hash, maxWidth: 0 };
-        console.log(`   ✓ Copied SVG: ${imagePath} [${hash}]`);
+        console.log(`   ✓ Copied: ${imagePath} [${hash}]`);
         totalVariants += results.length;
-      } else if (RASTER_EXTENSIONS.has(ext)) {
+      } else if (ext === PNG_EXTENSION && imagePath.startsWith("favicon/")) {
+        // Favicon PNGs - copy as-is with hash (already at correct size)
+        const results = await copyFileWithHash(inputPath, DERIVED_DIR, imagePath, hash);
+        manifest[basePath] = { hash, maxWidth: 0 };
+        console.log(`   ✓ Copied favicon: ${imagePath} [${hash}]`);
+        totalVariants += results.length;
+      } else if (RASTER_EXTENSIONS.has(ext) || ext === PNG_EXTENSION) {
         // Process raster image with hash
         console.log(`   🖼️  Processing: ${imagePath} [${hash}]`);
         const { files, maxWidth } = await processRasterImage(inputPath, DERIVED_DIR, imagePath, hash);
@@ -599,12 +608,19 @@ async function optimizeSingle(imagePath) {
   const basePath = imagePath.slice(0, -ext.length);
 
   try {
-    if (ext === SVG_EXTENSION) {
-      const results = await copySvgFile(inputPath, DERIVED_DIR, imagePath, hash);
+    if (COPY_EXTENSIONS.has(ext)) {
+      // Copy SVG/ICO with hash
+      const results = await copyFileWithHash(inputPath, DERIVED_DIR, imagePath, hash);
       manifest[basePath] = { hash, maxWidth: 0 };
-      console.log(`✓ Copied SVG: ${imagePath} [${hash}]`);
+      console.log(`✓ Copied: ${imagePath} [${hash}]`);
       console.log(`  Generated ${results.length} file(s)`);
-    } else if (RASTER_EXTENSIONS.has(ext)) {
+    } else if (ext === PNG_EXTENSION && imagePath.startsWith("favicon/")) {
+      // Favicon PNGs - copy as-is with hash
+      const results = await copyFileWithHash(inputPath, DERIVED_DIR, imagePath, hash);
+      manifest[basePath] = { hash, maxWidth: 0 };
+      console.log(`✓ Copied favicon: ${imagePath} [${hash}]`);
+      console.log(`  Generated ${results.length} file(s)`);
+    } else if (RASTER_EXTENSIONS.has(ext) || ext === PNG_EXTENSION) {
       console.log(`🖼️  Processing: ${imagePath} [${hash}]`);
       const { files, maxWidth } = await processRasterImage(inputPath, DERIVED_DIR, imagePath, hash);
       if (files.length === 0) {

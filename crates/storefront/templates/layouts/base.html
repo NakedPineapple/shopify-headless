@@ -6,6 +6,14 @@
     <meta name="theme-color" content="#d63a2f" id="theme-color-meta">
     <title>{% block title %}Naked Pineapple{% endblock %}</title>
 
+    <!-- Favicon -->
+    {% let img_base = ""|image_base_url %}
+    <link rel="icon" type="image/x-icon" href="{{ img_base }}/favicon/favicon.{{ "favicon/favicon"|image_hash }}.ico">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ img_base }}/favicon/favicon-16x16.{{ "favicon/favicon-16x16"|image_hash }}.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ img_base }}/favicon/favicon-32x32.{{ "favicon/favicon-32x32"|image_hash }}.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ img_base }}/favicon/apple-touch-icon.{{ "favicon/apple-touch-icon"|image_hash }}.png">
+    <link rel="manifest" href="/manifest.webmanifest">
+
     <!-- Theme initialization - prevents flash of wrong theme -->
     <script nonce="{{ nonce }}">
     (function() {

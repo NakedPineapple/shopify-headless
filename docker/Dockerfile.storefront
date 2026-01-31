@@ -75,10 +75,11 @@ COPY --from=builder /app/target/release/np-cli /app/np-cli
 COPY --from=builder /app/crates/storefront/templates /app/crates/storefront/templates
 COPY --from=builder /app/crates/storefront/content /app/crates/storefront/content
 
-# Copy static assets (CSS, JS, vendor) - images served from CDN
+# Copy static assets (CSS, JS, vendor, fonts) - images served from CDN
 COPY --from=builder /app/crates/storefront/static/css /app/crates/storefront/static/css
 COPY --from=builder /app/crates/storefront/static/js /app/crates/storefront/static/js
 COPY --from=builder /app/crates/storefront/static/vendor /app/crates/storefront/static/vendor
+COPY --from=builder /app/crates/storefront/static/fonts /app/crates/storefront/static/fonts
 
 EXPOSE 8080
 CMD ["/app/server"]

@@ -58,6 +58,7 @@ pub mod blog;
 pub mod cart;
 pub mod collections;
 pub mod home;
+pub mod manifest;
 pub mod newsletter;
 pub mod pages;
 pub mod products;
@@ -171,6 +172,8 @@ pub fn routes() -> Router<AppState> {
     Router::new()
         // Home page
         .route("/", get(home::home))
+        // Web app manifest
+        .route("/manifest.webmanifest", get(manifest::webmanifest))
         // Product routes
         .nest("/products", product_routes())
         // Collection routes

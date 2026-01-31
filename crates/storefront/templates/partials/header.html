@@ -1,6 +1,8 @@
 {# Header - Main navigation #}
-{# Get logo hash for derived path #}
+{# Get logo hash and base URL for derived path #}
 {% let logo_hash = "branding/Logo_Horizontal"|image_hash %}
+{% let img_base = ""|image_base_url %}
+{% let logo_url = format!("{}/branding/Logo_Horizontal.{}.svg", img_base, logo_hash) %}
 <header class="bg-background/95 backdrop-blur-md border-b border-border py-5 sticky top-0 z-[100] transition-shadow duration-300" data-sticky-header>
     <div class="page-width flex items-center gap-4">
         <!-- Left: Mobile menu button / Desktop logo -->
@@ -17,14 +19,14 @@
             <!-- Logo (left on desktop, centered on mobile via absolute positioning) -->
             <a href="/" class="hidden md:flex items-center transition-opacity hover:opacity-80" aria-label="Naked Pineapple Home">
                 <span class="h-24 w-[260px] bg-foreground"
-                      style="mask-image: url('/static/images/derived/branding/Logo_Horizontal.{{ logo_hash }}.svg'); mask-size: contain; mask-repeat: no-repeat; mask-position: left center; -webkit-mask-image: url('/static/images/derived/branding/Logo_Horizontal.{{ logo_hash }}.svg'); -webkit-mask-size: contain; -webkit-mask-repeat: no-repeat; -webkit-mask-position: left center;"></span>
+                      style="mask-image: url('{{ logo_url }}'); mask-size: contain; mask-repeat: no-repeat; mask-position: left center; -webkit-mask-image: url('{{ logo_url }}'); -webkit-mask-size: contain; -webkit-mask-repeat: no-repeat; -webkit-mask-position: left center;"></span>
             </a>
         </div>
 
         <!-- Mobile centered logo -->
         <a href="/" class="md:hidden absolute left-1/2 -translate-x-1/2 flex items-center transition-opacity hover:opacity-80" aria-label="Naked Pineapple Home">
             <span class="h-16 w-[175px] bg-foreground"
-                  style="mask-image: url('/static/images/derived/branding/Logo_Horizontal.{{ logo_hash }}.svg'); mask-size: contain; mask-repeat: no-repeat; mask-position: center; -webkit-mask-image: url('/static/images/derived/branding/Logo_Horizontal.{{ logo_hash }}.svg'); -webkit-mask-size: contain; -webkit-mask-repeat: no-repeat; -webkit-mask-position: center;"></span>
+                  style="mask-image: url('{{ logo_url }}'); mask-size: contain; mask-repeat: no-repeat; mask-position: center; -webkit-mask-image: url('{{ logo_url }}'); -webkit-mask-size: contain; -webkit-mask-repeat: no-repeat; -webkit-mask-position: center;"></span>
         </a>
 
         <!-- Desktop Navigation (center) -->
