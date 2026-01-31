@@ -36,7 +36,8 @@ use axum::{Router, routing::get};
 use tower::ServiceBuilder;
 use tower_http::services::ServeDir;
 use tower_http::set_header::SetResponseHeaderLayer;
-use tower_http::trace::TraceLayer;
+use tower_http::trace::{DefaultOnResponse, OnResponse, TraceLayer};
+use tracing::Span;
 
 /// Sets cache-control header only on successful (2xx) responses.
 /// This prevents Cloudflare from caching 404s with immutable headers.
@@ -187,9 +188,15 @@ async fn main() {
     let env_filter = tracing_subscriber::EnvFilter::try_from_default_env()
         .unwrap_or_else(|_| "naked_pineapple_storefront=info,tower_http=debug".into());
 
+    // Use JSON format on Fly.io for structured log parsing, text format locally
+    let is_fly = std::env::var("FLY_APP_NAME").is_ok();
+    let json_layer = is_fly.then(|| tracing_subscriber::fmt::layer().json().flatten_event(true));
+    let text_layer = (!is_fly).then(tracing_subscriber::fmt::layer);
+
     tracing_subscriber::registry()
         .with(env_filter)
-        .with(tracing_subscriber::fmt::layer())
+        .with(json_layer)
+        .with(text_layer)
         .with(sentry_tracing::layer().event_filter(sentry_event_filter))
         .init();
 
@@ -232,14 +239,26 @@ async fn main() {
         .layer(axum::middleware::from_fn(middleware::csp_nonce_middleware))
         .layer(from_fn(middleware::request_id_middleware))
         .layer(
-            TraceLayer::new_for_http().make_span_with(|request: &axum::http::Request<_>| {
-                tracing::info_span!(
-                    "http_request",
-                    method = %request.method(),
-                    uri = %request.uri(),
-                    request_id = tracing::field::Empty,
-                )
-            }),
+            TraceLayer::new_for_http()
+                .make_span_with(|request: &axum::http::Request<_>| {
+                    tracing::info_span!(
+                        "http_request",
+                        method = %request.method(),
+                        uri = %request.uri(),
+                        request_id = tracing::field::Empty,
+                        status = tracing::field::Empty,
+                        latency_ms = tracing::field::Empty,
+                    )
+                })
+                .on_response(
+                    |response: &axum::http::Response<_>,
+                     latency: std::time::Duration,
+                     span: &Span| {
+                        span.record("status", response.status().as_u16());
+                        span.record("latency_ms", latency.as_millis() as u64);
+                        DefaultOnResponse::default().on_response(response, latency, span);
+                    },
+                ),
         )
         .with_state(state)
         // Sentry layers (outermost for full request coverage)

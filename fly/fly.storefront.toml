@@ -7,7 +7,7 @@ primary_region = "sjc"
 [env]
   STOREFRONT_HOST = "0.0.0.0"
   STOREFRONT_PORT = "8080"
-  RUST_LOG = "info,naked_pineapple_storefront=debug"
+  RUST_LOG = "warn,naked_pineapple_storefront=info,tower_http=info"
   STOREFRONT_BASE_URL = "https://new.nakedpineapple.co"
   SHOPIFY_STORE = "nakedpineapple.myshopify.com"
   SHOPIFY_CUSTOMER_SHOP_ID = "71655391511"
