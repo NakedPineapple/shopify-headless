@@ -477,10 +477,21 @@
 
 {# Collections - Mobile Stacked / Desktop Asymmetric Diagonal #}
 
+{# Collections Header #}
+<section class="pt-12 pb-6 md:pt-16 md:pb-8 bg-background">
+    <div class="page-width text-center max-w-3xl mx-auto">
+        <p class="text-xs uppercase tracking-[0.2em] text-primary font-medium mb-3">Shop Our Collections</p>
+        <h2 class="font-display text-3xl md:text-4xl font-medium text-foreground mb-4">Discover the Heart of Naked Pineapple</h2>
+        <p class="text-muted-foreground leading-relaxed">
+            From nourishing skincare essentials designed to enhance your natural radiance to cozy, statement-worthy merch that exudes positivity, every item is crafted to empower confidence and self-love.
+        </p>
+    </div>
+</section>
+
 {# Mobile Layout (stacked with diagonal transition) #}
 <section class="md:hidden">
     {# Skincare Collection - Top #}
-    <a href="/collections/frontpage" class="group relative block h-[350px] overflow-hidden">
+    <a href="/collections/frontpage" class="group relative block h-[330px] overflow-hidden">
         <div class="absolute inset-0">
             {{ img::picture(path="/static/images/original/products/naked-pineapple-vip-bundle/DSC_7695.jpg", alt="Skincare Collection", sizes="100vw", class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105") }}
         </div>
@@ -498,7 +509,7 @@
     </a>
 
     {# Merch Collection - Bottom #}
-    <a href="/collections/merch" class="group relative block h-[300px] overflow-hidden">
+    <a href="/collections/merch" class="group relative block h-[285px] overflow-hidden">
         <div class="absolute inset-0">
             {{ img::picture(path="/static/images/original/merch/hoodie/DSC_5849.jpg", alt="Merch Collection", sizes="100vw", class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105") }}
         </div>
@@ -517,7 +528,7 @@
 </section>
 
 {# Desktop Layout (asymmetric diagonal split) #}
-<section class="hidden md:block relative h-[600px] lg:h-[700px] overflow-hidden">
+<section class="hidden md:block relative h-[550px] lg:h-[650px] overflow-hidden">
     {# Skincare Collection - Left/Primary (65%) #}
     <a href="/collections/frontpage"
        class="group absolute inset-0 w-[68%] lg:w-[65%]"
