@@ -1,0 +1,137 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Warehouse Orders{% endblock %}
+
+{% block page_title %}Warehouse Orders{% endblock %}
+
+{% block page_subtitle %}
+<p class="text-sm text-muted-foreground mt-1">Orders awaiting fulfillment in ShipHero</p>
+{% endblock %}
+
+{% block content %}
+{% if let Some(error) = error_message %}
+<div class="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive">
+    <i class="ph ph-warning mr-2"></i>{{ error }}
+</div>
+{% endif %}
+
+<!-- Status Filter -->
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+    <form method="GET" action="/warehouse/orders" class="flex items-center gap-2">
+        <label class="text-sm text-muted-foreground">Status:</label>
+        <select name="status" onchange="this.form.submit()" class="px-3 py-2 bg-input border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring">
+            <option value="pending" {% if fulfillment_status == "pending" %}selected{% endif %}>Pending</option>
+            <option value="processing" {% if fulfillment_status == "processing" %}selected{% endif %}>Processing</option>
+            <option value="partially_shipped" {% if fulfillment_status == "partially_shipped" %}selected{% endif %}>Partially Shipped</option>
+            <option value="shipped" {% if fulfillment_status == "shipped" %}selected{% endif %}>Shipped</option>
+        </select>
+    </form>
+    <a href="/warehouse/shipments" class="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+        <i class="ph ph-truck text-lg"></i>
+        View Shipments
+    </a>
+</div>
+
+<!-- Orders Table -->
+<div class="bg-card rounded-xl border border-border overflow-hidden">
+    <div class="overflow-hidden md:overflow-x-auto">
+        <table class="w-full data-table-cards">
+            <thead class="bg-muted">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Order</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Customer</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Items</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Total</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Holds</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-border">
+                {% if orders.is_empty() %}
+                <tr>
+                    <td colspan="6" class="px-6 py-12 text-center text-muted-foreground">
+                        <i class="ph ph-check-circle text-4xl mb-2 text-success"></i>
+                        <p>No orders awaiting fulfillment</p>
+                    </td>
+                </tr>
+                {% else %}
+                {% for order in orders %}
+                <tr class="hover:bg-accent transition-colors">
+                    <td class="px-6 py-4 card-header" data-label="">
+                        <div>
+                            <a href="/warehouse/orders/{{ order.id }}"
+                               class="font-medium text-foreground hover:text-primary transition-colors">
+                                {{ order.order_number.as_deref().unwrap_or(&order.id) }}
+                            </a>
+                            {% if let Some(date) = order.order_date.as_deref() %}
+                            <p class="text-sm text-muted-foreground">{{ date }}</p>
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td class="px-6 py-4" data-label="Customer">
+                        {% if let Some(addr) = order.shipping_address.as_ref() %}
+                        <div class="text-sm">
+                            <p class="text-foreground">{{ addr.first_name.as_deref().unwrap_or("") }} {{ addr.last_name.as_deref().unwrap_or("") }}</p>
+                            <p class="text-muted-foreground">{{ addr.city.as_deref().unwrap_or("") }}{% if let Some(state) = addr.state.as_deref() %}, {{ state }}{% endif %}</p>
+                        </div>
+                        {% else %}
+                        <span class="text-muted-foreground">-</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4" data-label="Status">
+                        <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium
+                            {% match order.fulfillment_status.as_deref() %}
+                                {% when Some("pending") %}bg-warning/20 text-warning{% when Some("processing") %}bg-info/20 text-info{% when Some("shipped") %}bg-success/20 text-success{% when _ %}bg-muted text-muted-foreground{% endmatch %}">
+                            <span class="w-1.5 h-1.5 rounded-full bg-current opacity-70"></span>
+                            {{ order.fulfillment_status.as_deref().unwrap_or("unknown") }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 text-sm text-foreground" data-label="Items">
+                        {{ order.line_items.len() }} item{% if order.line_items.len() != 1 %}s{% endif %}
+                    </td>
+                    <td class="px-6 py-4 text-sm text-foreground" data-label="Total">
+                        {{ order.total_price.as_deref().unwrap_or("-") }}
+                    </td>
+                    <td class="px-6 py-4" data-label="Holds">
+                        {% if let Some(holds) = order.holds.as_ref() %}
+                            {% if holds.fraud.unwrap_or(false) || holds.address.unwrap_or(false) || holds.payment.unwrap_or(false) || holds.operator.unwrap_or(false) %}
+                            <div class="flex flex-wrap gap-1">
+                                {% if holds.fraud.unwrap_or(false) %}
+                                <span class="px-2 py-0.5 rounded text-xs bg-destructive/20 text-destructive">Fraud</span>
+                                {% endif %}
+                                {% if holds.address.unwrap_or(false) %}
+                                <span class="px-2 py-0.5 rounded text-xs bg-warning/20 text-warning">Address</span>
+                                {% endif %}
+                                {% if holds.payment.unwrap_or(false) %}
+                                <span class="px-2 py-0.5 rounded text-xs bg-warning/20 text-warning">Payment</span>
+                                {% endif %}
+                                {% if holds.operator.unwrap_or(false) %}
+                                <span class="px-2 py-0.5 rounded text-xs bg-info/20 text-info">Operator</span>
+                                {% endif %}
+                            </div>
+                            {% else %}
+                            <span class="text-muted-foreground">-</span>
+                            {% endif %}
+                        {% else %}
+                        <span class="text-muted-foreground">-</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Pagination -->
+{% if has_next_page %}
+<div class="mt-6 flex justify-center">
+    <a href="/warehouse/orders?cursor={{ end_cursor.as_deref().unwrap_or("") }}&status={{ fulfillment_status }}"
+       class="inline-flex items-center gap-2 px-4 py-2 bg-muted text-foreground rounded-lg hover:bg-muted/80 transition-colors">
+        Load More
+        <i class="ph ph-arrow-right"></i>
+    </a>
+</div>
+{% endif %}
+{% endblock %}

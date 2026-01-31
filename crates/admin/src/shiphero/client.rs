@@ -5,6 +5,7 @@
 
 use std::sync::Arc;
 
+use graphql_client::GraphQLQuery;
 use secrecy::ExposeSecret;
 use serde::{Deserialize, de::DeserializeOwned};
 use tokio::sync::RwLock;
@@ -292,6 +293,29 @@ impl ShipHeroClient {
                 path: vec![],
             }])
         })
+    }
+
+    /// Execute a typed GraphQL query using `graphql_client`.
+    ///
+    /// This is the preferred method for executing queries as it provides
+    /// compile-time type safety for both variables and responses.
+    ///
+    /// # Errors
+    ///
+    /// Returns the same errors as `execute`.
+    pub async fn execute_query<Q: GraphQLQuery>(
+        &self,
+        variables: Q::Variables,
+    ) -> Result<Q::ResponseData, ShipHeroError>
+    where
+        Q::Variables: serde::Serialize,
+        Q::ResponseData: DeserializeOwned,
+    {
+        let body = Q::build_query(variables);
+        let query = body.query;
+        let variables = serde_json::to_value(body.variables)?;
+
+        self.execute(query, Some(variables)).await
     }
 
     /// Get the current access token string.

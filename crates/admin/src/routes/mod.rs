@@ -66,6 +66,7 @@ pub mod setup;
 pub mod shiphero_settings;
 pub mod shopify;
 pub mod slack;
+pub mod warehouse;
 
 use axum::{
     Router,
@@ -418,4 +419,6 @@ pub fn routes() -> Router<AppState> {
         .merge(settings::router())
         // ShipHero settings (super_admin only)
         .merge(shiphero_settings::router())
+        // Warehouse (ShipHero visibility)
+        .merge(warehouse::router())
 }
