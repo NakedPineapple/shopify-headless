@@ -328,7 +328,13 @@ pub async fn home(
     // Fetch skincare products from collection
     let skincare_products = state
         .storefront()
-        .get_collection_by_handle(SKINCARE_COLLECTION, Some(PRODUCTS_PER_COLLECTION), None)
+        .get_collection_by_handle(
+            SKINCARE_COLLECTION,
+            Some(PRODUCTS_PER_COLLECTION),
+            None,
+            None,
+            None,
+        )
         .await
         .map_or_else(
             |e| {
@@ -341,7 +347,13 @@ pub async fn home(
     // Fetch merch products from collection
     let merch_products = state
         .storefront()
-        .get_collection_by_handle(MERCH_COLLECTION, Some(PRODUCTS_PER_COLLECTION), None)
+        .get_collection_by_handle(
+            MERCH_COLLECTION,
+            Some(PRODUCTS_PER_COLLECTION),
+            None,
+            None,
+            None,
+        )
         .await
         .map_or_else(
             |e| {

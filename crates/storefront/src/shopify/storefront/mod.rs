@@ -5,6 +5,7 @@
 
 mod cache;
 mod conversions;
+pub mod queries;
 
 // Scalar types must be declared directly in this module (not just re-exported)
 // so graphql_client can find them as super::TypeName during macro expansion
@@ -22,8 +23,6 @@ pub type Color = String;
 #[allow(clippy::upper_case_acronyms)]
 pub type JSON = serde_json::Value;
 pub type UnsignedInt64 = String;
-
-pub mod queries;
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -366,8 +365,24 @@ impl StorefrontClient {
         handle: &str,
         product_count: Option<i64>,
         after: Option<String>,
+        sort_key: Option<get_collection_by_handle::ProductCollectionSortKeys>,
+        reverse: Option<bool>,
     ) -> Result<Collection, ShopifyError> {
-        let cache_key = format!("collection:{handle}:{}", after.as_deref().unwrap_or(""));
+        // Include sort params in cache key
+        let sort_str = sort_key.as_ref().map_or("default", |k| match k {
+            get_collection_by_handle::ProductCollectionSortKeys::BEST_SELLING => "best",
+            get_collection_by_handle::ProductCollectionSortKeys::PRICE => "price",
+            get_collection_by_handle::ProductCollectionSortKeys::CREATED => "created",
+            get_collection_by_handle::ProductCollectionSortKeys::TITLE => "title",
+            _ => "other",
+        });
+        let reverse_str = reverse.unwrap_or(false);
+        let cache_key = format!(
+            "collection:{handle}:{}:{}:{}",
+            after.as_deref().unwrap_or(""),
+            sort_str,
+            reverse_str
+        );
 
         // Check cache
         if let Some(CacheValue::Collection(collection)) = self.inner.cache.get(&cache_key).await {
@@ -379,8 +394,8 @@ impl StorefrontClient {
             handle: handle.to_string(),
             product_count,
             after: after.clone(),
-            sort_key: None,
-            reverse: None,
+            sort_key,
+            reverse,
             filters: None,
         };
 

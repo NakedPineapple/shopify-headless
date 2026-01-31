@@ -47,6 +47,7 @@ mod storefront;
 pub mod types;
 
 pub use customer::{CustomerAccessToken, CustomerClient};
+pub use storefront::queries::get_collection_by_handle::ProductCollectionSortKeys;
 pub use storefront::{StorefrontAccessToken, StorefrontClient, StorefrontCustomer};
 pub use types::*;
 

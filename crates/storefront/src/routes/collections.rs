@@ -12,6 +12,7 @@ use tracing::instrument;
 
 use crate::config::AnalyticsConfig;
 use crate::filters;
+use crate::shopify::ProductCollectionSortKeys;
 use crate::shopify::ShopifyError;
 use crate::shopify::types::Collection as ShopifyCollection;
 use crate::state::AppState;
@@ -82,6 +83,8 @@ pub struct CollectionShowTemplate {
     pub base_url: String,
     /// Breadcrumb trail for SEO.
     pub breadcrumbs: Vec<BreadcrumbItem>,
+    /// Current sort option value.
+    pub current_sort: String,
 }
 
 /// Products per page for collection view.
@@ -128,6 +131,53 @@ pub async fn index(
     }
 }
 
+/// Parse sort query parameter into Shopify sort key and reverse flag.
+fn parse_sort(sort: Option<&str>) -> (Option<ProductCollectionSortKeys>, Option<bool>) {
+    match sort {
+        Some("price-asc") => (Some(ProductCollectionSortKeys::PRICE), Some(false)),
+        Some("price-desc") => (Some(ProductCollectionSortKeys::PRICE), Some(true)),
+        Some("newest") => (Some(ProductCollectionSortKeys::CREATED), Some(true)),
+        Some("title-asc") => (Some(ProductCollectionSortKeys::TITLE), Some(false)),
+        Some("title-desc") => (Some(ProductCollectionSortKeys::TITLE), Some(true)),
+        // "best-selling" or default
+        _ => (Some(ProductCollectionSortKeys::BEST_SELLING), None),
+    }
+}
+
+/// Parameters for building an error collection template.
+struct ErrorParams {
+    status: StatusCode,
+    handle: String,
+    title: &'static str,
+    description: Option<&'static str>,
+    current_sort: String,
+}
+
+/// Create an error response for collection pages.
+fn error_template(params: ErrorParams, state: &AppState, nonce: String) -> Response {
+    (
+        params.status,
+        CollectionShowTemplate {
+            collection: CollectionView {
+                handle: params.handle,
+                title: params.title.to_string(),
+                description: params.description.map(String::from),
+                image: None,
+            },
+            products: Vec::new(),
+            current_page: 1,
+            total_pages: 1,
+            has_more_pages: false,
+            analytics: state.config().analytics.clone(),
+            nonce,
+            base_url: state.config().base_url.clone(),
+            breadcrumbs: Vec::new(),
+            current_sort: params.current_sort,
+        },
+    )
+        .into_response()
+}
+
 /// Display collection detail page with products.
 #[instrument(skip(state, nonce))]
 pub async fn show(
@@ -137,13 +187,18 @@ pub async fn show(
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> Response {
     let current_page = query.page.unwrap_or(1);
+    let current_sort = query
+        .sort
+        .clone()
+        .unwrap_or_else(|| "best-selling".to_string());
+    let (sort_key, reverse) = parse_sort(query.sort.as_deref());
 
     // Fetch collection and products from Shopify Storefront API
     #[allow(clippy::cast_possible_wrap)]
     let products_per_page = PRODUCTS_PER_PAGE as i64;
     let result = state
         .storefront()
-        .get_collection_by_handle(&handle, Some(products_per_page), None)
+        .get_collection_by_handle(&handle, Some(products_per_page), None, sort_key, reverse)
         .await;
 
     match result {
@@ -189,51 +244,34 @@ pub async fn show(
                 nonce,
                 base_url: state.config().base_url.clone(),
                 breadcrumbs,
+                current_sort,
             }
             .into_response()
         }
-        Err(ShopifyError::NotFound(_)) => (
-            StatusCode::NOT_FOUND,
-            CollectionShowTemplate {
-                collection: CollectionView {
-                    handle: handle.clone(),
-                    title: "Collection Not Found".to_string(),
-                    description: None,
-                    image: None,
-                },
-                products: Vec::new(),
-                current_page: 1,
-                total_pages: 1,
-                has_more_pages: false,
-                analytics: state.config().analytics.clone(),
-                nonce: nonce.clone(),
-                base_url: state.config().base_url.clone(),
-                breadcrumbs: Vec::new(),
+        Err(ShopifyError::NotFound(_)) => error_template(
+            ErrorParams {
+                status: StatusCode::NOT_FOUND,
+                handle,
+                title: "Collection Not Found",
+                description: None,
+                current_sort,
             },
-        )
-            .into_response(),
+            &state,
+            nonce,
+        ),
         Err(e) => {
             tracing::error!("Failed to fetch collection {handle}: {e}");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                CollectionShowTemplate {
-                    collection: CollectionView {
-                        handle,
-                        title: "Error".to_string(),
-                        description: Some("An error occurred loading this collection.".to_string()),
-                        image: None,
-                    },
-                    products: Vec::new(),
-                    current_page: 1,
-                    total_pages: 1,
-                    has_more_pages: false,
-                    analytics: state.config().analytics.clone(),
-                    nonce,
-                    base_url: state.config().base_url.clone(),
-                    breadcrumbs: Vec::new(),
+            error_template(
+                ErrorParams {
+                    status: StatusCode::INTERNAL_SERVER_ERROR,
+                    handle,
+                    title: "Error",
+                    description: Some("An error occurred loading this collection."),
+                    current_sort,
                 },
+                &state,
+                nonce,
             )
-                .into_response()
         }
     }
 }

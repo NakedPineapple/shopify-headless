@@ -69,21 +69,18 @@
 <!-- Product Grid -->
 <section class="py-12 md:py-16">
     <div class="page-width">
-        <!-- Filters -->
-        <div class="flex items-center justify-between mb-8">
-            <div class="flex items-center gap-4">
-                <button class="btn btn-outline text-sm">
-                    <i class="ph ph-funnel mr-2"></i>
-                    Filter
-                </button>
-            </div>
+        <!-- Sort Controls -->
+        <div class="flex items-center justify-end mb-8">
             <div class="flex items-center gap-2">
-                <label for="sort" class="text-sm text-muted-foreground">Sort by:</label>
-                <select id="sort" name="sort" class="input py-2 px-3 w-auto">
-                    <option value="best-selling">Best Selling</option>
-                    <option value="price-asc">Price: Low to High</option>
-                    <option value="price-desc">Price: High to Low</option>
-                    <option value="newest">Newest</option>
+                <label for="collection-sort" class="text-sm text-muted-foreground">Sort by:</label>
+                <select id="collection-sort" name="sort" class="input py-2 px-3 w-auto"
+                        data-action-change="update-sort">
+                    <option value="best-selling"{% if current_sort == "best-selling" %} selected{% endif %}>Best Selling</option>
+                    <option value="price-asc"{% if current_sort == "price-asc" %} selected{% endif %}>Price: Low to High</option>
+                    <option value="price-desc"{% if current_sort == "price-desc" %} selected{% endif %}>Price: High to Low</option>
+                    <option value="newest"{% if current_sort == "newest" %} selected{% endif %}>Newest</option>
+                    <option value="title-asc"{% if current_sort == "title-asc" %} selected{% endif %}>Name: A to Z</option>
+                    <option value="title-desc"{% if current_sort == "title-desc" %} selected{% endif %}>Name: Z to A</option>
                 </select>
             </div>
         </div>
@@ -110,7 +107,7 @@
         <div class="flex justify-center mt-12">
             <nav class="flex items-center gap-2" aria-label="Pagination">
                 {% if current_page > 1 %}
-                <a href="?page={{ current_page - 1 }}" class="btn btn-outline">
+                <a href="?page={{ current_page - 1 }}&sort={{ current_sort }}" class="btn btn-outline">
                     <i class="ph ph-caret-left"></i>
                 </a>
                 {% endif %}
@@ -118,7 +115,7 @@
                     Page {{ current_page }} of {{ total_pages }}
                 </span>
                 {% if current_page < total_pages %}
-                <a href="?page={{ current_page + 1 }}" class="btn btn-outline">
+                <a href="?page={{ current_page + 1 }}&sort={{ current_sort }}" class="btn btn-outline">
                     <i class="ph ph-caret-right"></i>
                 </a>
                 {% endif %}
@@ -127,4 +124,12 @@
         {% endif %}
     </div>
 </section>
+
+<script nonce="{{ nonce }}">
+window.updateSort = function(value) {
+    var url = new URL(window.location);
+    url.searchParams.set('sort', value);
+    window.location = url;
+};
+</script>
 {% endblock %}
