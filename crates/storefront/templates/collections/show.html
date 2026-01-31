@@ -1,5 +1,6 @@
 {% extends "layouts/base.html" %}
 {% import "macros/analytics_data.html" as analytics_macro %}
+{% import "macros/picture.html" as img %}
 {% import "macros/json_ld.html" as json_ld %}
 
 {% block body_data %}{{ analytics_macro::body_attrs(analytics=analytics) }}{% endblock %}
@@ -58,6 +59,91 @@
          alt="{{ image.alt }}"
          class="w-full h-full object-cover">
     <div class="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent"></div>
+</section>
+{% endif %}
+
+<!-- VIP Collection CTA -->
+{% if collection.handle == "frontpage" %}
+<section class="relative py-16 md:py-24 overflow-hidden">
+    <!-- Warm gradient background -->
+    <div class="absolute inset-0 bg-gradient-to-br from-primary/[0.03] via-honey/[0.05] to-terracotta/[0.03]"></div>
+
+    <!-- Pineapple diamond pattern overlay -->
+    <div class="absolute inset-0 opacity-[0.015] pointer-events-none"
+         style="background-image: url('data:image/svg+xml,%3Csvg width=&quot;60&quot; height=&quot;60&quot; viewBox=&quot;0 0 60 60&quot; xmlns=&quot;http://www.w3.org/2000/svg&quot;%3E%3Cpath d=&quot;M30 0L60 30L30 60L0 30Z&quot; fill=&quot;%23d63a2f&quot;/%3E%3C/svg%3E'); background-size: 40px 40px;"></div>
+
+    <div class="page-width relative">
+        <div class="grid lg:grid-cols-12 gap-8 lg:gap-6 items-center">
+
+            <!-- Image Column - Overlapping frame treatment -->
+            <div class="lg:col-span-5 relative">
+                <div class="relative animate-fade-in" style="animation-delay: 100ms; opacity: 0;">
+                    <!-- Decorative frame behind -->
+                    <div class="absolute -inset-3 md:-inset-4 border-2 border-primary/20 rounded-2xl transform -rotate-3"></div>
+                    <div class="absolute -inset-1.5 md:-inset-2 border border-honey/30 rounded-xl transform rotate-1"></div>
+
+                    <!-- Floating accent elements -->
+                    <div class="absolute -top-6 -right-6 w-12 h-12 rounded-full bg-gradient-to-br from-honey to-primary/80 blur-sm opacity-60 animate-float-blob" style="animation-delay: 0s;"></div>
+                    <div class="absolute -bottom-4 -left-4 w-8 h-8 rounded-full bg-gradient-to-br from-terracotta to-honey/80 blur-sm opacity-50 animate-float-blob" style="animation-delay: 2s;"></div>
+
+                    <!-- Main image -->
+                    <div class="relative rounded-xl overflow-hidden shadow-2xl bg-card">
+                        {{ img::picture(path="/static/images/original/products/naked-pineapple-vip-bundle/2_823de94f-5cbe-4a3d-a86d-a9867389eb1c.png", alt="Naked Pineapple VIP Bundle - Complete skincare collection", sizes="(max-width: 768px) 100vw, 40vw", class="w-full h-auto relative z-10") }}
+                    </div>
+
+                    <!-- "VIP" badge -->
+                    <div class="absolute -bottom-3 -right-3 md:-bottom-4 md:-right-4 z-20">
+                        <div class="bg-gradient-to-br from-primary to-terracotta text-primary-foreground px-4 py-2 rounded-full shadow-lg transform rotate-6">
+                            <span class="font-display text-sm font-semibold tracking-wide">VIP Bundle</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Content Column -->
+            <div class="lg:col-span-7 lg:pl-8 xl:pl-12">
+                <!-- Eyebrow with decorative line -->
+                <div class="flex items-center gap-4 mb-6 animate-fade-in" style="animation-delay: 200ms; opacity: 0;">
+                    <div class="h-px w-12 bg-gradient-to-r from-primary to-transparent"></div>
+                    <p class="text-xs uppercase tracking-[0.25em] text-primary font-semibold">
+                        The Complete Ritual
+                    </p>
+                </div>
+
+                <!-- Headline with gradient accent -->
+                <h2 class="font-display text-3xl md:text-4xl lg:text-5xl font-semibold mb-6 animate-slide-up" style="animation-delay: 300ms; opacity: 0;">
+                    <span class="text-foreground">Your </span>
+                    <span class="bg-gradient-to-r from-primary via-terracotta to-honey bg-clip-text text-transparent">Glow-Up</span>
+                    <span class="text-foreground"> Starts Here</span>
+                </h2>
+
+                <!-- Body copy with pull quote styling -->
+                <div class="relative mb-8 animate-slide-up" style="animation-delay: 450ms; opacity: 0;">
+                    <div class="absolute -left-4 top-0 bottom-0 w-1 bg-gradient-to-b from-primary via-terracotta to-honey/50 rounded-full hidden md:block"></div>
+                    <p class="text-base md:text-lg text-muted-foreground leading-relaxed md:pl-4">
+                        From the brightening power of pineapple extract to the soothing hydration of vegan collagen and peptides, our collection is a love letter to your skin. Whether you're kicking off your day or unwinding at night, these essentials transform your routine into a celebration of you.
+                    </p>
+                </div>
+
+                <!-- Highlighted tagline -->
+                <p class="font-display text-xl md:text-2xl text-foreground/90 italic mb-8 animate-slide-up" style="animation-delay: 550ms; opacity: 0;">
+                    "Glow brighter, live bolder, and let your skin tell your story."
+                </p>
+
+                <!-- CTA -->
+                <div class="flex flex-wrap items-center gap-4 animate-slide-up" style="animation-delay: 650ms; opacity: 0;">
+                    <a href="/products/naked-pineapple-vip-bundle" class="btn btn-primary btn-large group">
+                        Shop the Bundle
+                        <i class="ph ph-arrow-right transition-transform duration-300 group-hover:translate-x-1"></i>
+                    </a>
+                    <span class="text-sm text-muted-foreground">
+                        <i class="ph ph-sparkle text-honey"></i>
+                        Save 15% vs. buying separately
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
 </section>
 {% endif %}
 

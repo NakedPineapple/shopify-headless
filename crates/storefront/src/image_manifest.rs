@@ -115,6 +115,10 @@ pub static IMAGE_INFO: LazyLock<HashMap<&'static str, ImageInfo>> = LazyLock::ne
             ("9af67add", 1000),
         ),
         (
+            "products/naked-pineapple-vip-bundle/2_823de94f-5cbe-4a3d-a86d-a9867389eb1c",
+            ("fb2a7e3c", 1920),
+        ),
+        (
             "products/naked-pineapple-vip-bundle/DSC_7695",
             ("bb615259", 2400),
         ),
