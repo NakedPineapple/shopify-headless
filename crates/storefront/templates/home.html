@@ -1,12 +1,26 @@
 {% extends "layouts/base.html" %}
 {% import "macros/analytics_data.html" as analytics_macro %}
 {% import "macros/picture.html" as img %}
+{% import "macros/json_ld.html" as json_ld %}
 
 {% block body_data %}{{ analytics_macro::body_attrs(analytics=analytics) }}{% endblock %}
 
 {% block title %}Naked Pineapple - Natural Skincare{% endblock %}
 
+{% block canonical %}<link rel="canonical" href="{{ base_url }}/">{% endblock %}
+
 {% block description %}Discover Naked Pineapple, an authentic skincare brand that empowers confidence with high-quality, natural ingredients like pineapple extract and vegan collagen.{% endblock %}
+
+{% block og_title %}Naked Pineapple - Natural Skincare{% endblock %}
+{% block og_description %}Discover Naked Pineapple, an authentic skincare brand that empowers confidence with high-quality, natural ingredients like pineapple extract and vegan collagen.{% endblock %}
+{% block og_url %}{{ base_url }}/{% endblock %}
+
+{% block twitter_title %}<meta name="twitter:title" content="Naked Pineapple - Natural Skincare">{% endblock %}
+{% block twitter_description %}<meta name="twitter:description" content="Discover Naked Pineapple, an authentic skincare brand with natural ingredients like pineapple extract and vegan collagen.">{% endblock %}
+
+{% block json_ld %}
+{{ json_ld::organization(base_url=base_url, logo_url=logo_url) }}
+{% endblock %}
 
 {% block content %}
 {# Hero Section #}

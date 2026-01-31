@@ -6,7 +6,16 @@
 
 {% block title %}Blog - Naked Pineapple{% endblock %}
 
+{% block canonical %}<link rel="canonical" href="{{ base_url }}/blog">{% endblock %}
+
 {% block description %}Skincare tips, self-care rituals, and stories from the Naked Pineapple community. Discover the power of pineapple for radiant skin.{% endblock %}
+
+{% block og_title %}Naked Pineapple Blog{% endblock %}
+{% block og_description %}Skincare tips, self-care rituals, and stories from the Naked Pineapple community.{% endblock %}
+{% block og_url %}{{ base_url }}/blog{% endblock %}
+
+{% block twitter_title %}<meta name="twitter:title" content="Naked Pineapple Blog">{% endblock %}
+{% block twitter_description %}<meta name="twitter:description" content="Skincare tips, self-care rituals, and stories from the Naked Pineapple community.">{% endblock %}
 
 {% block content %}
 {# Hero Section #}

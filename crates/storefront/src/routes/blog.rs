@@ -15,6 +15,7 @@ use tracing::instrument;
 use crate::config::AnalyticsConfig;
 use crate::content::Post;
 use crate::filters;
+use crate::routes::products::BreadcrumbItem;
 use crate::state::AppState;
 
 /// Post view for templates.
@@ -54,6 +55,8 @@ pub struct BlogIndexTemplate {
     pub posts: Vec<PostView>,
     pub analytics: AnalyticsConfig,
     pub nonce: String,
+    /// Base URL for canonical links.
+    pub base_url: String,
 }
 
 /// Blog post detail template.
@@ -64,6 +67,12 @@ pub struct BlogShowTemplate {
     pub recent_posts: Vec<PostView>,
     pub analytics: AnalyticsConfig,
     pub nonce: String,
+    /// Base URL for canonical links and structured data.
+    pub base_url: String,
+    /// Logo URL for publisher in Article schema.
+    pub logo_url: String,
+    /// Breadcrumb trail for SEO.
+    pub breadcrumbs: Vec<BreadcrumbItem>,
 }
 
 /// Number of recent posts to show in sidebar.
@@ -84,6 +93,7 @@ pub async fn index(
         posts,
         analytics: state.config().analytics.clone(),
         nonce,
+        base_url: state.config().base_url.clone(),
     }
 }
 
@@ -115,11 +125,35 @@ pub async fn show(
         .map(PostView::from)
         .collect();
 
+    let post_view = PostView::from(post);
+
+    // SEO breadcrumbs
+    let breadcrumbs = vec![
+        BreadcrumbItem {
+            name: "Home".to_string(),
+            url: Some("/".to_string()),
+        },
+        BreadcrumbItem {
+            name: "Blog".to_string(),
+            url: Some("/blog".to_string()),
+        },
+        BreadcrumbItem {
+            name: post_view.title.clone(),
+            url: None,
+        },
+    ];
+
+    let base_url = state.config().base_url.clone();
+    let logo_url = crate::filters::get_logo_url(&base_url);
+
     Ok(BlogShowTemplate {
-        post: PostView::from(post),
+        post: post_view,
         recent_posts,
         analytics: state.config().analytics.clone(),
         nonce,
+        base_url,
+        logo_url,
+        breadcrumbs,
     })
 }
 

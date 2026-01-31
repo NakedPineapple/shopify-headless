@@ -5,6 +5,8 @@
 use std::fmt::Display;
 use std::sync::LazyLock;
 
+use regex::Regex;
+
 use crate::image_manifest;
 
 /// Base URL for images, read from `IMAGE_BASE_URL` env var at runtime.
@@ -12,6 +14,27 @@ use crate::image_manifest;
 static IMAGE_BASE_URL: LazyLock<String> = LazyLock::new(|| {
     std::env::var("IMAGE_BASE_URL").unwrap_or_else(|_| "/static/images/derived".to_string())
 });
+
+/// Constructs an absolute URL for the site logo (for JSON-LD structured data).
+///
+/// Uses the `branding/Logo_Horizontal` SVG with its content hash.
+/// If `IMAGE_BASE_URL` is a CDN (starts with http), uses it directly.
+/// Otherwise, prepends the site `base_url` to make it absolute.
+#[must_use]
+pub fn get_logo_url(base_url: &str) -> String {
+    let img_base = &*IMAGE_BASE_URL;
+    let hash = image_manifest::get_image_hash("branding/Logo_Horizontal");
+
+    let logo_path = format!("branding/Logo_Horizontal.{hash}.svg");
+
+    if img_base.starts_with("http") {
+        // CDN URL - already absolute
+        format!("{img_base}/{logo_path}")
+    } else {
+        // Relative path - prepend base_url
+        format!("{base_url}{img_base}/{logo_path}")
+    }
+}
 
 /// Returns the current year.
 ///
@@ -158,4 +181,66 @@ pub fn image_base_url(_value: impl Display, _env: &dyn askama::Values) -> askama
 #[askama::filter_fn]
 pub fn css_hash(_value: impl Display, _env: &dyn askama::Values) -> askama::Result<&'static str> {
     Ok(env!("CSS_HASH"))
+}
+
+// =============================================================================
+// SEO Filters
+// =============================================================================
+
+/// Strip the leading currency symbol ($) from a price string.
+///
+/// Usage in templates: `{{ product.price|strip_currency }}`
+#[allow(clippy::unnecessary_wraps)]
+#[askama::filter_fn]
+pub fn strip_currency(value: impl Display, _env: &dyn askama::Values) -> askama::Result<String> {
+    Ok(value.to_string().trim_start_matches('$').to_string())
+}
+
+/// Regex for stripping HTML tags.
+static HTML_TAG_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"<[^>]+>").expect("Invalid HTML tag regex"));
+
+/// Regex for collapsing multiple whitespace characters.
+static WHITESPACE_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\s+").expect("Invalid whitespace regex"));
+
+/// Strip HTML tags from a string for use in meta descriptions.
+///
+/// Also collapses multiple whitespace characters into single spaces
+/// and trims leading/trailing whitespace.
+///
+/// Usage in templates: `{{ product.description|striptags }}`
+#[allow(clippy::unnecessary_wraps)]
+#[askama::filter_fn]
+pub fn striptags(value: impl Display, _env: &dyn askama::Values) -> askama::Result<String> {
+    let html = value.to_string();
+    let without_tags = HTML_TAG_RE.replace_all(&html, "");
+    let normalized = WHITESPACE_RE.replace_all(&without_tags, " ");
+    Ok(normalized.trim().to_string())
+}
+
+/// Truncate a string to a maximum length, adding "..." if truncated.
+///
+/// Tries to break at word boundaries when possible.
+///
+/// Usage in templates: `{{ description|truncate(160) }}`
+#[allow(clippy::unnecessary_wraps)]
+#[askama::filter_fn]
+pub fn truncate(value: &str, _env: &dyn askama::Values, max_len: usize) -> askama::Result<String> {
+    if value.len() <= max_len {
+        return Ok(value.to_string());
+    }
+
+    // Reserve space for ellipsis
+    let target_len = max_len.saturating_sub(3);
+    if target_len == 0 {
+        return Ok("...".to_string());
+    }
+
+    // Find the last space before target_len to break at word boundary
+    let truncated: String = value.chars().take(target_len).collect();
+    let break_point = truncated.rfind(' ').unwrap_or(target_len);
+
+    let result: String = value.chars().take(break_point).collect();
+    Ok(format!("{}...", result.trim_end()))
 }

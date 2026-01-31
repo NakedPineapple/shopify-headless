@@ -1,11 +1,28 @@
 {% extends "layouts/base.html" %}
 {% import "macros/analytics_data.html" as analytics_macro %}
+{% import "macros/json_ld.html" as json_ld %}
 
 {% block body_data %}{{ analytics_macro::body_attrs(analytics=analytics) }}{% endblock %}
 
 {% block title %}{{ collection.title }} | Naked Pineapple{% endblock %}
 
+{% block canonical %}<link rel="canonical" href="{{ base_url }}/collections/{{ collection.handle }}">{% endblock %}
+
 {% block description %}{% if let Some(desc) = collection.description %}{{ desc }}{% else %}Shop our {{ collection.title }} collection.{% endif %}{% endblock %}
+
+{% block og_title %}{{ collection.title }}{% endblock %}
+{% block og_description %}{% if let Some(desc) = collection.description %}{{ desc }}{% else %}Shop our {{ collection.title }} collection at Naked Pineapple.{% endif %}{% endblock %}
+{% block og_image %}{% if let Some(image) = collection.image %}{{ image.url }}{% endif %}{% endblock %}
+{% block og_url %}{{ base_url }}/collections/{{ collection.handle }}{% endblock %}
+
+{% block twitter_card %}summary_large_image{% endblock %}
+{% block twitter_title %}<meta name="twitter:title" content="{{ collection.title }}">{% endblock %}
+{% block twitter_description %}<meta name="twitter:description" content="{% if let Some(desc) = collection.description %}{{ desc }}{% else %}Shop our {{ collection.title }} collection.{% endif %}">{% endblock %}
+{% block twitter_image %}{% if let Some(image) = collection.image %}<meta name="twitter:image" content="{{ image.url }}">{% endif %}{% endblock %}
+
+{% block json_ld %}
+{{ json_ld::breadcrumbs(base_url=base_url, items=breadcrumbs) }}
+{% endblock %}
 
 {% block content %}
 <!-- Collection Header -->

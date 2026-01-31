@@ -298,6 +298,10 @@ pub struct HomeTemplate {
     pub analytics: AnalyticsConfig,
     /// CSP nonce for inline scripts.
     pub nonce: String,
+    /// Base URL for canonical links and structured data.
+    pub base_url: String,
+    /// Logo URL for Organization schema.
+    pub logo_url: String,
 }
 
 /// Number of products to show per collection tab.
@@ -339,6 +343,9 @@ pub async fn home(
             |collection| collection.products.iter().map(ProductView::from).collect(),
         );
 
+    let base_url = state.config().base_url.clone();
+    let logo_url = crate::filters::get_logo_url(&base_url);
+
     HomeTemplate {
         hero: HeroConfig::default(),
         skincare_products,
@@ -346,5 +353,7 @@ pub async fn home(
         featured_reviews: get_featured_reviews(),
         analytics: state.config().analytics.clone(),
         nonce,
+        base_url,
+        logo_url,
     }
 }

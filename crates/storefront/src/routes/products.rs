@@ -45,6 +45,13 @@ pub struct VariantView {
     pub price: String,
 }
 
+/// Breadcrumb item for SEO structured data.
+#[derive(Clone)]
+pub struct BreadcrumbItem {
+    pub name: String,
+    pub url: Option<String>,
+}
+
 /// Pagination query parameters.
 #[derive(Debug, Deserialize)]
 pub struct PaginationQuery {
@@ -113,6 +120,8 @@ pub struct ProductsIndexTemplate {
     pub has_more_pages: bool,
     pub analytics: AnalyticsConfig,
     pub nonce: String,
+    /// Base URL for canonical links.
+    pub base_url: String,
 }
 
 /// Product detail page template.
@@ -123,6 +132,10 @@ pub struct ProductShowTemplate {
     pub related_products: Vec<ProductView>,
     pub analytics: AnalyticsConfig,
     pub nonce: String,
+    /// Base URL for canonical links and structured data.
+    pub base_url: String,
+    /// Breadcrumb trail for SEO.
+    pub breadcrumbs: Vec<BreadcrumbItem>,
 }
 
 /// Quick view fragment template.
@@ -169,6 +182,7 @@ pub async fn index(
                 has_more_pages: has_more,
                 analytics: state.config().analytics.clone(),
                 nonce,
+                base_url: state.config().base_url.clone(),
             }
             .into_response()
         }
@@ -182,6 +196,7 @@ pub async fn index(
                 has_more_pages: false,
                 analytics: state.config().analytics.clone(),
                 nonce,
+                base_url: state.config().base_url.clone(),
             }
             .into_response()
         }
@@ -213,11 +228,29 @@ pub async fn show(
                 .map(|products| products.iter().take(4).map(ProductView::from).collect())
                 .unwrap_or_default();
 
+            // SEO breadcrumbs
+            let breadcrumbs = vec![
+                BreadcrumbItem {
+                    name: "Home".to_string(),
+                    url: Some("/".to_string()),
+                },
+                BreadcrumbItem {
+                    name: "Products".to_string(),
+                    url: Some("/products".to_string()),
+                },
+                BreadcrumbItem {
+                    name: product.title.clone(),
+                    url: None,
+                },
+            ];
+
             ProductShowTemplate {
                 product,
                 related_products,
                 analytics: state.config().analytics.clone(),
                 nonce,
+                base_url: state.config().base_url.clone(),
+                breadcrumbs,
             }
             .into_response()
         }
@@ -240,6 +273,8 @@ pub async fn show(
                     related_products: Vec::new(),
                     analytics: state.config().analytics.clone(),
                     nonce,
+                    base_url: state.config().base_url.clone(),
+                    breadcrumbs: Vec::new(),
                 },
             )
                 .into_response()
@@ -263,6 +298,8 @@ pub async fn show(
                     related_products: Vec::new(),
                     analytics: state.config().analytics.clone(),
                     nonce,
+                    base_url: state.config().base_url.clone(),
+                    breadcrumbs: Vec::new(),
                 },
             )
                 .into_response()

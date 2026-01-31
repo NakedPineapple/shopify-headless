@@ -1,0 +1,105 @@
+{#
+    JSON-LD structured data macros for SEO.
+
+    Usage:
+    {% import "macros/json_ld.html" as json_ld %}
+    {{ json_ld::organization(base_url=base_url, logo_url=logo_url) }}
+#}
+
+{# Organization schema - for homepage #}
+{% macro organization(base_url, logo_url) %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "Naked Pineapple",
+  "url": "{{ base_url }}",
+  "logo": "{{ logo_url }}",
+  "sameAs": [
+    "https://instagram.com/nakedpineappleskincare",
+    "https://facebook.com/nakedpineappleskincare",
+    "https://tiktok.com/@nakedpineappleskincare"
+  ]
+}
+</script>
+{% endmacro %}
+
+{# Product schema - for product detail pages #}
+{% macro product(base_url, product) %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Product",
+  "name": "{{ product.title }}",
+  "description": "{{ product.description|striptags }}",
+  {% if let Some(image) = product.featured_image %}
+  "image": ["{{ image.url }}"],
+  {% endif %}
+  "brand": {
+    "@type": "Brand",
+    "name": "Naked Pineapple"
+  },
+  "offers": {
+    "@type": "Offer",
+    "price": "{{ product.price|strip_currency }}",
+    "priceCurrency": "USD",
+    "availability": "https://schema.org/InStock",
+    "url": "{{ base_url }}/products/{{ product.handle }}"
+  }
+}
+</script>
+{% endmacro %}
+
+{# Article schema - for blog posts #}
+{% macro article(base_url, post, logo_url) %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "{{ post.title }}",
+  {% if let Some(desc) = post.description.as_ref() %}
+  "description": "{{ desc }}",
+  {% endif %}
+  {% if let Some(image) = post.featured_image.as_ref() %}
+  "image": "{{ base_url }}{{ image }}",
+  {% endif %}
+  "datePublished": "{{ post.published_at }}",
+  "author": {
+    "@type": "Person",
+    "name": "{% if let Some(author) = post.author.as_ref() %}{{ author }}{% else %}Naked Pineapple{% endif %}"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Naked Pineapple",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "{{ logo_url }}"
+    }
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "{{ base_url }}/blog/{{ post.slug }}"
+  }
+}
+</script>
+{% endmacro %}
+
+{# Breadcrumb schema #}
+{% macro breadcrumbs(base_url, items) %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {% for item in items %}
+    {
+      "@type": "ListItem",
+      "position": {{ loop.index }},
+      "name": "{{ item.name }}"{% if let Some(url) = item.url.as_ref() %},
+      "item": "{{ base_url }}{{ url }}"{% endif %}
+    }{% if !loop.last %},{% endif %}
+    {% endfor %}
+  ]
+}
+</script>
+{% endmacro %}

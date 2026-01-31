@@ -5,6 +5,8 @@
 
 {% block title %}{% if !query.is_empty() %}Search: {{ query }}{% else %}Search{% endif %} - Naked Pineapple{% endblock %}
 
+{% block robots %}noindex, follow{% endblock %}
+
 {% block content %}
 <div class="page-width py-8 md:py-12">
     {# Header #}

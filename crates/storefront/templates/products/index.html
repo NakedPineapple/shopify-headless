@@ -5,7 +5,16 @@
 
 {% block title %}Shop All Products | Naked Pineapple{% endblock %}
 
+{% block canonical %}<link rel="canonical" href="{{ base_url }}/products">{% endblock %}
+
 {% block description %}Browse our complete collection of pineapple-powered skincare products. Natural, cruelty-free formulas for radiant skin.{% endblock %}
+
+{% block og_title %}Shop All Products{% endblock %}
+{% block og_description %}Browse our complete collection of pineapple-powered skincare products. Natural, cruelty-free formulas for radiant skin.{% endblock %}
+{% block og_url %}{{ base_url }}/products{% endblock %}
+
+{% block twitter_title %}<meta name="twitter:title" content="Shop All Products | Naked Pineapple">{% endblock %}
+{% block twitter_description %}<meta name="twitter:description" content="Browse our complete collection of pineapple-powered skincare products.">{% endblock %}
 
 {% block content %}
 <!-- Page Header -->

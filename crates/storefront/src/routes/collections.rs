@@ -16,7 +16,7 @@ use crate::shopify::ShopifyError;
 use crate::shopify::types::Collection as ShopifyCollection;
 use crate::state::AppState;
 
-pub use super::products::{ImageView, ProductView};
+pub use super::products::{BreadcrumbItem, ImageView, ProductView};
 
 /// Collection display data for templates.
 #[derive(Clone)]
@@ -63,6 +63,8 @@ pub struct CollectionsIndexTemplate {
     pub collections: Vec<CollectionView>,
     pub analytics: AnalyticsConfig,
     pub nonce: String,
+    /// Base URL for canonical links.
+    pub base_url: String,
 }
 
 /// Collection detail page template.
@@ -76,6 +78,10 @@ pub struct CollectionShowTemplate {
     pub has_more_pages: bool,
     pub analytics: AnalyticsConfig,
     pub nonce: String,
+    /// Base URL for canonical links and structured data.
+    pub base_url: String,
+    /// Breadcrumb trail for SEO.
+    pub breadcrumbs: Vec<BreadcrumbItem>,
 }
 
 /// Products per page for collection view.
@@ -105,6 +111,7 @@ pub async fn index(
                 collections,
                 analytics: state.config().analytics.clone(),
                 nonce,
+                base_url: state.config().base_url.clone(),
             }
             .into_response()
         }
@@ -114,6 +121,7 @@ pub async fn index(
                 collections: Vec::new(),
                 analytics: state.config().analytics.clone(),
                 nonce,
+                base_url: state.config().base_url.clone(),
             }
             .into_response()
         }
@@ -151,6 +159,22 @@ pub async fn show(
             // For now, assume single page of products
             let has_more = products.len() >= PRODUCTS_PER_PAGE;
 
+            // SEO breadcrumbs
+            let breadcrumbs = vec![
+                BreadcrumbItem {
+                    name: "Home".to_string(),
+                    url: Some("/".to_string()),
+                },
+                BreadcrumbItem {
+                    name: "Collections".to_string(),
+                    url: Some("/collections".to_string()),
+                },
+                BreadcrumbItem {
+                    name: collection.title.clone(),
+                    url: None,
+                },
+            ];
+
             CollectionShowTemplate {
                 collection,
                 products,
@@ -163,6 +187,8 @@ pub async fn show(
                 has_more_pages: has_more,
                 analytics: state.config().analytics.clone(),
                 nonce,
+                base_url: state.config().base_url.clone(),
+                breadcrumbs,
             }
             .into_response()
         }
@@ -181,6 +207,8 @@ pub async fn show(
                 has_more_pages: false,
                 analytics: state.config().analytics.clone(),
                 nonce: nonce.clone(),
+                base_url: state.config().base_url.clone(),
+                breadcrumbs: Vec::new(),
             },
         )
             .into_response(),
@@ -201,6 +229,8 @@ pub async fn show(
                     has_more_pages: false,
                     analytics: state.config().analytics.clone(),
                     nonce,
+                    base_url: state.config().base_url.clone(),
+                    breadcrumbs: Vec::new(),
                 },
             )
                 .into_response()
