@@ -105,7 +105,12 @@ fn convert_collection_product(
             },
         }),
         featured_image: product.featured_image.map(convert_image_collection),
-        images: vec![],
+        images: product
+            .images
+            .edges
+            .into_iter()
+            .map(|e| convert_image_collection(e.node))
+            .collect(),
         options: vec![],
         variants: product
             .variants

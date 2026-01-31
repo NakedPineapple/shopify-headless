@@ -50,6 +50,13 @@ fragment CollectionProductFields on Product {
   featuredImage {
     ...CollectionImageFields
   }
+  images(first: 2) {
+    edges {
+      node {
+        ...CollectionImageFields
+      }
+    }
+  }
   variants(first: 1) {
     edges {
       node {

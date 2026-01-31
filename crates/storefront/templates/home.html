@@ -60,7 +60,7 @@
                                 {% if let Some(img) = product.featured_image %}
                                 <img src="{{ img.url }}"
                                      alt="{{ img.alt }}"
-                                     class="absolute inset-0 w-full h-full object-cover transition-opacity duration-500 group-hover:opacity-0"
+                                     class="absolute inset-0 w-full h-full object-cover transition-opacity duration-500{% if product.hover_image.is_some() %} group-hover:opacity-0{% endif %}"
                                      loading="lazy">
                                 {% endif %}
                                 {% if let Some(hover) = product.hover_image %}
@@ -118,7 +118,7 @@
                                 {% if let Some(img) = product.featured_image %}
                                 <img src="{{ img.url }}"
                                      alt="{{ img.alt }}"
-                                     class="absolute inset-0 w-full h-full object-cover transition-opacity duration-500 group-hover:opacity-0"
+                                     class="absolute inset-0 w-full h-full object-cover transition-opacity duration-500{% if product.hover_image.is_some() %} group-hover:opacity-0{% endif %}"
                                      loading="lazy">
                                 {% endif %}
                                 {% if let Some(hover) = product.hover_image %}
