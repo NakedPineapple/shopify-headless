@@ -18,10 +18,12 @@
 
 pub mod auth;
 pub mod client;
+pub mod inventory;
 pub mod orders;
 pub mod queries;
 
 pub use client::ShipHeroClient;
+pub use inventory::*;
 pub use orders::*;
 
 use thiserror::Error;

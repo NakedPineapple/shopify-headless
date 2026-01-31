@@ -17,7 +17,7 @@ use tracing::instrument;
 use crate::filters;
 use crate::models::CurrentAdmin;
 use crate::shiphero::{
-    OrderConnection, OrderHistoryEvent, Shipment, ShipmentConnection, WarehouseOrder,
+    OrderConnection, OrderHistoryEvent, Product, Shipment, ShipmentConnection, WarehouseOrder,
     WarehouseOrderDetail,
 };
 use crate::state::AppState;
@@ -82,6 +82,48 @@ pub struct NotConnectedTemplate {
     pub current_path: String,
 }
 
+/// Warehouse dashboard template.
+#[derive(Template)]
+#[template(path = "warehouse/dashboard.html")]
+pub struct WarehouseDashboardTemplate {
+    pub admin_user: AdminUserView,
+    pub current_path: String,
+    pub pending_orders_count: usize,
+    pub shipped_today_count: usize,
+    pub low_stock_count: usize,
+    pub total_products: usize,
+    pub recent_orders: Vec<WarehouseOrder>,
+    pub recent_shipments: Vec<Shipment>,
+    pub low_stock_items: Vec<LowStockItem>,
+    pub error_message: Option<String>,
+}
+
+/// Low stock item for dashboard display.
+#[derive(Debug, Clone)]
+pub struct LowStockItem {
+    /// Product SKU.
+    pub sku: String,
+    /// Product name.
+    pub name: String,
+    /// Available quantity.
+    pub available: i64,
+    /// Reorder level.
+    pub reorder_level: i64,
+}
+
+/// Warehouse inventory list template.
+#[derive(Template)]
+#[template(path = "warehouse/inventory/index.html")]
+pub struct WarehouseInventoryTemplate {
+    pub admin_user: AdminUserView,
+    pub current_path: String,
+    pub products: Vec<Product>,
+    pub has_next_page: bool,
+    pub end_cursor: Option<String>,
+    pub search_query: Option<String>,
+    pub error_message: Option<String>,
+}
+
 // =============================================================================
 // Query Parameters
 // =============================================================================
@@ -104,6 +146,15 @@ pub struct ShipmentsQuery {
     pub range: Option<String>,
 }
 
+/// Query parameters for inventory list.
+#[derive(Debug, Deserialize)]
+pub struct InventoryQuery {
+    /// Pagination cursor.
+    pub cursor: Option<String>,
+    /// Search by SKU.
+    pub sku: Option<String>,
+}
+
 // =============================================================================
 // Router
 // =============================================================================
@@ -111,6 +162,10 @@ pub struct ShipmentsQuery {
 /// Build the warehouse router.
 pub fn router() -> Router<AppState> {
     Router::new()
+        // Warehouse dashboard
+        .route("/warehouse", get(dashboard))
+        // Warehouse inventory
+        .route("/warehouse/inventory", get(inventory_index))
         // Warehouse orders
         .route("/warehouse/orders", get(orders_index))
         .route("/warehouse/orders/{id}", get(orders_show))
@@ -130,6 +185,191 @@ async fn get_current_admin(session: &Session) -> Option<CurrentAdmin> {
         .await
         .ok()
         .flatten()
+}
+
+// =============================================================================
+// Dashboard Route
+// =============================================================================
+
+/// GET /warehouse - Warehouse dashboard with key metrics.
+#[instrument(skip(state, session))]
+pub async fn dashboard(State(state): State<AppState>, session: Session) -> Response {
+    // Get current admin from session
+    let Some(admin) = get_current_admin(&session).await else {
+        return Redirect::to("/auth/login").into_response();
+    };
+
+    // Check if ShipHero is connected
+    let Some(client) = state.shiphero() else {
+        let template = NotConnectedTemplate {
+            admin_user: AdminUserView::from(&admin),
+            current_path: "/warehouse".to_string(),
+        };
+        return Html(template.render().unwrap_or_else(|e| {
+            tracing::error!("Template render error: {}", e);
+            "Internal Server Error".to_string()
+        }))
+        .into_response();
+    };
+
+    // Fetch dashboard data concurrently
+    let (orders_result, shipments_result, products_result) = tokio::join!(
+        client.get_pending_orders(Some(10), None, Some("pending".to_string())),
+        client.get_shipments(Some(10), None, None, None),
+        client.get_products(Some(50), None, None),
+    );
+
+    let mut error_message = None;
+
+    // Process pending orders
+    let (pending_orders_count, recent_orders) = match orders_result {
+        Ok(conn) => (conn.orders.len(), conn.orders),
+        Err(e) => {
+            tracing::error!(error = %e, "Failed to fetch pending orders");
+            error_message = Some(format!("Failed to fetch pending orders: {e}"));
+            (0, Vec::new())
+        }
+    };
+
+    // Process shipments - count today's shipments
+    let (shipped_today_count, recent_shipments) = match shipments_result {
+        Ok(conn) => {
+            let today = chrono::Utc::now().format("%Y-%m-%d").to_string();
+            let today_count = conn
+                .shipments
+                .iter()
+                .filter(|s| {
+                    s.created_date
+                        .as_ref()
+                        .is_some_and(|d| d.starts_with(&today))
+                })
+                .count();
+            (today_count, conn.shipments)
+        }
+        Err(e) => {
+            tracing::error!(error = %e, "Failed to fetch shipments");
+            if error_message.is_none() {
+                error_message = Some(format!("Failed to fetch shipments: {e}"));
+            }
+            (0, Vec::new())
+        }
+    };
+
+    // Process products - find low stock items
+    let (total_products, low_stock_items) = match products_result {
+        Ok(conn) => {
+            let low_stock: Vec<LowStockItem> = conn
+                .products
+                .iter()
+                .filter_map(|p| {
+                    let wp = p.warehouse_products.first()?;
+                    let on_hand = wp.on_hand.unwrap_or(0);
+                    let reorder_level = wp.reorder_level.unwrap_or(0);
+                    if reorder_level > 0 && on_hand <= reorder_level {
+                        Some(LowStockItem {
+                            sku: p.sku.clone().unwrap_or_default(),
+                            name: p.name.clone().unwrap_or_default(),
+                            available: on_hand,
+                            reorder_level,
+                        })
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+            (conn.products.len(), low_stock)
+        }
+        Err(e) => {
+            tracing::error!(error = %e, "Failed to fetch products");
+            if error_message.is_none() {
+                error_message = Some(format!("Failed to fetch products: {e}"));
+            }
+            (0, Vec::new())
+        }
+    };
+
+    let template = WarehouseDashboardTemplate {
+        admin_user: AdminUserView::from(&admin),
+        current_path: "/warehouse".to_string(),
+        pending_orders_count,
+        shipped_today_count,
+        low_stock_count: low_stock_items.len(),
+        total_products,
+        recent_orders,
+        recent_shipments,
+        low_stock_items,
+        error_message,
+    };
+
+    Html(template.render().unwrap_or_else(|e| {
+        tracing::error!("Template render error: {}", e);
+        "Internal Server Error".to_string()
+    }))
+    .into_response()
+}
+
+// =============================================================================
+// Inventory Route
+// =============================================================================
+
+/// GET /warehouse/inventory - List inventory with bin locations.
+#[instrument(skip(state, session))]
+pub async fn inventory_index(
+    State(state): State<AppState>,
+    session: Session,
+    Query(params): Query<InventoryQuery>,
+) -> Response {
+    // Get current admin from session
+    let Some(admin) = get_current_admin(&session).await else {
+        return Redirect::to("/auth/login").into_response();
+    };
+
+    // Check if ShipHero is connected
+    let Some(client) = state.shiphero() else {
+        let template = NotConnectedTemplate {
+            admin_user: AdminUserView::from(&admin),
+            current_path: "/warehouse/inventory".to_string(),
+        };
+        return Html(template.render().unwrap_or_else(|e| {
+            tracing::error!("Template render error: {}", e);
+            "Internal Server Error".to_string()
+        }))
+        .into_response();
+    };
+
+    // Fetch products from ShipHero
+    let result = client
+        .get_products(Some(50), params.cursor.clone(), params.sku.clone())
+        .await;
+
+    let (products, has_next_page, end_cursor, error_message) = match result {
+        Ok(conn) => (conn.products, conn.has_next_page, conn.end_cursor, None),
+        Err(e) => {
+            tracing::error!(error = %e, "Failed to fetch ShipHero products");
+            (
+                Vec::new(),
+                false,
+                None,
+                Some(format!("Failed to fetch products: {e}")),
+            )
+        }
+    };
+
+    let template = WarehouseInventoryTemplate {
+        admin_user: AdminUserView::from(&admin),
+        current_path: "/warehouse/inventory".to_string(),
+        products,
+        has_next_page,
+        end_cursor,
+        search_query: params.sku,
+        error_message,
+    };
+
+    Html(template.render().unwrap_or_else(|e| {
+        tracing::error!("Template render error: {}", e);
+        "Internal Server Error".to_string()
+    }))
+    .into_response()
 }
 
 // =============================================================================

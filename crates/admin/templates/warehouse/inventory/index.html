@@ -1,0 +1,164 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Warehouse Inventory{% endblock %}
+
+{% block page_title %}Warehouse Inventory{% endblock %}
+
+{% block page_subtitle %}
+<p class="text-sm text-muted-foreground mt-1">Product inventory with bin locations from ShipHero</p>
+{% endblock %}
+
+{% block content %}
+{% if let Some(error) = error_message %}
+<div class="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive">
+    <i class="ph ph-warning mr-2"></i>{{ error }}
+</div>
+{% endif %}
+
+<!-- Search and Navigation -->
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+    <form method="GET" action="/warehouse/inventory" class="flex-1 max-w-md">
+        <div class="relative">
+            <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"></i>
+            <input type="search"
+                   name="sku"
+                   value="{{ search_query.as_deref().unwrap_or("") }}"
+                   placeholder="Search by SKU..."
+                   class="w-full pl-10 pr-4 py-2.5 bg-input border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring transition-colors">
+        </div>
+    </form>
+    <a href="/warehouse" class="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+        <i class="ph ph-arrow-left"></i>
+        Back to Dashboard
+    </a>
+</div>
+
+<!-- Inventory Table -->
+<div class="bg-card rounded-xl border border-border overflow-hidden">
+    <div class="overflow-hidden md:overflow-x-auto">
+        <table class="w-full data-table-cards">
+            <thead class="bg-muted">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Product</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">SKU</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">On Hand</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Bin Location</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Reorder Level</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-border">
+                {% if products.is_empty() %}
+                <tr>
+                    <td colspan="6" class="px-6 py-12 text-center text-muted-foreground">
+                        <i class="ph ph-package text-4xl mb-2"></i>
+                        <p>No products found</p>
+                    </td>
+                </tr>
+                {% else %}
+                {% for product in products %}
+                <tr class="hover:bg-accent transition-colors">
+                    <td class="px-6 py-4 card-header" data-label="">
+                        <div class="flex items-center gap-4">
+                            {% if !product.images.is_empty() %}
+                            {% let img = product.images.first().unwrap() %}
+                            {% if let Some(src) = img.src.as_deref() %}
+                            <img src="{{ src }}" alt="{{ product.name.as_deref().unwrap_or("") }}" class="w-10 h-10 rounded-lg object-cover">
+                            {% else %}
+                            <div class="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
+                                <i class="ph ph-package text-muted-foreground"></i>
+                            </div>
+                            {% endif %}
+                            {% else %}
+                            <div class="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
+                                <i class="ph ph-package text-muted-foreground"></i>
+                            </div>
+                            {% endif %}
+                            <div>
+                                <p class="font-medium text-foreground">{{ product.name.as_deref().unwrap_or("-") }}</p>
+                                {% if let Some(barcode) = product.barcode.as_deref() %}
+                                <p class="text-xs text-muted-foreground">{{ barcode }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 text-sm font-mono text-foreground" data-label="SKU">
+                        {{ product.sku.as_deref().unwrap_or("-") }}
+                    </td>
+                    <td class="px-6 py-4" data-label="On Hand">
+                        {% if !product.warehouse_products.is_empty() %}
+                        {% let wp = product.warehouse_products.first().unwrap() %}
+                        <span class="text-sm font-medium
+                            {% if wp.on_hand.unwrap_or(0) <= wp.reorder_level.unwrap_or(0) && wp.reorder_level.unwrap_or(0) > 0 %}text-warning{% else %}text-foreground{% endif %}">
+                            {{ wp.on_hand.unwrap_or(0) }}
+                        </span>
+                        {% else %}
+                        <span class="text-sm text-muted-foreground">-</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4" data-label="Bin Location">
+                        {% if !product.warehouse_products.is_empty() %}
+                        {% let wp = product.warehouse_products.first().unwrap() %}
+                        <div class="text-sm">
+                            {% if let Some(bin) = wp.inventory_bin.as_deref() %}
+                            <span class="font-mono text-foreground">{{ bin }}</span>
+                            {% else %}
+                            <span class="text-muted-foreground">-</span>
+                            {% endif %}
+                            {% if let Some(overstock) = wp.inventory_overstock_bin.as_deref() %}
+                            <p class="text-xs text-muted-foreground">Overstock: {{ overstock }}</p>
+                            {% endif %}
+                        </div>
+                        {% else %}
+                        <span class="text-sm text-muted-foreground">-</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4 text-sm text-muted-foreground" data-label="Reorder Level">
+                        {% if !product.warehouse_products.is_empty() %}
+                        {% let wp = product.warehouse_products.first().unwrap() %}
+                        {{ wp.reorder_level.unwrap_or(0) }}
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4" data-label="Status">
+                        {% if !product.warehouse_products.is_empty() %}
+                        {% let wp = product.warehouse_products.first().unwrap() %}
+                        {% let on_hand = wp.on_hand.unwrap_or(0) %}
+                        {% let reorder = wp.reorder_level.unwrap_or(0) %}
+                        {% if on_hand == 0 %}
+                        <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-destructive/20 text-destructive">
+                            Out of Stock
+                        </span>
+                        {% elif reorder > 0 && on_hand <= reorder %}
+                        <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-warning/20 text-warning">
+                            Low Stock
+                        </span>
+                        {% else %}
+                        <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-success/20 text-success">
+                            In Stock
+                        </span>
+                        {% endif %}
+                        {% else %}
+                        <span class="text-muted-foreground">-</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Pagination -->
+{% if has_next_page %}
+<div class="mt-6 flex justify-center">
+    <a href="/warehouse/inventory?cursor={{ end_cursor.as_deref().unwrap_or("") }}{% if let Some(sku) = search_query.as_deref() %}&sku={{ sku }}{% endif %}"
+       class="inline-flex items-center gap-2 px-4 py-2 bg-muted text-foreground rounded-lg hover:bg-muted/80 transition-colors">
+        Load More
+        <i class="ph ph-arrow-right"></i>
+    </a>
+</div>
+{% endif %}
+{% endblock %}
