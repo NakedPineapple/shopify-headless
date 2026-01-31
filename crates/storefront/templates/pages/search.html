@@ -27,7 +27,7 @@
                        autocomplete="off">
                 {% if !query.is_empty() %}
                 <button type="button"
-                        onclick="this.closest('form').querySelector('input').value=''; this.closest('form').submit();"
+                        data-action="clear-search-input"
                         class="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors text-sm">
                     Clear
                 </button>
@@ -64,7 +64,7 @@
                                    name="filter.v.availability"
                                    value="1"
                                    {% match filter_availability %}{% when Some(v) %}{% if v == "1" %}checked{% endif %}{% when None %}{% endmatch %}
-                                   onchange="this.form.submit()"
+                                   data-action-change="submit-form"
                                    class="w-4 h-4 rounded border-border text-primary focus:ring-primary/20">
                             <span class="flex items-center gap-2">
                                 In stock
@@ -77,7 +77,7 @@
                                    value="0"
                                    {% match filter_availability %}{% when Some(v) %}{% if v == "0" %}checked{% endif %}{% when None %}{% endmatch %}
                                    {% if results.out_of_stock_count == 0 %}disabled{% endif %}
-                                   onchange="this.form.submit()"
+                                   data-action-change="submit-form"
                                    class="w-4 h-4 rounded border-border text-primary focus:ring-primary/20">
                             <span class="flex items-center gap-2">
                                 Out of stock
@@ -148,7 +148,7 @@
             <div class="flex items-center justify-between mb-6 pb-4 border-b border-border">
                 {# Mobile Filter Button #}
                 <button type="button"
-                        onclick="openFilterDrawer()"
+                        data-action="open-filter-drawer"
                         class="xl:hidden flex items-center gap-2 px-4 py-2 border border-border rounded-lg hover:bg-muted transition-colors">
                     <i class="ph ph-funnel text-lg"></i>
                     <span>Filter</span>
@@ -163,7 +163,7 @@
                 <div class="flex items-center gap-3">
                     <label for="sort-select" class="hidden md:block text-sm font-medium">Sort by:</label>
                     <select id="sort-select"
-                            onchange="updateSort(this.value)"
+                            data-action-change="update-sort"
                             class="px-3 py-2 bg-muted border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20">
                         <option value="relevance" {% if sort_by == "relevance" %}selected{% endif %}>Relevance</option>
                         <option value="price-ascending" {% if sort_by == "price-ascending" %}selected{% endif %}>Price, low to high</option>
@@ -239,11 +239,11 @@
 
 {# Mobile Filter Drawer #}
 <div class="fixed inset-0 z-[200] xl:hidden hidden" id="filter-drawer">
-    <div class="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onclick="closeFilterDrawer()"></div>
+    <div class="absolute inset-0 bg-foreground/40 backdrop-blur-sm" data-action="close-filter-drawer"></div>
     <div class="absolute left-0 top-0 h-full w-full max-w-sm bg-background shadow-xl transform -translate-x-full transition-transform duration-300" id="filter-drawer-panel">
         <div class="flex items-center justify-between p-5 border-b border-border">
             <h2 class="font-display text-xl font-medium">Filter</h2>
-            <button type="button" onclick="closeFilterDrawer()" class="p-2 hover:bg-muted rounded-full transition-colors">
+            <button type="button" data-action="close-filter-drawer" class="p-2 hover:bg-muted rounded-full transition-colors">
                 <i class="ph ph-x text-2xl"></i>
             </button>
         </div>
@@ -316,31 +316,31 @@
     </div>
 </div>
 
-<script>
-function updateSort(value) {
-    const url = new URL(window.location);
+<script nonce="{{ nonce }}">
+window.updateSort = function(value) {
+    var url = new URL(window.location);
     url.searchParams.set('sort_by', value);
     window.location = url;
-}
+};
 
-function openFilterDrawer() {
-    const drawer = document.getElementById('filter-drawer');
-    const panel = document.getElementById('filter-drawer-panel');
+window.openFilterDrawer = function() {
+    var drawer = document.getElementById('filter-drawer');
+    var panel = document.getElementById('filter-drawer-panel');
     drawer.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
-    setTimeout(() => {
+    setTimeout(function() {
         panel.classList.remove('-translate-x-full');
     }, 10);
-}
+};
 
-function closeFilterDrawer() {
-    const drawer = document.getElementById('filter-drawer');
-    const panel = document.getElementById('filter-drawer-panel');
+window.closeFilterDrawer = function() {
+    var drawer = document.getElementById('filter-drawer');
+    var panel = document.getElementById('filter-drawer-panel');
     panel.classList.add('-translate-x-full');
     document.body.style.overflow = '';
-    setTimeout(() => {
+    setTimeout(function() {
         drawer.classList.add('hidden');
     }, 300);
-}
+};
 </script>
 {% endblock %}

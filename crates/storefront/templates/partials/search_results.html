@@ -29,7 +29,7 @@
             <li>
                 <a href="/products/{{ product.handle }}"
                    class="flex items-center gap-3 p-2 -mx-2 rounded-lg hover:bg-muted transition-colors"
-                   onclick="closeSearchDrawer()">
+                   data-action="close-search-drawer">
                     {% if let Some(img) = product.image_url %}
                     <div class="w-14 h-14 rounded-lg bg-muted overflow-hidden flex-shrink-0">
                         <img src="{{ img }}&width=100"
@@ -64,7 +64,7 @@
             <li>
                 <a href="/collections/{{ collection.handle }}"
                    class="flex items-center gap-3 p-2 -mx-2 rounded-lg hover:bg-muted transition-colors"
-                   onclick="closeSearchDrawer()">
+                   data-action="close-search-drawer">
                     {% if let Some(img) = collection.image_url %}
                     <div class="w-10 h-10 rounded-lg bg-muted overflow-hidden flex-shrink-0">
                         <img src="{{ img }}&width=80"
@@ -94,7 +94,7 @@
             <li>
                 <a href="/{{ page.handle }}"
                    class="text-foreground hover:text-primary transition-colors underline-offset-4 hover:underline"
-                   onclick="closeSearchDrawer()">
+                   data-action="close-search-drawer">
                     {{ page.title }}
                 </a>
             </li>
@@ -103,7 +103,7 @@
             <li>
                 <a href="/blog/{{ article.handle }}"
                    class="text-foreground hover:text-primary transition-colors underline-offset-4 hover:underline"
-                   onclick="closeSearchDrawer()">
+                   data-action="close-search-drawer">
                     {{ article.title }}
                 </a>
             </li>

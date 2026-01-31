@@ -12,7 +12,7 @@
                     aria-label="Toggle menu"
                     aria-expanded="false"
                     aria-controls="mobile-menu"
-                    onclick="openMobileMenu()">
+                    data-action="open-mobile-menu">
                 <i class="ph ph-list text-2xl"></i>
             </button>
 
@@ -119,7 +119,7 @@
         <!-- Header Icons -->
         <div class="flex-1 flex items-center gap-2 justify-end">
             <button type="button"
-                    onclick="openSearchDrawer()"
+                    data-action="open-search-drawer"
                     class="flex items-center justify-center w-10 h-10 rounded-full text-foreground hover:text-primary hover:bg-muted transition-all"
                     aria-label="Search"
                     aria-controls="search-drawer">
@@ -149,7 +149,7 @@
         <span class="font-display text-xl font-medium">Menu</span>
         <button class="p-2 text-foreground hover:text-primary transition-colors rounded-full hover:bg-muted"
                 aria-label="Close menu"
-                onclick="closeMobileMenu()">
+                data-action="close-mobile-menu">
             <i class="ph ph-x text-2xl"></i>
         </button>
     </div>
@@ -209,7 +209,7 @@
 <!-- Mobile menu overlay -->
 <div class="fixed inset-0 bg-foreground/40 backdrop-blur-sm z-[199] opacity-0 invisible transition-all duration-300"
      id="mobile-menu-overlay"
-     onclick="closeMobileMenu()"
+     data-action="close-mobile-menu"
      aria-hidden="true"></div>
 
 <!-- Search Drawer (right side) -->
@@ -223,7 +223,7 @@
         <button type="button"
                 class="p-2 text-foreground hover:text-primary transition-colors rounded-full hover:bg-muted"
                 aria-label="Close search"
-                onclick="closeSearchDrawer()">
+                data-action="close-search-drawer">
             <i class="ph ph-x text-2xl"></i>
         </button>
     </div>
@@ -275,5 +275,5 @@
 <!-- Search drawer overlay -->
 <div class="fixed inset-0 bg-foreground/40 backdrop-blur-sm z-[199] opacity-0 invisible transition-all duration-300"
      id="search-drawer-overlay"
-     onclick="closeSearchDrawer()"
+     data-action="close-search-drawer"
      aria-hidden="true"></div>

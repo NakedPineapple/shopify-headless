@@ -67,7 +67,8 @@
                     {% for image in product.images %}
                     <button type="button"
                             class="shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 border-transparent hover:border-primary transition-colors focus:border-primary"
-                            onclick="document.getElementById('main-product-image').src = '{{ image.url }}'">
+                            data-action="select-thumbnail"
+                            data-image-url="{{ image.url }}">
                         <img src="{{ image.url }}"
                              alt="{{ image.alt }}"
                              class="w-full h-full object-cover">
@@ -116,7 +117,9 @@
                         {% for variant in product.variants %}
                         <button type="button"
                                 class="px-4 py-2 border border-border rounded-lg hover:border-primary transition-colors focus:border-primary {% if loop.first %}border-primary bg-primary/5{% endif %}"
-                                onclick="selectVariant(this, '{{ variant.id }}', '{{ variant.price }}')">
+                                data-action="select-variant"
+                                data-variant-id="{{ variant.id }}"
+                                data-variant-price="{{ variant.price }}">
                             {{ variant.title }}
                         </button>
                         {% endfor %}
@@ -241,8 +244,8 @@
 </div>
 
 {% block scripts %}
-<script>
-function selectVariant(button, variantId, price) {
+<script nonce="{{ nonce }}">
+window.selectVariant = function(button, variantId, price) {
     // Update hidden input
     document.getElementById('selected-variant').value = variantId;
 
@@ -251,7 +254,7 @@ function selectVariant(button, variantId, price) {
         btn.classList.remove('border-primary', 'bg-primary/5');
     });
     button.classList.add('border-primary', 'bg-primary/5');
-}
+};
 </script>
 {% endblock %}
 {% endblock %}

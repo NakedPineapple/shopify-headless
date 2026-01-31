@@ -112,7 +112,7 @@
     <!-- Quick View Sidebar -->
     <div id="quick-view-overlay"
          class="fixed inset-0 bg-black/50 z-40 opacity-0 pointer-events-none transition-opacity duration-300"
-         onclick="closeQuickView()"></div>
+         data-action="close-quick-view"></div>
     <aside id="quick-view-sidebar"
            class="fixed top-0 right-0 h-full w-full max-w-md bg-background z-50 shadow-2xl transform translate-x-full transition-transform duration-300 ease-out overflow-y-auto"
            aria-label="Quick view">
@@ -120,7 +120,7 @@
             <h2 class="text-sm font-medium uppercase tracking-wider text-muted-foreground">Quick View</h2>
             <button type="button"
                     class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-muted transition-colors"
-                    onclick="closeQuickView()"
+                    data-action="close-quick-view"
                     aria-label="Close quick view">
                 <i class="ph ph-x text-xl"></i>
             </button>
@@ -141,6 +141,81 @@
     // Guard against re-execution on HTMX navigation
     if (!window._baseScriptInitialized) {
         window._baseScriptInitialized = true;
+
+        // =============================================================================
+        // Event Delegation - handles all data-action clicks and changes
+        // =============================================================================
+        document.addEventListener('click', function(e) {
+            var target = e.target.closest('[data-action]');
+            if (!target) return;
+
+            var action = target.dataset.action;
+            switch (action) {
+                case 'open-mobile-menu':
+                    window.openMobileMenu();
+                    break;
+                case 'close-mobile-menu':
+                    window.closeMobileMenu();
+                    break;
+                case 'open-search-drawer':
+                    window.openSearchDrawer();
+                    break;
+                case 'close-search-drawer':
+                    window.closeSearchDrawer();
+                    break;
+                case 'close-quick-view':
+                    window.closeQuickView();
+                    break;
+                case 'open-filter-drawer':
+                    window.openFilterDrawer();
+                    break;
+                case 'close-filter-drawer':
+                    window.closeFilterDrawer();
+                    break;
+                case 'select-thumbnail':
+                    var img = document.getElementById('main-product-image');
+                    if (img && target.dataset.imageUrl) {
+                        img.src = target.dataset.imageUrl;
+                    }
+                    break;
+                case 'select-variant':
+                    window.selectVariant(target, target.dataset.variantId, target.dataset.variantPrice);
+                    break;
+                case 'copy-link':
+                    navigator.clipboard.writeText(window.location.href);
+                    break;
+                case 'passkey-login':
+                    window.handlePasskeyLogin();
+                    break;
+                case 'clear-search-input':
+                    var form = target.closest('form');
+                    if (form) {
+                        var input = form.querySelector('input[type="search"], input[name="q"]');
+                        if (input) {
+                            input.value = '';
+                            form.submit();
+                        }
+                    }
+                    break;
+            }
+        });
+
+        // Handle change events via data-action-change attribute
+        document.addEventListener('change', function(e) {
+            var target = e.target.closest('[data-action-change]');
+            if (!target) return;
+
+            var action = target.dataset.actionChange;
+            switch (action) {
+                case 'submit-form':
+                    var form = target.closest('form');
+                    if (form) form.submit();
+                    break;
+                case 'update-sort':
+                    window.updateSort(target.value);
+                    break;
+            }
+        });
 
         // Global error handler
         window.addEventListener('error', function(e) {

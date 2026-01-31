@@ -181,11 +181,14 @@ fn build_csp(nonce: &str) -> String {
     let img_src = IMG_SRC_EXTERNAL.join(" ");
     let connect_src = CONNECT_SRC_EXTERNAL.join(" ");
 
+    // Note: 'unsafe-eval' is required for HTMX to function (uses Function() internally).
+    // All interactive behavior uses event delegation via data-action attributes,
+    // avoiding the need for inline event handlers and 'unsafe-hashes'.
     format!(
         "default-src 'none'; \
-         script-src 'self' 'nonce-{nonce}' {script_src}; \
+         script-src 'self' 'nonce-{nonce}' 'unsafe-eval' {script_src}; \
          style-src 'self' 'unsafe-inline'; \
-         font-src 'self'; \
+         font-src 'self' data:; \
          img-src 'self' {img_src}; \
          connect-src 'self' {connect_src}; \
          frame-src 'none'; \

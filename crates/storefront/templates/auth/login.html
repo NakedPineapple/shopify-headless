@@ -108,7 +108,7 @@
         </div>
         <button
             type="button"
-            onclick="handlePasskeyLogin()"
+            data-action="passkey-login"
             id="passkey-button"
             class="w-full bg-foreground text-background py-2 px-4 rounded-md hover:bg-foreground/90 transition-colors font-medium flex items-center justify-center gap-2"
         >
@@ -129,8 +129,8 @@
 
 {% block scripts %}
 <script src="/static/js/webauthn.js"></script>
-<script>
-async function handlePasskeyLogin() {
+<script nonce="{{ nonce }}">
+window.handlePasskeyLogin = async function() {
     const button = document.getElementById('passkey-button');
     const errorEl = document.getElementById('passkey-error');
     const email = document.getElementById('passkey-email').value;
