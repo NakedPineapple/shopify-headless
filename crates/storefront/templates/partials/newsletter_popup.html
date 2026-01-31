@@ -1,0 +1,329 @@
+{# Newsletter Popup - Triggered on scroll, shown every 3 days #}
+{% import "macros/picture.html" as img %}
+
+<style>
+    /* Newsletter popup specific styles */
+    @keyframes newsletter-shimmer {
+        0% { background-position: -200% 0; }
+        100% { background-position: 200% 0; }
+    }
+
+    @keyframes newsletter-float {
+        0%, 100% { transform: translateY(0) rotate(0deg); }
+        50% { transform: translateY(-8px) rotate(2deg); }
+    }
+
+    @keyframes newsletter-pulse-ring {
+        0% { transform: scale(1); opacity: 0.4; }
+        50% { transform: scale(1.05); opacity: 0.2; }
+        100% { transform: scale(1); opacity: 0.4; }
+    }
+
+    .newsletter-popup-glow {
+        background: linear-gradient(
+            135deg,
+            rgba(214, 58, 47, 0.08) 0%,
+            rgba(232, 168, 84, 0.08) 50%,
+            rgba(196, 116, 92, 0.08) 100%
+        );
+    }
+
+    .newsletter-popup-shimmer {
+        background: linear-gradient(
+            90deg,
+            transparent 0%,
+            rgba(255, 255, 255, 0.4) 50%,
+            transparent 100%
+        );
+        background-size: 200% 100%;
+        animation: newsletter-shimmer 3s ease-in-out infinite;
+    }
+
+    .newsletter-popup-float {
+        animation: newsletter-float 6s ease-in-out infinite;
+    }
+
+    .newsletter-popup-ring {
+        animation: newsletter-pulse-ring 3s ease-in-out infinite;
+    }
+
+    /* Decorative pineapple pattern */
+    .newsletter-popup-pattern {
+        background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 5L35 15L30 25L25 15Z' fill='%23d63a2f' fill-opacity='0.03'/%3E%3C/svg%3E");
+        background-size: 40px 40px;
+    }
+</style>
+
+{# Overlay backdrop #}
+<div id="newsletter-popup-overlay"
+     class="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-[500] opacity-0 pointer-events-none transition-all duration-500"
+     onclick="closeNewsletterPopup()"></div>
+
+{# Modal #}
+<div id="newsletter-popup-modal"
+     class="fixed inset-0 flex items-center justify-center p-4 z-[501] opacity-0 pointer-events-none transition-all duration-500"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="newsletter-popup-title">
+
+    {# Modal container - horizontal layout on larger screens #}
+    <div class="relative bg-card rounded-2xl sm:rounded-3xl w-full max-w-[420px] sm:max-w-2xl lg:max-w-3xl shadow-2xl overflow-hidden transform scale-95 transition-all duration-500 ease-out"
+         id="newsletter-popup-content"
+         onclick="event.stopPropagation()">
+
+        {# Decorative background elements #}
+        <div class="absolute inset-0 newsletter-popup-pattern opacity-50"></div>
+        <div class="absolute -top-20 -right-20 w-40 h-40 bg-honey/10 rounded-full blur-3xl"></div>
+        <div class="absolute -bottom-20 -left-20 w-40 h-40 bg-primary/5 rounded-full blur-3xl"></div>
+
+        {# Close button #}
+        <button type="button"
+                class="absolute top-3 right-3 sm:top-4 sm:right-4 z-20 w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full bg-card/90 hover:bg-card text-muted-foreground hover:text-primary transition-all duration-300 shadow-sm hover:shadow-md hover:scale-110"
+                onclick="closeNewsletterPopup()"
+                aria-label="Close popup">
+            <svg class="w-4 h-4 sm:w-5 sm:h-5" viewBox="0 0 20 20" fill="none">
+                <path d="M5 5L15 15M5 15L15 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+        </button>
+
+        <div class="flex flex-col sm:flex-row relative">
+            {# Image section - side panel on desktop, compact on mobile #}
+            <div class="relative sm:w-[45%] lg:w-[40%] overflow-hidden">
+                {# Mobile: Compact banner with gradient overlay #}
+                <div class="sm:hidden relative h-32 overflow-hidden newsletter-popup-glow">
+                    {{ img::picture(path="/static/images/original/lifestyle/NP_Shoot_-_Jan_202579.jpg", alt="", sizes="420px", class="absolute inset-0 w-full h-full object-cover opacity-30") }}
+                    <div class="absolute inset-0 bg-gradient-to-b from-transparent via-card/60 to-card"></div>
+
+                    {# Floating pineapple icon #}
+                    <div class="absolute inset-0 flex items-center justify-center">
+                        <div class="relative newsletter-popup-float">
+                            <div class="absolute inset-0 bg-primary/20 rounded-full blur-xl newsletter-popup-ring"></div>
+                            <div class="relative w-16 h-16 bg-card rounded-full shadow-lg flex items-center justify-center">
+                                <span class="text-3xl">🍍</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {# Desktop: Full image with overlay #}
+                <div class="hidden sm:block h-full min-h-[400px] lg:min-h-[420px] relative">
+                    {{ img::picture(path="/static/images/original/lifestyle/NP_Shoot_-_Jan_202579.jpg", alt="Naked Pineapple skincare", sizes="400px", class="absolute inset-0 w-full h-full object-cover") }}
+
+                    {# Gradient overlay #}
+                    <div class="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-card/20"></div>
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent"></div>
+
+                    {# Bottom accent bar #}
+                    <div class="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-honey to-terracotta"></div>
+
+                    {# Corner decoration #}
+                    <div class="absolute top-4 left-4 w-12 h-12 border-l-2 border-t-2 border-white/40 rounded-tl-lg"></div>
+                </div>
+            </div>
+
+            {# Content section #}
+            <div class="flex-1 p-6 sm:p-8 lg:p-10 flex flex-col justify-center relative">
+                {# Decorative sparkles #}
+                <div class="absolute top-4 right-12 text-honey/60 text-lg newsletter-popup-float" style="animation-delay: -2s;">✦</div>
+                <div class="absolute bottom-8 left-8 text-primary/40 text-sm newsletter-popup-float" style="animation-delay: -4s;">✦</div>
+
+                {# Badge #}
+                <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/10 rounded-full text-primary text-xs font-semibold uppercase tracking-wider mb-4 w-fit">
+                    <span class="w-1.5 h-1.5 bg-primary rounded-full animate-pulse"></span>
+                    Exclusive Access
+                </div>
+
+                {# Title #}
+                <h2 id="newsletter-popup-title" class="font-display text-2xl sm:text-3xl lg:text-[2.25rem] font-medium text-foreground mb-3 leading-tight">
+                    Stay in the <span class="text-primary">Glow!</span>
+                </h2>
+
+                {# Description #}
+                <p class="text-muted-foreground text-sm sm:text-base leading-relaxed mb-6 max-w-md">
+                    Subscribe to our emails and be the first to know about exclusive offers, new product launches, and tips to keep your skin radiant!
+                </p>
+
+                {# Newsletter form #}
+                <form id="newsletter-popup-form"
+                      hx-post="/newsletter/subscribe"
+                      hx-swap="innerHTML"
+                      hx-target="#newsletter-popup-form-container"
+                      class="mb-6">
+                    <div id="newsletter-popup-form-container">
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            <div class="relative flex-1">
+                                <label for="newsletter-popup-email" class="sr-only">Email address</label>
+                                <input type="email"
+                                       id="newsletter-popup-email"
+                                       name="email"
+                                       class="w-full px-4 py-3.5 bg-muted border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+                                       placeholder="Enter your email"
+                                       required
+                                       autocomplete="email">
+                            </div>
+                            <button type="submit"
+                                    class="group relative px-6 py-3.5 bg-primary hover:bg-primary-dark text-primary-foreground font-medium rounded-xl transition-all duration-300 overflow-hidden flex items-center justify-center gap-2 whitespace-nowrap shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 hover:-translate-y-0.5">
+                                <span class="relative z-10">I'm in!</span>
+                                <i class="ph ph-sparkle text-lg relative z-10 transition-transform group-hover:rotate-12"></i>
+                                <div class="absolute inset-0 newsletter-popup-shimmer"></div>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+
+                {# Social links #}
+                <div class="pt-5 border-t border-border">
+                    <p class="text-xs text-muted-foreground uppercase tracking-widest mb-4 font-medium">Follow the glow</p>
+                    <div class="flex gap-2">
+                        <a href="https://instagram.com/_nakedpineapple_"
+                           class="group w-10 h-10 flex items-center justify-center rounded-xl bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-all duration-300 hover:-translate-y-0.5"
+                           aria-label="Instagram"
+                           target="_blank"
+                           rel="noopener">
+                            <i class="ph ph-instagram-logo text-lg group-hover:scale-110 transition-transform"></i>
+                        </a>
+                        <a href="https://www.tiktok.com/@_nakedpineapple_"
+                           class="group w-10 h-10 flex items-center justify-center rounded-xl bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-all duration-300 hover:-translate-y-0.5"
+                           aria-label="TikTok"
+                           target="_blank"
+                           rel="noopener">
+                            <i class="ph ph-tiktok-logo text-lg group-hover:scale-110 transition-transform"></i>
+                        </a>
+                        <a href="https://www.facebook.com/people/Naked-Pineapple/61567739640422/"
+                           class="group w-10 h-10 flex items-center justify-center rounded-xl bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-all duration-300 hover:-translate-y-0.5"
+                           aria-label="Facebook"
+                           target="_blank"
+                           rel="noopener">
+                            <i class="ph ph-facebook-logo text-lg group-hover:scale-110 transition-transform"></i>
+                        </a>
+                        <a href="https://youtube.com/playlist?list=PLUo-lssPL36urXtA211K4B2YqV2EO994C"
+                           class="group w-10 h-10 flex items-center justify-center rounded-xl bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-all duration-300 hover:-translate-y-0.5"
+                           aria-label="YouTube"
+                           target="_blank"
+                           rel="noopener">
+                            <i class="ph ph-youtube-logo text-lg group-hover:scale-110 transition-transform"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    // Configuration
+    var SCROLL_THRESHOLD = 300; // pixels to scroll before showing
+    var DAYS_BETWEEN_SHOWS = 3;
+    var STORAGE_KEY = 'np_newsletter_popup_last_shown';
+    var SUBSCRIBED_KEY = 'np_newsletter_subscribed';
+
+    var overlay = document.getElementById('newsletter-popup-overlay');
+    var modal = document.getElementById('newsletter-popup-modal');
+    var content = document.getElementById('newsletter-popup-content');
+    var hasTriggered = false;
+
+    // Check if we should show the popup
+    function shouldShowPopup() {
+        // Don't show if user has already subscribed
+        if (localStorage.getItem(SUBSCRIBED_KEY) === 'true') {
+            return false;
+        }
+
+        var lastShown = localStorage.getItem(STORAGE_KEY);
+        if (!lastShown) {
+            return true;
+        }
+
+        var lastShownDate = new Date(parseInt(lastShown, 10));
+        var now = new Date();
+        var daysSinceLastShown = (now - lastShownDate) / (1000 * 60 * 60 * 24);
+
+        return daysSinceLastShown >= DAYS_BETWEEN_SHOWS;
+    }
+
+    // Open popup
+    window.openNewsletterPopup = function() {
+        if (!overlay || !modal || !content) return;
+
+        overlay.classList.remove('opacity-0', 'pointer-events-none');
+        overlay.classList.add('opacity-100', 'pointer-events-auto');
+        modal.classList.remove('opacity-0', 'pointer-events-none');
+        modal.classList.add('opacity-100', 'pointer-events-auto');
+        content.classList.remove('scale-95');
+        content.classList.add('scale-100');
+
+        document.body.style.overflow = 'hidden';
+
+        // Focus the email input for accessibility
+        setTimeout(function() {
+            var emailInput = document.getElementById('newsletter-popup-email');
+            if (emailInput) emailInput.focus();
+        }, 400);
+
+        // Record that we showed the popup
+        localStorage.setItem(STORAGE_KEY, Date.now().toString());
+    };
+
+    // Close popup
+    window.closeNewsletterPopup = function() {
+        if (!overlay || !modal || !content) return;
+
+        overlay.classList.add('opacity-0', 'pointer-events-none');
+        overlay.classList.remove('opacity-100', 'pointer-events-auto');
+        modal.classList.add('opacity-0', 'pointer-events-none');
+        modal.classList.remove('opacity-100', 'pointer-events-auto');
+        content.classList.add('scale-95');
+        content.classList.remove('scale-100');
+
+        document.body.style.overflow = '';
+    };
+
+    // Scroll handler
+    function onScroll() {
+        if (hasTriggered) return;
+        if (!shouldShowPopup()) return;
+
+        var scrollY = window.scrollY || window.pageYOffset;
+        if (scrollY > SCROLL_THRESHOLD) {
+            hasTriggered = true;
+            // Small delay for better UX
+            setTimeout(window.openNewsletterPopup, 500);
+            window.removeEventListener('scroll', onScroll);
+        }
+    }
+
+    // Listen for scroll
+    if (shouldShowPopup()) {
+        window.addEventListener('scroll', onScroll, { passive: true });
+    }
+
+    // Close on escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            window.closeNewsletterPopup();
+        }
+    });
+
+    // Mark as subscribed when form is successfully submitted
+    document.body.addEventListener('htmx:afterSwap', function(e) {
+        if (e.detail.target && e.detail.target.id === 'newsletter-popup-form-container') {
+            // Check if the response indicates success
+            var container = e.detail.target;
+            if (container.querySelector('.newsletter-success')) {
+                localStorage.setItem(SUBSCRIBED_KEY, 'true');
+                // Close popup after a delay
+                setTimeout(window.closeNewsletterPopup, 3000);
+            }
+        }
+    });
+
+    // Clean up on HTMX navigation
+    document.body.addEventListener('htmx:beforeSwap', function(e) {
+        // Only close if we're navigating to a new page
+        if (e.detail.target === document.body || e.detail.target.id === 'MainContent') {
+            window.closeNewsletterPopup();
+        }
+    });
+})();
+</script>
