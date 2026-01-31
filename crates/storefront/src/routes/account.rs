@@ -72,6 +72,7 @@ pub struct AccountIndexTemplate {
     pub default_address: Option<AddressView>,
     pub subscription_count: u32,
     pub analytics: AnalyticsConfig,
+    pub nonce: String,
 }
 
 /// Order history page template.
@@ -80,6 +81,7 @@ pub struct AccountIndexTemplate {
 pub struct OrdersTemplate {
     pub orders: Vec<Order>,
     pub analytics: AnalyticsConfig,
+    pub nonce: String,
 }
 
 /// Addresses list page template.
@@ -89,6 +91,7 @@ pub struct AddressesTemplate {
     pub addresses: Vec<Address>,
     pub default_address_id: Option<String>,
     pub analytics: AnalyticsConfig,
+    pub nonce: String,
 }
 
 impl AddressesTemplate {
@@ -110,6 +113,7 @@ pub struct AddressFormTemplate {
     pub address: Option<Address>,
     pub error: Option<String>,
     pub analytics: AnalyticsConfig,
+    pub nonce: String,
 }
 
 // =============================================================================
@@ -160,6 +164,7 @@ impl From<AddressForm> for AddressInput {
 pub async fn index(
     State(state): State<AppState>,
     RequireShopifyCustomer(token): RequireShopifyCustomer,
+    crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> impl IntoResponse {
     // Fetch customer data from Shopify
     let customer = match state.customer().get_customer(&token.access_token).await {
@@ -218,6 +223,7 @@ pub async fn index(
         default_address,
         subscription_count: 0, // TODO: Implement subscriptions
         analytics: state.config().analytics.clone(),
+        nonce,
     }
     .into_response()
 }
@@ -230,6 +236,7 @@ pub async fn index(
 pub async fn orders(
     State(state): State<AppState>,
     RequireShopifyCustomer(token): RequireShopifyCustomer,
+    crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> impl IntoResponse {
     let orders = match state.customer().get_orders(&token.access_token, 50).await {
         Ok(orders) => orders,
@@ -242,6 +249,7 @@ pub async fn orders(
     OrdersTemplate {
         orders,
         analytics: state.config().analytics.clone(),
+        nonce,
     }
 }
 
@@ -253,6 +261,7 @@ pub async fn orders(
 pub async fn addresses(
     State(state): State<AppState>,
     RequireShopifyCustomer(token): RequireShopifyCustomer,
+    crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> impl IntoResponse {
     // Fetch addresses
     let addresses = match state
@@ -277,6 +286,7 @@ pub async fn addresses(
         addresses,
         default_address_id,
         analytics: state.config().analytics.clone(),
+        nonce,
     }
 }
 
@@ -288,6 +298,7 @@ pub async fn addresses(
 pub async fn new_address(
     State(state): State<AppState>,
     RequireShopifyCustomer(_token): RequireShopifyCustomer,
+    crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> impl IntoResponse {
     AddressFormTemplate {
         is_edit: false,
@@ -295,6 +306,7 @@ pub async fn new_address(
         address: None,
         error: None,
         analytics: state.config().analytics.clone(),
+        nonce,
     }
 }
 
@@ -306,6 +318,7 @@ pub async fn new_address(
 pub async fn create_address(
     State(state): State<AppState>,
     RequireShopifyCustomer(token): RequireShopifyCustomer,
+    crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
     Form(form): Form<AddressForm>,
 ) -> Response {
     let input: AddressInput = form.into();
@@ -324,6 +337,7 @@ pub async fn create_address(
                 address: None,
                 error: Some(e.to_string()),
                 analytics: state.config().analytics.clone(),
+                nonce,
             }
             .into_response()
         }
@@ -339,6 +353,7 @@ pub async fn edit_address(
     State(state): State<AppState>,
     RequireShopifyCustomer(token): RequireShopifyCustomer,
     Path(address_id): Path<String>,
+    crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> Response {
     // Fetch addresses and find the one we want
     let addresses = match state
@@ -364,6 +379,7 @@ pub async fn edit_address(
         address: Some(addr),
         error: None,
         analytics: state.config().analytics.clone(),
+        nonce,
     }
     .into_response()
 }
@@ -377,6 +393,7 @@ pub async fn update_address(
     State(state): State<AppState>,
     RequireShopifyCustomer(token): RequireShopifyCustomer,
     Path(address_id): Path<String>,
+    crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
     Form(form): Form<AddressForm>,
 ) -> Response {
     let input: AddressInput = form.into();
@@ -403,6 +420,7 @@ pub async fn update_address(
                 address,
                 error: Some(e.to_string()),
                 analytics: state.config().analytics.clone(),
+                nonce,
             }
             .into_response()
         }

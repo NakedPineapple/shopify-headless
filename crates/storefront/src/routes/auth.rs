@@ -91,6 +91,7 @@ pub struct LoginTemplate {
     pub error: Option<String>,
     pub success: Option<String>,
     pub analytics: AnalyticsConfig,
+    pub nonce: String,
 }
 
 /// Register page template.
@@ -99,6 +100,7 @@ pub struct LoginTemplate {
 pub struct RegisterTemplate {
     pub error: Option<String>,
     pub analytics: AnalyticsConfig,
+    pub nonce: String,
 }
 
 /// Registration success page template.
@@ -107,6 +109,7 @@ pub struct RegisterTemplate {
 pub struct RegisterSuccessTemplate {
     pub email: String,
     pub analytics: AnalyticsConfig,
+    pub nonce: String,
 }
 
 /// Forgot password page template.
@@ -116,6 +119,7 @@ pub struct ForgotPasswordTemplate {
     pub error: Option<String>,
     pub success: Option<String>,
     pub analytics: AnalyticsConfig,
+    pub nonce: String,
 }
 
 /// Reset password page template.
@@ -125,6 +129,7 @@ pub struct ResetPasswordTemplate {
     pub error: Option<String>,
     pub reset_url: String,
     pub analytics: AnalyticsConfig,
+    pub nonce: String,
 }
 
 /// Activate account page template.
@@ -134,6 +139,7 @@ pub struct ActivateTemplate {
     pub error: Option<String>,
     pub activation_url: String,
     pub analytics: AnalyticsConfig,
+    pub nonce: String,
 }
 
 // =============================================================================
@@ -144,11 +150,13 @@ pub struct ActivateTemplate {
 pub async fn login_page(
     State(state): State<AppState>,
     Query(query): Query<MessageQuery>,
+    crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> impl IntoResponse {
     LoginTemplate {
         error: query.error,
         success: query.success,
         analytics: state.config().analytics.clone(),
+        nonce,
     }
 }
 
@@ -211,10 +219,12 @@ pub async fn login(
 pub async fn register_page(
     State(state): State<AppState>,
     Query(query): Query<MessageQuery>,
+    crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> impl IntoResponse {
     RegisterTemplate {
         error: query.error,
         analytics: state.config().analytics.clone(),
+        nonce,
     }
 }
 
@@ -222,7 +232,11 @@ pub async fn register_page(
 ///
 /// Creates customer via Shopify Storefront API `customerCreate` mutation.
 /// Shopify automatically sends an activation email.
-pub async fn register(State(state): State<AppState>, Form(form): Form<RegisterForm>) -> Response {
+pub async fn register(
+    State(state): State<AppState>,
+    crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
+    Form(form): Form<RegisterForm>,
+) -> Response {
     // Validate passwords match
     if form.password != form.password_confirm {
         return Redirect::to("/auth/register?error=password_mismatch").into_response();
@@ -252,6 +266,7 @@ pub async fn register(State(state): State<AppState>, Form(form): Form<RegisterFo
             RegisterSuccessTemplate {
                 email: customer.email.unwrap_or_else(|| form.email.clone()),
                 analytics: state.config().analytics.clone(),
+                nonce,
             }
             .into_response()
         }
@@ -278,12 +293,14 @@ pub async fn register(State(state): State<AppState>, Form(form): Form<RegisterFo
 pub async fn activate_page(
     State(state): State<AppState>,
     Query(query): Query<CallbackQuery>,
+    crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> Response {
     match query.url {
         Some(url) => ActivateTemplate {
             error: query.error,
             activation_url: url,
             analytics: state.config().analytics.clone(),
+            nonce,
         }
         .into_response(),
         None => Redirect::to("/auth/login?error=invalid_activation_link").into_response(),
@@ -355,11 +372,13 @@ pub async fn activate(
 pub async fn forgot_password_page(
     State(state): State<AppState>,
     Query(query): Query<MessageQuery>,
+    crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> impl IntoResponse {
     ForgotPasswordTemplate {
         error: query.error,
         success: query.success,
         analytics: state.config().analytics.clone(),
+        nonce,
     }
 }
 
@@ -386,12 +405,14 @@ pub async fn forgot_password(
 pub async fn reset_password_page(
     State(state): State<AppState>,
     Query(query): Query<CallbackQuery>,
+    crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> Response {
     match query.url {
         Some(url) => ResetPasswordTemplate {
             error: query.error,
             reset_url: url,
             analytics: state.config().analytics.clone(),
+            nonce,
         }
         .into_response(),
         None => Redirect::to("/auth/forgot-password?error=invalid_reset_link").into_response(),

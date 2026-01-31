@@ -112,6 +112,7 @@ pub struct ProductsIndexTemplate {
     pub total_pages: u32,
     pub has_more_pages: bool,
     pub analytics: AnalyticsConfig,
+    pub nonce: String,
 }
 
 /// Product detail page template.
@@ -121,6 +122,7 @@ pub struct ProductShowTemplate {
     pub product: ProductView,
     pub related_products: Vec<ProductView>,
     pub analytics: AnalyticsConfig,
+    pub nonce: String,
 }
 
 /// Quick view fragment template.
@@ -134,10 +136,11 @@ pub struct QuickViewTemplate {
 const PRODUCTS_PER_PAGE: i64 = 12;
 
 /// Display product listing page.
-#[instrument(skip(state))]
+#[instrument(skip(state, nonce))]
 pub async fn index(
     State(state): State<AppState>,
     Query(query): Query<PaginationQuery>,
+    crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> Response {
     let current_page = query.page.unwrap_or(1);
 
@@ -165,6 +168,7 @@ pub async fn index(
                 },
                 has_more_pages: has_more,
                 analytics: state.config().analytics.clone(),
+                nonce,
             }
             .into_response()
         }
@@ -177,6 +181,7 @@ pub async fn index(
                 total_pages: 1,
                 has_more_pages: false,
                 analytics: state.config().analytics.clone(),
+                nonce,
             }
             .into_response()
         }
@@ -184,8 +189,12 @@ pub async fn index(
 }
 
 /// Display product detail page.
-#[instrument(skip(state))]
-pub async fn show(State(state): State<AppState>, Path(handle): Path<String>) -> Response {
+#[instrument(skip(state, nonce))]
+pub async fn show(
+    State(state): State<AppState>,
+    Path(handle): Path<String>,
+    crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
+) -> Response {
     // Fetch product from Shopify Storefront API
     let result = state.storefront().get_product_by_handle(&handle).await;
 
@@ -208,6 +217,7 @@ pub async fn show(State(state): State<AppState>, Path(handle): Path<String>) -> 
                 product,
                 related_products,
                 analytics: state.config().analytics.clone(),
+                nonce,
             }
             .into_response()
         }
@@ -229,6 +239,7 @@ pub async fn show(State(state): State<AppState>, Path(handle): Path<String>) -> 
                     },
                     related_products: Vec::new(),
                     analytics: state.config().analytics.clone(),
+                    nonce,
                 },
             )
                 .into_response()
@@ -251,6 +262,7 @@ pub async fn show(State(state): State<AppState>, Path(handle): Path<String>) -> 
                     },
                     related_products: Vec::new(),
                     analytics: state.config().analytics.clone(),
+                    nonce,
                 },
             )
                 .into_response()

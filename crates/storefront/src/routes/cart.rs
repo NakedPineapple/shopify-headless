@@ -150,6 +150,7 @@ pub struct RemoveFromCartForm {
 pub struct CartShowTemplate {
     pub cart: CartView,
     pub analytics: AnalyticsConfig,
+    pub nonce: String,
 }
 
 /// Cart items fragment template (for HTMX).
@@ -167,8 +168,12 @@ pub struct CartCountTemplate {
 }
 
 /// Display cart page.
-#[instrument(skip(state, session))]
-pub async fn show(State(state): State<AppState>, session: Session) -> impl IntoResponse {
+#[instrument(skip(state, session, nonce))]
+pub async fn show(
+    State(state): State<AppState>,
+    session: Session,
+    crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
+) -> impl IntoResponse {
     // Get cart ID from session
     let cart = match get_cart_id(&session).await {
         Some(cart_id) => {
@@ -187,6 +192,7 @@ pub async fn show(State(state): State<AppState>, session: Session) -> impl IntoR
     CartShowTemplate {
         cart,
         analytics: state.config().analytics.clone(),
+        nonce,
     }
 }
 

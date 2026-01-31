@@ -83,6 +83,7 @@ pub struct SearchPageTemplate {
     pub filter_price_gte: Option<u64>,
     pub filter_price_lte: Option<u64>,
     pub analytics: AnalyticsConfig,
+    pub nonce: String,
 }
 
 /// Search suggestions endpoint (HTMX).
@@ -113,11 +114,12 @@ pub async fn suggest(
 }
 
 /// Full search page.
-#[instrument(skip(state))]
+#[instrument(skip(state, nonce))]
 #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
 pub async fn search_page(
     State(state): State<AppState>,
     Query(query): Query<SearchPageQuery>,
+    crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> impl IntoResponse {
     let query_str = query.q.trim();
     let sort = SearchSort::parse(&query.sort_by);
@@ -143,6 +145,7 @@ pub async fn search_page(
         filter_price_gte: filters.min_price_cents,
         filter_price_lte: filters.max_price_cents,
         analytics: state.config().analytics.clone(),
+        nonce,
     }
     .into_response()
 }

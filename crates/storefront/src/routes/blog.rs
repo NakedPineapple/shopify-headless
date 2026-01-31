@@ -53,6 +53,7 @@ impl From<&Post> for PostView {
 pub struct BlogIndexTemplate {
     pub posts: Vec<PostView>,
     pub analytics: AnalyticsConfig,
+    pub nonce: String,
 }
 
 /// Blog post detail template.
@@ -62,14 +63,18 @@ pub struct BlogShowTemplate {
     pub post: PostView,
     pub recent_posts: Vec<PostView>,
     pub analytics: AnalyticsConfig,
+    pub nonce: String,
 }
 
 /// Number of recent posts to show in sidebar.
 const RECENT_POSTS_COUNT: usize = 3;
 
 /// Display the blog index page with all published posts.
-#[instrument(skip(state))]
-pub async fn index(State(state): State<AppState>) -> impl IntoResponse {
+#[instrument(skip(state, nonce))]
+pub async fn index(
+    State(state): State<AppState>,
+    crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
+) -> impl IntoResponse {
     let posts: Vec<PostView> = state
         .content()
         .get_published_posts()
@@ -78,6 +83,7 @@ pub async fn index(State(state): State<AppState>) -> impl IntoResponse {
     BlogIndexTemplate {
         posts,
         analytics: state.config().analytics.clone(),
+        nonce,
     }
 }
 
@@ -86,10 +92,11 @@ pub async fn index(State(state): State<AppState>) -> impl IntoResponse {
 /// # Errors
 ///
 /// Returns 404 if the post doesn't exist or is a draft.
-#[instrument(skip(state))]
+#[instrument(skip(state, nonce))]
 pub async fn show(
     State(state): State<AppState>,
     Path(slug): Path<String>,
+    crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> Result<impl IntoResponse, StatusCode> {
     let post = state
         .content()
@@ -112,6 +119,7 @@ pub async fn show(
         post: PostView::from(post),
         recent_posts,
         analytics: state.config().analytics.clone(),
+        nonce,
     })
 }
 

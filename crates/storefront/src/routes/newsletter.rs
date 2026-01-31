@@ -46,6 +46,7 @@ pub struct UnsubscribeTemplate {
     pub email: String,
     pub unsubscribe_email: bool,
     pub unsubscribe_sms: bool,
+    pub nonce: String,
 }
 
 /// Unsubscribe success template.
@@ -53,6 +54,7 @@ pub struct UnsubscribeTemplate {
 #[template(path = "newsletter/unsubscribe_success.html")]
 pub struct UnsubscribeSuccessTemplate {
     pub email: String,
+    pub nonce: String,
 }
 
 /// Unsubscribe error template.
@@ -61,6 +63,7 @@ pub struct UnsubscribeSuccessTemplate {
 pub struct UnsubscribeErrorTemplate {
     pub message: String,
     pub email: String,
+    pub nonce: String,
 }
 
 /// Query parameters for unsubscribe page.
@@ -145,10 +148,11 @@ pub async fn subscribe(
 /// Show unsubscribe page.
 ///
 /// GET /newsletter/unsubscribe?email=xxx
-#[instrument(skip(state))]
+#[instrument(skip(state, nonce))]
 pub async fn unsubscribe_page(
     State(state): State<AppState>,
     Query(query): Query<UnsubscribeQuery>,
+    crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> impl IntoResponse {
     let email = query.email.unwrap_or_default();
 
@@ -159,6 +163,7 @@ pub async fn unsubscribe_page(
                 message: "Unsubscribe service is not available. Please contact support."
                     .to_string(),
                 email,
+                nonce,
             }
             .render()
             .unwrap_or_else(|_| "Error".to_string()),
@@ -171,6 +176,7 @@ pub async fn unsubscribe_page(
             email,
             unsubscribe_email: true,
             unsubscribe_sms: false,
+            nonce,
         }
         .render()
         .unwrap_or_else(|_| "Error".to_string()),
@@ -181,16 +187,17 @@ pub async fn unsubscribe_page(
 /// Process unsubscribe request.
 ///
 /// POST /newsletter/unsubscribe
-#[instrument(skip(state), fields(email = %form.email))]
+#[instrument(skip(state, nonce), fields(email = %form.email))]
 pub async fn unsubscribe(
     State(state): State<AppState>,
+    crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
     Form(form): Form<UnsubscribeForm>,
 ) -> impl IntoResponse {
     let email = form.email.trim().to_lowercase();
 
     // Validate email
     if !is_valid_email(&email) {
-        return render_unsubscribe_error("Please enter a valid email address.", &email);
+        return render_unsubscribe_error("Please enter a valid email address.", &email, &nonce);
     }
 
     // Check if at least one option is selected
@@ -198,6 +205,7 @@ pub async fn unsubscribe(
         return render_unsubscribe_error(
             "Please select at least one option to unsubscribe from.",
             &email,
+            &nonce,
         );
     }
 
@@ -206,6 +214,7 @@ pub async fn unsubscribe(
         return render_unsubscribe_error(
             "Unsubscribe service is not available. Please contact support.",
             &email,
+            &nonce,
         );
     };
 
@@ -217,12 +226,13 @@ pub async fn unsubscribe(
             return render_unsubscribe_error(
                 "Something went wrong. Please try again later.",
                 &email,
+                &nonce,
             );
         }
     };
 
     // Process the unsubscribe request
-    process_unsubscribe(&client, &email, &form).await
+    process_unsubscribe(&client, &email, &form, &nonce).await
 }
 
 /// Process the unsubscribe request after validation.
@@ -230,6 +240,7 @@ async fn process_unsubscribe(
     client: &KlaviyoClient,
     email: &str,
     form: &UnsubscribeForm,
+    nonce: &str,
 ) -> axum::response::Response {
     // Find profile by email
     let profile = match client.find_profile_by_email(email).await {
@@ -237,13 +248,14 @@ async fn process_unsubscribe(
         Err(crate::services::KlaviyoError::ProfileNotFound(_)) => {
             // Profile not found - show success anyway (don't reveal if email exists)
             tracing::info!(email = %email, "Profile not found - showing success");
-            return render_unsubscribe_success(email);
+            return render_unsubscribe_success(email, nonce);
         }
         Err(e) => {
             tracing::error!(email = %email, error = %e, "Failed to find profile");
             return render_unsubscribe_error(
                 "Something went wrong. Please try again later.",
                 email,
+                nonce,
             );
         }
     };
@@ -267,7 +279,7 @@ async fn process_unsubscribe(
 
     if errors.is_empty() {
         tracing::info!(email = %email, "Unsubscribe successful");
-        render_unsubscribe_success(email)
+        render_unsubscribe_success(email, nonce)
     } else {
         render_unsubscribe_error(
             &format!(
@@ -275,15 +287,17 @@ async fn process_unsubscribe(
                 errors.join(" and ")
             ),
             email,
+            nonce,
         )
     }
 }
 
 /// Render the unsubscribe success page.
-fn render_unsubscribe_success(email: &str) -> axum::response::Response {
+fn render_unsubscribe_success(email: &str, nonce: &str) -> axum::response::Response {
     Html(
         UnsubscribeSuccessTemplate {
             email: email.to_string(),
+            nonce: nonce.to_string(),
         }
         .render()
         .unwrap_or_else(|_| "Error".to_string()),
@@ -292,11 +306,12 @@ fn render_unsubscribe_success(email: &str) -> axum::response::Response {
 }
 
 /// Render the unsubscribe error page.
-fn render_unsubscribe_error(message: &str, email: &str) -> axum::response::Response {
+fn render_unsubscribe_error(message: &str, email: &str, nonce: &str) -> axum::response::Response {
     Html(
         UnsubscribeErrorTemplate {
             message: message.to_string(),
             email: email.to_string(),
+            nonce: nonce.to_string(),
         }
         .render()
         .unwrap_or_else(|_| "Error".to_string()),

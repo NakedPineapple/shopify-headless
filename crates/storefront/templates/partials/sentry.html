@@ -2,7 +2,7 @@
 {# Reads configuration from data-sentry-* attributes on body tag #}
 {% if sentry_dsn_public.is_some() %}
 <script src="/static/vendor/sentry.bundle.tracing.min.js"></script>
-<script>
+<script nonce="{{ nonce }}">
 (function() {
     'use strict';
 

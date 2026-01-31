@@ -7,7 +7,7 @@
     <title>{% block title %}Naked Pineapple{% endblock %}</title>
 
     <!-- Theme initialization - prevents flash of wrong theme -->
-    <script>
+    <script nonce="{{ nonce }}">
     (function() {
         var stored = localStorage.getItem('theme');
         var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -109,7 +109,7 @@
     <script src="/static/vendor/swiper-bundle.min.js"></script>
 
     <!-- Base Scripts -->
-    <script>
+    <script nonce="{{ nonce }}">
     // Guard against re-execution on HTMX navigation
     if (!window._baseScriptInitialized) {
         window._baseScriptInitialized = true;

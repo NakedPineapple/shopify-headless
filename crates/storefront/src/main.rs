@@ -229,6 +229,7 @@ async fn main() {
         .layer(axum::middleware::from_fn(
             middleware::security_headers_middleware,
         ))
+        .layer(axum::middleware::from_fn(middleware::csp_nonce_middleware))
         .layer(from_fn(middleware::request_id_middleware))
         .layer(
             TraceLayer::new_for_http().make_span_with(|request: &axum::http::Request<_>| {

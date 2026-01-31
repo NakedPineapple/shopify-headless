@@ -296,6 +296,8 @@ pub struct HomeTemplate {
     pub featured_reviews: Vec<ReviewView>,
     /// Analytics tracking configuration.
     pub analytics: AnalyticsConfig,
+    /// CSP nonce for inline scripts.
+    pub nonce: String,
 }
 
 /// Number of products to show per collection tab.
@@ -306,8 +308,11 @@ const SKINCARE_COLLECTION: &str = "frontpage";
 const MERCH_COLLECTION: &str = "merch";
 
 /// Display the home page.
-#[instrument(skip(state))]
-pub async fn home(State(state): State<AppState>) -> impl IntoResponse {
+#[instrument(skip(state, nonce))]
+pub async fn home(
+    State(state): State<AppState>,
+    crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
+) -> impl IntoResponse {
     // Fetch skincare products from collection
     let skincare_products = state
         .storefront()
@@ -340,5 +345,6 @@ pub async fn home(State(state): State<AppState>) -> impl IntoResponse {
         merch_products,
         featured_reviews: get_featured_reviews(),
         analytics: state.config().analytics.clone(),
+        nonce,
     }
 }

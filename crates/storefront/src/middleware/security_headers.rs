@@ -1,7 +1,7 @@
 //! Security headers middleware for XSS, clickjacking, and isolation protection.
 //!
-//! Adds restrictive security headers to all responses. Start locked down and
-//! loosen only when specific functionality requires it.
+//! Adds restrictive security headers to all responses. CSP is dynamically built
+//! with a per-request nonce for inline scripts and allowlisted analytics domains.
 
 use axum::{
     extract::Request,
@@ -15,38 +15,74 @@ use axum::{
     response::Response,
 };
 
+use super::csp::CspNonce;
+
+// =============================================================================
+// External domains for analytics and tracking
+// =============================================================================
+
+/// External script sources for analytics platforms.
+const SCRIPT_SRC_EXTERNAL: &[&str] = &[
+    "https://www.googletagmanager.com",
+    "https://www.google-analytics.com",
+    "https://connect.facebook.net",
+    "https://analytics.tiktok.com",
+    "https://s.pinimg.com",
+    "https://sc-static.net",
+    "https://bat.bing.com",
+    "https://static.ads-twitter.com",
+    "https://cdn.mxpnl.com",
+    "https://script.crazyegg.com",
+];
+
+/// External image sources for CDN and tracking pixels.
+const IMG_SRC_EXTERNAL: &[&str] = &[
+    "https://cdn.shopify.com",
+    "https://www.facebook.com",
+    "https://www.google-analytics.com",
+    "https://googleads.g.doubleclick.net",
+    "https://ct.pinterest.com",
+    "https://t.co",
+    "https://analytics.twitter.com",
+    "data:",
+];
+
+/// External connect sources for analytics beacons.
+const CONNECT_SRC_EXTERNAL: &[&str] = &[
+    "https://www.google-analytics.com",
+    "https://analytics.google.com",
+    "https://region1.google-analytics.com",
+    "https://www.facebook.com",
+    "https://connect.facebook.net",
+    "https://analytics.tiktok.com",
+    "https://googleads.g.doubleclick.net",
+];
+
+// =============================================================================
+// Middleware
+// =============================================================================
+
 /// Add security headers to all responses.
 ///
 /// Headers applied:
 /// - `X-Frame-Options: DENY` - Prevent clickjacking
 /// - `X-Content-Type-Options: nosniff` - Prevent MIME sniffing
 /// - `Referrer-Policy: no-referrer` - Zero referrer leakage
-/// - `Content-Security-Policy` - Strict CSP (see below)
+/// - `Content-Security-Policy` - Dynamic CSP with nonce and analytics domains
 /// - `Permissions-Policy` - Deny all sensitive features
 /// - `Cache-Control: no-store, max-age=0` - Prevent caching sensitive data
 /// - `Cross-Origin-Opener-Policy: same-origin` - Process isolation
 /// - `Cross-Origin-Resource-Policy: same-origin` - Resource isolation
-/// - `Cross-Origin-Embedder-Policy: require-corp` - Strict isolation
+/// - `Cross-Origin-Embedder-Policy: credentialless` - Allow CORS resources
 /// - `X-DNS-Prefetch-Control: off` - Prevent DNS prefetch leakage
-///
-/// # CSP Policy
-///
-/// Starting with maximum restriction - loosen only when needed:
-/// ```text
-/// default-src 'none';
-/// script-src 'self';
-/// style-src 'self';
-/// font-src 'self';
-/// img-src 'self' https://cdn.shopify.com;
-/// connect-src 'self';
-/// frame-src 'none';
-/// object-src 'none';
-/// base-uri 'self';
-/// form-action 'self';
-/// frame-ancestors 'none';
-/// upgrade-insecure-requests
-/// ```
 pub async fn security_headers_middleware(request: Request, next: Next) -> Response {
+    // Extract nonce BEFORE running the handler (it's set by csp_nonce_middleware)
+    let nonce = request
+        .extensions()
+        .get::<CspNonce>()
+        .map(|n| n.value().to_string())
+        .unwrap_or_default();
+
     let mut response = next.run(request).await;
     let headers = response.headers_mut();
 
@@ -59,24 +95,11 @@ pub async fn security_headers_middleware(request: Request, next: Next) -> Respon
     // Zero referrer leakage (stricter than same-origin)
     headers.insert(REFERRER_POLICY, HeaderValue::from_static("no-referrer"));
 
-    // Strict CSP - start locked down, loosen only when needed
-    headers.insert(
-        CONTENT_SECURITY_POLICY,
-        HeaderValue::from_static(
-            "default-src 'none'; \
-             script-src 'self'; \
-             style-src 'self'; \
-             font-src 'self'; \
-             img-src 'self' https://cdn.shopify.com; \
-             connect-src 'self'; \
-             frame-src 'none'; \
-             object-src 'none'; \
-             base-uri 'self'; \
-             form-action 'self'; \
-             frame-ancestors 'none'; \
-             upgrade-insecure-requests",
-        ),
-    );
+    // Dynamic CSP with nonce for inline scripts and analytics domains
+    let csp = build_csp(&nonce);
+    if let Ok(value) = HeaderValue::from_str(&csp) {
+        headers.insert(CONTENT_SECURITY_POLICY, value);
+    }
 
     // Strict Permissions Policy - deny all sensitive features
     headers.insert(
@@ -133,12 +156,11 @@ pub async fn security_headers_middleware(request: Request, next: Next) -> Respon
         HeaderValue::from_static("same-origin"),
     );
 
-    // Strict COEP - require-corp for maximum isolation
-    // Note: This may block cross-origin resources that don't set CORP headers.
-    // If Shopify CDN images break, switch to "credentialless".
+    // COEP: credentialless allows cross-origin resources with CORS headers
+    // (Shopify CDN, analytics scripts, etc. work without requiring CORP headers)
     headers.insert(
         HeaderName::from_static("cross-origin-embedder-policy"),
-        HeaderValue::from_static("require-corp"),
+        HeaderValue::from_static("credentialless"),
     );
 
     // Prevent DNS prefetching to avoid leaking which links user hovers over
@@ -148,4 +170,26 @@ pub async fn security_headers_middleware(request: Request, next: Next) -> Respon
     );
 
     response
+}
+
+/// Build the Content-Security-Policy header value with the given nonce.
+fn build_csp(nonce: &str) -> String {
+    let script_src = SCRIPT_SRC_EXTERNAL.join(" ");
+    let img_src = IMG_SRC_EXTERNAL.join(" ");
+    let connect_src = CONNECT_SRC_EXTERNAL.join(" ");
+
+    format!(
+        "default-src 'none'; \
+         script-src 'self' 'nonce-{nonce}' {script_src}; \
+         style-src 'self' 'unsafe-inline'; \
+         font-src 'self'; \
+         img-src 'self' {img_src}; \
+         connect-src 'self' {connect_src}; \
+         frame-src 'none'; \
+         object-src 'none'; \
+         base-uri 'self'; \
+         form-action 'self'; \
+         frame-ancestors 'none'; \
+         upgrade-insecure-requests"
+    )
 }

@@ -62,6 +62,7 @@ impl From<&ShopifyCollection> for CollectionView {
 pub struct CollectionsIndexTemplate {
     pub collections: Vec<CollectionView>,
     pub analytics: AnalyticsConfig,
+    pub nonce: String,
 }
 
 /// Collection detail page template.
@@ -74,14 +75,18 @@ pub struct CollectionShowTemplate {
     pub total_pages: u32,
     pub has_more_pages: bool,
     pub analytics: AnalyticsConfig,
+    pub nonce: String,
 }
 
 /// Products per page for collection view.
 const PRODUCTS_PER_PAGE: usize = 12;
 
 /// Display collection listing page.
-#[instrument(skip(state))]
-pub async fn index(State(state): State<AppState>) -> Response {
+#[instrument(skip(state, nonce))]
+pub async fn index(
+    State(state): State<AppState>,
+    crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
+) -> Response {
     // Fetch collections from Shopify Storefront API
     let result = state
         .storefront()
@@ -99,6 +104,7 @@ pub async fn index(State(state): State<AppState>) -> Response {
             CollectionsIndexTemplate {
                 collections,
                 analytics: state.config().analytics.clone(),
+                nonce,
             }
             .into_response()
         }
@@ -107,6 +113,7 @@ pub async fn index(State(state): State<AppState>) -> Response {
             CollectionsIndexTemplate {
                 collections: Vec::new(),
                 analytics: state.config().analytics.clone(),
+                nonce,
             }
             .into_response()
         }
@@ -114,11 +121,12 @@ pub async fn index(State(state): State<AppState>) -> Response {
 }
 
 /// Display collection detail page with products.
-#[instrument(skip(state))]
+#[instrument(skip(state, nonce))]
 pub async fn show(
     State(state): State<AppState>,
     Path(handle): Path<String>,
     Query(query): Query<PaginationQuery>,
+    crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> Response {
     let current_page = query.page.unwrap_or(1);
 
@@ -154,6 +162,7 @@ pub async fn show(
                 },
                 has_more_pages: has_more,
                 analytics: state.config().analytics.clone(),
+                nonce,
             }
             .into_response()
         }
@@ -171,6 +180,7 @@ pub async fn show(
                 total_pages: 1,
                 has_more_pages: false,
                 analytics: state.config().analytics.clone(),
+                nonce: nonce.clone(),
             },
         )
             .into_response(),
@@ -190,6 +200,7 @@ pub async fn show(
                     total_pages: 1,
                     has_more_pages: false,
                     analytics: state.config().analytics.clone(),
+                    nonce,
                 },
             )
                 .into_response()
