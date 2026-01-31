@@ -146,6 +146,11 @@
         // Event Delegation - handles all data-action clicks and changes
         // =============================================================================
         document.addEventListener('click', function(e) {
+            // Handle stop propagation for modal containers
+            if (e.target.closest('[data-stop-propagation]')) {
+                e.stopPropagation();
+            }
+
             var target = e.target.closest('[data-action]');
             if (!target) return;
 
@@ -165,6 +170,9 @@
                     break;
                 case 'close-quick-view':
                     window.closeQuickView();
+                    break;
+                case 'close-newsletter-popup':
+                    window.closeNewsletterPopup();
                     break;
                 case 'open-filter-drawer':
                     window.openFilterDrawer();
