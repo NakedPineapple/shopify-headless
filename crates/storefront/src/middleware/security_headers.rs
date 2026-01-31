@@ -37,6 +37,7 @@ const SCRIPT_SRC_EXTERNAL: &[&str] = &[
 
 /// External image sources for CDN and tracking pixels.
 const IMG_SRC_EXTERNAL: &[&str] = &[
+    "https://images.nakedpineapple.co",
     "https://cdn.shopify.com",
     "https://www.facebook.com",
     "https://www.google-analytics.com",
