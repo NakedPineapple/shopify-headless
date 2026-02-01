@@ -384,10 +384,18 @@
             var min = parseInt(input.min) || 1;
             var max = parseInt(input.max) || 999;
 
+            var changed = false;
             if (btn.dataset.action === 'decrease' && currentValue > min) {
                 input.value = currentValue - 1;
+                changed = true;
             } else if (btn.dataset.action === 'increase' && currentValue < max) {
                 input.value = currentValue + 1;
+                changed = true;
+            }
+
+            // Dispatch event so other components can react to quantity changes
+            if (changed) {
+                input.dispatchEvent(new Event('change', { bubbles: true }));
             }
         });
 

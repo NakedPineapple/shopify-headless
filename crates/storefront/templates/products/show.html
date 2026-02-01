@@ -1,6 +1,7 @@
 {% extends "layouts/base.html" %}
 {% import "macros/analytics_data.html" as analytics_macro %}
 {% import "macros/json_ld.html" as json_ld %}
+{% import "macros/picture.html" as img %}
 
 {% block body_data %}{{ analytics_macro::body_attrs(analytics=analytics) }}{% endblock %}
 
@@ -113,6 +114,52 @@
                         <span>{{ rating.value|fmt("{:.1}") }} ({{ rating.count }} {% if rating.count == 1 %}review{% else %}reviews{% endif %})</span>
                     </div>
                     {% endif %}
+
+                    <!-- Shipping & Payment Info -->
+                    <div class="space-y-2 text-sm text-muted-foreground mt-4">
+                        <!-- Shipping -->
+                        <p><a href="/shipping" class="underline hover:text-primary transition-colors">Shipping</a> calculated at checkout.</p>
+
+                        <!-- Shop Pay Installments -->
+                        {% if let Some(first_variant) = product.variants.first() %}
+                        {% if let Some(installments) = first_variant.shop_pay_installments %}
+                        {% if installments.eligible %}
+                        {% if let Some(count) = installments.installments_count %}
+                        {% if let Some(price_per_term) = installments.price_per_term %}
+                        <p class="flex items-center flex-wrap gap-1">
+                            <span>Pay in {{ count }} interest-free installments of</span>
+                            <strong class="text-foreground">{{ price_per_term }}</strong>
+                            <span>with</span>
+                            <img src="/static/images/original/payment/shop-pay.svg" alt="Shop Pay" class="h-5 inline-block">
+                        </p>
+                        {% endif %}
+                        {% endif %}
+                        {% endif %}
+                        {% endif %}
+                        {% endif %}
+
+                        <!-- Stock Status -->
+                        {% if let Some(first_variant) = product.variants.first() %}
+                        {% if let Some(qty) = first_variant.quantity_available %}
+                        {% if *qty > 5 %}
+                        <p class="text-green-600 dark:text-green-400">
+                            <i class="ph ph-check-circle mr-1"></i>
+                            {{ qty }} in stock
+                        </p>
+                        {% else if *qty > 0 %}
+                        <p class="text-amber-600 dark:text-amber-400 font-medium">
+                            <i class="ph ph-warning-circle mr-1"></i>
+                            Only {{ qty }} left in stock!
+                        </p>
+                        {% else %}
+                        <p class="text-red-600 dark:text-red-400 font-medium">
+                            <i class="ph ph-x-circle mr-1"></i>
+                            Out of stock
+                        </p>
+                        {% endif %}
+                        {% endif %}
+                        {% endif %}
+                    </div>
                 </div>
 
                 <!-- Variant Selector -->
@@ -140,57 +187,319 @@
                 {% endif %}
                 {% endif %}
 
-                <!-- Quantity Selector -->
+                <!-- Subscription Options -->
+                {% if !product.selling_plan_groups.is_empty() %}
                 <div class="space-y-3">
-                    <label class="font-medium text-foreground">Quantity</label>
-                    <div class="quantity-selector inline-flex items-center border border-border rounded-lg">
-                        <button type="button"
-                                class="quantity-btn w-12 h-12 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
-                                data-action="decrease">
-                            <i class="ph ph-minus text-lg"></i>
-                        </button>
-                        <input type="number"
-                               class="quantity-input w-16 h-12 text-center text-lg border-0 bg-transparent focus:outline-none"
-                               value="1"
-                               min="1"
-                               max="99"
-                               id="product-quantity">
-                        <button type="button"
-                                class="quantity-btn w-12 h-12 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
-                                data-action="increase">
-                            <i class="ph ph-plus text-lg"></i>
-                        </button>
+                    <label class="font-medium text-foreground">Purchase Options</label>
+                    <div class="space-y-2">
+                        <!-- One-time purchase option -->
+                        {% if !product.requires_selling_plan %}
+                        <label class="flex items-center gap-3 p-4 border-2 border-primary rounded-lg cursor-pointer bg-primary/5 purchase-option selected"
+                               data-purchase-type="one-time">
+                            <input type="radio" name="purchase_type" value="one-time" checked
+                                   class="w-5 h-5 text-primary accent-primary">
+                            <div class="flex-1">
+                                <span class="font-medium text-foreground">One-time purchase</span>
+                                <p class="text-sm text-muted-foreground">{{ product.price }}</p>
+                            </div>
+                        </label>
+                        {% endif %}
+
+                        <!-- Subscription options -->
+                        {% for group in product.selling_plan_groups %}
+                        <div class="border-2 border-border rounded-lg purchase-option {% if product.requires_selling_plan && loop.first %}border-primary bg-primary/5 selected{% endif %}"
+                             data-purchase-type="subscription">
+                            <label class="flex items-center gap-3 p-4 cursor-pointer">
+                                <input type="radio" name="purchase_type" value="subscription"
+                                       {% if product.requires_selling_plan && loop.first %}checked{% endif %}
+                                       class="w-5 h-5 text-primary accent-primary">
+                                <div class="flex-1">
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-medium text-foreground">{{ group.name }}</span>
+                                    </div>
+                                    <p class="text-sm text-muted-foreground">Free shipping on subscription orders</p>
+                                </div>
+                            </label>
+
+                            <!-- Delivery frequency selector with discounts -->
+                            <div class="px-4 pb-4 subscription-details {% if !product.requires_selling_plan %}hidden{% endif %}">
+                                <div class="selling-plan-dropdown relative" id="selling-plan-dropdown">
+                                    <!-- Hidden input for form value -->
+                                    <input type="hidden" id="selling-plan-select"
+                                           value="{% if let Some(plan) = group.selling_plans.first() %}{{ plan.id }}{% endif %}">
+
+                                    <!-- Dropdown trigger button -->
+                                    <button type="button"
+                                            class="selling-plan-trigger w-full flex items-center justify-between px-4 py-3 bg-muted/50 border border-border rounded-lg text-left hover:border-primary focus:border-primary focus:outline-none transition-colors"
+                                            data-action="toggle-selling-plan-dropdown"
+                                            aria-expanded="false"
+                                            aria-haspopup="listbox">
+                                        <span class="selling-plan-selected flex items-center gap-2">
+                                            {% if let Some(plan) = group.selling_plans.first() %}
+                                            <span class="text-foreground">{{ plan.name }}</span>
+                                            {% if let Some(discount_text) = plan.discount_text %}
+                                            <span class="px-2 py-0.5 text-xs font-semibold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded">{{ discount_text }}</span>
+                                            {% endif %}
+                                            {% endif %}
+                                        </span>
+                                        <i class="ph ph-caret-down text-muted-foreground transition-transform duration-200"></i>
+                                    </button>
+
+                                    <!-- Dropdown options -->
+                                    <div class="selling-plan-options absolute z-10 w-full mt-2 py-1 bg-background border border-border rounded-lg shadow-lg hidden"
+                                         role="listbox">
+                                        {% for plan in group.selling_plans %}
+                                        <button type="button"
+                                                class="selling-plan-option w-full flex items-center justify-between px-4 py-3 text-left hover:bg-primary/5 transition-colors {% if loop.first %}bg-primary/5{% endif %}"
+                                                data-action="select-selling-plan"
+                                                data-value="{{ plan.id }}"
+                                                data-name="{{ plan.name }}"
+                                                data-discount="{% if let Some(discount_text) = plan.discount_text %}{{ discount_text }}{% endif %}"
+                                                role="option"
+                                                {% if loop.first %}aria-selected="true"{% endif %}>
+                                            <span class="text-foreground">{{ plan.name }}</span>
+                                            {% if let Some(discount_text) = plan.discount_text %}
+                                            <span class="px-2 py-0.5 text-xs font-semibold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded">{{ discount_text }}</span>
+                                            {% endif %}
+                                        </button>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
                     </div>
                 </div>
+                <input type="hidden" id="selected-selling-plan" value="">
+                {% endif %}
 
                 <!-- Add to Cart -->
                 <div class="space-y-3">
                     {% if !product.variants.is_empty() %}
-                    <button type="button"
-                            class="btn btn-primary w-full justify-center text-lg py-4"
-                            hx-post="/cart/add"
-                            hx-vals='js:{
-                                "variant_id": document.getElementById("selected-variant")?.value || "",
-                                "quantity": parseInt(document.getElementById("product-quantity")?.value || 1)
-                            }'
-                            hx-swap="none"
-                            hx-on::after-request="htmx.trigger(document.body, 'cartUpdated');">
-                        <i class="ph ph-tote mr-2"></i>
-                        Add to Cart
-                    </button>
+                    {% if let Some(first_variant) = product.variants.first() %}
+                    {% if first_variant.available_for_sale %}
+                    <div class="flex items-center gap-3">
+                        <!-- Quantity Selector - Pill shaped -->
+                        <div class="quantity-selector inline-flex items-center border-2 border-border rounded-full flex-shrink-0">
+                            <button type="button"
+                                    class="quantity-btn w-11 h-11 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors rounded-l-full hover:bg-muted"
+                                    data-action="decrease"
+                                    aria-label="Decrease quantity">
+                                <i class="ph ph-minus text-sm"></i>
+                            </button>
+                            <input type="number"
+                                   class="quantity-input w-10 h-11 text-center border-0 bg-transparent focus:outline-none text-sm font-medium [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                   value="1"
+                                   min="1"
+                                   max="99"
+                                   id="product-quantity"
+                                   aria-label="Quantity">
+                            <button type="button"
+                                    class="quantity-btn w-11 h-11 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors rounded-r-full hover:bg-muted"
+                                    data-action="increase"
+                                    aria-label="Increase quantity">
+                                <i class="ph ph-plus text-sm"></i>
+                            </button>
+                        </div>
+
+                        <!-- Add to Cart Button -->
+                        <button type="button"
+                                class="btn btn-primary flex-1 justify-center"
+                                id="add-to-cart-btn"
+                                hx-post="/cart/add"
+                                hx-vals='js:{
+                                    "variant_id": document.getElementById("selected-variant")?.value || "",
+                                    "quantity": parseInt(document.getElementById("product-quantity")?.value || 1),
+                                    "selling_plan_id": document.getElementById("selected-selling-plan")?.value || ""
+                                }'
+                                hx-swap="none"
+                                hx-on::after-request="htmx.trigger(document.body, 'cartUpdated');">
+                            <i class="ph ph-tote mr-2"></i>
+                            {% if product.requires_selling_plan %}Subscribe{% else %}Add to Cart{% endif %}
+                        </button>
+                    </div>
+
+                    <!-- Shop Pay Button -->
+                    <a href="https://{{ store_url }}/cart/{{ first_variant.id }}:1?payment=shop_pay"
+                       class="block w-full h-12 rounded-full overflow-hidden transition-all hover:opacity-90 active:scale-[0.98]"
+                       id="shop-pay-btn"
+                       data-base-url="https://{{ store_url }}/cart/"
+                       data-variant-id="{{ first_variant.id }}">
+                        {{ img::picture(path="/static/images/original/payment/Dynamic Checkout Black@3x.png", alt="Buy with Shop Pay", sizes="400px", class="w-full h-full object-cover object-center", picture_class="block h-full", loading="eager") }}
+                    </a>
+
+                    <!-- More Payment Options -->
+                    <a href="https://{{ store_url }}/cart/{{ first_variant.id }}:1"
+                       class="block w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2"
+                       id="more-payments-link"
+                       data-base-url="https://{{ store_url }}/cart/"
+                       data-variant-id="{{ first_variant.id }}">
+                        More payment options
+                    </a>
+
+                    <!-- Share & Ask Buttons -->
+                    <div class="flex items-center justify-center gap-6">
+                        <!-- Share Button -->
+                        <div class="relative" id="share-container">
+                            <button type="button"
+                                    class="flex items-center justify-center gap-2 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                                    data-action="toggle-share-popup"
+                                    aria-label="Share this product">
+                                <i class="ph ph-share-network"></i>
+                                <span>Share</span>
+                            </button>
+
+                        <!-- Share Popup -->
+                        <div class="share-popup absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-4 bg-background border border-border rounded-lg shadow-lg hidden z-20 w-80"
+                             id="share-popup">
+                            <p class="text-sm font-medium text-foreground mb-3">Share this product</p>
+
+                            <!-- Social Icons -->
+                            <div class="flex items-center justify-center gap-2 mb-3">
+                                <a href="https://www.facebook.com/sharer/sharer.php?u={{ base_url }}/products/{{ product.handle }}"
+                                   target="_blank"
+                                   rel="noopener noreferrer"
+                                   class="flex items-center justify-center w-10 h-10 rounded-full hover:bg-muted transition-colors"
+                                   title="Facebook"
+                                   aria-label="Share on Facebook">
+                                    <i class="ph ph-facebook-logo text-xl"></i>
+                                </a>
+                                <a href="https://twitter.com/intent/tweet?url={{ base_url }}/products/{{ product.handle }}&text={{ product.title }}"
+                                   target="_blank"
+                                   rel="noopener noreferrer"
+                                   class="flex items-center justify-center w-10 h-10 rounded-full hover:bg-muted transition-colors"
+                                   title="X"
+                                   aria-label="Share on X">
+                                    <i class="ph ph-x-logo text-xl"></i>
+                                </a>
+                                <a href="https://pinterest.com/pin/create/button/?url={{ base_url }}/products/{{ product.handle }}&description={{ product.title }}"
+                                   target="_blank"
+                                   rel="noopener noreferrer"
+                                   class="flex items-center justify-center w-10 h-10 rounded-full hover:bg-muted transition-colors"
+                                   title="Pinterest"
+                                   aria-label="Share on Pinterest">
+                                    <i class="ph ph-pinterest-logo text-xl"></i>
+                                </a>
+                                <a href="mailto:?subject={{ product.title }}&body=Check out {{ product.title }}: {{ base_url }}/products/{{ product.handle }}"
+                                   class="flex items-center justify-center w-10 h-10 rounded-full hover:bg-muted transition-colors"
+                                   title="Email"
+                                   aria-label="Share via Email">
+                                    <i class="ph ph-envelope text-xl"></i>
+                                </a>
+                            </div>
+
+                            <!-- Copyable Permalink -->
+                            <div class="flex items-center gap-2">
+                                <input type="text"
+                                       readonly
+                                       class="flex-1 px-3 py-2 text-xs bg-muted border border-border rounded text-muted-foreground select-all"
+                                       id="share-permalink"
+                                       value="{{ base_url }}/products/{{ product.handle }}">
+                                <button type="button"
+                                        class="flex items-center justify-center w-9 h-9 rounded border border-border hover:bg-muted transition-colors flex-shrink-0"
+                                        data-action="copy-product-link"
+                                        title="Copy link"
+                                        aria-label="Copy link">
+                                    <i class="ph ph-copy text-sm"></i>
+                                </button>
+                            </div>
+
+                            <!-- Arrow pointing down -->
+                            <div class="absolute left-1/2 -translate-x-1/2 -bottom-2 w-0 h-0 border-l-8 border-r-8 border-t-8 border-l-transparent border-r-transparent border-t-border"></div>
+                            <div class="absolute left-1/2 -translate-x-1/2 -bottom-[7px] w-0 h-0 border-l-[7px] border-r-[7px] border-t-[7px] border-l-transparent border-r-transparent border-t-background"></div>
+                        </div>
+                    </div>
+
+                        <!-- Ask a Question Button -->
+                        <div class="relative" id="ask-question-container">
+                            <button type="button"
+                                    class="flex items-center justify-center gap-2 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                                    data-action="toggle-ask-popup"
+                                    aria-label="Ask a question">
+                                <i class="ph ph-question"></i>
+                                <span>Ask a question</span>
+                            </button>
+
+                            <!-- Ask Question Popup -->
+                            <div class="ask-popup absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-4 bg-background border border-border rounded-lg shadow-lg hidden z-20 w-80"
+                                 id="ask-popup">
+                                <p class="text-sm font-medium text-foreground mb-4 text-center">Ask a question</p>
+
+                                <form id="ask-question-form" class="space-y-3">
+                                    <input type="hidden" name="product" value="{{ product.title }}">
+
+                                    <div>
+                                        <label for="ask-name" class="sr-only">Your name</label>
+                                        <input type="text"
+                                               id="ask-name"
+                                               name="name"
+                                               required
+                                               placeholder="Your name *"
+                                               class="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg focus:border-primary focus:outline-none transition-colors">
+                                    </div>
+
+                                    <div>
+                                        <label for="ask-email" class="sr-only">Your email</label>
+                                        <input type="email"
+                                               id="ask-email"
+                                               name="email"
+                                               required
+                                               placeholder="Your email *"
+                                               class="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg focus:border-primary focus:outline-none transition-colors">
+                                    </div>
+
+                                    <div>
+                                        <label for="ask-phone" class="sr-only">Your phone</label>
+                                        <input type="tel"
+                                               id="ask-phone"
+                                               name="phone"
+                                               placeholder="Your phone"
+                                               class="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg focus:border-primary focus:outline-none transition-colors">
+                                    </div>
+
+                                    <div>
+                                        <label for="ask-message" class="sr-only">Your message</label>
+                                        <textarea id="ask-message"
+                                                  name="message"
+                                                  rows="3"
+                                                  required
+                                                  placeholder="Your message *"
+                                                  class="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg focus:border-primary focus:outline-none transition-colors resize-none"></textarea>
+                                    </div>
+
+                                    <p class="text-xs text-muted-foreground">
+                                        <em>Fields marked * are required.</em>
+                                    </p>
+
+                                    <button type="submit"
+                                            class="btn btn-primary w-full justify-center">
+                                        Send question
+                                    </button>
+                                </form>
+
+                                <!-- Arrow pointing down -->
+                                <div class="absolute left-1/2 -translate-x-1/2 -bottom-2 w-0 h-0 border-l-8 border-r-8 border-t-8 border-l-transparent border-r-transparent border-t-border"></div>
+                                <div class="absolute left-1/2 -translate-x-1/2 -bottom-[7px] w-0 h-0 border-l-[7px] border-r-[7px] border-t-[7px] border-l-transparent border-r-transparent border-t-background"></div>
+                            </div>
+                        </div>
+                    </div>
                     {% else %}
                     <button type="button"
-                            class="btn btn-primary w-full justify-center text-lg py-4 opacity-50 cursor-not-allowed"
+                            class="btn btn-primary w-full justify-center opacity-50 cursor-not-allowed"
                             disabled>
                         <i class="ph ph-tote mr-2"></i>
                         Out of Stock
                     </button>
                     {% endif %}
-
-                    <button type="button" class="btn btn-outline w-full justify-center">
-                        <i class="ph ph-heart mr-2"></i>
-                        Add to Wishlist
+                    {% endif %}
+                    {% else %}
+                    <button type="button"
+                            class="btn btn-primary w-full justify-center opacity-50 cursor-not-allowed"
+                            disabled>
+                        <i class="ph ph-tote mr-2"></i>
+                        Out of Stock
                     </button>
+                    {% endif %}
                 </div>
 
                 <!-- Product Description -->
@@ -251,16 +560,347 @@
 
 {% block scripts %}
 <script nonce="{{ nonce }}">
-window.selectVariant = function(button, variantId, price) {
-    // Update hidden input
-    document.getElementById('selected-variant').value = variantId;
+(function() {
+    'use strict';
 
-    // Update button styles
-    button.closest('.flex').querySelectorAll('button').forEach(function(btn) {
-        btn.classList.remove('border-primary', 'bg-primary/5');
+    // Guard against double-initialization (can happen with HTMX navigation)
+    if (window._productShowInitialized) return;
+    window._productShowInitialized = true;
+
+    // Variant selection (called from base.html data-action handler)
+    window.selectVariant = function(button, variantId) {
+        var input = document.getElementById('selected-variant');
+        if (input) input.value = variantId;
+
+        var container = button.closest('.flex');
+        if (container) {
+            container.querySelectorAll('button').forEach(function(btn) {
+                btn.classList.remove('border-primary', 'bg-primary/5');
+            });
+        }
+        button.classList.add('border-primary', 'bg-primary/5');
+
+        // Update checkout URLs and share permalink with new variant
+        updateCheckoutUrls();
+        updateSharePermalink();
+    };
+
+    // Update Shop Pay and More Payments URLs based on current variant and quantity
+    function updateCheckoutUrls() {
+        var variantId = document.getElementById('selected-variant')?.value;
+        var quantity = document.getElementById('product-quantity')?.value || 1;
+
+        var shopPayBtn = document.getElementById('shop-pay-btn');
+        if (shopPayBtn) {
+            var baseUrl = shopPayBtn.dataset.baseUrl;
+            variantId = variantId || shopPayBtn.dataset.variantId;
+            shopPayBtn.href = baseUrl + variantId + ':' + quantity + '?payment=shop_pay';
+        }
+
+        var morePaymentsLink = document.getElementById('more-payments-link');
+        if (morePaymentsLink) {
+            var baseUrl = morePaymentsLink.dataset.baseUrl;
+            variantId = variantId || morePaymentsLink.dataset.variantId;
+            morePaymentsLink.href = baseUrl + variantId + ':' + quantity;
+        }
+    }
+
+    // Listen for quantity changes
+    var quantityInput = document.getElementById('product-quantity');
+    if (quantityInput) {
+        quantityInput.addEventListener('change', updateCheckoutUrls);
+        quantityInput.addEventListener('input', updateCheckoutUrls);
+    }
+
+    // Close the selling plan dropdown
+    function closeSellingPlanDropdown() {
+        var dropdown = document.getElementById('selling-plan-dropdown');
+        if (!dropdown) return;
+
+        var optionsPanel = dropdown.querySelector('.selling-plan-options');
+        var trigger = dropdown.querySelector('.selling-plan-trigger');
+        var caret = trigger ? trigger.querySelector('.ph-caret-down') : null;
+
+        if (optionsPanel) optionsPanel.classList.add('hidden');
+        if (caret) caret.style.transform = '';
+        if (trigger) trigger.setAttribute('aria-expanded', 'false');
+    }
+
+    // Toggle the selling plan dropdown open/closed
+    function toggleSellingPlanDropdown() {
+        var dropdown = document.getElementById('selling-plan-dropdown');
+        if (!dropdown) return;
+
+        var optionsPanel = dropdown.querySelector('.selling-plan-options');
+        var trigger = dropdown.querySelector('.selling-plan-trigger');
+        var caret = trigger ? trigger.querySelector('.ph-caret-down') : null;
+        var isOpen = optionsPanel && !optionsPanel.classList.contains('hidden');
+
+        if (isOpen) {
+            closeSellingPlanDropdown();
+        } else {
+            if (optionsPanel) optionsPanel.classList.remove('hidden');
+            if (caret) caret.style.transform = 'rotate(180deg)';
+            if (trigger) trigger.setAttribute('aria-expanded', 'true');
+        }
+    }
+
+    // Select a selling plan option
+    function selectSellingPlan(btn) {
+        var dropdown = document.getElementById('selling-plan-dropdown');
+        if (!dropdown) return;
+
+        var value = btn.dataset.value;
+        var name = btn.dataset.name;
+        var discount = btn.dataset.discount;
+
+        // Update hidden inputs
+        var hiddenInput = document.getElementById('selling-plan-select');
+        var sellingPlanInput = document.getElementById('selected-selling-plan');
+        if (hiddenInput) hiddenInput.value = value;
+        if (sellingPlanInput) sellingPlanInput.value = value;
+
+        // Update displayed selection
+        var selectedDisplay = dropdown.querySelector('.selling-plan-selected');
+        if (selectedDisplay) {
+            var html = '<span class="text-foreground">' + name + '</span>';
+            if (discount) {
+                html += ' <span class="px-2 py-0.5 text-xs font-semibold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded">' + discount + '</span>';
+            }
+            selectedDisplay.innerHTML = html;
+        }
+
+        // Update aria-selected state
+        dropdown.querySelectorAll('.selling-plan-option').forEach(function(opt) {
+            opt.classList.remove('bg-primary/5');
+            opt.removeAttribute('aria-selected');
+        });
+        btn.classList.add('bg-primary/5');
+        btn.setAttribute('aria-selected', 'true');
+
+        closeSellingPlanDropdown();
+    }
+
+    // Close share popup
+    function closeSharePopup() {
+        var popup = document.getElementById('share-popup');
+        if (popup) popup.classList.add('hidden');
+    }
+
+    // Toggle share popup
+    function toggleSharePopup() {
+        var popup = document.getElementById('share-popup');
+        if (popup) popup.classList.toggle('hidden');
+        // Close ask popup if open
+        closeAskPopup();
+    }
+
+    // Close ask popup
+    function closeAskPopup() {
+        var popup = document.getElementById('ask-popup');
+        if (popup) popup.classList.add('hidden');
+    }
+
+    // Toggle ask popup
+    function toggleAskPopup() {
+        var popup = document.getElementById('ask-popup');
+        if (popup) popup.classList.toggle('hidden');
+        // Close share popup if open
+        closeSharePopup();
+    }
+
+    // Update share permalink with current variant
+    function updateSharePermalink() {
+        var input = document.getElementById('share-permalink');
+        if (!input) return;
+
+        var baseUrl = '{{ base_url }}/products/{{ product.handle }}';
+        var variantId = document.getElementById('selected-variant')?.value;
+
+        if (variantId) {
+            input.value = baseUrl + '?variant=' + encodeURIComponent(variantId);
+        } else {
+            input.value = baseUrl;
+        }
+    }
+
+    // Copy product link to clipboard
+    function copyProductLink() {
+        var input = document.getElementById('share-permalink');
+        var url = input ? input.value : window.location.href;
+
+        navigator.clipboard.writeText(url).then(function() {
+            var btn = document.querySelector('[data-action="copy-product-link"]');
+            if (btn) {
+                var icon = btn.querySelector('i');
+                if (icon) {
+                    icon.classList.remove('ph-copy');
+                    icon.classList.add('ph-check');
+                    setTimeout(function() {
+                        icon.classList.remove('ph-check');
+                        icon.classList.add('ph-copy');
+                    }, 2000);
+                }
+            }
+        });
+    }
+
+    // Event delegation for actions
+    document.addEventListener('click', function(e) {
+        var target = e.target.closest('[data-action]');
+
+        if (!target) {
+            // Close dropdowns/popups when clicking outside
+            var dropdown = document.getElementById('selling-plan-dropdown');
+            if (dropdown && !dropdown.contains(e.target)) {
+                closeSellingPlanDropdown();
+            }
+            var shareContainer = document.getElementById('share-container');
+            if (shareContainer && !shareContainer.contains(e.target)) {
+                closeSharePopup();
+            }
+            var askContainer = document.getElementById('ask-question-container');
+            if (askContainer && !askContainer.contains(e.target)) {
+                closeAskPopup();
+            }
+            return;
+        }
+
+        var action = target.dataset.action;
+        if (action === 'toggle-selling-plan-dropdown') {
+            e.preventDefault();
+            toggleSellingPlanDropdown();
+        } else if (action === 'select-selling-plan') {
+            e.preventDefault();
+            selectSellingPlan(target);
+        } else if (action === 'toggle-share-popup') {
+            e.preventDefault();
+            toggleSharePopup();
+        } else if (action === 'copy-product-link') {
+            e.preventDefault();
+            copyProductLink();
+            closeSharePopup();
+        } else if (action === 'toggle-ask-popup') {
+            e.preventDefault();
+            toggleAskPopup();
+        }
     });
-    button.classList.add('border-primary', 'bg-primary/5');
-};
+
+    // Close popups on Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeSellingPlanDropdown();
+            closeSharePopup();
+            closeAskPopup();
+        }
+    });
+
+    // Handle ask question form submission
+    var askForm = document.getElementById('ask-question-form');
+    if (askForm) {
+        askForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            var submitBtn = askForm.querySelector('button[type="submit"]');
+            var originalText = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="ph ph-spinner animate-spin mr-2"></i>Sending...';
+
+            var formData = new FormData(askForm);
+            var data = {
+                product: formData.get('product'),
+                name: formData.get('name'),
+                email: formData.get('email'),
+                phone: formData.get('phone') || null,
+                message: formData.get('message')
+            };
+
+            fetch('/contact/product-question', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+            .then(function(response) {
+                return response.json();
+            })
+            .then(function(result) {
+                if (result.success) {
+                    askForm.innerHTML = '<div class="text-center py-4"><i class="ph ph-check-circle text-3xl text-green-600 dark:text-green-400 mb-2 block"></i><p class="text-foreground font-medium">Thank you!</p><p class="text-sm text-muted-foreground">We\'ll get back to you soon.</p></div>';
+                    setTimeout(closeAskPopup, 3000);
+                } else {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalText;
+                    alert(result.message || 'Something went wrong. Please try again.');
+                }
+            })
+            .catch(function() {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+                alert('Something went wrong. Please try again.');
+            });
+        });
+    }
+
+    // Purchase option toggling (one-time vs subscription)
+    function initPurchaseOptions() {
+        var purchaseOptions = document.querySelectorAll('.purchase-option');
+        var sellingPlanInput = document.getElementById('selected-selling-plan');
+        var sellingPlanSelect = document.getElementById('selling-plan-select');
+        var addToCartBtn = document.getElementById('add-to-cart-btn');
+
+        if (purchaseOptions.length === 0) return;
+
+        purchaseOptions.forEach(function(option) {
+            var radio = option.querySelector('input[type="radio"]');
+            if (!radio) return;
+
+            radio.addEventListener('change', function() {
+                // Reset all options
+                purchaseOptions.forEach(function(opt) {
+                    opt.classList.remove('border-primary', 'bg-primary/5', 'selected');
+                    opt.classList.add('border-border');
+                    var details = opt.querySelector('.subscription-details');
+                    if (details) details.classList.add('hidden');
+                });
+
+                // Highlight selected option
+                option.classList.remove('border-border');
+                option.classList.add('border-primary', 'bg-primary/5', 'selected');
+
+                // Show subscription details if applicable
+                var details = option.querySelector('.subscription-details');
+                if (details) details.classList.remove('hidden');
+
+                // Update selling plan and button text
+                var isSubscription = option.dataset.purchaseType === 'subscription';
+                if (isSubscription && sellingPlanSelect && sellingPlanInput) {
+                    sellingPlanInput.value = sellingPlanSelect.value;
+                    if (addToCartBtn) {
+                        addToCartBtn.innerHTML = '<i class="ph ph-tote mr-2"></i>Subscribe';
+                    }
+                } else {
+                    if (sellingPlanInput) sellingPlanInput.value = '';
+                    if (addToCartBtn) {
+                        addToCartBtn.innerHTML = '<i class="ph ph-tote mr-2"></i>Add to Cart';
+                    }
+                }
+            });
+        });
+
+        // Initialize selling plan if subscription is pre-selected
+        var checkedRadio = document.querySelector('input[name="purchase_type"]:checked');
+        if (checkedRadio && checkedRadio.value === 'subscription' && sellingPlanSelect && sellingPlanInput) {
+            sellingPlanInput.value = sellingPlanSelect.value;
+        }
+    }
+
+    // Initialize on DOM ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initPurchaseOptions);
+    } else {
+        initPurchaseOptions();
+    }
+})();
 </script>
 {% endblock %}
 {% endblock %}

@@ -77,6 +77,76 @@ pub struct ProductRating {
 }
 
 // =============================================================================
+// Selling Plan Types (Subscriptions)
+// =============================================================================
+
+/// Price adjustment type for a selling plan.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum SellingPlanPriceAdjustmentValue {
+    /// Percentage discount (e.g., 15.0 for 15% off).
+    Percentage(f64),
+    /// Fixed amount discount.
+    FixedAmount(Money),
+    /// Fixed price (overrides variant price).
+    FixedPrice(Money),
+}
+
+/// Price adjustment for a selling plan.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SellingPlanPriceAdjustment {
+    /// The type and value of the adjustment.
+    pub adjustment_value: SellingPlanPriceAdjustmentValue,
+    /// Number of orders this adjustment applies to (None = all orders).
+    pub order_count: Option<i64>,
+}
+
+/// An option on a selling plan (e.g., delivery frequency).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SellingPlanOption {
+    /// Option name (e.g., "Delivery every").
+    pub name: String,
+    /// Option value (e.g., "30 days").
+    pub value: String,
+}
+
+/// A single selling plan (subscription option).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SellingPlan {
+    /// Selling plan ID (pass to cart).
+    pub id: String,
+    /// Display name (e.g., "Delivery every 30 days").
+    pub name: String,
+    /// Optional description.
+    pub description: Option<String>,
+    /// Options for this plan.
+    pub options: Vec<SellingPlanOption>,
+    /// Price adjustments (discounts).
+    pub price_adjustments: Vec<SellingPlanPriceAdjustment>,
+    /// Whether this plan has recurring deliveries.
+    pub recurring_deliveries: bool,
+}
+
+/// An option for a selling plan group.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SellingPlanGroupOption {
+    /// Option name (e.g., "Delivery Frequency").
+    pub name: String,
+    /// Available values (e.g., ["30 days", "60 days", "90 days"]).
+    pub values: Vec<String>,
+}
+
+/// A group of selling plans (e.g., "Subscribe & Save").
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SellingPlanGroup {
+    /// Group name (e.g., "Subscribe & Save").
+    pub name: String,
+    /// Options available in this group.
+    pub options: Vec<SellingPlanGroupOption>,
+    /// Selling plans in this group.
+    pub selling_plans: Vec<SellingPlan>,
+}
+
+// =============================================================================
 // Product Types
 // =============================================================================
 
@@ -199,6 +269,10 @@ pub struct Product {
     pub variants: Vec<ProductVariant>,
     /// Product rating from reviews (e.g., Judge.me).
     pub rating: Option<ProductRating>,
+    /// Whether product requires a selling plan (subscription-only).
+    pub requires_selling_plan: bool,
+    /// Selling plan groups (subscription options).
+    pub selling_plan_groups: Vec<SellingPlanGroup>,
 }
 
 // =============================================================================

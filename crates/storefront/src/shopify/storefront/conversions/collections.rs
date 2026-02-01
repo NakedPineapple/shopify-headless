@@ -136,7 +136,9 @@ fn convert_collection_product(
                 shop_pay_installments: None,
             })
             .collect(),
-        rating: None, // Rating not fetched in collection queries
+        rating: None,
+        requires_selling_plan: false,
+        selling_plan_groups: Vec::new(),
     }
 }
 
@@ -214,6 +216,8 @@ fn convert_collections_list_collection(
                 options: vec![],
                 variants: vec![],
                 rating: None,
+                requires_selling_plan: false,
+                selling_plan_groups: Vec::new(),
             })
             .collect(),
     }

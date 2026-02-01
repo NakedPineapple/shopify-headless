@@ -113,6 +113,58 @@ fragment MetafieldFields on Metafield {
   type
 }
 
+# Fragment for selling plan price adjustment
+fragment SellingPlanPriceAdjustmentFields on SellingPlanPriceAdjustment {
+  adjustmentValue {
+    __typename
+    ... on SellingPlanPercentagePriceAdjustment {
+      adjustmentPercentage
+    }
+    ... on SellingPlanFixedAmountPriceAdjustment {
+      adjustmentAmount {
+        ...MoneyFields
+      }
+    }
+    ... on SellingPlanFixedPriceAdjustment {
+      price {
+        ...MoneyFields
+      }
+    }
+  }
+  orderCount
+}
+
+# Fragment for selling plan fields
+fragment SellingPlanFields on SellingPlan {
+  id
+  name
+  description
+  options {
+    name
+    value
+  }
+  priceAdjustments {
+    ...SellingPlanPriceAdjustmentFields
+  }
+  recurringDeliveries
+}
+
+# Fragment for selling plan group fields
+fragment SellingPlanGroupFields on SellingPlanGroup {
+  name
+  options {
+    name
+    values
+  }
+  sellingPlans(first: 10) {
+    edges {
+      node {
+        ...SellingPlanFields
+      }
+    }
+  }
+}
+
 # Get a single product by handle
 query GetProductByHandle(
   $handle: String!
@@ -121,6 +173,7 @@ query GetProductByHandle(
 ) {
   product(handle: $handle) {
     ...ProductFields
+    requiresSellingPlan
     rating: metafield(namespace: "reviews", key: "rating") {
       ...MetafieldFields
     }
@@ -138,6 +191,13 @@ query GetProductByHandle(
       edges {
         node {
           ...ProductVariantFields
+        }
+      }
+    }
+    sellingPlanGroups(first: 5) {
+      edges {
+        node {
+          ...SellingPlanGroupFields
         }
       }
     }

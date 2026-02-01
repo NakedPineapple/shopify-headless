@@ -2,7 +2,9 @@
 
 use crate::shopify::types::{
     Image, InstallmentsCount, Money, PageInfo, PriceRange, Product, ProductConnection,
-    ProductOption, ProductRating, ProductVariant, SelectedOption, Seo, ShopPayInstallmentsPricing,
+    ProductOption, ProductRating, ProductVariant, SelectedOption, SellingPlan, SellingPlanGroup,
+    SellingPlanGroupOption, SellingPlanOption, SellingPlanPriceAdjustment,
+    SellingPlanPriceAdjustmentValue, Seo, ShopPayInstallmentsPricing,
 };
 
 use super::super::queries::{get_product_by_handle, get_product_recommendations, get_products};
@@ -48,12 +50,96 @@ fn currency_code_to_string<T: std::fmt::Debug>(code: T) -> String {
 }
 
 // =============================================================================
+// Selling Plan Conversions
+// =============================================================================
+
+fn convert_selling_plan_groups(
+    groups: get_product_by_handle::GetProductByHandleProductSellingPlanGroups,
+) -> Vec<SellingPlanGroup> {
+    groups
+        .edges
+        .into_iter()
+        .map(|edge| {
+            let group = edge.node;
+            SellingPlanGroup {
+                name: group.name,
+                options: group
+                    .options
+                    .into_iter()
+                    .map(|opt| SellingPlanGroupOption {
+                        name: opt.name,
+                        values: opt.values,
+                    })
+                    .collect(),
+                selling_plans: group
+                    .selling_plans
+                    .edges
+                    .into_iter()
+                    .map(|sp_edge| {
+                        let sp = sp_edge.node;
+                        SellingPlan {
+                            id: sp.id,
+                            name: sp.name,
+                            description: sp.description,
+                            options: sp
+                                .options
+                                .into_iter()
+                                .map(|opt| SellingPlanOption {
+                                    name: opt.name.unwrap_or_default(),
+                                    value: opt.value.unwrap_or_default(),
+                                })
+                                .collect(),
+                            price_adjustments: sp
+                                .price_adjustments
+                                .into_iter()
+                                .map(convert_price_adjustment)
+                                .collect(),
+                            recurring_deliveries: sp.recurring_deliveries,
+                        }
+                    })
+                    .collect(),
+            }
+        })
+        .collect()
+}
+
+fn convert_price_adjustment(
+    adj: get_product_by_handle::SellingPlanPriceAdjustmentFields,
+) -> SellingPlanPriceAdjustment {
+    use get_product_by_handle::SellingPlanPriceAdjustmentFieldsAdjustmentValue as AdjValue;
+
+    let adjustment_value = match adj.adjustment_value {
+        AdjValue::SellingPlanPercentagePriceAdjustment(p) => {
+            SellingPlanPriceAdjustmentValue::Percentage(p.adjustment_percentage)
+        }
+        AdjValue::SellingPlanFixedAmountPriceAdjustment(f) => {
+            SellingPlanPriceAdjustmentValue::FixedAmount(Money {
+                amount: f.adjustment_amount.amount,
+                currency_code: currency_code_to_string(f.adjustment_amount.currency_code),
+            })
+        }
+        AdjValue::SellingPlanFixedPriceAdjustment(f) => {
+            SellingPlanPriceAdjustmentValue::FixedPrice(Money {
+                amount: f.price.amount,
+                currency_code: currency_code_to_string(f.price.currency_code),
+            })
+        }
+    };
+
+    SellingPlanPriceAdjustment {
+        adjustment_value,
+        order_count: adj.order_count,
+    }
+}
+
+// =============================================================================
 // get_product_by_handle conversions
 // =============================================================================
 
 pub fn convert_product(product: get_product_by_handle::GetProductByHandleProduct) -> Product {
     let fields = product.product_fields;
     let rating = parse_rating_metafields(product.rating, product.rating_count);
+    let selling_plan_groups = convert_selling_plan_groups(product.selling_plan_groups);
 
     Product {
         id: fields.id,
@@ -95,6 +181,8 @@ pub fn convert_product(product: get_product_by_handle::GetProductByHandleProduct
             .map(|e| convert_variant_handle(e.node))
             .collect(),
         rating,
+        requires_selling_plan: product.requires_selling_plan,
+        selling_plan_groups,
     }
 }
 
@@ -257,7 +345,9 @@ fn convert_products_list_product(product: get_products::GetProductsProductsEdges
             .into_iter()
             .map(|e| convert_variant_list(e.node))
             .collect(),
-        rating: None, // Rating not fetched in list queries
+        rating: None,
+        requires_selling_plan: false,
+        selling_plan_groups: Vec::new(),
     }
 }
 
@@ -402,7 +492,9 @@ pub fn convert_product_recommendation(
             .into_iter()
             .map(|e| convert_variant_rec(e.node))
             .collect(),
-        rating: None, // Rating not fetched in recommendations
+        rating: None,
+        requires_selling_plan: false,
+        selling_plan_groups: Vec::new(),
     }
 }
 

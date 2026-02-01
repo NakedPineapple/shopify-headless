@@ -13,7 +13,9 @@ use tracing::instrument;
 use crate::config::AnalyticsConfig;
 use crate::filters;
 use crate::shopify::ShopifyError;
-use crate::shopify::types::{Money, Product as ShopifyProduct, ProductRecommendationIntent};
+use crate::shopify::types::{
+    Money, Product as ShopifyProduct, ProductRecommendationIntent, SellingPlanPriceAdjustmentValue,
+};
 use crate::state::AppState;
 
 /// Product rating display data for templates.
@@ -31,6 +33,28 @@ pub struct RatingView {
     pub count: i64,
 }
 
+/// A single selling plan (subscription option) for templates.
+#[derive(Clone)]
+pub struct SellingPlanView {
+    /// Selling plan ID (pass to cart).
+    pub id: String,
+    /// Display name (e.g., "Delivery every 30 days").
+    pub name: String,
+    /// Discount percentage (e.g., 15 for 15% off), if applicable.
+    pub discount_percentage: Option<i64>,
+    /// Formatted discount text (e.g., "Save 15%").
+    pub discount_text: Option<String>,
+}
+
+/// A group of selling plans for templates.
+#[derive(Clone)]
+pub struct SellingPlanGroupView {
+    /// Group name (e.g., "Subscribe & Save").
+    pub name: String,
+    /// Selling plans in this group.
+    pub selling_plans: Vec<SellingPlanView>,
+}
+
 /// Product display data for templates.
 #[derive(Clone)]
 pub struct ProductView {
@@ -44,6 +68,10 @@ pub struct ProductView {
     pub variants: Vec<VariantView>,
     pub ingredients: Option<String>,
     pub rating: Option<RatingView>,
+    /// Whether product requires a subscription (can't be purchased one-time).
+    pub requires_selling_plan: bool,
+    /// Subscription options available for this product.
+    pub selling_plan_groups: Vec<SellingPlanGroupView>,
 }
 
 /// Image display data for templates.
@@ -167,6 +195,41 @@ impl From<&ShopifyProduct> for ProductView {
                     count: r.count,
                 }
             }),
+            requires_selling_plan: product.requires_selling_plan,
+            selling_plan_groups: product
+                .selling_plan_groups
+                .iter()
+                .map(|group| SellingPlanGroupView {
+                    name: group.name.clone(),
+                    selling_plans: group
+                        .selling_plans
+                        .iter()
+                        .map(|sp| {
+                            // Extract discount percentage from first price adjustment
+                            let discount_percentage = sp.price_adjustments.first().and_then(|adj| {
+                                if let SellingPlanPriceAdjustmentValue::Percentage(p) = &adj.adjustment_value {
+                                    #[expect(
+                                        clippy::cast_possible_truncation,
+                                        reason = "discount percentages are small integers"
+                                    )]
+                                    Some(*p as i64)
+                                } else {
+                                    None
+                                }
+                            });
+
+                            let discount_text = discount_percentage.map(|p| format!("Save {p}%"));
+
+                            SellingPlanView {
+                                id: sp.id.clone(),
+                                name: sp.name.clone(),
+                                discount_percentage,
+                                discount_text,
+                            }
+                        })
+                        .collect(),
+                })
+                .collect(),
         }
     }
 }
@@ -197,6 +260,8 @@ pub struct ProductShowTemplate {
     pub base_url: String,
     /// Breadcrumb trail for SEO.
     pub breadcrumbs: Vec<BreadcrumbItem>,
+    /// Shopify store URL for Shop Pay button (e.g., "your-store.myshopify.com").
+    pub store_url: String,
 }
 
 /// Quick view fragment template.
@@ -314,6 +379,7 @@ pub async fn show(
                 nonce,
                 base_url: state.config().base_url.clone(),
                 breadcrumbs,
+                store_url: state.config().shopify.store.clone(),
             }
             .into_response()
         }
@@ -333,12 +399,15 @@ pub async fn show(
                         variants: Vec::new(),
                         ingredients: None,
                         rating: None,
+                        requires_selling_plan: false,
+                        selling_plan_groups: Vec::new(),
                     },
                     related_products: Vec::new(),
                     analytics: state.config().analytics.clone(),
                     nonce,
                     base_url: state.config().base_url.clone(),
                     breadcrumbs: Vec::new(),
+                    store_url: state.config().shopify.store.clone(),
                 },
             )
                 .into_response()
@@ -359,12 +428,15 @@ pub async fn show(
                         variants: Vec::new(),
                         ingredients: None,
                         rating: None,
+                        requires_selling_plan: false,
+                        selling_plan_groups: Vec::new(),
                     },
                     related_products: Vec::new(),
                     analytics: state.config().analytics.clone(),
                     nonce,
                     base_url: state.config().base_url.clone(),
                     breadcrumbs: Vec::new(),
+                    store_url: state.config().shopify.store.clone(),
                 },
             )
                 .into_response()
@@ -400,6 +472,8 @@ pub async fn quick_view(State(state): State<AppState>, Path(handle): Path<String
                 variants: Vec::new(),
                 ingredients: None,
                 rating: None,
+                requires_selling_plan: false,
+                selling_plan_groups: Vec::new(),
             };
             QuickViewTemplate { product, store_url }.into_response()
         }

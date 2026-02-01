@@ -26,6 +26,9 @@
 //! # Newsletter
 //! POST /newsletter/subscribe   - Subscribe to newsletter (HTMX fragment)
 //!
+//! # Contact
+//! POST /contact/product-question - Submit product question (JSON API)
+//!
 //! # Auth
 //! GET  /auth/login             - Login page
 //! POST /auth/login             - Login action
@@ -57,6 +60,7 @@ pub mod auth;
 pub mod blog;
 pub mod cart;
 pub mod collections;
+pub mod contact;
 pub mod home;
 pub mod manifest;
 pub mod newsletter;
@@ -199,5 +203,10 @@ pub fn routes() -> Router<AppState> {
         .route(
             "/newsletter/unsubscribe",
             get(newsletter::unsubscribe_page).post(newsletter::unsubscribe),
+        )
+        // Contact routes
+        .route(
+            "/contact/product-question",
+            post(contact::product_question),
         )
 }

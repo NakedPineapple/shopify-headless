@@ -231,6 +231,61 @@ impl KlaviyoClient {
             .await
     }
 
+    /// Track a custom event in Klaviyo.
+    ///
+    /// Creates an event associated with a profile (identified by email).
+    /// This is useful for tracking custom actions like product questions.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if the API request fails.
+    pub async fn track_event(
+        &self,
+        email: &str,
+        event_name: &str,
+        properties: serde_json::Value,
+    ) -> Result<(), KlaviyoError> {
+        let url = format!("{BASE_URL}/events");
+
+        let body = serde_json::json!({
+            "data": {
+                "type": "event",
+                "attributes": {
+                    "profile": {
+                        "data": {
+                            "type": "profile",
+                            "attributes": {
+                                "email": email
+                            }
+                        }
+                    },
+                    "metric": {
+                        "data": {
+                            "type": "metric",
+                            "attributes": {
+                                "name": event_name
+                            }
+                        }
+                    },
+                    "properties": properties
+                }
+            }
+        });
+
+        let response = self.client.post(&url).json(&body).send().await?;
+        let status = response.status();
+
+        if !status.is_success() {
+            let message = response.text().await.unwrap_or_default();
+            return Err(KlaviyoError::Api {
+                status: status.as_u16(),
+                message,
+            });
+        }
+
+        Ok(())
+    }
+
     /// Update a profile's subscription consent for a channel.
     async fn update_subscription_consent(
         &self,
