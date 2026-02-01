@@ -4,7 +4,7 @@
 //! bin locations, and lot/expiration data from the warehouse.
 
 use serde::{Deserialize, Serialize};
-use tracing::instrument;
+use tracing::{debug, instrument};
 
 use super::ShipHeroError;
 use super::client::ShipHeroClient;
@@ -208,7 +208,7 @@ impl ShipHeroClient {
     /// # Errors
     ///
     /// Returns `ShipHeroError` if the API call fails.
-    #[instrument(skip(self))]
+    #[instrument(skip(self), fields(first = first, has_cursor = after.is_some()))]
     pub async fn get_products(
         &self,
         first: Option<i64>,
@@ -216,6 +216,11 @@ impl ShipHeroClient {
         sku: Option<String>,
     ) -> Result<ProductConnection, ShipHeroError> {
         use super::queries::get_products::Variables;
+
+        debug!(
+            sku_filter = sku.as_deref(),
+            "Fetching products from ShipHero"
+        );
 
         let variables = Variables { first, after, sku };
         let response = self.execute_query::<GetProducts>(variables).await?;
@@ -265,6 +270,12 @@ impl ShipHeroClient {
             })
             .collect();
 
+        debug!(
+            product_count = products.len(),
+            has_next_page = has_next_page,
+            "Retrieved products from ShipHero"
+        );
+
         Ok(ProductConnection {
             products,
             has_next_page,
@@ -280,6 +291,8 @@ impl ShipHeroClient {
     #[instrument(skip(self), fields(sku = %sku))]
     pub async fn get_product_by_sku(&self, sku: &str) -> Result<Option<Product>, ShipHeroError> {
         use super::queries::get_product_by_sku::Variables;
+
+        debug!("Fetching product by SKU from ShipHero");
 
         let variables = Variables {
             sku: sku.to_string(),
@@ -311,6 +324,12 @@ impl ShipHeroClient {
                 updated_at: None,
             });
 
+        if product.is_some() {
+            debug!("Product found in ShipHero");
+        } else {
+            debug!("Product not found in ShipHero");
+        }
+
         Ok(product)
     }
 
@@ -319,7 +338,7 @@ impl ShipHeroClient {
     /// # Errors
     ///
     /// Returns `ShipHeroError` if the API call fails.
-    #[instrument(skip(self), fields(warehouse_id = %warehouse_id))]
+    #[instrument(skip(self), fields(warehouse_id = %warehouse_id, first = first, has_cursor = after.is_some()))]
     pub async fn get_warehouse_products(
         &self,
         warehouse_id: &str,
@@ -327,6 +346,8 @@ impl ShipHeroClient {
         after: Option<String>,
     ) -> Result<WarehouseProductConnection, ShipHeroError> {
         use super::queries::get_warehouse_products::Variables;
+
+        debug!("Fetching warehouse products from ShipHero");
 
         let variables = Variables {
             warehouse_id: warehouse_id.to_string(),
@@ -381,6 +402,12 @@ impl ShipHeroClient {
             })
             .collect();
 
+        debug!(
+            product_count = products.len(),
+            has_next_page = has_next_page,
+            "Retrieved warehouse products from ShipHero"
+        );
+
         Ok(WarehouseProductConnection {
             products,
             has_next_page,
@@ -393,13 +420,15 @@ impl ShipHeroClient {
     /// # Errors
     ///
     /// Returns `ShipHeroError` if the API call fails.
-    #[instrument(skip(self), fields(warehouse_id = %warehouse_id))]
+    #[instrument(skip(self), fields(warehouse_id = %warehouse_id, first = first))]
     pub async fn get_locations(
         &self,
         warehouse_id: &str,
         first: Option<i64>,
     ) -> Result<LocationConnection, ShipHeroError> {
         use super::queries::get_locations::Variables;
+
+        debug!("Fetching warehouse locations from ShipHero");
 
         let variables = Variables {
             warehouse_id: warehouse_id.to_string(),
@@ -447,6 +476,12 @@ impl ShipHeroClient {
             })
             .collect();
 
+        debug!(
+            location_count = locations.len(),
+            has_next_page = has_next_page,
+            "Retrieved warehouse locations from ShipHero"
+        );
+
         Ok(LocationConnection {
             locations,
             has_next_page,
@@ -459,7 +494,7 @@ impl ShipHeroClient {
     /// # Errors
     ///
     /// Returns `ShipHeroError` if the API call fails.
-    #[instrument(skip(self), fields(sku = %sku))]
+    #[instrument(skip(self), fields(sku = %sku, first = first))]
     pub async fn get_inventory_changes(
         &self,
         sku: &str,
@@ -469,6 +504,12 @@ impl ShipHeroClient {
     ) -> Result<Vec<InventoryChange>, ShipHeroError> {
         use super::queries::get_inventory_changes::Variables;
 
+        debug!(
+            date_from = date_from.as_deref(),
+            date_to = date_to.as_deref(),
+            "Fetching inventory changes from ShipHero"
+        );
+
         let variables = Variables {
             sku: sku.to_string(),
             date_from,
@@ -477,7 +518,7 @@ impl ShipHeroClient {
         };
         let response = self.execute_query::<GetInventoryChanges>(variables).await?;
 
-        let changes = response
+        let changes: Vec<_> = response
             .inventory_changes
             .and_then(|result| result.data)
             .map(|data| {
@@ -503,6 +544,11 @@ impl ShipHeroClient {
             })
             .unwrap_or_default();
 
+        debug!(
+            change_count = changes.len(),
+            "Retrieved inventory changes from ShipHero"
+        );
+
         Ok(changes)
     }
 
@@ -511,7 +557,7 @@ impl ShipHeroClient {
     /// # Errors
     ///
     /// Returns `ShipHeroError` if the API call fails.
-    #[instrument(skip(self))]
+    #[instrument(skip(self), fields(first = first))]
     pub async fn get_expiration_lots(
         &self,
         sku: Option<String>,
@@ -520,6 +566,12 @@ impl ShipHeroClient {
     ) -> Result<Vec<ExpirationLot>, ShipHeroError> {
         use super::queries::get_expiration_lots::Variables;
 
+        debug!(
+            sku = sku.as_deref(),
+            warehouse_id = warehouse_id.as_deref(),
+            "Fetching expiration lots from ShipHero"
+        );
+
         let variables = Variables {
             sku,
             warehouse_id,
@@ -527,7 +579,7 @@ impl ShipHeroClient {
         };
         let response = self.execute_query::<GetExpirationLots>(variables).await?;
 
-        let lots = response
+        let lots: Vec<_> = response
             .expiration_lots
             .and_then(|result| result.data)
             .map(|data| {
@@ -551,6 +603,11 @@ impl ShipHeroClient {
             })
             .unwrap_or_default();
 
+        debug!(
+            lot_count = lots.len(),
+            "Retrieved expiration lots from ShipHero"
+        );
+
         Ok(lots)
     }
 
@@ -562,12 +619,14 @@ impl ShipHeroClient {
     /// # Errors
     ///
     /// Returns `ShipHeroError` if the API call fails.
-    #[instrument(skip(self))]
+    #[instrument(skip(self), fields(first = first, has_cursor = after.is_some()))]
     pub async fn get_low_stock(
         &self,
         first: Option<i64>,
         after: Option<String>,
     ) -> Result<LowStockConnection, ShipHeroError> {
+        debug!("Fetching low stock products from ShipHero");
+
         // Fetch products - we need to get more than requested since we'll filter
         let fetch_count = first.map_or(150, |n| n * 3);
         let result = self.get_products(Some(fetch_count), after, None).await?;
@@ -598,6 +657,12 @@ impl ShipHeroClient {
             .take(limit)
             .collect();
 
+        debug!(
+            low_stock_count = low_stock_products.len(),
+            has_next_page = result.has_next_page,
+            "Retrieved low stock products from ShipHero"
+        );
+
         Ok(LowStockConnection {
             products: low_stock_products,
             has_next_page: result.has_next_page,
@@ -614,6 +679,8 @@ impl ShipHeroClient {
     /// Returns `ShipHeroError` if the API call fails.
     #[instrument(skip(self))]
     pub async fn get_inventory_health(&self) -> Result<InventoryHealth, ShipHeroError> {
+        debug!("Calculating inventory health metrics from ShipHero");
+
         // Fetch a batch of products to calculate health metrics
         let result = self.get_products(Some(100), None, None).await?;
 
@@ -640,6 +707,14 @@ impl ShipHeroClient {
                 }
             }
         }
+
+        debug!(
+            total_skus = total_skus,
+            items_in_stock = items_in_stock,
+            items_at_zero = items_at_zero,
+            low_stock_count = low_stock_count,
+            "Calculated inventory health metrics"
+        );
 
         Ok(InventoryHealth {
             total_skus,

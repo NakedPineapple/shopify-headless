@@ -4,7 +4,7 @@
 
 use secrecy::{ExposeSecret, SecretString};
 use serde::{Deserialize, Serialize};
-use tracing::instrument;
+use tracing::{debug, info, instrument, warn};
 
 use super::ShipHeroError;
 
@@ -84,7 +84,7 @@ pub async fn authenticate(
         password: password.expose_secret(),
     };
 
-    tracing::debug!(
+    debug!(
         endpoint = AUTH_ENDPOINT,
         request_fields = ?RequestFieldsDebug { username: email },
         "Sending ShipHero auth request"
@@ -99,7 +99,7 @@ pub async fn authenticate(
     let status = response.status();
     let response_body = response.text().await.unwrap_or_default();
 
-    tracing::debug!(
+    debug!(
         status = %status,
         response_body = %response_body,
         "ShipHero auth response"
@@ -107,6 +107,12 @@ pub async fn authenticate(
 
     if status.is_success() {
         let auth_response: AuthResponse = serde_json::from_str(&response_body)?;
+
+        info!(
+            expires_in_secs = auth_response.expires_in,
+            has_refresh_token = auth_response.refresh_token.is_some(),
+            "ShipHero authentication successful"
+        );
 
         Ok(ShipHeroToken {
             access_token: SecretString::from(auth_response.access_token),
@@ -128,8 +134,17 @@ pub async fn authenticate(
             .or(error_response.error)
             .unwrap_or_else(|| "Invalid credentials".to_string());
 
+        warn!(
+            status = %status,
+            error_message = %message,
+            "ShipHero authentication failed - invalid credentials"
+        );
         Err(ShipHeroError::AuthenticationFailed(message))
     } else {
+        warn!(
+            status = %status,
+            "ShipHero authentication failed with unexpected status"
+        );
         Err(ShipHeroError::AuthenticationFailed(format!(
             "HTTP {status}: {response_body}"
         )))
@@ -145,12 +160,14 @@ pub async fn authenticate(
 /// # Errors
 ///
 /// Returns `ShipHeroError::AuthenticationFailed` if the refresh token is invalid or expired.
-#[instrument(skip(refresh_token))]
+#[instrument(skip(client, refresh_token))]
 pub async fn refresh_access_token(
     client: &reqwest::Client,
     refresh_token: &SecretString,
 ) -> Result<ShipHeroToken, ShipHeroError> {
+    debug!("Refreshing ShipHero access token");
     let now = chrono::Utc::now().timestamp();
+    let start = std::time::Instant::now();
 
     let response = client
         .post(AUTH_ENDPOINT)
@@ -165,6 +182,13 @@ pub async fn refresh_access_token(
     if status.is_success() {
         let auth_response: AuthResponse = response.json().await?;
 
+        info!(
+            status = %status,
+            duration_ms = %start.elapsed().as_millis(),
+            expires_in_secs = auth_response.expires_in,
+            "ShipHero token refresh successful"
+        );
+
         Ok(ShipHeroToken {
             access_token: SecretString::from(auth_response.access_token),
             refresh_token: auth_response.refresh_token.map(SecretString::from),
@@ -176,6 +200,13 @@ pub async fn refresh_access_token(
             .text()
             .await
             .unwrap_or_else(|_| "Unknown error".to_string());
+
+        warn!(
+            status = %status,
+            duration_ms = %start.elapsed().as_millis(),
+            error = %error_text,
+            "ShipHero token refresh failed"
+        );
 
         Err(ShipHeroError::AuthenticationFailed(format!(
             "Token refresh failed: {error_text}"

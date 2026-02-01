@@ -4,7 +4,7 @@
 //! and order details from the warehouse.
 
 use serde::{Deserialize, Serialize};
-use tracing::instrument;
+use tracing::{debug, instrument};
 
 use super::ShipHeroError;
 use super::client::ShipHeroClient;
@@ -279,7 +279,7 @@ impl ShipHeroClient {
     /// # Errors
     ///
     /// Returns `ShipHeroError` if the API call fails.
-    #[instrument(skip(self))]
+    #[instrument(skip(self), fields(first = first, has_cursor = after.is_some()))]
     pub async fn get_pending_orders(
         &self,
         first: Option<i64>,
@@ -287,6 +287,11 @@ impl ShipHeroClient {
         fulfillment_status: Option<String>,
     ) -> Result<OrderConnection, ShipHeroError> {
         use super::queries::get_pending_orders::Variables;
+
+        debug!(
+            fulfillment_status = fulfillment_status.as_deref(),
+            "Fetching pending orders from ShipHero"
+        );
 
         let variables = Variables {
             first,
@@ -356,6 +361,12 @@ impl ShipHeroClient {
             })
             .collect();
 
+        debug!(
+            order_count = orders.len(),
+            has_next_page = has_next_page,
+            "Retrieved pending orders from ShipHero"
+        );
+
         Ok(OrderConnection {
             orders,
             has_next_page,
@@ -371,6 +382,8 @@ impl ShipHeroClient {
     #[instrument(skip(self), fields(order_id = %id))]
     pub async fn get_order(&self, id: &str) -> Result<Option<WarehouseOrderDetail>, ShipHeroError> {
         use super::queries::get_order::Variables;
+
+        debug!("Fetching order details from ShipHero");
 
         let variables = Variables { id: id.to_string() };
         let response = self.execute_query::<GetOrder>(variables).await?;
@@ -430,6 +443,12 @@ impl ShipHeroClient {
                 }),
             });
 
+        if order.is_some() {
+            debug!("Order found in ShipHero");
+        } else {
+            debug!("Order not found in ShipHero");
+        }
+
         Ok(order)
     }
 
@@ -445,13 +464,15 @@ impl ShipHeroClient {
     ) -> Result<Vec<OrderHistoryEvent>, ShipHeroError> {
         use super::queries::get_order_history::Variables;
 
+        debug!("Fetching order history from ShipHero");
+
         let variables = Variables {
             order_id: order_id.to_string(),
         };
 
         let response = self.execute_query::<GetOrderHistory>(variables).await?;
 
-        let events = response
+        let events: Vec<_> = response
             .order_history
             .and_then(|history_result| history_result.data)
             .map(|data| {
@@ -471,6 +492,11 @@ impl ShipHeroClient {
             })
             .unwrap_or_default();
 
+        debug!(
+            event_count = events.len(),
+            "Retrieved order history from ShipHero"
+        );
+
         Ok(events)
     }
 
@@ -479,7 +505,7 @@ impl ShipHeroClient {
     /// # Errors
     ///
     /// Returns `ShipHeroError` if the API call fails.
-    #[instrument(skip(self))]
+    #[instrument(skip(self), fields(first = first, has_cursor = after.is_some()))]
     pub async fn get_shipments(
         &self,
         first: Option<i64>,
@@ -488,6 +514,12 @@ impl ShipHeroClient {
         date_to: Option<String>,
     ) -> Result<ShipmentConnection, ShipHeroError> {
         use super::queries::get_shipments::Variables;
+
+        debug!(
+            date_from = date_from.as_deref(),
+            date_to = date_to.as_deref(),
+            "Fetching shipments from ShipHero"
+        );
 
         let variables = Variables {
             first,
@@ -551,6 +583,12 @@ impl ShipHeroClient {
             })
             .collect();
 
+        debug!(
+            shipment_count = shipments.len(),
+            has_next_page = has_next_page,
+            "Retrieved shipments from ShipHero"
+        );
+
         Ok(ShipmentConnection {
             shipments,
             has_next_page,
@@ -566,6 +604,8 @@ impl ShipHeroClient {
     #[instrument(skip(self), fields(shipment_id = %id))]
     pub async fn get_shipment(&self, id: &str) -> Result<Option<Shipment>, ShipHeroError> {
         use super::queries::get_shipment::Variables;
+
+        debug!("Fetching shipment details from ShipHero");
 
         let variables = Variables { id: id.to_string() };
         let response = self.execute_query::<GetShipment>(variables).await?;
@@ -597,6 +637,12 @@ impl ShipHeroClient {
                 shipping_labels: convert_shipment_detail_labels(s.shipping_labels),
                 total_packages: s.total_packages,
             });
+
+        if shipment.is_some() {
+            debug!("Shipment found in ShipHero");
+        } else {
+            debug!("Shipment not found in ShipHero");
+        }
 
         Ok(shipment)
     }

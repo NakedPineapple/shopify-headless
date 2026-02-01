@@ -9,6 +9,7 @@ use graphql_client::GraphQLQuery;
 use secrecy::ExposeSecret;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use tokio::sync::RwLock;
+use tracing::{debug, instrument, warn};
 
 use crate::config::ShopifyAdminConfig;
 
@@ -292,7 +293,11 @@ impl AdminClient {
     ///
     /// Returns `AdminShopifyError::OAuth` if the token exchange fails.
     /// Returns `AdminShopifyError::Http` if the HTTP request fails.
+    #[instrument(skip(self, code), fields(store = %self.inner.store))]
     pub async fn exchange_code(&self, code: &str) -> Result<OAuthToken, AdminShopifyError> {
+        debug!("Exchanging OAuth authorization code for access token");
+        let start = std::time::Instant::now();
+
         let url = format!("https://{}/admin/oauth/access_token", self.inner.store);
 
         let params = [
@@ -303,8 +308,14 @@ impl AdminClient {
 
         let response = self.inner.client.post(&url).form(&params).send().await?;
 
-        if !response.status().is_success() {
+        let status = response.status();
+        if !status.is_success() {
             let text = response.text().await.unwrap_or_default();
+            warn!(
+                status = %status,
+                duration_ms = %start.elapsed().as_millis(),
+                "OAuth token exchange failed"
+            );
             return Err(AdminShopifyError::OAuth(format!(
                 "Token exchange failed: {text}"
             )));
@@ -321,6 +332,12 @@ impl AdminClient {
 
         // Cache the token in memory
         *self.inner.token.write().await = Some(token.clone());
+
+        debug!(
+            duration_ms = %start.elapsed().as_millis(),
+            scope = %token.scope,
+            "OAuth token exchange successful"
+        );
 
         Ok(token)
     }
@@ -359,6 +376,7 @@ impl AdminClient {
     // =========================================================================
 
     /// Execute a GraphQL query.
+    #[instrument(skip(self, variables), fields(store = %self.inner.store))]
     async fn execute<Q: GraphQLQuery>(
         &self,
         variables: Q::Variables,
@@ -366,6 +384,13 @@ impl AdminClient {
     where
         Q::ResponseData: DeserializeOwned,
     {
+        let query_name = std::any::type_name::<Q>()
+            .split("::")
+            .last()
+            .unwrap_or("Unknown");
+        debug!(query = %query_name, "Executing Shopify Admin GraphQL query");
+
+        let start = std::time::Instant::now();
         let access_token = self.get_access_token().await?;
         let endpoint = format!(
             "https://{}/admin/api/{}/graphql.json",
@@ -384,19 +409,32 @@ impl AdminClient {
             .send()
             .await?;
 
+        let status = response.status();
+
         // Check for rate limiting
-        if response.status() == reqwest::StatusCode::TOO_MANY_REQUESTS {
+        if status == reqwest::StatusCode::TOO_MANY_REQUESTS {
             let retry_after = response
                 .headers()
                 .get("Retry-After")
                 .and_then(|v| v.to_str().ok())
                 .and_then(|s| s.parse().ok())
                 .unwrap_or(60);
+            warn!(
+                query = %query_name,
+                retry_after_secs = %retry_after,
+                duration_ms = %start.elapsed().as_millis(),
+                "Rate limited by Shopify Admin API"
+            );
             return Err(AdminShopifyError::RateLimited(retry_after));
         }
 
         // Check for unauthorized
-        if response.status() == reqwest::StatusCode::UNAUTHORIZED {
+        if status == reqwest::StatusCode::UNAUTHORIZED {
+            warn!(
+                query = %query_name,
+                duration_ms = %start.elapsed().as_millis(),
+                "Unauthorized - invalid or expired access token"
+            );
             return Err(AdminShopifyError::Unauthorized(
                 "Invalid or expired access token".to_string(),
             ));
@@ -408,6 +446,13 @@ impl AdminClient {
         if let Some(errors) = graphql_response.errors
             && !errors.is_empty()
         {
+            let error_messages: Vec<_> = errors.iter().map(|e| e.message.as_str()).collect();
+            warn!(
+                query = %query_name,
+                errors = ?error_messages,
+                duration_ms = %start.elapsed().as_millis(),
+                "GraphQL errors in Admin API response"
+            );
             let converted_errors: Vec<GraphQLError> = errors
                 .into_iter()
                 .map(|e| GraphQLError {
@@ -426,7 +471,19 @@ impl AdminClient {
             return Err(AdminShopifyError::GraphQL(converted_errors));
         }
 
+        debug!(
+            query = %query_name,
+            status = %status,
+            duration_ms = %start.elapsed().as_millis(),
+            "Shopify Admin GraphQL query completed successfully"
+        );
+
         graphql_response.data.ok_or_else(|| {
+            warn!(
+                query = %query_name,
+                duration_ms = %start.elapsed().as_millis(),
+                "No data in Admin API GraphQL response"
+            );
             AdminShopifyError::GraphQL(vec![GraphQLError {
                 message: "No data in response".to_string(),
                 locations: vec![],
@@ -439,10 +496,14 @@ impl AdminClient {
     ///
     /// This is used for mutations that need dynamic field handling
     /// or when the graphql-client codegen doesn't fit the use case.
+    #[instrument(skip(self, body), fields(store = %self.inner.store))]
     async fn execute_raw_graphql(
         &self,
         body: serde_json::Value,
     ) -> Result<serde_json::Value, AdminShopifyError> {
+        debug!("Executing raw Shopify Admin GraphQL query");
+        let start = std::time::Instant::now();
+
         let access_token = self.get_access_token().await?;
         let endpoint = format!(
             "https://{}/admin/api/{}/graphql.json",
@@ -465,6 +526,15 @@ impl AdminClient {
         if let Some(errors) = response.get("errors").and_then(|e| e.as_array())
             && !errors.is_empty()
         {
+            let error_messages: Vec<_> = errors
+                .iter()
+                .filter_map(|e| e.get("message").and_then(|m| m.as_str()))
+                .collect();
+            warn!(
+                errors = ?error_messages,
+                duration_ms = %start.elapsed().as_millis(),
+                "GraphQL errors in raw Admin API response"
+            );
             return Err(AdminShopifyError::GraphQL(
                 errors
                     .iter()
@@ -478,7 +548,16 @@ impl AdminClient {
             ));
         }
 
+        debug!(
+            duration_ms = %start.elapsed().as_millis(),
+            "Raw Shopify Admin GraphQL query completed successfully"
+        );
+
         response.get("data").cloned().ok_or_else(|| {
+            warn!(
+                duration_ms = %start.elapsed().as_millis(),
+                "No data in raw Admin API GraphQL response"
+            );
             AdminShopifyError::GraphQL(vec![GraphQLError {
                 message: "No data in response".to_string(),
                 locations: vec![],

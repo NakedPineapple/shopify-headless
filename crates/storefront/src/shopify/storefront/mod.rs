@@ -30,7 +30,7 @@ use std::time::Duration;
 use graphql_client::{GraphQLQuery, Response};
 use moka::future::Cache;
 use secrecy::ExposeSecret;
-use tracing::{debug, instrument};
+use tracing::{debug, instrument, warn};
 
 use crate::config::ShopifyStorefrontConfig;
 use crate::shopify::ShopifyError;
@@ -132,6 +132,7 @@ impl StorefrontClient {
     }
 
     /// Execute a GraphQL query.
+    #[instrument(skip(self, variables))]
     async fn execute<Q: GraphQLQuery>(
         &self,
         variables: Q::Variables,
@@ -139,10 +140,14 @@ impl StorefrontClient {
     where
         Q::Variables: serde::Serialize,
     {
+        let query_name = std::any::type_name::<Q>()
+            .split("::")
+            .last()
+            .unwrap_or("Unknown");
+        debug!(query = %query_name, "Executing Shopify Storefront GraphQL query");
+
+        let start = std::time::Instant::now();
         let request_body = Q::build_query(variables);
-        if let Ok(json) = serde_json::to_string_pretty(&request_body) {
-            tracing::debug!(request_body = %json, "Sending GraphQL request to Shopify");
-        }
 
         let response = self
             .inner
@@ -162,13 +167,25 @@ impl StorefrontClient {
                 .and_then(|v| v.to_str().ok())
                 .and_then(|s| s.parse::<u64>().ok())
                 .unwrap_or(1);
+            warn!(
+                query = %query_name,
+                retry_after_secs = %retry_after,
+                duration_ms = %start.elapsed().as_millis(),
+                "Rate limited by Shopify Storefront API"
+            );
             return Err(ShopifyError::RateLimited(retry_after));
         }
 
         let response_text = response.text().await?;
         if !status.is_success() {
             let body_preview: String = response_text.chars().take(500).collect();
-            tracing::error!(status = %status, body = %body_preview, "Shopify API returned non-success status");
+            warn!(
+                query = %query_name,
+                status = %status,
+                body = %body_preview,
+                duration_ms = %start.elapsed().as_millis(),
+                "Shopify Storefront API returned non-success status"
+            );
             return Err(ShopifyError::GraphQL(vec![super::GraphQLError {
                 message: format!(
                     "HTTP {status}: {}",
@@ -183,7 +200,13 @@ impl StorefrontClient {
             Ok(r) => r,
             Err(e) => {
                 let body_preview: String = response_text.chars().take(500).collect();
-                tracing::error!(error = %e, body = %body_preview, "Failed to parse Shopify GraphQL response");
+                warn!(
+                    query = %query_name,
+                    error = %e,
+                    body = %body_preview,
+                    duration_ms = %start.elapsed().as_millis(),
+                    "Failed to parse Shopify Storefront GraphQL response"
+                );
                 return Err(ShopifyError::Parse(e));
             }
         };
@@ -191,13 +214,31 @@ impl StorefrontClient {
         if let Some(errors) = response.errors
             && !errors.is_empty()
         {
-            tracing::debug!(errors = ?errors, "GraphQL errors in response");
+            let error_messages: Vec<_> = errors.iter().map(|e| e.message.as_str()).collect();
+            warn!(
+                query = %query_name,
+                errors = ?error_messages,
+                duration_ms = %start.elapsed().as_millis(),
+                "GraphQL errors in Storefront API response"
+            );
             return Err(ShopifyError::GraphQL(Self::convert_graphql_errors(errors)));
         }
 
+        debug!(
+            query = %query_name,
+            status = %status,
+            duration_ms = %start.elapsed().as_millis(),
+            "Shopify Storefront GraphQL query completed successfully"
+        );
+
         response.data.ok_or_else(|| {
             let body_preview: String = response_text.chars().take(500).collect();
-            tracing::error!(body = %body_preview, "Shopify GraphQL response has no data and no errors");
+            warn!(
+                query = %query_name,
+                body = %body_preview,
+                duration_ms = %start.elapsed().as_millis(),
+                "Shopify Storefront GraphQL response has no data and no errors"
+            );
             ShopifyError::GraphQL(vec![super::GraphQLError {
                 message: "No data in response".to_string(),
                 locations: vec![],
@@ -1223,6 +1264,9 @@ impl StorefrontClient {
         &self,
         access_token: &str,
     ) -> Result<StorefrontCustomer, ShopifyError> {
+        debug!("Fetching customer by access token");
+        let start = std::time::Instant::now();
+
         // For customer-scoped queries, we need to include the access token in the request
         // This requires a modified execute method that accepts an access token header
         let request_body = GetCustomerByToken::build_query(get_customer_by_token::Variables {});
@@ -1242,6 +1286,11 @@ impl StorefrontClient {
         let response_text = response.text().await?;
 
         if !status.is_success() {
+            warn!(
+                status = %status,
+                duration_ms = %start.elapsed().as_millis(),
+                "Failed to fetch customer by token - non-success status"
+            );
             return Err(ShopifyError::GraphQL(vec![super::GraphQLError {
                 message: format!("HTTP {status}"),
                 locations: vec![],
@@ -1255,6 +1304,11 @@ impl StorefrontClient {
         if let Some(data) = response.data
             && let Some(customer) = data.customer
         {
+            debug!(
+                customer_id = %customer.id,
+                duration_ms = %start.elapsed().as_millis(),
+                "Successfully fetched customer by token"
+            );
             return Ok(StorefrontCustomer {
                 id: customer.id,
                 email: customer.email,
@@ -1263,6 +1317,10 @@ impl StorefrontClient {
             });
         }
 
+        warn!(
+            duration_ms = %start.elapsed().as_millis(),
+            "Customer not found or token invalid"
+        );
         Err(ShopifyError::GraphQL(vec![super::GraphQLError {
             message: "Customer not found or token invalid".to_string(),
             locations: vec![],

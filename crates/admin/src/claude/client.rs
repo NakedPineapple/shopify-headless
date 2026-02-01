@@ -8,7 +8,7 @@ use async_stream::stream;
 use futures::Stream;
 use reqwest::header::{CONTENT_TYPE, HeaderMap, HeaderValue};
 use secrecy::ExposeSecret;
-use tracing::instrument;
+use tracing::{debug, error, instrument, warn};
 
 use crate::config::ClaudeConfig;
 
@@ -85,13 +85,19 @@ impl ClaudeClient {
     /// # Errors
     ///
     /// Returns an error if the API request fails or returns an error response.
-    #[instrument(skip(self, messages, tools), fields(model = %self.inner.model))]
+    #[instrument(skip(self, messages, tools), fields(model = %self.inner.model, message_count = messages.len()))]
     pub async fn chat(
         &self,
         messages: Vec<Message>,
         system: Option<String>,
         tools: Option<Vec<Tool>>,
     ) -> Result<ChatResponse, ClaudeError> {
+        debug!(
+            has_system = system.is_some(),
+            tool_count = tools.as_ref().map_or(0, Vec::len),
+            "Sending non-streaming chat request to Claude API"
+        );
+
         let request = ChatRequest {
             model: self.inner.model.clone(),
             max_tokens: DEFAULT_MAX_TOKENS,
@@ -101,6 +107,7 @@ impl ClaudeClient {
             stream: None,
         };
 
+        let start = std::time::Instant::now();
         let response = self
             .inner
             .client
@@ -108,6 +115,12 @@ impl ClaudeClient {
             .json(&request)
             .send()
             .await?;
+
+        debug!(
+            status = %response.status(),
+            duration_ms = %start.elapsed().as_millis(),
+            "Claude API chat request completed"
+        );
 
         self.handle_response(response).await
     }
@@ -125,13 +138,19 @@ impl ClaudeClient {
     /// # Errors
     ///
     /// Returns an error if the initial request fails.
-    #[instrument(skip(self, messages, tools), fields(model = %self.inner.model))]
+    #[instrument(skip(self, messages, tools), fields(model = %self.inner.model, message_count = messages.len()))]
     pub async fn chat_stream(
         &self,
         messages: Vec<Message>,
         system: Option<String>,
         tools: Option<Vec<Tool>>,
     ) -> Result<impl Stream<Item = Result<StreamEvent, ClaudeError>>, ClaudeError> {
+        debug!(
+            has_system = system.is_some(),
+            tool_count = tools.as_ref().map_or(0, Vec::len),
+            "Sending streaming chat request to Claude API"
+        );
+
         let request = ChatRequest {
             model: self.inner.model.clone(),
             max_tokens: DEFAULT_MAX_TOKENS,
@@ -141,6 +160,7 @@ impl ClaudeClient {
             stream: Some(true),
         };
 
+        let start = std::time::Instant::now();
         let response = self
             .inner
             .client
@@ -149,11 +169,19 @@ impl ClaudeClient {
             .send()
             .await?;
 
+        debug!(
+            status = %response.status(),
+            duration_ms = %start.elapsed().as_millis(),
+            "Claude API stream request initiated"
+        );
+
         // Check for error responses before streaming
         let status = response.status();
         if !status.is_success() {
             return Err(self.handle_error_status(status, response).await);
         }
+
+        debug!("Starting to process SSE stream from Claude API");
 
         // Return a stream that parses SSE events
         Ok(stream! {
@@ -202,8 +230,23 @@ impl ClaudeClient {
 
         if status.is_success() {
             let body = response.text().await?;
-            serde_json::from_str(&body)
-                .map_err(|e| ClaudeError::Parse(format!("Failed to parse response: {e}")))
+            match serde_json::from_str::<ChatResponse>(&body) {
+                Ok(chat_response) => {
+                    debug!(
+                        stop_reason = ?chat_response.stop_reason,
+                        content_blocks = chat_response.content.len(),
+                        "Successfully parsed Claude API response"
+                    );
+                    Ok(chat_response)
+                }
+                Err(e) => {
+                    error!(
+                        error = %e,
+                        "Failed to parse Claude API response"
+                    );
+                    Err(ClaudeError::Parse(format!("Failed to parse response: {e}")))
+                }
+            }
         } else {
             Err(self.handle_error_status(status, response).await)
         }
@@ -223,11 +266,13 @@ impl ClaudeClient {
                 .and_then(|v| v.to_str().ok())
                 .and_then(|s| s.parse().ok())
                 .unwrap_or(60);
+            warn!(retry_after_secs = retry_after, "Rate limited by Claude API");
             return ClaudeError::RateLimited(retry_after);
         }
 
         // Check for unauthorized
         if status == reqwest::StatusCode::UNAUTHORIZED {
+            error!("Claude API authentication failed - invalid API key");
             return ClaudeError::Unauthorized("Invalid API key".to_string());
         }
 
@@ -235,18 +280,35 @@ impl ClaudeClient {
         match response.text().await {
             Ok(body) => {
                 if let Ok(api_error) = serde_json::from_str::<ApiErrorResponse>(&body) {
+                    error!(
+                        status = %status,
+                        error_type = %api_error.error.error_type,
+                        message = %api_error.error.message,
+                        "Claude API request failed"
+                    );
                     ClaudeError::Api {
                         error_type: api_error.error.error_type,
                         message: api_error.error.message,
                     }
                 } else {
+                    error!(
+                        status = %status,
+                        "Claude API request failed with unparseable error"
+                    );
                     ClaudeError::Api {
                         error_type: "unknown".to_string(),
                         message: body,
                     }
                 }
             }
-            Err(e) => ClaudeError::Http(e),
+            Err(e) => {
+                error!(
+                    status = %status,
+                    error = %e,
+                    "Claude API request failed and could not read response body"
+                );
+                ClaudeError::Http(e)
+            }
         }
     }
 }

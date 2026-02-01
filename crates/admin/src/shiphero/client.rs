@@ -9,7 +9,7 @@ use graphql_client::GraphQLQuery;
 use secrecy::ExposeSecret;
 use serde::{Deserialize, de::DeserializeOwned};
 use tokio::sync::RwLock;
-use tracing::instrument;
+use tracing::{debug, info, instrument, warn};
 
 use super::auth::{ShipHeroToken, authenticate, refresh_access_token};
 use super::{GraphQLError, GraphQLErrorLocation, ShipHeroError};
@@ -104,6 +104,10 @@ impl ShipHeroClient {
     }
 
     /// Create a new client with an existing token.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the HTTP client cannot be created (should never happen in practice).
     #[must_use]
     pub fn with_token(token: ShipHeroToken) -> Self {
         let client = reqwest::Client::builder()
@@ -141,16 +145,24 @@ impl ShipHeroClient {
         email: &str,
         password: &secrecy::SecretString,
     ) -> Result<ShipHeroToken, ShipHeroError> {
+        debug!("Authenticating with ShipHero");
+
         let token = authenticate(&self.inner.client, email, password).await?;
 
         // Cache the token
         *self.inner.token.write().await = Some(token.clone());
 
+        info!("ShipHero authentication successful");
         Ok(token)
     }
 
     /// Set the access token directly (for loading from storage).
+    #[instrument(skip(self, token))]
     pub async fn set_token(&self, token: ShipHeroToken) {
+        debug!(
+            expires_at = token.access_token_expires_at,
+            "Setting ShipHero token from storage"
+        );
         *self.inner.token.write().await = Some(token);
     }
 
@@ -170,7 +182,9 @@ impl ShipHeroClient {
     }
 
     /// Clear the cached token.
+    #[instrument(skip(self))]
     pub async fn clear_token(&self) {
+        debug!("Clearing cached ShipHero token");
         *self.inner.token.write().await = None;
     }
 
@@ -186,6 +200,7 @@ impl ShipHeroClient {
     /// Returns `ShipHeroError::AuthenticationFailed` if the refresh token is rejected.
     #[instrument(skip(self))]
     pub async fn try_refresh_token(&self) -> Result<(), ShipHeroError> {
+        debug!("Attempting to refresh ShipHero token");
         let token = self.inner.token.read().await.clone();
 
         if let Some(token) = token {
@@ -193,14 +208,19 @@ impl ShipHeroClient {
                 if token.can_refresh()
                     && let Some(ref refresh_token) = token.refresh_token
                 {
+                    debug!("Token expired, refreshing using refresh token");
                     let new_token = refresh_access_token(&self.inner.client, refresh_token).await?;
                     *self.inner.token.write().await = Some(new_token);
+                    info!("ShipHero token refreshed successfully");
                     return Ok(());
                 }
+                warn!("ShipHero token expired and cannot be refreshed");
                 return Err(ShipHeroError::TokenExpired);
             }
+            debug!("ShipHero token still valid, no refresh needed");
             Ok(())
         } else {
+            warn!("No ShipHero token available to refresh");
             Err(ShipHeroError::NoAccessToken)
         }
     }
@@ -226,12 +246,16 @@ impl ShipHeroClient {
         query: &str,
         variables: Option<serde_json::Value>,
     ) -> Result<T, ShipHeroError> {
+        debug!("Executing ShipHero GraphQL query");
+        let start = std::time::Instant::now();
+
         // Try to refresh token if it's close to expiring
         if let Some(token) = self.inner.token.read().await.as_ref()
             && token.expires_within(300)
             && token.can_refresh()
         {
             // Token expires within 5 minutes, try to refresh
+            debug!("Token expiring soon, attempting proactive refresh");
             let _ = self.try_refresh_token().await;
         }
 
@@ -252,19 +276,30 @@ impl ShipHeroClient {
             .send()
             .await?;
 
+        let status = response.status();
+
         // Check for rate limiting
-        if response.status() == reqwest::StatusCode::TOO_MANY_REQUESTS {
+        if status == reqwest::StatusCode::TOO_MANY_REQUESTS {
             let retry_after = response
                 .headers()
                 .get("Retry-After")
                 .and_then(|v| v.to_str().ok())
                 .and_then(|s| s.parse().ok())
                 .unwrap_or(60);
+            warn!(
+                retry_after_secs = retry_after,
+                duration_ms = %start.elapsed().as_millis(),
+                "Rate limited by ShipHero API"
+            );
             return Err(ShipHeroError::RateLimited(retry_after));
         }
 
         // Check for unauthorized
-        if response.status() == reqwest::StatusCode::UNAUTHORIZED {
+        if status == reqwest::StatusCode::UNAUTHORIZED {
+            warn!(
+                duration_ms = %start.elapsed().as_millis(),
+                "ShipHero API returned unauthorized - token may be expired"
+            );
             return Err(ShipHeroError::TokenExpired);
         }
 
@@ -274,6 +309,13 @@ impl ShipHeroClient {
         if let Some(errors) = graphql_response.errors
             && !errors.is_empty()
         {
+            let error_messages: Vec<&str> = errors.iter().map(|e| e.message.as_str()).collect();
+            warn!(
+                status = %status,
+                duration_ms = %start.elapsed().as_millis(),
+                errors = ?error_messages,
+                "ShipHero GraphQL query returned errors"
+            );
             let converted_errors: Vec<GraphQLError> = errors
                 .into_iter()
                 .map(|e| GraphQLError {
@@ -292,7 +334,14 @@ impl ShipHeroClient {
             return Err(ShipHeroError::GraphQL(converted_errors));
         }
 
+        debug!(
+            status = %status,
+            duration_ms = %start.elapsed().as_millis(),
+            "ShipHero GraphQL query completed successfully"
+        );
+
         graphql_response.data.ok_or_else(|| {
+            warn!("ShipHero GraphQL response contained no data");
             ShipHeroError::GraphQL(vec![GraphQLError {
                 message: "No data in response".to_string(),
                 locations: vec![],
@@ -348,6 +397,7 @@ impl ShipHeroClient {
     /// issues, network errors, or GraphQL errors.
     #[instrument(skip(self))]
     pub async fn test_connection(&self) -> Result<AccountInfo, ShipHeroError> {
+        debug!("Testing ShipHero API connection");
         let query = r"
             query {
                 account {
@@ -364,6 +414,11 @@ impl ShipHeroClient {
         }
 
         let response: Response = self.execute(query, None).await?;
+        debug!(
+            account_id = %response.account.id,
+            email = %response.account.email,
+            "ShipHero connection test successful"
+        );
         Ok(response.account)
     }
 }
