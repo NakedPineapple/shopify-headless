@@ -167,7 +167,8 @@
                                     class="px-4 py-2 text-sm border border-border rounded-lg hover:border-primary transition-colors focus:border-primary {% if loop.first %}border-primary bg-primary/5{% endif %}"
                                     data-action="select-variant"
                                     data-variant-id="{{ variant.id }}"
-                                    data-variant-price="{{ variant.price }}">
+                                    data-variant-price="{{ variant.price }}"
+                                    {% if let Some(image) = variant.image %}data-variant-image="{{ image.url }}"{% endif %}>
                                 {{ variant.title }}
                             </button>
                             {% endfor %}
@@ -702,8 +703,39 @@
         }
         button.classList.add('border-primary', 'bg-primary/5');
 
+        // Update main product image if variant has an image
+        var variantImageUrl = button.dataset.variantImage;
+        if (variantImageUrl) {
+            updateMainImage(variantImageUrl);
+        }
+
         updateCheckoutUrls();
         updateSharePermalink();
+    };
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // Main Image Switching
+    // ═══════════════════════════════════════════════════════════════════════
+    function updateMainImage(imageUrl) {
+        var mainImage = document.getElementById('main-product-image');
+        if (mainImage) {
+            mainImage.src = imageUrl;
+        }
+
+        // Update thumbnail highlighting to match
+        var thumbnails = document.querySelectorAll('[data-action="select-thumbnail"]');
+        thumbnails.forEach(function(thumb) {
+            thumb.classList.remove('border-primary');
+            thumb.classList.add('border-transparent');
+            if (thumb.dataset.imageUrl === imageUrl) {
+                thumb.classList.remove('border-transparent');
+                thumb.classList.add('border-primary');
+            }
+        });
+    }
+
+    window.selectThumbnail = function(button, imageUrl) {
+        updateMainImage(imageUrl);
     };
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -923,7 +955,13 @@
         }
 
         var action = target.dataset.action;
-        if (action === 'toggle-selling-plan-dropdown') {
+        if (action === 'select-variant') {
+            e.preventDefault();
+            window.selectVariant(target, target.dataset.variantId);
+        } else if (action === 'select-thumbnail') {
+            e.preventDefault();
+            window.selectThumbnail(target, target.dataset.imageUrl);
+        } else if (action === 'toggle-selling-plan-dropdown') {
             e.preventDefault();
             toggleSellingPlanDropdown();
         } else if (action === 'select-selling-plan') {

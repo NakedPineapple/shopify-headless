@@ -108,6 +108,8 @@ pub struct VariantView {
     pub available_for_sale: bool,
     pub quantity_available: Option<i64>,
     pub shop_pay_installments: Option<ShopPayInstallmentsView>,
+    /// Variant-specific image (for switching main image on variant selection).
+    pub image: Option<ImageView>,
 }
 
 /// Breadcrumb item for SEO structured data.
@@ -235,6 +237,10 @@ impl From<&ShopifyProduct> for ProductView {
                             price_per_term: sp.price_per_term.as_ref().map(format_price),
                             installments_count: sp.installments_count.as_ref().map(|c| c.count),
                         }
+                    }),
+                    image: v.image.as_ref().map(|img| ImageView {
+                        url: img.url.clone(),
+                        alt: img.alt_text.clone().unwrap_or_default(),
                     }),
                 })
                 .collect(),
