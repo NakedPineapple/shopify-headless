@@ -61,12 +61,19 @@ pub struct ProductView {
     pub handle: String,
     pub title: String,
     pub description: String,
+    /// Product type (e.g., "Skincare", "Merch").
+    pub product_type: String,
     pub price: String,
     pub compare_at_price: Option<String>,
     pub featured_image: Option<ImageView>,
     pub images: Vec<ImageView>,
     pub variants: Vec<VariantView>,
     pub ingredients: Option<String>,
+    pub directions: Option<String>,
+    pub warning: Option<String>,
+    pub promotes: Vec<String>,
+    pub benefits: Option<String>,
+    pub free_from: Vec<String>,
     pub rating: Option<RatingView>,
     /// Whether product requires a subscription (can't be purchased one-time).
     pub requires_selling_plan: bool,
@@ -136,6 +143,7 @@ impl From<&ShopifyProduct> for ProductView {
             handle: product.handle.clone(),
             title: product.title.clone(),
             description: product.description_html.clone(),
+            product_type: product.kind.clone(),
             price: format_price(&product.price_range.min_variant_price),
             compare_at_price: product
                 .compare_at_price_range
@@ -172,7 +180,12 @@ impl From<&ShopifyProduct> for ProductView {
                     }),
                 })
                 .collect(),
-            ingredients: None, // Could parse from metafields if available
+            ingredients: product.ingredients.clone(),
+            directions: product.directions.clone(),
+            warning: product.warning.clone(),
+            promotes: product.promotes.clone(),
+            benefits: product.benefits.clone(),
+            free_from: product.free_from.clone(),
             rating: product.rating.as_ref().map(|r| {
                 // Calculate star display: round to nearest 0.5, clamped to valid range
                 let clamped = r.value.clamp(0.0, 5.0);
@@ -206,17 +219,20 @@ impl From<&ShopifyProduct> for ProductView {
                         .iter()
                         .map(|sp| {
                             // Extract discount percentage from first price adjustment
-                            let discount_percentage = sp.price_adjustments.first().and_then(|adj| {
-                                if let SellingPlanPriceAdjustmentValue::Percentage(p) = &adj.adjustment_value {
-                                    #[expect(
-                                        clippy::cast_possible_truncation,
-                                        reason = "discount percentages are small integers"
-                                    )]
-                                    Some(*p as i64)
-                                } else {
-                                    None
-                                }
-                            });
+                            let discount_percentage =
+                                sp.price_adjustments.first().and_then(|adj| {
+                                    if let SellingPlanPriceAdjustmentValue::Percentage(p) =
+                                        &adj.adjustment_value
+                                    {
+                                        #[expect(
+                                            clippy::cast_possible_truncation,
+                                            reason = "discount percentages are small integers"
+                                        )]
+                                        Some(*p as i64)
+                                    } else {
+                                        None
+                                    }
+                                });
 
                             let discount_text = discount_percentage.map(|p| format!("Save {p}%"));
 
@@ -392,12 +408,18 @@ pub async fn show(
                         handle: handle.clone(),
                         title: "Product Not Found".to_string(),
                         description: "This product could not be found.".to_string(),
+                        product_type: String::new(),
                         price: "$0.00".to_string(),
                         compare_at_price: None,
                         featured_image: None,
                         images: Vec::new(),
                         variants: Vec::new(),
                         ingredients: None,
+                        directions: None,
+                        warning: None,
+                        promotes: Vec::new(),
+                        benefits: None,
+                        free_from: Vec::new(),
                         rating: None,
                         requires_selling_plan: false,
                         selling_plan_groups: Vec::new(),
@@ -421,12 +443,18 @@ pub async fn show(
                         handle,
                         title: "Error".to_string(),
                         description: "An error occurred loading this product.".to_string(),
+                        product_type: String::new(),
                         price: "$0.00".to_string(),
                         compare_at_price: None,
                         featured_image: None,
                         images: Vec::new(),
                         variants: Vec::new(),
                         ingredients: None,
+                        directions: None,
+                        warning: None,
+                        promotes: Vec::new(),
+                        benefits: None,
+                        free_from: Vec::new(),
                         rating: None,
                         requires_selling_plan: false,
                         selling_plan_groups: Vec::new(),
@@ -465,12 +493,18 @@ pub async fn quick_view(State(state): State<AppState>, Path(handle): Path<String
                 handle,
                 title: "Product Not Found".to_string(),
                 description: String::new(),
+                product_type: String::new(),
                 price: "$0.00".to_string(),
                 compare_at_price: None,
                 featured_image: None,
                 images: Vec::new(),
                 variants: Vec::new(),
                 ingredients: None,
+                directions: None,
+                warning: None,
+                promotes: Vec::new(),
+                benefits: None,
+                free_from: Vec::new(),
                 rating: None,
                 requires_selling_plan: false,
                 selling_plan_groups: Vec::new(),

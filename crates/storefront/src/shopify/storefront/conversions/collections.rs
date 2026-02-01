@@ -137,6 +137,12 @@ fn convert_collection_product(
             })
             .collect(),
         rating: None,
+        ingredients: None,
+        directions: None,
+        warning: None,
+        promotes: Vec::new(),
+        benefits: None,
+        free_from: Vec::new(),
         requires_selling_plan: false,
         selling_plan_groups: Vec::new(),
     }
@@ -216,6 +222,12 @@ fn convert_collections_list_collection(
                 options: vec![],
                 variants: vec![],
                 rating: None,
+                ingredients: None,
+                directions: None,
+                warning: None,
+                promotes: Vec::new(),
+                benefits: None,
+                free_from: Vec::new(),
                 requires_selling_plan: false,
                 selling_plan_groups: Vec::new(),
             })

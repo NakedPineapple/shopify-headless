@@ -514,19 +514,88 @@
                         </div>
                     </details>
 
+                    {% if let Some(ingredients) = product.ingredients %}
                     <details class="group border-t border-border">
                         <summary class="flex items-center justify-between cursor-pointer font-medium text-foreground py-3">
                             Ingredients
                             <i class="ph ph-caret-down transition-transform group-open:rotate-180"></i>
                         </summary>
                         <div class="prose prose-sm text-muted-foreground pb-4">
-                            {% if let Some(ingredients) = product.ingredients %}
                             {{ ingredients|safe }}
-                            {% else %}
-                            <p>Pineapple extract, aloe vera, vitamin E, jojoba oil, and other natural botanicals.</p>
-                            {% endif %}
                         </div>
                     </details>
+                    {% endif %}
+
+                    {% if let Some(directions) = product.directions %}
+                    <details class="group border-t border-border">
+                        <summary class="flex items-center justify-between cursor-pointer font-medium text-foreground py-3">
+                            How to Use
+                            <i class="ph ph-caret-down transition-transform group-open:rotate-180"></i>
+                        </summary>
+                        <div class="prose prose-sm text-muted-foreground pb-4">
+                            {{ directions|safe }}
+                        </div>
+                    </details>
+                    {% endif %}
+
+                    {% if let Some(benefits) = product.benefits %}
+                    <details class="group border-t border-border">
+                        <summary class="flex items-center justify-between cursor-pointer font-medium text-foreground py-3">
+                            Benefits
+                            <i class="ph ph-caret-down transition-transform group-open:rotate-180"></i>
+                        </summary>
+                        <div class="prose prose-sm text-muted-foreground pb-4">
+                            {{ benefits|safe }}
+                        </div>
+                    </details>
+                    {% endif %}
+
+                    {% if !product.promotes.is_empty() %}
+                    <details class="group border-t border-border">
+                        <summary class="flex items-center justify-between cursor-pointer font-medium text-foreground py-3">
+                            Promotes
+                            <i class="ph ph-caret-down transition-transform group-open:rotate-180"></i>
+                        </summary>
+                        <div class="pb-4">
+                            <ul class="flex flex-wrap gap-2">
+                                {% for item in product.promotes %}
+                                <li class="px-3 py-1 text-sm bg-primary/10 text-primary rounded-full">{{ item }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </details>
+                    {% endif %}
+
+                    {% if !product.free_from.is_empty() %}
+                    <details class="group border-t border-border">
+                        <summary class="flex items-center justify-between cursor-pointer font-medium text-foreground py-3">
+                            Free From
+                            <i class="ph ph-caret-down transition-transform group-open:rotate-180"></i>
+                        </summary>
+                        <div class="pb-4">
+                            <ul class="flex flex-wrap gap-2">
+                                {% for item in product.free_from %}
+                                <li class="px-3 py-1 text-sm bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded-full">{{ item }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </details>
+                    {% endif %}
+
+                    {% if let Some(warning) = product.warning %}
+                    <details class="group border-t border-border">
+                        <summary class="flex items-center justify-between cursor-pointer font-medium text-foreground py-3">
+                            <span class="flex items-center gap-2">
+                                <i class="ph ph-warning text-amber-500"></i>
+                                Warning
+                            </span>
+                            <i class="ph ph-caret-down transition-transform group-open:rotate-180"></i>
+                        </summary>
+                        <div class="prose prose-sm text-muted-foreground pb-4">
+                            {{ warning|safe }}
+                        </div>
+                    </details>
+                    {% endif %}
 
                     <details class="group border-t border-border">
                         <summary class="flex items-center justify-between cursor-pointer font-medium text-foreground py-3">
@@ -535,7 +604,11 @@
                         </summary>
                         <div class="prose prose-sm text-muted-foreground pb-4">
                             <p>Free shipping on orders over $50. Standard shipping 3-5 business days.</p>
+                            {% if product.product_type == "Merch" %}
                             <p>30-day hassle-free returns on all products.</p>
+                            {% else %}
+                            <p>30-day hassle-free returns on all unopened products.</p>
+                            {% endif %}
                         </div>
                     </details>
                 </div>

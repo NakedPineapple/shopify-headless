@@ -131,7 +131,7 @@ pub struct SellingPlan {
 pub struct SellingPlanGroupOption {
     /// Option name (e.g., "Delivery Frequency").
     pub name: String,
-    /// Available values (e.g., ["30 days", "60 days", "90 days"]).
+    /// Available values (e.g., `["30 days", "60 days", "90 days"]`).
     pub values: Vec<String>,
 }
 
@@ -269,6 +269,18 @@ pub struct Product {
     pub variants: Vec<ProductVariant>,
     /// Product rating from reviews (e.g., Judge.me).
     pub rating: Option<ProductRating>,
+    /// Product ingredients (from metafield, for beauty products).
+    pub ingredients: Option<String>,
+    /// Usage directions (from metafield, for beauty products).
+    pub directions: Option<String>,
+    /// Warning text (from metafield, for beauty products).
+    pub warning: Option<String>,
+    /// What the product promotes (from metafield, list of strings).
+    pub promotes: Vec<String>,
+    /// Product benefits (from metafield, rich text).
+    pub benefits: Option<String>,
+    /// What the product is free from (from metafield, list of strings).
+    pub free_from: Vec<String>,
     /// Whether product requires a selling plan (subscription-only).
     pub requires_selling_plan: bool,
     /// Selling plan groups (subscription options).

@@ -50,6 +50,90 @@ fn currency_code_to_string<T: std::fmt::Debug>(code: T) -> String {
 }
 
 // =============================================================================
+// Rich Text Metafield Parsing
+// =============================================================================
+
+/// Shopify rich text metafield JSON structure.
+#[derive(Debug, serde::Deserialize)]
+struct RichTextNode {
+    #[serde(rename = "type")]
+    node_type: String,
+    #[serde(default)]
+    children: Vec<RichTextNode>,
+    #[serde(default)]
+    value: Option<String>,
+    #[serde(default)]
+    url: Option<String>,
+    #[serde(default)]
+    bold: Option<bool>,
+    #[serde(default)]
+    italic: Option<bool>,
+    #[serde(default)]
+    level: Option<u8>,
+    #[serde(default, rename = "listType")]
+    list_type: Option<String>,
+}
+
+/// Convert Shopify rich text JSON metafield to HTML.
+fn parse_rich_text_metafield(json_str: &str) -> Option<String> {
+    let root: RichTextNode = serde_json::from_str(json_str).ok()?;
+    Some(render_rich_text_node(&root))
+}
+
+/// Recursively render a rich text node to HTML.
+fn render_rich_text_node(node: &RichTextNode) -> String {
+    match node.node_type.as_str() {
+        "root" => node.children.iter().map(render_rich_text_node).collect(),
+        "paragraph" => {
+            let content: String = node.children.iter().map(render_rich_text_node).collect();
+            format!("<p>{content}</p>")
+        }
+        "heading" => {
+            let level = node.level.unwrap_or(2).clamp(1, 6);
+            let content: String = node.children.iter().map(render_rich_text_node).collect();
+            format!("<h{level}>{content}</h{level}>")
+        }
+        "list" => {
+            let tag = if node.list_type.as_deref() == Some("ordered") {
+                "ol"
+            } else {
+                "ul"
+            };
+            let content: String = node.children.iter().map(render_rich_text_node).collect();
+            format!("<{tag}>{content}</{tag}>")
+        }
+        "list-item" => {
+            let content: String = node.children.iter().map(render_rich_text_node).collect();
+            format!("<li>{content}</li>")
+        }
+        "link" => {
+            let url = node.url.as_deref().unwrap_or("#");
+            let content: String = node.children.iter().map(render_rich_text_node).collect();
+            format!("<a href=\"{url}\">{content}</a>")
+        }
+        "text" => {
+            let mut text = html_escape(node.value.as_deref().unwrap_or(""));
+            if node.bold == Some(true) {
+                text = format!("<strong>{text}</strong>");
+            }
+            if node.italic == Some(true) {
+                text = format!("<em>{text}</em>");
+            }
+            text
+        }
+        _ => node.children.iter().map(render_rich_text_node).collect(),
+    }
+}
+
+/// Escape HTML special characters.
+fn html_escape(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+}
+
+// =============================================================================
 // Selling Plan Conversions
 // =============================================================================
 
@@ -140,6 +224,26 @@ pub fn convert_product(product: get_product_by_handle::GetProductByHandleProduct
     let fields = product.product_fields;
     let rating = parse_rating_metafields(product.rating, product.rating_count);
     let selling_plan_groups = convert_selling_plan_groups(product.selling_plan_groups);
+    let ingredients = product
+        .ingredients
+        .and_then(|m| parse_rich_text_metafield(&m.value));
+    let directions = product
+        .directions
+        .and_then(|m| parse_rich_text_metafield(&m.value));
+    let warning = product
+        .warning
+        .and_then(|m| parse_rich_text_metafield(&m.value));
+    let promotes = product
+        .promotes
+        .and_then(|m| serde_json::from_str::<Vec<String>>(&m.value).ok())
+        .unwrap_or_default();
+    let benefits = product
+        .benefits
+        .and_then(|m| parse_rich_text_metafield(&m.value));
+    let free_from = product
+        .free_from
+        .and_then(|m| serde_json::from_str::<Vec<String>>(&m.value).ok())
+        .unwrap_or_default();
 
     Product {
         id: fields.id,
@@ -181,6 +285,12 @@ pub fn convert_product(product: get_product_by_handle::GetProductByHandleProduct
             .map(|e| convert_variant_handle(e.node))
             .collect(),
         rating,
+        ingredients,
+        directions,
+        warning,
+        promotes,
+        benefits,
+        free_from,
         requires_selling_plan: product.requires_selling_plan,
         selling_plan_groups,
     }
@@ -346,6 +456,12 @@ fn convert_products_list_product(product: get_products::GetProductsProductsEdges
             .map(|e| convert_variant_list(e.node))
             .collect(),
         rating: None,
+        ingredients: None,
+        directions: None,
+        warning: None,
+        promotes: Vec::new(),
+        benefits: None,
+        free_from: Vec::new(),
         requires_selling_plan: false,
         selling_plan_groups: Vec::new(),
     }
@@ -493,6 +609,12 @@ pub fn convert_product_recommendation(
             .map(|e| convert_variant_rec(e.node))
             .collect(),
         rating: None,
+        ingredients: None,
+        directions: None,
+        warning: None,
+        promotes: Vec::new(),
+        benefits: None,
+        free_from: Vec::new(),
         requires_selling_plan: false,
         selling_plan_groups: Vec::new(),
     }

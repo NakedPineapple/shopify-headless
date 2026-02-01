@@ -180,6 +180,24 @@ query GetProductByHandle(
     ratingCount: metafield(namespace: "reviews", key: "rating_count") {
       ...MetafieldFields
     }
+    ingredients: metafield(namespace: "custom", key: "ingredients") {
+      ...MetafieldFields
+    }
+    directions: metafield(namespace: "custom", key: "directions") {
+      ...MetafieldFields
+    }
+    warning: metafield(namespace: "custom", key: "warning") {
+      ...MetafieldFields
+    }
+    promotes: metafield(namespace: "custom", key: "promotes") {
+      ...MetafieldFields
+    }
+    benefits: metafield(namespace: "custom", key: "benefits") {
+      ...MetafieldFields
+    }
+    freeFrom: metafield(namespace: "custom", key: "free_from") {
+      ...MetafieldFields
+    }
     images(first: $imageCount) {
       edges {
         node {
