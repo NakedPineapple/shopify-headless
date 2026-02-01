@@ -43,10 +43,10 @@
             <h1 class="font-display text-3xl md:text-4xl font-semibold text-foreground">
                 {{ collection.title }}
             </h1>
-            {% if let Some(description) = collection.description %}
-            <p class="text-muted-foreground mt-2 max-w-2xl">
-                {{ description }}
-            </p>
+            {% if let Some(description_html) = collection.description_html %}
+            <div class="text-muted-foreground mt-2 max-w-2xl [&>p]:mb-4 [&>p:last-child]:mb-0 [&_em]:text-foreground [&_em]:font-display [&_em]:text-lg [&_em]:not-italic">
+                {{ description_html|safe }}
+            </div>
             {% endif %}
         </div>
     </div>

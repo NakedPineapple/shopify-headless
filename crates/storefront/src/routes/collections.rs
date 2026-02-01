@@ -24,6 +24,7 @@ pub struct CollectionView {
     pub handle: String,
     pub title: String,
     pub description: Option<String>,
+    pub description_html: Option<String>,
     pub image: Option<ImageView>,
 }
 
@@ -53,6 +54,11 @@ impl From<&ShopifyCollection> for CollectionView {
                 None
             } else {
                 Some(collection.description.clone())
+            },
+            description_html: if collection.description_html.is_empty() {
+                None
+            } else {
+                Some(collection.description_html.clone())
             },
             image: collection.image.as_ref().map(|img| ImageView {
                 url: img.url.clone(),
@@ -272,6 +278,7 @@ fn error_template(params: ErrorParams, state: &AppState, nonce: String) -> Respo
                 handle: params.handle,
                 title: params.title.to_string(),
                 description: params.description.map(String::from),
+                description_html: None,
                 image: None,
             },
             products: Vec::new(),
