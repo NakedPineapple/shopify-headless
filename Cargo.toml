@@ -56,7 +56,7 @@ thiserror = "2"
 axum = { version = "0.8", features = ["macros", "multipart"] }
 tokio = { version = "1", features = ["full"] }
 tower = "0.5"
-tower-http = { version = "0.6", features = ["fs", "trace", "cors", "normalize-path", "set-header"] }
+tower-http = { version = "0.6", features = ["fs", "trace", "cors", "normalize-path", "set-header", "catch-panic"] }
 
 # Database
 sqlx = { version = "0.8", features = ["runtime-tokio", "postgres", "uuid", "chrono", "migrate", "rust_decimal"] }

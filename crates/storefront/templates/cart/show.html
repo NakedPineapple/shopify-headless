@@ -8,102 +8,170 @@
 {% block robots %}noindex, nofollow{% endblock %}
 
 {% block content %}
-<div class="py-8 md:py-12">
+<div class="py-8 md:py-16 min-h-[60vh]">
     <div class="page-width">
         <!-- Breadcrumb -->
-        <nav class="text-sm text-muted-foreground mb-8" aria-label="Breadcrumb">
+        <nav class="text-sm text-muted-foreground mb-6 animate-fade-in" style="opacity: 0;" aria-label="Breadcrumb">
             <ol class="flex items-center gap-2 list-none">
                 <li><a href="/" class="hover:text-primary transition-colors">Home</a></li>
                 <li><i class="ph ph-caret-right text-xs"></i></li>
-                <li class="text-foreground">Cart</li>
+                <li class="text-foreground font-medium">Cart</li>
             </ol>
         </nav>
 
-        <h1 class="font-display text-3xl md:text-4xl font-semibold text-foreground mb-8">
+        {% if cart.items.is_empty() %}
+        <!-- Empty Cart State -->
+        <div class="flex flex-col items-center justify-center py-12 md:py-20">
+            <!-- Decorative background -->
+            <div class="absolute inset-0 overflow-hidden pointer-events-none">
+                <div class="absolute top-1/4 left-1/4 w-64 h-64 bg-gradient-to-br from-honey/20 to-transparent rounded-full blur-3xl animate-float"></div>
+                <div class="absolute bottom-1/4 right-1/4 w-48 h-48 bg-gradient-to-br from-primary/10 to-transparent rounded-full blur-3xl animate-float" style="animation-delay: -3s;"></div>
+            </div>
+
+            <!-- Empty cart illustration -->
+            <div class="relative mb-8 animate-slide-up" style="opacity: 0; animation-delay: 100ms;">
+                <div class="w-32 h-32 md:w-40 md:h-40 rounded-full bg-gradient-to-br from-sand to-muted flex items-center justify-center">
+                    <i class="ph ph-tote text-5xl md:text-6xl text-muted-foreground/60"></i>
+                </div>
+                <!-- Decorative ring -->
+                <div class="absolute inset-0 rounded-full border-2 border-dashed border-honey/40 animate-spin" style="animation-duration: 30s;"></div>
+            </div>
+
+            <h1 class="font-display text-3xl md:text-4xl lg:text-5xl font-semibold text-foreground mb-4 text-center animate-slide-up" style="opacity: 0; animation-delay: 200ms;">
+                Your Cart is Empty
+            </h1>
+
+            <p class="text-muted-foreground text-lg md:text-xl text-center max-w-md mb-8 leading-relaxed animate-slide-up" style="opacity: 0; animation-delay: 300ms;">
+                Looks like you haven't added any tropical treats to your cart yet.
+            </p>
+
+            <div class="flex flex-col sm:flex-row gap-4 animate-slide-up" style="opacity: 0; animation-delay: 400ms;">
+                <a href="/collections/skincare" class="btn btn-primary btn-large group">
+                    Explore Skincare
+                    <i class="ph ph-arrow-right transition-transform group-hover:translate-x-1"></i>
+                </a>
+                <a href="/collections/merch" class="btn btn-outline">
+                    Shop Merch
+                </a>
+            </div>
+
+            <!-- Feature highlights -->
+            <div class="mt-16 grid grid-cols-1 sm:grid-cols-3 gap-6 md:gap-8 max-w-3xl animate-slide-up" style="opacity: 0; animation-delay: 500ms;">
+                <div class="text-center px-4">
+                    <div class="w-12 h-12 mx-auto mb-3 rounded-full bg-honey/20 flex items-center justify-center">
+                        <i class="ph ph-truck text-xl text-honey"></i>
+                    </div>
+                    <p class="text-sm font-medium text-foreground">Free Shipping</p>
+                    <p class="text-xs text-muted-foreground mt-1">On orders over $50</p>
+                </div>
+                <div class="text-center px-4">
+                    <div class="w-12 h-12 mx-auto mb-3 rounded-full bg-leaf/20 flex items-center justify-center">
+                        <i class="ph ph-leaf text-xl text-leaf"></i>
+                    </div>
+                    <p class="text-sm font-medium text-foreground">Clean Ingredients</p>
+                    <p class="text-xs text-muted-foreground mt-1">Pineapple-powered</p>
+                </div>
+                <div class="text-center px-4">
+                    <div class="w-12 h-12 mx-auto mb-3 rounded-full bg-primary/20 flex items-center justify-center">
+                        <i class="ph ph-heart text-xl text-primary"></i>
+                    </div>
+                    <p class="text-sm font-medium text-foreground">Made with Love</p>
+                    <p class="text-xs text-muted-foreground mt-1">Self-care is self-love</p>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <!-- Filled Cart State -->
+        <h1 class="font-display text-3xl md:text-4xl font-semibold text-foreground mb-2 animate-slide-up" style="opacity: 0; animation-delay: 100ms;">
             Your Cart
         </h1>
+        <p class="text-muted-foreground mb-8 animate-fade-in" style="opacity: 0; animation-delay: 200ms;">
+            {{ cart.item_count }} item{% if cart.item_count != 1 %}s{% endif %} in your cart
+        </p>
 
         <div class="grid lg:grid-cols-3 gap-8 lg:gap-12">
             <!-- Cart Items -->
-            <div class="lg:col-span-2">
+            <div class="lg:col-span-2 animate-slide-up" style="opacity: 0; animation-delay: 250ms;">
                 {% include "partials/cart_items.html" %}
             </div>
 
             <!-- Order Summary (Desktop Sidebar) -->
-            {% if !cart.items.is_empty() %}
-            <div class="lg:col-span-1">
-                <div class="card p-6 sticky top-24">
+            <div class="lg:col-span-1 animate-slide-up" style="opacity: 0; animation-delay: 350ms;">
+                <div class="card p-6 lg:p-8 sticky top-24 bg-gradient-to-b from-card to-card/80 backdrop-blur-sm">
+                    <!-- Decorative accent -->
+                    <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-terracotta to-honey rounded-t-lg"></div>
+
                     <h2 class="font-display text-xl font-semibold mb-6">Order Summary</h2>
 
                     <div class="space-y-4 mb-6">
                         <div class="flex justify-between text-sm">
                             <span class="text-muted-foreground">Subtotal</span>
-                            <span class="text-foreground">{{ cart.subtotal }}</span>
+                            <span class="text-foreground font-medium">{{ cart.subtotal }}</span>
                         </div>
                         <div class="flex justify-between text-sm">
                             <span class="text-muted-foreground">Shipping</span>
-                            <span class="text-foreground">Calculated at checkout</span>
+                            <span class="text-muted-foreground text-xs">Calculated at checkout</span>
                         </div>
                         <div class="flex justify-between text-sm">
                             <span class="text-muted-foreground">Taxes</span>
-                            <span class="text-foreground">Calculated at checkout</span>
+                            <span class="text-muted-foreground text-xs">Calculated at checkout</span>
                         </div>
                     </div>
 
                     <div class="border-t border-border pt-4 mb-6">
-                        <div class="flex justify-between text-lg font-semibold">
-                            <span>Total</span>
-                            <span>{{ cart.subtotal }}</span>
+                        <div class="flex justify-between items-baseline">
+                            <span class="text-lg font-semibold">Estimated Total</span>
+                            <span class="text-2xl font-display font-semibold text-primary">{{ cart.subtotal }}</span>
                         </div>
                     </div>
 
-                    <!-- Promo Code -->
-                    <div class="mb-6">
-                        <label for="promo-code" class="text-sm font-medium text-foreground mb-2 block">
-                            Promo Code
-                        </label>
-                        <div class="flex gap-2">
+                    <!-- Promo Code (collapsed by default) -->
+                    <details class="mb-6 group">
+                        <summary class="text-sm font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors flex items-center gap-2">
+                            <i class="ph ph-tag"></i>
+                            Have a promo code?
+                            <i class="ph ph-caret-down text-xs transition-transform group-open:rotate-180 ml-auto"></i>
+                        </summary>
+                        <div class="mt-3 flex gap-2">
                             <input type="text"
                                    id="promo-code"
-                                   class="input flex-1"
+                                   class="input flex-1 text-sm"
                                    placeholder="Enter code">
-                            <button type="button" class="btn btn-outline">
+                            <button type="button" class="btn btn-outline btn-sm">
                                 Apply
                             </button>
                         </div>
-                    </div>
+                    </details>
 
                     <!-- Checkout Button -->
-                    <a href="/checkout" class="btn btn-primary w-full justify-center text-lg py-4">
+                    <a href="/checkout" hx-boost="false" class="btn btn-primary w-full justify-center text-lg py-4 group">
                         Proceed to Checkout
-                        <i class="ph ph-arrow-right ml-2"></i>
+                        <i class="ph ph-arrow-right ml-2 transition-transform group-hover:translate-x-1"></i>
                     </a>
 
                     <!-- Trust badges -->
                     <div class="mt-6 pt-6 border-t border-border">
-                        <div class="flex items-center justify-center gap-6 text-muted-foreground">
-                            <div class="flex items-center gap-2 text-sm">
-                                <i class="ph ph-lock text-lg"></i>
+                        <div class="grid grid-cols-2 gap-4 text-muted-foreground">
+                            <div class="flex items-center gap-2 text-xs">
+                                <i class="ph ph-lock-simple text-base text-leaf"></i>
                                 <span>Secure Checkout</span>
                             </div>
-                            <div class="flex items-center gap-2 text-sm">
-                                <i class="ph ph-truck text-lg"></i>
-                                <span>Free Shipping $50+</span>
+                            <div class="flex items-center gap-2 text-xs">
+                                <i class="ph ph-truck text-base text-honey"></i>
+                                <span>Free Ship $50+</span>
+                            </div>
+                            <div class="flex items-center gap-2 text-xs">
+                                <i class="ph ph-arrows-clockwise text-base text-primary"></i>
+                                <span>Easy Returns</span>
+                            </div>
+                            <div class="flex items-center gap-2 text-xs">
+                                <i class="ph ph-leaf text-base text-leaf"></i>
+                                <span>Clean Beauty</span>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-            {% endif %}
-        </div>
-
-        <!-- Continue Shopping -->
-        {% if cart.items.is_empty() %}
-        <div class="mt-8 text-center">
-            <a href="/products" class="btn btn-outline">
-                <i class="ph ph-arrow-left mr-2"></i>
-                Continue Shopping
-            </a>
         </div>
         {% endif %}
     </div>

@@ -35,6 +35,7 @@ use axum::{Router, routing::get};
 use axum_server::Handle;
 use axum_server::tls_rustls::RustlsConfig;
 use secrecy::ExposeSecret;
+use tower_http::catch_panic::CatchPanicLayer;
 use tower_http::services::ServeDir;
 use tower_http::trace::{DefaultOnResponse, OnResponse, TraceLayer};
 use tracing::Span;
@@ -92,6 +93,23 @@ fn sentry_event_filter(metadata: &tracing::Metadata<'_>) -> sentry_tracing::Even
         tracing::Level::INFO | tracing::Level::DEBUG => sentry_tracing::EventFilter::Breadcrumb,
         _ => sentry_tracing::EventFilter::Ignore,
     }
+}
+
+/// Handle panics by logging and returning a 500 response.
+#[allow(clippy::needless_pass_by_value)] // CatchPanicLayer requires ownership
+fn handle_panic(
+    panic_info: Box<dyn std::any::Any + Send>,
+) -> axum::http::Response<axum::body::Body> {
+    let details = panic_info
+        .downcast_ref::<&str>()
+        .map(ToString::to_string)
+        .or_else(|| panic_info.downcast_ref::<String>().cloned())
+        .unwrap_or_else(|| "Unknown panic".to_string());
+    tracing::error!(panic = %details, "Request handler panicked");
+    axum::http::Response::builder()
+        .status(axum::http::StatusCode::INTERNAL_SERVER_ERROR)
+        .body(axum::body::Body::from("Internal Server Error"))
+        .expect("building a simple 500 response should never fail")
 }
 
 #[tokio::main]
@@ -173,6 +191,8 @@ async fn main() {
                 ),
         )
         .with_state(state)
+        // Catch panics and log them before returning 500
+        .layer(CatchPanicLayer::custom(handle_panic))
         // Sentry layers (outermost for full request coverage)
         .layer(sentry_tower::NewSentryLayer::new_from_top())
         .layer(sentry_tower::SentryHttpLayer::new().enable_transaction());

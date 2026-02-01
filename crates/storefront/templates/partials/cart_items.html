@@ -1,103 +1,137 @@
 {# Cart Items - Rendered via HTMX on cart operations #}
 {# Expected variables: cart (with items, subtotal) #}
-<div id="cart-items" class="space-y-6">
+<div id="cart-items" class="transition-opacity duration-150 [&.htmx-request]:opacity-60 [&.htmx-request]:pointer-events-none">
     {% if cart.items.is_empty() %}
-    <div class="text-center py-12">
-        <i class="ph ph-tote text-6xl text-muted-foreground mb-4"></i>
-        <p class="text-muted-foreground mb-6">Your cart is empty</p>
-        <a href="/collections/skincare" class="btn btn-primary">
-            Start Shopping
-        </a>
+    {# Empty state for HTMX swap - redirects to full page for better experience #}
+    <div class="text-center py-16 md:py-24">
+        <!-- Empty cart illustration -->
+        <div class="relative mb-8 mx-auto w-fit">
+            <div class="w-28 h-28 rounded-full bg-gradient-to-br from-sand to-muted flex items-center justify-center">
+                <i class="ph ph-tote text-4xl text-muted-foreground/60"></i>
+            </div>
+            <div class="absolute inset-0 rounded-full border-2 border-dashed border-honey/40 animate-spin" style="animation-duration: 30s;"></div>
+        </div>
+
+        <h2 class="font-display text-2xl md:text-3xl font-semibold text-foreground mb-3">
+            Your Cart is Empty
+        </h2>
+        <p class="text-muted-foreground mb-8 max-w-sm mx-auto">
+            Time to discover some tropical treats for your skin!
+        </p>
+
+        <div class="flex flex-col sm:flex-row gap-3 justify-center">
+            <a href="/collections/frontpage" class="btn btn-primary group">
+                Explore Skincare
+                <i class="ph ph-arrow-right transition-transform group-hover:translate-x-1"></i>
+            </a>
+            <a href="/collections/merch" class="btn btn-outline">
+                Shop Merch
+            </a>
+        </div>
     </div>
     {% else %}
     <!-- Cart Line Items -->
-    {% for item in cart.items %}
-    <div class="flex gap-4 pb-6 border-b border-border">
-        <!-- Item Image -->
-        <a href="/products/{{ item.handle }}" class="shrink-0 w-24 h-24 rounded-lg overflow-hidden bg-muted">
-            {% if let Some(image) = item.image %}
-            <img src="{{ image.url }}"
-                 alt="{{ item.title }}"
-                 class="w-full h-full object-cover">
-            {% endif %}
-        </a>
-
-        <!-- Item Details -->
-        <div class="flex-1 min-w-0">
-            <div class="flex justify-between gap-4">
-                <div>
-                    <h3 class="font-medium text-foreground truncate">
-                        <a href="/products/{{ item.handle }}" class="hover:text-primary transition-colors">
-                            {{ item.title }}
-                        </a>
-                    </h3>
-                    {% if let Some(variant_title) = item.variant_title %}
-                    <p class="text-sm text-muted-foreground">{{ variant_title }}</p>
-                    {% endif %}
+    <div class="space-y-0 divide-y divide-border">
+        {% for item in cart.items %}
+        <div class="group flex gap-4 md:gap-6 py-6 first:pt-0 transition-colors hover:bg-muted/30 -mx-2 px-2 rounded-lg">
+            <!-- Item Image -->
+            <a href="/products/{{ item.handle }}" class="shrink-0 w-20 h-20 md:w-28 md:h-28 rounded-xl overflow-hidden bg-muted shadow-sm group-hover:shadow-md transition-shadow">
+                {% if let Some(image) = item.image %}
+                <img src="{{ image.url }}"
+                     alt="{{ item.title }}"
+                     class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105">
+                {% else %}
+                <div class="w-full h-full flex items-center justify-center">
+                    <i class="ph ph-image text-2xl text-muted-foreground/40"></i>
                 </div>
-                <p class="font-medium text-foreground whitespace-nowrap">{{ item.line_price }}</p>
-            </div>
+                {% endif %}
+            </a>
 
-            <!-- Quantity & Remove -->
-            <div class="flex items-center justify-between mt-4">
-                <!-- Quantity Selector -->
-                <div class="quantity-selector flex items-center border border-border rounded-lg">
+            <!-- Item Details -->
+            <div class="flex-1 min-w-0 flex flex-col">
+                <div class="flex justify-between gap-4 mb-1">
+                    <div class="min-w-0">
+                        <h3 class="font-medium text-foreground leading-tight">
+                            <a href="/products/{{ item.handle }}" class="hover:text-primary transition-colors line-clamp-2">
+                                {{ item.title }}
+                            </a>
+                        </h3>
+                        {% if let Some(variant_title) = item.variant_title %}
+                        <p class="text-sm text-muted-foreground mt-0.5">{{ variant_title }}</p>
+                        {% endif %}
+                    </div>
+                    <p class="font-display text-lg font-semibold text-foreground whitespace-nowrap">{{ item.line_price }}</p>
+                </div>
+
+                <!-- Unit price if qty > 1 -->
+                {% if item.quantity > 1 %}
+                <p class="text-xs text-muted-foreground mb-2">{{ item.price }} each</p>
+                {% endif %}
+
+                <!-- Quantity & Remove - pushed to bottom -->
+                <div class="flex items-center justify-between mt-auto pt-2">
+                    <!-- Quantity Selector -->
+                    <div class="inline-flex items-center border border-border rounded-full bg-background shadow-sm">
+                        <button type="button"
+                                class="w-9 h-9 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted rounded-l-full transition-colors active:scale-90 disabled:opacity-40 disabled:cursor-not-allowed"
+                                hx-post="/cart/update"
+                                hx-vals='{"line_id": "{{ item.id }}", "quantity": {{ item.quantity - 1 }}}'
+                                hx-target="#cart-items"
+                                hx-swap="outerHTML"
+                                {% if item.quantity <= 1 %}disabled{% endif %}>
+                            <i class="ph ph-minus text-sm"></i>
+                        </button>
+                        <span class="w-10 text-center text-sm font-medium tabular-nums">{{ item.quantity }}</span>
+                        <button type="button"
+                                class="w-9 h-9 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted rounded-r-full transition-colors active:scale-90"
+                                hx-post="/cart/update"
+                                hx-vals='{"line_id": "{{ item.id }}", "quantity": {{ item.quantity + 1 }}}'
+                                hx-target="#cart-items"
+                                hx-swap="outerHTML">
+                            <i class="ph ph-plus text-sm"></i>
+                        </button>
+                    </div>
+
+                    <!-- Remove Button -->
                     <button type="button"
-                            class="quantity-btn w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
-                            data-action="decrease"
-                            hx-post="/cart/update"
-                            hx-vals='{"line_id": "{{ item.id }}", "quantity": {{ item.quantity - 1 }}}'
+                            class="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-full transition-colors"
+                            hx-post="/cart/remove"
+                            hx-vals='{"line_id": "{{ item.id }}"}'
                             hx-target="#cart-items"
                             hx-swap="outerHTML"
-                            {% if item.quantity <= 1 %}disabled{% endif %}>
-                        <i class="ph ph-minus text-sm"></i>
-                    </button>
-                    <input type="number"
-                           class="quantity-input w-10 h-8 text-center text-sm border-0 bg-transparent focus:outline-none"
-                           value="{{ item.quantity }}"
-                           min="1"
-                           max="99"
-                           readonly>
-                    <button type="button"
-                            class="quantity-btn w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
-                            data-action="increase"
-                            hx-post="/cart/update"
-                            hx-vals='{"line_id": "{{ item.id }}", "quantity": {{ item.quantity + 1 }}}'
-                            hx-target="#cart-items"
-                            hx-swap="outerHTML">
-                        <i class="ph ph-plus text-sm"></i>
+                            hx-confirm="Remove {{ item.title }} from your cart?"
+                            aria-label="Remove {{ item.title }}">
+                        <i class="ph ph-trash text-lg"></i>
                     </button>
                 </div>
-
-                <!-- Remove Button -->
-                <button type="button"
-                        class="text-muted-foreground hover:text-destructive transition-colors"
-                        hx-post="/cart/remove"
-                        hx-vals='{"line_id": "{{ item.id }}"}'
-                        hx-target="#cart-items"
-                        hx-swap="outerHTML"
-                        aria-label="Remove item">
-                    <i class="ph ph-trash text-lg"></i>
-                </button>
             </div>
         </div>
+        {% endfor %}
     </div>
-    {% endfor %}
 
-    <!-- Cart Summary -->
-    <div class="space-y-4">
-        <div class="flex justify-between text-lg font-medium">
-            <span>Subtotal</span>
-            <span>{{ cart.subtotal }}</span>
+    <!-- Mobile Cart Summary (visible on mobile, hidden on lg+) -->
+    <div class="lg:hidden mt-8 pt-6 border-t border-border space-y-4">
+        <div class="flex justify-between items-baseline">
+            <span class="text-lg font-medium">Subtotal</span>
+            <span class="text-2xl font-display font-semibold text-primary">{{ cart.subtotal }}</span>
         </div>
         <p class="text-sm text-muted-foreground">
             Shipping and taxes calculated at checkout.
         </p>
-        <a href="/checkout" class="btn btn-primary w-full justify-center">
+        <a href="/checkout" hx-boost="false" class="btn btn-primary w-full justify-center text-lg py-4 group">
             Checkout
-            <i class="ph ph-arrow-right ml-2"></i>
+            <i class="ph ph-arrow-right ml-2 transition-transform group-hover:translate-x-1"></i>
         </a>
-        <a href="/collections/skincare" class="btn btn-outline w-full justify-center">
+        <a href="/collections/frontpage" class="btn btn-ghost w-full justify-center text-muted-foreground hover:text-foreground">
+            <i class="ph ph-arrow-left mr-2"></i>
+            Continue Shopping
+        </a>
+    </div>
+
+    <!-- Desktop: Continue Shopping link -->
+    <div class="hidden lg:block mt-6 pt-6 border-t border-border">
+        <a href="/collections/frontpage" class="inline-flex items-center text-sm text-muted-foreground hover:text-primary transition-colors group">
+            <i class="ph ph-arrow-left mr-2 transition-transform group-hover:-translate-x-1"></i>
             Continue Shopping
         </a>
     </div>

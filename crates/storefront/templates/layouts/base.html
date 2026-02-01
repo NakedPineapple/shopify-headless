@@ -33,6 +33,7 @@
 
     <!-- HTMX -->
     <script src="/static/vendor/htmx.min.js"></script>
+    <script nonce="{{ nonce }}">htmx.config.inlineScriptNonce = '{{ nonce }}';</script>
 
     <!-- Phosphor Icons -->
     <link rel="stylesheet" href="/static/vendor/phosphor-icons.css">

@@ -173,7 +173,7 @@ pub async fn show(
     State(state): State<AppState>,
     session: Session,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
-) -> impl IntoResponse {
+) -> Response {
     debug!("Displaying cart page");
 
     // Get cart ID from session
@@ -200,10 +200,22 @@ pub async fn show(
         CartView::empty()
     };
 
-    CartShowTemplate {
+    let template = CartShowTemplate {
         cart,
         analytics: state.config().analytics.clone(),
         nonce,
+    };
+
+    match template.render() {
+        Ok(html) => Html(html).into_response(),
+        Err(e) => {
+            tracing::error!(error = %e, "Failed to render cart/show.html template");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Template rendering failed",
+            )
+                .into_response()
+        }
     }
 }
 
@@ -256,7 +268,7 @@ pub async fn add(
 
             // Return cart count with HTMX trigger to update other elements
             (
-                AppendHeaders([("HX-Trigger", "cart-updated")]),
+                AppendHeaders([("HX-Trigger", "cartUpdated")]),
                 CartCountTemplate { count },
             )
                 .into_response()
@@ -314,7 +326,7 @@ pub async fn update(
                 "Successfully updated cart item quantity"
             );
             (
-                AppendHeaders([("HX-Trigger", "cart-updated")]),
+                AppendHeaders([("HX-Trigger", "cartUpdated")]),
                 CartItemsTemplate { cart },
             )
                 .into_response()
@@ -362,7 +374,7 @@ pub async fn remove(
                 "Successfully removed item from cart"
             );
             (
-                AppendHeaders([("HX-Trigger", "cart-updated")]),
+                AppendHeaders([("HX-Trigger", "cartUpdated")]),
                 CartItemsTemplate { cart },
             )
                 .into_response()
@@ -379,7 +391,7 @@ pub async fn remove(
 
 /// Get cart count badge (HTMX).
 #[instrument(skip(state, session))]
-pub async fn count(State(state): State<AppState>, session: Session) -> impl IntoResponse {
+pub async fn count(State(state): State<AppState>, session: Session) -> Response {
     debug!("Fetching cart count for badge");
 
     let count = if let Some(cart_id) = get_cart_id(&session).await {
@@ -400,7 +412,18 @@ pub async fn count(State(state): State<AppState>, session: Session) -> impl Into
         0
     };
 
-    CartCountTemplate { count }
+    let template = CartCountTemplate { count };
+    match template.render() {
+        Ok(html) => Html(html).into_response(),
+        Err(e) => {
+            tracing::error!(error = %e, "Failed to render partials/cart_count.html template");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Template rendering failed",
+            )
+                .into_response()
+        }
+    }
 }
 
 /// Redirect to Shopify checkout.

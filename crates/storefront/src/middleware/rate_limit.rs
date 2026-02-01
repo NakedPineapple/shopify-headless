@@ -64,7 +64,17 @@ impl tower_governor::key_extractor::KeyExtractor for CloudflareIpKeyExtractor {
             return Ok(ip);
         }
 
-        Err(GovernorError::UnableToExtractKey)
+        // Fallback to connection IP (for local development without proxy)
+        if let Some(connect_info) = req
+            .extensions()
+            .get::<axum::extract::ConnectInfo<std::net::SocketAddr>>()
+        {
+            return Ok(connect_info.0.ip());
+        }
+
+        // Last resort: use loopback address (allows local dev to work)
+        tracing::warn!("Could not extract client IP for rate limiting, using loopback fallback");
+        Ok(IpAddr::V4(std::net::Ipv4Addr::LOCALHOST))
     }
 }
 
