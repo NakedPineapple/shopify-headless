@@ -106,11 +106,17 @@ impl ShipHeroClient {
     /// Create a new client with an existing token.
     #[must_use]
     pub fn with_token(token: ShipHeroToken) -> Self {
-        let client = Self::new();
-        // Use blocking set since we're in a sync context
-        // This is safe because the lock is uncontended at creation time
-        *client.inner.token.blocking_write() = Some(token);
-        client
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(30))
+            .build()
+            .expect("Failed to create HTTP client");
+
+        Self {
+            inner: Arc::new(ShipHeroClientInner {
+                client,
+                token: RwLock::new(Some(token)),
+            }),
+        }
     }
 
     // =========================================================================
