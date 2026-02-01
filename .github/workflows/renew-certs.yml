@@ -47,13 +47,13 @@ jobs:
 
       - name: Update Fly.io secrets
         run: |
-          fly secrets set \
+          flyctl secrets set \
             ADMIN_TLS_CERT="$(sudo cat /etc/letsencrypt/live/staging.admin.nakedpineapple.co/fullchain.pem)" \
             ADMIN_TLS_KEY="$(sudo cat /etc/letsencrypt/live/staging.admin.nakedpineapple.co/privkey.pem)" \
             --app nakedpineapple-admin-staging
 
       - name: Restart app to pick up new certs
-        run: fly apps restart nakedpineapple-admin-staging
+        run: flyctl apps restart nakedpineapple-admin-staging
 
   renew-production:
     name: Renew Production Certificate
@@ -84,10 +84,10 @@ jobs:
 
       - name: Update Fly.io secrets
         run: |
-          fly secrets set \
+          flyctl secrets set \
             ADMIN_TLS_CERT="$(sudo cat /etc/letsencrypt/live/admin.nakedpineapple.co/fullchain.pem)" \
             ADMIN_TLS_KEY="$(sudo cat /etc/letsencrypt/live/admin.nakedpineapple.co/privkey.pem)" \
             --app nakedpineapple-admin
 
       - name: Restart app to pick up new certs
-        run: fly apps restart nakedpineapple-admin
+        run: flyctl apps restart nakedpineapple-admin
