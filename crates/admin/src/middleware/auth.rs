@@ -8,6 +8,7 @@ use axum::{
     response::{IntoResponse, Redirect, Response},
 };
 use tower_sessions::Session;
+use tracing::{debug, info, instrument, warn};
 
 use crate::models::{CurrentAdmin, session_keys};
 
@@ -51,11 +52,14 @@ where
     type Rejection = AdminAuthRejection;
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        let path = parts.uri.path();
+        debug!(path = %path, "Checking admin authentication");
+
         // Get the session from extensions (set by SessionManagerLayer)
-        let session = parts
-            .extensions
-            .get::<Session>()
-            .ok_or(AdminAuthRejection::Unauthorized)?;
+        let session = parts.extensions.get::<Session>().ok_or_else(|| {
+            warn!(path = %path, "No session found in request extensions");
+            AdminAuthRejection::Unauthorized
+        })?;
 
         // Get the current admin from the session
         let admin: CurrentAdmin = session
@@ -65,14 +69,22 @@ where
             .flatten()
             .ok_or_else(|| {
                 // Check if this is an API request
-                let is_api = parts.uri.path().starts_with("/api/");
+                let is_api = path.starts_with("/api/");
                 if is_api {
+                    warn!(path = %path, "Invalid or missing session token for API request");
                     AdminAuthRejection::Unauthorized
                 } else {
+                    debug!(path = %path, "No admin session found, redirecting to login");
                     AdminAuthRejection::RedirectToLogin
                 }
             })?;
 
+        debug!(
+            admin_id = admin.id.as_i32(),
+            admin_email = %admin.email.as_str(),
+            path = %path,
+            "Admin authentication successful"
+        );
         Ok(Self(admin))
     }
 }
@@ -102,14 +114,30 @@ where
     type Rejection = std::convert::Infallible;
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
-        let admin = match parts.extensions.get::<Session>() {
-            Some(session) => session
+        let path = parts.uri.path();
+        debug!(path = %path, "Checking optional admin authentication");
+
+        let admin = if let Some(session) = parts.extensions.get::<Session>() {
+            session
                 .get::<CurrentAdmin>(session_keys::CURRENT_ADMIN)
                 .await
                 .ok()
-                .flatten(),
-            None => None,
+                .flatten()
+        } else {
+            debug!(path = %path, "No session found for optional auth");
+            None
         };
+
+        if let Some(ref a) = admin {
+            debug!(
+                admin_id = a.id.as_i32(),
+                admin_email = %a.email.as_str(),
+                path = %path,
+                "Optional admin auth: admin found"
+            );
+        } else {
+            debug!(path = %path, "Optional admin auth: no admin session");
+        }
 
         Ok(Self(admin))
     }
@@ -164,11 +192,14 @@ where
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
         use crate::models::AdminRole;
 
+        let path = parts.uri.path();
+        debug!(path = %path, "Checking super admin authentication");
+
         // Get the session from extensions
-        let session = parts
-            .extensions
-            .get::<Session>()
-            .ok_or(SuperAdminRejection::Unauthorized)?;
+        let session = parts.extensions.get::<Session>().ok_or_else(|| {
+            warn!(path = %path, "No session found for super admin check");
+            SuperAdminRejection::Unauthorized
+        })?;
 
         // Get the current admin from the session
         let admin: CurrentAdmin = session
@@ -177,19 +208,34 @@ where
             .ok()
             .flatten()
             .ok_or_else(|| {
-                let is_api = parts.uri.path().starts_with("/api/");
+                let is_api = path.starts_with("/api/");
                 if is_api {
+                    warn!(path = %path, "Invalid or missing session token for super admin API request");
                     SuperAdminRejection::Unauthorized
                 } else {
+                    debug!(path = %path, "No admin session found for super admin check, redirecting to login");
                     SuperAdminRejection::RedirectToLogin
                 }
             })?;
 
         // Check for super admin role
         if admin.role != AdminRole::SuperAdmin {
+            warn!(
+                admin_id = admin.id.as_i32(),
+                admin_email = %admin.email.as_str(),
+                admin_role = ?admin.role,
+                path = %path,
+                "Access denied: admin is not a super admin"
+            );
             return Err(SuperAdminRejection::Forbidden);
         }
 
+        debug!(
+            admin_id = admin.id.as_i32(),
+            admin_email = %admin.email.as_str(),
+            path = %path,
+            "Super admin authentication successful"
+        );
         Ok(Self(admin))
     }
 }
@@ -199,11 +245,27 @@ where
 /// # Errors
 ///
 /// Returns an error if the session cannot be modified.
+#[instrument(skip(session), fields(admin_id = admin.id.as_i32(), admin_email = %admin.email.as_str()))]
 pub async fn set_current_admin(
     session: &Session,
     admin: &CurrentAdmin,
 ) -> Result<(), tower_sessions::session::Error> {
-    session.insert(session_keys::CURRENT_ADMIN, admin).await
+    debug!("Creating admin session");
+    let result = session.insert(session_keys::CURRENT_ADMIN, admin).await;
+    if result.is_ok() {
+        info!(
+            admin_id = admin.id.as_i32(),
+            admin_email = %admin.email.as_str(),
+            "Admin session created successfully"
+        );
+    } else {
+        warn!(
+            admin_id = admin.id.as_i32(),
+            admin_email = %admin.email.as_str(),
+            "Failed to create admin session"
+        );
+    }
+    result
 }
 
 /// Helper to clear the current admin from the session (logout).
@@ -211,10 +273,17 @@ pub async fn set_current_admin(
 /// # Errors
 ///
 /// Returns an error if the session cannot be modified.
+#[instrument(skip(session))]
 pub async fn clear_current_admin(session: &Session) -> Result<(), tower_sessions::session::Error> {
-    session
+    debug!("Clearing admin session (logout)");
+    let result = session
         .remove::<CurrentAdmin>(session_keys::CURRENT_ADMIN)
-        .await?;
+        .await;
+    match &result {
+        Ok(_) => info!("Admin session destroyed successfully"),
+        Err(e) => warn!(error = %e, "Failed to destroy admin session"),
+    }
+    result?;
     Ok(())
 }
 
@@ -226,20 +295,32 @@ pub async fn clear_current_admin(session: &Session) -> Result<(), tower_sessions
 ///
 /// Returns `Err(Response)` with a redirect to login if not authenticated,
 /// or a 403 Forbidden response if the user is not a super admin.
+#[instrument(skip(_state, session))]
 pub async fn require_super_admin<S>(_state: &S, session: &Session) -> Result<(), Response>
 where
     S: Send + Sync,
 {
     use crate::models::AdminRole;
 
+    debug!("Checking super admin requirement");
+
     let admin: CurrentAdmin = session
         .get(session_keys::CURRENT_ADMIN)
         .await
         .ok()
         .flatten()
-        .ok_or_else(|| Redirect::to("/auth/login").into_response())?;
+        .ok_or_else(|| {
+            warn!("No admin session found when checking super admin requirement");
+            Redirect::to("/auth/login").into_response()
+        })?;
 
     if admin.role != AdminRole::SuperAdmin {
+        warn!(
+            admin_id = admin.id.as_i32(),
+            admin_email = %admin.email.as_str(),
+            admin_role = ?admin.role,
+            "Access denied: admin is not a super admin"
+        );
         return Err((
             StatusCode::FORBIDDEN,
             "Only super admins can access this resource",
@@ -247,5 +328,10 @@ where
             .into_response());
     }
 
+    debug!(
+        admin_id = admin.id.as_i32(),
+        admin_email = %admin.email.as_str(),
+        "Super admin requirement satisfied"
+    );
     Ok(())
 }

@@ -8,6 +8,7 @@ use axum::{
     response::{IntoResponse, Redirect, Response},
 };
 use tower_sessions::Session;
+use tracing::{debug, instrument, warn};
 
 use crate::models::{CurrentCustomer, session_keys};
 
@@ -50,11 +51,14 @@ where
     type Rejection = AuthRejection;
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        let path = parts.uri.path();
+        debug!(path = %path, "RequireAuth: checking authentication");
+
         // Get the session from extensions (set by SessionManagerLayer)
-        let session = parts
-            .extensions
-            .get::<Session>()
-            .ok_or(AuthRejection::Unauthorized)?;
+        let session = parts.extensions.get::<Session>().ok_or_else(|| {
+            warn!(path = %path, "RequireAuth: no session found in request extensions");
+            AuthRejection::Unauthorized
+        })?;
 
         // Get the current customer from the session
         let customer: CurrentCustomer = session
@@ -64,13 +68,20 @@ where
             .flatten()
             .ok_or_else(|| {
                 // Check if this is an API request
-                let is_api = parts.uri.path().starts_with("/api/");
+                let is_api = path.starts_with("/api/");
                 if is_api {
+                    warn!(path = %path, "Access denied: no valid session for API request");
                     AuthRejection::Unauthorized
                 } else {
+                    debug!(path = %path, "Access denied: no valid session, redirecting to login");
                     AuthRejection::RedirectToLogin
                 }
             })?;
+
+        debug!(
+            email = %customer.email,
+            "RequireAuth: customer authenticated"
+        );
 
         // TODO: Check if token is expired and attempt refresh
 
@@ -103,14 +114,25 @@ where
     type Rejection = std::convert::Infallible;
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
-        let customer = match parts.extensions.get::<Session>() {
-            Some(session) => session
+        let path = parts.uri.path();
+        debug!(path = %path, "OptionalAuth: checking for existing session");
+
+        let customer = if let Some(session) = parts.extensions.get::<Session>() {
+            session
                 .get::<CurrentCustomer>(session_keys::CURRENT_CUSTOMER)
                 .await
                 .ok()
-                .flatten(),
-            None => None,
+                .flatten()
+        } else {
+            debug!(path = %path, "OptionalAuth: no session in request extensions");
+            None
         };
+
+        if let Some(c) = &customer {
+            debug!(email = %c.email, "OptionalAuth: customer found in session");
+        } else {
+            debug!(path = %path, "OptionalAuth: no customer in session");
+        }
 
         Ok(Self(customer))
     }
@@ -121,13 +143,22 @@ where
 /// # Errors
 ///
 /// Returns an error if the session cannot be modified.
+#[instrument(skip(session, customer), fields(email = %customer.email))]
 pub async fn set_current_customer(
     session: &Session,
     customer: &CurrentCustomer,
 ) -> Result<(), tower_sessions::session::Error> {
-    session
+    debug!("Setting current customer in session");
+    let result = session
         .insert(session_keys::CURRENT_CUSTOMER, customer)
-        .await
+        .await;
+
+    match &result {
+        Ok(()) => debug!("Session created successfully"),
+        Err(e) => warn!(error = %e, "Failed to create session"),
+    }
+
+    result
 }
 
 /// Helper to clear the current customer from the session (logout).
@@ -135,11 +166,20 @@ pub async fn set_current_customer(
 /// # Errors
 ///
 /// Returns an error if the session cannot be modified.
+#[instrument(skip(session))]
 pub async fn clear_current_customer(
     session: &Session,
 ) -> Result<(), tower_sessions::session::Error> {
-    session
+    debug!("Clearing current customer from session");
+    let result = session
         .remove::<CurrentCustomer>(session_keys::CURRENT_CUSTOMER)
-        .await?;
+        .await;
+
+    match &result {
+        Ok(_) => debug!("Session destroyed successfully"),
+        Err(e) => warn!(error = %e, "Failed to destroy session"),
+    }
+
+    result?;
     Ok(())
 }

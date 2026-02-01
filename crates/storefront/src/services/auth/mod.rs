@@ -11,6 +11,7 @@ use argon2::{
     password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString, rand_core::OsRng},
 };
 use sqlx::PgPool;
+use tracing::{debug, info, instrument, warn};
 use webauthn_rs::prelude::*;
 
 use naked_pineapple_core::{Email, UserId};
@@ -51,11 +52,14 @@ impl<'a> AuthService<'a> {
     /// Returns `AuthError::InvalidEmail` if the email format is invalid.
     /// Returns `AuthError::WeakPassword` if the password doesn't meet requirements.
     /// Returns `AuthError::UserAlreadyExists` if the email is already registered.
+    #[instrument(skip(self, password), fields(email = %email))]
     pub async fn register_with_password(
         &self,
         email: &str,
         password: &str,
     ) -> Result<User, AuthError> {
+        debug!("Starting user registration with password");
+
         // Validate email
         let email = Email::parse(email)?;
 
@@ -66,16 +70,24 @@ impl<'a> AuthService<'a> {
         let password_hash = hash_password(password)?;
 
         // Create user
-        let user = self
+        let result = self
             .users
             .create_with_password(&email, &password_hash)
             .await
             .map_err(|e| match e {
                 RepositoryError::Conflict(_) => AuthError::UserAlreadyExists,
                 other => AuthError::Repository(other),
-            })?;
+            });
 
-        Ok(user)
+        match &result {
+            Ok(user) => info!(user_id = %user.id, "User registered successfully with password"),
+            Err(AuthError::UserAlreadyExists) => {
+                warn!("Registration failed: user already exists");
+            }
+            Err(e) => warn!(error = %e, "Registration failed"),
+        }
+
+        result
     }
 
     /// Login with email and password.
@@ -83,24 +95,31 @@ impl<'a> AuthService<'a> {
     /// # Errors
     ///
     /// Returns `AuthError::InvalidCredentials` if the email/password is wrong.
+    #[instrument(skip(self, password), fields(email = %email))]
     pub async fn login_with_password(
         &self,
         email: &str,
         password: &str,
     ) -> Result<User, AuthError> {
+        debug!("Attempting password login");
+
         // Validate email format
         let email = Email::parse(email)?;
 
         // Get user with password hash
-        let (user, password_hash) = self
-            .users
-            .get_password_hash(&email)
-            .await?
-            .ok_or(AuthError::InvalidCredentials)?;
+        let (user, password_hash) =
+            self.users.get_password_hash(&email).await?.ok_or_else(|| {
+                warn!("Login failed: user not found");
+                AuthError::InvalidCredentials
+            })?;
 
         // Verify password
-        verify_password(password, &password_hash)?;
+        if let Err(e) = verify_password(password, &password_hash) {
+            warn!("Login failed: invalid password");
+            return Err(e);
+        }
 
+        info!(user_id = %user.id, "User logged in successfully with password");
         Ok(user)
     }
 
@@ -116,11 +135,17 @@ impl<'a> AuthService<'a> {
     /// # Errors
     ///
     /// Returns `AuthError::WebAuthn` if the challenge cannot be generated.
+    #[instrument(skip(self, existing_credentials), fields(user_id = %user.id, email = %user.email.as_str()))]
     pub fn start_passkey_registration(
         &self,
         user: &User,
         existing_credentials: &[UserCredential],
     ) -> Result<(CreationChallengeResponse, PasskeyRegistration), AuthError> {
+        info!(
+            existing_credentials_count = existing_credentials.len(),
+            "Starting passkey registration"
+        );
+
         // Collect existing credential IDs to exclude
         let exclude_credentials: Vec<CredentialID> = existing_credentials
             .iter()
@@ -128,14 +153,19 @@ impl<'a> AuthService<'a> {
             .collect();
 
         // Create challenge
-        let (challenge, reg_state) = self.webauthn.start_passkey_registration(
+        let result = self.webauthn.start_passkey_registration(
             Uuid::new_v4(),
             user.email.as_str(),
             user.email.as_str(),
             Some(exclude_credentials),
-        )?;
+        );
 
-        Ok((challenge, reg_state))
+        match &result {
+            Ok(_) => debug!("Passkey registration challenge created"),
+            Err(e) => warn!(error = %e, "Failed to create passkey registration challenge"),
+        }
+
+        Ok(result?)
     }
 
     /// Finish passkey registration.
@@ -145,14 +175,22 @@ impl<'a> AuthService<'a> {
     /// # Errors
     ///
     /// Returns `AuthError::WebAuthn` if validation fails.
+    #[instrument(skip(self, state, response))]
     pub fn finish_passkey_registration(
         &self,
         state: &PasskeyRegistration,
         response: &RegisterPublicKeyCredential,
     ) -> Result<Passkey, AuthError> {
-        let passkey = self.webauthn.finish_passkey_registration(response, state)?;
+        debug!("Finishing passkey registration");
 
-        Ok(passkey)
+        let result = self.webauthn.finish_passkey_registration(response, state);
+
+        match &result {
+            Ok(_) => info!("Passkey registration completed successfully"),
+            Err(e) => warn!(error = %e, "Passkey registration validation failed"),
+        }
+
+        Ok(result?)
     }
 
     /// Save a registered credential to the database.
@@ -160,14 +198,25 @@ impl<'a> AuthService<'a> {
     /// # Errors
     ///
     /// Returns `AuthError::Repository` if the database operation fails.
+    #[instrument(skip(self, passkey), fields(user_id = %user_id, credential_name = %name))]
     pub async fn save_credential(
         &self,
         user_id: UserId,
         passkey: &Passkey,
         name: &str,
     ) -> Result<UserCredential, AuthError> {
-        let credential = self.users.create_credential(user_id, passkey, name).await?;
-        Ok(credential)
+        debug!("Saving credential to database");
+
+        let result = self.users.create_credential(user_id, passkey, name).await;
+
+        match &result {
+            Ok(credential) => {
+                info!(credential_id = %credential.id, "Credential saved successfully");
+            }
+            Err(e) => warn!(error = %e, "Failed to save credential"),
+        }
+
+        Ok(result?)
     }
 
     // =========================================================================
@@ -184,23 +233,32 @@ impl<'a> AuthService<'a> {
     /// Returns `AuthError::UserNotFound` if the user doesn't exist.
     /// Returns `AuthError::NoCredentials` if the user has no registered passkeys.
     /// Returns `AuthError::WebAuthn` if the challenge cannot be generated.
+    #[instrument(skip(self), fields(email = %email))]
     pub async fn start_passkey_authentication(
         &self,
         email: &str,
     ) -> Result<(RequestChallengeResponse, PasskeyAuthentication, UserId), AuthError> {
+        debug!("Starting passkey authentication");
+
         // Validate and find user
         let email = Email::parse(email)?;
-        let user = self
-            .users
-            .get_by_email(&email)
-            .await?
-            .ok_or(AuthError::UserNotFound)?;
+        let user = self.users.get_by_email(&email).await?.ok_or_else(|| {
+            warn!("Passkey authentication failed: user not found");
+            AuthError::UserNotFound
+        })?;
 
         // Get credentials
         let credentials = self.users.get_credentials(user.id).await?;
         if credentials.is_empty() {
+            warn!(user_id = %user.id, "Passkey authentication failed: no credentials registered");
             return Err(AuthError::NoCredentials);
         }
+
+        debug!(
+            user_id = %user.id,
+            credentials_count = credentials.len(),
+            "Found credentials for passkey authentication"
+        );
 
         // Get passkeys for WebAuthn
         let passkeys: Vec<Passkey> = credentials.iter().map(|c| c.passkey.clone()).collect();
@@ -208,6 +266,7 @@ impl<'a> AuthService<'a> {
         // Create challenge
         let (challenge, auth_state) = self.webauthn.start_passkey_authentication(&passkeys)?;
 
+        info!(user_id = %user.id, "Passkey authentication challenge created");
         Ok((challenge, auth_state, user.id))
     }
 
@@ -219,19 +278,27 @@ impl<'a> AuthService<'a> {
     ///
     /// Returns `AuthError::WebAuthn` if validation fails.
     /// Returns `AuthError::CredentialNotFound` if the credential isn't found.
+    #[instrument(skip(self, state, response), fields(user_id = %user_id))]
     pub async fn finish_passkey_authentication(
         &self,
         state: &PasskeyAuthentication,
         response: &PublicKeyCredential,
         user_id: UserId,
     ) -> Result<User, AuthError> {
+        debug!("Finishing passkey authentication");
+
         // Verify the authentication
         let auth_result = self
             .webauthn
-            .finish_passkey_authentication(response, state)?;
+            .finish_passkey_authentication(response, state)
+            .map_err(|e| {
+                warn!(error = %e, "Passkey authentication validation failed");
+                e
+            })?;
 
         // Update credential if needed
         if auth_result.needs_update() {
+            debug!("Credential needs update, updating stored passkey");
             // Find the credential that was used
             let cred_id = auth_result.cred_id();
             if let Some(mut credential) = self
@@ -244,16 +311,17 @@ impl<'a> AuthService<'a> {
                 self.users
                     .update_credential(cred_id.as_ref(), &credential.passkey)
                     .await?;
+                debug!("Credential updated successfully");
             }
         }
 
         // Get the user
-        let user = self
-            .users
-            .get_by_id(user_id)
-            .await?
-            .ok_or(AuthError::UserNotFound)?;
+        let user = self.users.get_by_id(user_id).await?.ok_or_else(|| {
+            warn!("Passkey authentication failed: user not found after validation");
+            AuthError::UserNotFound
+        })?;
 
+        info!("User authenticated successfully via passkey");
         Ok(user)
     }
 
@@ -266,8 +334,14 @@ impl<'a> AuthService<'a> {
     /// # Errors
     ///
     /// Returns `AuthError::Repository` if the database operation fails.
+    #[instrument(skip(self), fields(user_id = %user_id))]
     pub async fn get_credentials(&self, user_id: UserId) -> Result<Vec<UserCredential>, AuthError> {
+        debug!("Fetching credentials for user");
         let credentials = self.users.get_credentials(user_id).await?;
+        debug!(
+            credentials_count = credentials.len(),
+            "Retrieved credentials"
+        );
         Ok(credentials)
     }
 
@@ -280,12 +354,19 @@ impl<'a> AuthService<'a> {
     /// # Errors
     ///
     /// Returns `AuthError::Repository` if the database operation fails.
+    #[instrument(skip(self), fields(user_id = %user_id, credential_id = %credential_id))]
     pub async fn delete_credential(
         &self,
         user_id: UserId,
         credential_id: naked_pineapple_core::CredentialId,
     ) -> Result<bool, AuthError> {
+        debug!("Deleting credential");
         let deleted = self.users.delete_credential(user_id, credential_id).await?;
+        if deleted {
+            info!("Credential deleted successfully");
+        } else {
+            debug!("Credential not found for deletion");
+        }
         Ok(deleted)
     }
 
@@ -294,11 +375,13 @@ impl<'a> AuthService<'a> {
     /// # Errors
     ///
     /// Returns `AuthError::UserNotFound` if the user doesn't exist.
+    #[instrument(skip(self), fields(user_id = %user_id))]
     pub async fn get_user(&self, user_id: UserId) -> Result<User, AuthError> {
-        self.users
-            .get_by_id(user_id)
-            .await?
-            .ok_or(AuthError::UserNotFound)
+        debug!("Fetching user by ID");
+        self.users.get_by_id(user_id).await?.ok_or_else(|| {
+            warn!("User not found");
+            AuthError::UserNotFound
+        })
     }
 
     // =========================================================================
@@ -310,14 +393,20 @@ impl<'a> AuthService<'a> {
     /// # Errors
     ///
     /// Returns `AuthError::Repository` if the database operation fails.
+    #[instrument(skip(self), fields(shopify_customer_id = %shopify_customer_id))]
     pub async fn get_credentials_by_shopify_customer_id(
         &self,
         shopify_customer_id: &str,
     ) -> Result<Vec<UserCredential>, AuthError> {
+        debug!("Fetching credentials for Shopify customer");
         let credentials = self
             .users
             .get_credentials_by_shopify_customer_id(shopify_customer_id)
             .await?;
+        debug!(
+            credentials_count = credentials.len(),
+            "Retrieved Shopify customer credentials"
+        );
         Ok(credentials)
     }
 
@@ -329,12 +418,18 @@ impl<'a> AuthService<'a> {
     /// # Errors
     ///
     /// Returns `AuthError::WebAuthn` if the challenge cannot be generated.
+    #[instrument(skip(self, existing_credentials), fields(shopify_customer_id = %shopify_customer_id, email = %email))]
     pub fn start_passkey_registration_for_shopify_customer(
         &self,
         shopify_customer_id: &str,
         email: &str,
         existing_credentials: &[UserCredential],
     ) -> Result<(CreationChallengeResponse, PasskeyRegistration), AuthError> {
+        info!(
+            existing_credentials_count = existing_credentials.len(),
+            "Starting passkey registration for Shopify customer"
+        );
+
         // Collect existing credential IDs to exclude
         let exclude_credentials: Vec<CredentialID> = existing_credentials
             .iter()
@@ -345,14 +440,21 @@ impl<'a> AuthService<'a> {
         let user_uuid = uuid_from_shopify_customer_id(shopify_customer_id);
 
         // Create challenge
-        let (challenge, reg_state) = self.webauthn.start_passkey_registration(
+        let result = self.webauthn.start_passkey_registration(
             user_uuid,
             email,
             email,
             Some(exclude_credentials),
-        )?;
+        );
 
-        Ok((challenge, reg_state))
+        match &result {
+            Ok(_) => debug!("Passkey registration challenge created for Shopify customer"),
+            Err(e) => {
+                warn!(error = %e, "Failed to create passkey registration challenge for Shopify customer");
+            }
+        }
+
+        Ok(result?)
     }
 
     /// Save a registered credential for a Shopify customer.
@@ -362,6 +464,7 @@ impl<'a> AuthService<'a> {
     /// # Errors
     ///
     /// Returns `AuthError::Repository` if the database operation fails.
+    #[instrument(skip(self, passkey), fields(shopify_customer_id = %shopify_customer_id, email = %email.as_str(), credential_name = %name))]
     pub async fn save_credential_for_shopify_customer(
         &self,
         shopify_customer_id: &str,
@@ -369,11 +472,21 @@ impl<'a> AuthService<'a> {
         passkey: &Passkey,
         name: &str,
     ) -> Result<UserCredential, AuthError> {
-        let credential = self
+        debug!("Saving credential for Shopify customer");
+
+        let result = self
             .users
             .create_credential_for_shopify_customer(shopify_customer_id, email, passkey, name)
-            .await?;
-        Ok(credential)
+            .await;
+
+        match &result {
+            Ok(credential) => {
+                info!(credential_id = %credential.id, "Credential saved for Shopify customer");
+            }
+            Err(e) => warn!(error = %e, "Failed to save credential for Shopify customer"),
+        }
+
+        Ok(result?)
     }
 
     /// Start passkey authentication for a Shopify customer.
@@ -385,10 +498,13 @@ impl<'a> AuthService<'a> {
     /// Returns `AuthError::InvalidEmail` if the email format is invalid.
     /// Returns `AuthError::NoCredentials` if no passkeys are registered for this email.
     /// Returns `AuthError::WebAuthn` if the challenge cannot be generated.
+    #[instrument(skip(self), fields(email = %email))]
     pub async fn start_passkey_authentication_for_shopify_customer(
         &self,
         email: &str,
     ) -> Result<(RequestChallengeResponse, PasskeyAuthentication, String), AuthError> {
+        debug!("Starting passkey authentication for Shopify customer");
+
         // Parse and validate email
         let email = Email::parse(email)?;
 
@@ -398,9 +514,15 @@ impl<'a> AuthService<'a> {
         // Get the Shopify customer ID from the first credential
         // (all credentials for the same email should have the same customer ID)
         let Some(first_credential) = credentials.first() else {
+            warn!("Passkey authentication failed for Shopify customer: no credentials registered");
             return Err(AuthError::NoCredentials);
         };
         let shopify_customer_id = first_credential.shopify_customer_id.clone();
+
+        debug!(
+            credentials_count = credentials.len(),
+            "Found credentials for Shopify customer passkey authentication"
+        );
 
         // Get passkeys for WebAuthn
         let passkeys: Vec<Passkey> = credentials.iter().map(|c| c.passkey.clone()).collect();
@@ -408,6 +530,7 @@ impl<'a> AuthService<'a> {
         // Create challenge
         let (challenge, auth_state) = self.webauthn.start_passkey_authentication(&passkeys)?;
 
+        info!("Passkey authentication challenge created for Shopify customer");
         Ok((challenge, auth_state, shopify_customer_id))
     }
 
@@ -418,19 +541,28 @@ impl<'a> AuthService<'a> {
     /// # Errors
     ///
     /// Returns `AuthError::WebAuthn` if validation fails.
+    #[instrument(skip(self, state, response), fields(shopify_customer_id = %shopify_customer_id))]
     pub async fn finish_passkey_authentication_for_shopify_customer(
         &self,
         state: &PasskeyAuthentication,
         response: &PublicKeyCredential,
-        _shopify_customer_id: &str,
+        shopify_customer_id: &str,
     ) -> Result<(), AuthError> {
+        let _ = shopify_customer_id; // Used only in instrument fields
+        debug!("Finishing passkey authentication for Shopify customer");
+
         // Verify the authentication
         let auth_result = self
             .webauthn
-            .finish_passkey_authentication(response, state)?;
+            .finish_passkey_authentication(response, state)
+            .map_err(|e| {
+                warn!(error = %e, "Passkey authentication validation failed for Shopify customer");
+                e
+            })?;
 
         // Update credential if needed
         if auth_result.needs_update() {
+            debug!("Credential needs update for Shopify customer, updating stored passkey");
             let cred_id = auth_result.cred_id();
             if let Some(mut credential) = self
                 .users
@@ -441,9 +573,11 @@ impl<'a> AuthService<'a> {
                 self.users
                     .update_credential(cred_id.as_ref(), &credential.passkey)
                     .await?;
+                debug!("Credential updated successfully for Shopify customer");
             }
         }
 
+        info!("Shopify customer authenticated successfully via passkey");
         Ok(())
     }
 
@@ -456,15 +590,22 @@ impl<'a> AuthService<'a> {
     /// # Errors
     ///
     /// Returns `AuthError::Repository` if the database operation fails.
+    #[instrument(skip(self), fields(shopify_customer_id = %shopify_customer_id, credential_id = %credential_id))]
     pub async fn delete_credential_for_shopify_customer(
         &self,
         shopify_customer_id: &str,
         credential_id: naked_pineapple_core::CredentialId,
     ) -> Result<bool, AuthError> {
+        debug!("Deleting credential for Shopify customer");
         let deleted = self
             .users
             .delete_credential_for_shopify_customer(shopify_customer_id, credential_id)
             .await?;
+        if deleted {
+            info!("Credential deleted successfully for Shopify customer");
+        } else {
+            debug!("Credential not found for Shopify customer deletion");
+        }
         Ok(deleted)
     }
 }
