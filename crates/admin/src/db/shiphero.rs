@@ -6,6 +6,7 @@
 use chrono::{DateTime, Utc};
 use secrecy::SecretString;
 use sqlx::PgPool;
+use tracing::{debug, info, instrument};
 
 use super::RepositoryError;
 
@@ -140,10 +141,13 @@ impl<'a> ShipHeroCredentialsRepository<'a> {
     /// # Errors
     ///
     /// Returns `RepositoryError::Database` if the query fails.
+    #[instrument(skip(self), fields(account_name = %account_name), level = "debug")]
     pub async fn get(
         &self,
         account_name: &str,
     ) -> Result<Option<ShipHeroCredentials>, RepositoryError> {
+        debug!("Fetching ShipHero credentials");
+
         let row = sqlx::query_as!(
             ShipHeroCredentialsRow,
             r#"
@@ -168,6 +172,10 @@ impl<'a> ShipHeroCredentialsRepository<'a> {
         .fetch_optional(self.pool)
         .await?;
 
+        if row.is_none() {
+            debug!("ShipHero credentials not found");
+        }
+
         Ok(row.map(ShipHeroCredentials::from))
     }
 
@@ -178,7 +186,9 @@ impl<'a> ShipHeroCredentialsRepository<'a> {
     /// # Errors
     ///
     /// Returns `RepositoryError::Database` if the query fails.
+    #[instrument(skip(self), level = "debug")]
     pub async fn get_default(&self) -> Result<Option<ShipHeroCredentials>, RepositoryError> {
+        debug!("Fetching default ShipHero credentials");
         self.get("default").await
     }
 
@@ -189,7 +199,10 @@ impl<'a> ShipHeroCredentialsRepository<'a> {
     /// # Errors
     ///
     /// Returns `RepositoryError::Database` if the query fails.
+    #[instrument(skip(self, params), fields(account_name = %params.account_name, email = %params.email), level = "debug")]
     pub async fn save(&self, params: &SaveCredentialsParams<'_>) -> Result<(), RepositoryError> {
+        debug!("Saving ShipHero credentials");
+
         sqlx::query!(
             r#"
             INSERT INTO admin.shiphero_credentials (
@@ -224,6 +237,8 @@ impl<'a> ShipHeroCredentialsRepository<'a> {
         .execute(self.pool)
         .await?;
 
+        info!("ShipHero credentials saved");
+
         Ok(())
     }
 
@@ -232,6 +247,7 @@ impl<'a> ShipHeroCredentialsRepository<'a> {
     /// # Errors
     ///
     /// Returns `RepositoryError::Database` if the query fails.
+    #[instrument(skip(self, access_token, refresh_token), fields(account_name = %account_name), level = "debug")]
     pub async fn update_tokens(
         &self,
         account_name: &str,
@@ -240,6 +256,8 @@ impl<'a> ShipHeroCredentialsRepository<'a> {
         access_token_expires_at: i64,
         refresh_token_expires_at: Option<i64>,
     ) -> Result<bool, RepositoryError> {
+        debug!("Updating ShipHero tokens");
+
         let result = sqlx::query!(
             r#"
             UPDATE admin.shiphero_credentials
@@ -260,7 +278,14 @@ impl<'a> ShipHeroCredentialsRepository<'a> {
         .execute(self.pool)
         .await?;
 
-        Ok(result.rows_affected() > 0)
+        let updated = result.rows_affected() > 0;
+        if updated {
+            info!("ShipHero tokens updated");
+        } else {
+            debug!("ShipHero credentials not found for token update");
+        }
+
+        Ok(updated)
     }
 
     /// Update the `last_used_at` timestamp.
@@ -270,7 +295,10 @@ impl<'a> ShipHeroCredentialsRepository<'a> {
     /// # Errors
     ///
     /// Returns `RepositoryError::Database` if the query fails.
+    #[instrument(skip(self), fields(account_name = %account_name), level = "debug")]
     pub async fn touch(&self, account_name: &str) -> Result<(), RepositoryError> {
+        debug!("Updating ShipHero last_used_at timestamp");
+
         sqlx::query!(
             r"
             UPDATE admin.shiphero_credentials
@@ -282,6 +310,8 @@ impl<'a> ShipHeroCredentialsRepository<'a> {
         .execute(self.pool)
         .await?;
 
+        debug!("ShipHero last_used_at timestamp updated");
+
         Ok(())
     }
 
@@ -290,7 +320,10 @@ impl<'a> ShipHeroCredentialsRepository<'a> {
     /// # Errors
     ///
     /// Returns `RepositoryError::Database` if the query fails.
+    #[instrument(skip(self), fields(account_name = %account_name), level = "debug")]
     pub async fn delete(&self, account_name: &str) -> Result<bool, RepositoryError> {
+        debug!("Deleting ShipHero credentials");
+
         let result = sqlx::query!(
             r"
             DELETE FROM admin.shiphero_credentials
@@ -301,7 +334,14 @@ impl<'a> ShipHeroCredentialsRepository<'a> {
         .execute(self.pool)
         .await?;
 
-        Ok(result.rows_affected() > 0)
+        let deleted = result.rows_affected() > 0;
+        if deleted {
+            info!("ShipHero credentials deleted");
+        } else {
+            debug!("ShipHero credentials not found for deletion");
+        }
+
+        Ok(deleted)
     }
 
     /// Check if credentials exist for an account.
@@ -309,7 +349,10 @@ impl<'a> ShipHeroCredentialsRepository<'a> {
     /// # Errors
     ///
     /// Returns `RepositoryError::Database` if the query fails.
+    #[instrument(skip(self), fields(account_name = %account_name), level = "debug")]
     pub async fn exists(&self, account_name: &str) -> Result<bool, RepositoryError> {
+        debug!("Checking if ShipHero credentials exist");
+
         let exists = sqlx::query_scalar!(
             r#"
             SELECT EXISTS(
@@ -320,6 +363,8 @@ impl<'a> ShipHeroCredentialsRepository<'a> {
         )
         .fetch_one(self.pool)
         .await?;
+
+        debug!(exists = %exists, "ShipHero credentials existence check complete");
 
         Ok(exists)
     }

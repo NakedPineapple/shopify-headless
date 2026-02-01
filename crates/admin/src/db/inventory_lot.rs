@@ -5,6 +5,7 @@
 use chrono::{DateTime, Datelike, NaiveDate, Utc};
 use rust_decimal::Decimal;
 use sqlx::PgPool;
+use tracing::{debug, info, instrument, warn};
 
 use naked_pineapple_core::{AdminUserId, InventoryLotId, LotAllocationId, ManufacturingBatchId};
 
@@ -202,10 +203,12 @@ impl<'a> InventoryLotRepository<'a> {
     /// # Errors
     ///
     /// Returns `RepositoryError::Database` if the query fails.
+    #[instrument(skip(self, input), level = "debug", fields(batch_id = %input.batch_id.as_i32()))]
     pub async fn create_lot(
         &self,
         input: &CreateLotInput,
     ) -> Result<InventoryLot, RepositoryError> {
+        debug!("Creating inventory lot");
         let row = sqlx::query_as!(
             InventoryLotRow,
             r#"
@@ -231,7 +234,9 @@ impl<'a> InventoryLotRepository<'a> {
         .fetch_one(self.pool)
         .await?;
 
-        Ok(row.into())
+        let lot: InventoryLot = row.into();
+        info!(lot_id = %lot.id.as_i32(), "Inventory lot created");
+        Ok(lot)
     }
 
     /// Get an inventory lot by ID.
@@ -239,10 +244,12 @@ impl<'a> InventoryLotRepository<'a> {
     /// # Errors
     ///
     /// Returns `RepositoryError::Database` if the query fails.
+    #[instrument(skip(self), level = "debug", fields(lot_id = %id.as_i32()))]
     pub async fn get_lot(
         &self,
         id: InventoryLotId,
     ) -> Result<Option<InventoryLot>, RepositoryError> {
+        debug!("Fetching inventory lot");
         let row = sqlx::query_as!(
             InventoryLotRow,
             r#"
@@ -260,6 +267,9 @@ impl<'a> InventoryLotRepository<'a> {
         .fetch_optional(self.pool)
         .await?;
 
+        if row.is_none() {
+            debug!("Inventory lot not found");
+        }
         Ok(row.map(Into::into))
     }
 
@@ -268,10 +278,12 @@ impl<'a> InventoryLotRepository<'a> {
     /// # Errors
     ///
     /// Returns `RepositoryError::Database` if the query fails.
+    #[instrument(skip(self), level = "debug", fields(lot_id = %id.as_i32()))]
     pub async fn get_lot_with_remaining(
         &self,
         id: InventoryLotId,
     ) -> Result<Option<InventoryLotWithRemaining>, RepositoryError> {
+        debug!("Fetching inventory lot with remaining quantity");
         let row = sqlx::query_as!(
             InventoryLotWithRemainingRow,
             r#"
@@ -292,6 +304,9 @@ impl<'a> InventoryLotRepository<'a> {
         .fetch_optional(self.pool)
         .await?;
 
+        if row.is_none() {
+            debug!("Inventory lot not found");
+        }
         Ok(row.map(Into::into))
     }
 
@@ -300,10 +315,12 @@ impl<'a> InventoryLotRepository<'a> {
     /// # Errors
     ///
     /// Returns `RepositoryError::Database` if the query fails.
+    #[instrument(skip(self), level = "debug", fields(batch_id = %batch_id.as_i32()))]
     pub async fn list_lots_for_batch(
         &self,
         batch_id: ManufacturingBatchId,
     ) -> Result<Vec<InventoryLotWithRemaining>, RepositoryError> {
+        debug!("Listing inventory lots for batch");
         let rows = sqlx::query_as!(
             InventoryLotWithRemainingRow,
             r#"
@@ -325,6 +342,7 @@ impl<'a> InventoryLotRepository<'a> {
         .fetch_all(self.pool)
         .await?;
 
+        debug!(count = rows.len(), "Found inventory lots for batch");
         Ok(rows.into_iter().map(Into::into).collect())
     }
 
@@ -333,10 +351,12 @@ impl<'a> InventoryLotRepository<'a> {
     /// # Errors
     ///
     /// Returns `RepositoryError::Database` if the query fails.
+    #[instrument(skip(self, filter), level = "debug")]
     pub async fn list_lots(
         &self,
         filter: &LotFilter,
     ) -> Result<Vec<InventoryLotWithRemaining>, RepositoryError> {
+        debug!("Listing inventory lots with filter");
         let limit = filter.limit.unwrap_or(100);
         let offset = filter.offset.unwrap_or(0);
         let batch_id = filter.batch_id.map(|id| id.as_i32());
@@ -377,6 +397,7 @@ impl<'a> InventoryLotRepository<'a> {
         .fetch_all(self.pool)
         .await?;
 
+        debug!(count = rows.len(), "Found inventory lots");
         Ok(rows.into_iter().map(Into::into).collect())
     }
 
@@ -463,11 +484,13 @@ impl<'a> InventoryLotRepository<'a> {
     ///
     /// Returns `RepositoryError::NotFound` if the lot doesn't exist.
     /// Returns `RepositoryError::Database` for other database errors.
+    #[instrument(skip(self, input), level = "debug", fields(lot_id = %id.as_i32()))]
     pub async fn update_lot(
         &self,
         id: InventoryLotId,
         input: &UpdateLotInput,
     ) -> Result<InventoryLot, RepositoryError> {
+        debug!("Updating inventory lot");
         let row = sqlx::query_as!(
             InventoryLotRow,
             r#"
@@ -494,10 +517,14 @@ impl<'a> InventoryLotRepository<'a> {
             input.notes
         )
         .fetch_optional(self.pool)
-        .await?
-        .ok_or(RepositoryError::NotFound)?;
+        .await?;
 
-        Ok(row.into())
+        let lot = row.ok_or_else(|| {
+            debug!("Inventory lot not found for update");
+            RepositoryError::NotFound
+        })?;
+        info!(lot_id = %id.as_i32(), "Inventory lot updated");
+        Ok(lot.into())
     }
 
     /// Delete an inventory lot.
@@ -512,7 +539,9 @@ impl<'a> InventoryLotRepository<'a> {
     /// # Errors
     ///
     /// Returns `RepositoryError::Database` if the query fails.
+    #[instrument(skip(self), level = "debug", fields(lot_id = %id.as_i32()))]
     pub async fn delete_lot(&self, id: InventoryLotId) -> Result<bool, RepositoryError> {
+        debug!("Deleting inventory lot");
         let result = sqlx::query!(
             r#"
             DELETE FROM admin.inventory_lot
@@ -523,7 +552,13 @@ impl<'a> InventoryLotRepository<'a> {
         .execute(self.pool)
         .await?;
 
-        Ok(result.rows_affected() > 0)
+        let deleted = result.rows_affected() > 0;
+        if deleted {
+            info!(lot_id = %id.as_i32(), "Inventory lot deleted");
+        } else {
+            debug!("Inventory lot not found for deletion");
+        }
+        Ok(deleted)
     }
 
     // =========================================================================
@@ -537,11 +572,13 @@ impl<'a> InventoryLotRepository<'a> {
     /// Returns `RepositoryError::Conflict` if the line item is already
     /// allocated to this lot.
     /// Returns `RepositoryError::Database` for other database errors.
+    #[instrument(skip(self, input, allocated_by), level = "debug", fields(lot_id = %input.lot_id.as_i32(), quantity = input.quantity))]
     pub async fn allocate(
         &self,
         input: &AllocateLotInput,
         allocated_by: Option<AdminUserId>,
     ) -> Result<LotAllocation, RepositoryError> {
+        debug!(order_id = %input.shopify_order_id, "Allocating units from lot");
         let row = sqlx::query_as!(
             LotAllocationRow,
             r#"
@@ -568,6 +605,7 @@ impl<'a> InventoryLotRepository<'a> {
             if let sqlx::Error::Database(ref db_err) = e
                 && db_err.constraint() == Some("idx_lot_allocation_line_item_lot")
             {
+                warn!(lot_id = %input.lot_id.as_i32(), "Line item already allocated to this lot");
                 return RepositoryError::Conflict(
                     "Line item already allocated to this lot".to_string(),
                 );
@@ -575,7 +613,9 @@ impl<'a> InventoryLotRepository<'a> {
             RepositoryError::Database(e)
         })?;
 
-        Ok(row.into())
+        let allocation: LotAllocation = row.into();
+        info!(allocation_id = %allocation.id.as_i32(), lot_id = %input.lot_id.as_i32(), quantity = input.quantity, "Lot allocation created");
+        Ok(allocation)
     }
 
     /// Get allocations for a lot.
@@ -583,10 +623,12 @@ impl<'a> InventoryLotRepository<'a> {
     /// # Errors
     ///
     /// Returns `RepositoryError::Database` if the query fails.
+    #[instrument(skip(self), level = "debug", fields(lot_id = %lot_id.as_i32()))]
     pub async fn get_allocations_for_lot(
         &self,
         lot_id: InventoryLotId,
     ) -> Result<Vec<LotAllocation>, RepositoryError> {
+        debug!("Fetching allocations for lot");
         let rows = sqlx::query_as!(
             LotAllocationRow,
             r#"
@@ -604,6 +646,7 @@ impl<'a> InventoryLotRepository<'a> {
         .fetch_all(self.pool)
         .await?;
 
+        debug!(count = rows.len(), "Found allocations for lot");
         Ok(rows.into_iter().map(Into::into).collect())
     }
 
@@ -612,10 +655,12 @@ impl<'a> InventoryLotRepository<'a> {
     /// # Errors
     ///
     /// Returns `RepositoryError::Database` if the query fails.
+    #[instrument(skip(self), level = "debug", fields(order_id = %shopify_order_id))]
     pub async fn get_allocations_for_order(
         &self,
         shopify_order_id: &str,
     ) -> Result<Vec<LotAllocation>, RepositoryError> {
+        debug!("Fetching allocations for order");
         let rows = sqlx::query_as!(
             LotAllocationRow,
             r#"
@@ -633,6 +678,7 @@ impl<'a> InventoryLotRepository<'a> {
         .fetch_all(self.pool)
         .await?;
 
+        debug!(count = rows.len(), "Found allocations for order");
         Ok(rows.into_iter().map(Into::into).collect())
     }
 
@@ -645,7 +691,9 @@ impl<'a> InventoryLotRepository<'a> {
     /// # Errors
     ///
     /// Returns `RepositoryError::Database` if the query fails.
+    #[instrument(skip(self), level = "debug", fields(allocation_id = %id.as_i32()))]
     pub async fn delete_allocation(&self, id: LotAllocationId) -> Result<bool, RepositoryError> {
+        debug!("Deleting lot allocation");
         let result = sqlx::query!(
             r#"
             DELETE FROM admin.lot_allocation
@@ -656,7 +704,13 @@ impl<'a> InventoryLotRepository<'a> {
         .execute(self.pool)
         .await?;
 
-        Ok(result.rows_affected() > 0)
+        let deleted = result.rows_affected() > 0;
+        if deleted {
+            info!(allocation_id = %id.as_i32(), "Lot allocation deleted");
+        } else {
+            debug!("Lot allocation not found for deletion");
+        }
+        Ok(deleted)
     }
 
     /// Auto-allocate a line item to lots using FIFO.
@@ -672,6 +726,7 @@ impl<'a> InventoryLotRepository<'a> {
     /// # Errors
     ///
     /// Returns `RepositoryError::Database` if the query fails.
+    #[instrument(skip(self, allocated_by), level = "debug", fields(product_id = %shopify_product_id, order_id = %shopify_order_id, quantity = quantity_needed))]
     pub async fn auto_allocate_fifo(
         &self,
         shopify_product_id: &str,
@@ -680,9 +735,15 @@ impl<'a> InventoryLotRepository<'a> {
         quantity_needed: i32,
         allocated_by: Option<AdminUserId>,
     ) -> Result<Vec<LotAllocation>, RepositoryError> {
+        debug!("Auto-allocating line item using FIFO");
         let available_lots = self
             .get_available_lots_for_product(shopify_product_id)
             .await?;
+
+        debug!(
+            available_lots = available_lots.len(),
+            "Found available lots for FIFO allocation"
+        );
 
         let mut allocations = Vec::new();
         let mut remaining = quantity_needed;
@@ -708,12 +769,19 @@ impl<'a> InventoryLotRepository<'a> {
                     allocations.push(allocation);
                 }
                 Err(RepositoryError::Conflict(_)) => {
-                    // Already allocated to this lot, skip
+                    debug!(lot_id = %lot.lot.id.as_i32(), "Skipping lot - already allocated");
                 }
                 Err(e) => return Err(e),
             }
         }
 
+        let allocated_quantity = quantity_needed - remaining;
+        info!(
+            allocations_created = allocations.len(),
+            quantity_allocated = allocated_quantity,
+            quantity_unfulfilled = remaining,
+            "FIFO allocation completed"
+        );
         Ok(allocations)
     }
 }

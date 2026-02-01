@@ -5,6 +5,7 @@
 
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
+use tracing::{debug, info, instrument, warn};
 use webauthn_rs::prelude::Passkey;
 
 use naked_pineapple_core::{CredentialId, Email, UserId};
@@ -122,7 +123,9 @@ impl<'a> UserRepository<'a> {
     ///
     /// Returns `RepositoryError::Database` if the query fails.
     /// Returns `RepositoryError::DataCorruption` if the email in the database is invalid.
+    #[instrument(skip(self), fields(email = %email.as_str()), level = "debug")]
     pub async fn get_by_email(&self, email: &Email) -> Result<Option<User>, RepositoryError> {
+        debug!("Fetching user by email");
         let row = sqlx::query_as!(
             UserRow,
             r#"
@@ -137,6 +140,9 @@ impl<'a> UserRepository<'a> {
         .fetch_optional(self.pool)
         .await?;
 
+        if row.is_none() {
+            debug!("User not found");
+        }
         row.map(TryInto::try_into).transpose()
     }
 
@@ -146,7 +152,9 @@ impl<'a> UserRepository<'a> {
     ///
     /// Returns `RepositoryError::Database` if the query fails.
     /// Returns `RepositoryError::DataCorruption` if the email in the database is invalid.
+    #[instrument(skip(self), fields(user_id = %id.as_i32()), level = "debug")]
     pub async fn get_by_id(&self, id: UserId) -> Result<Option<User>, RepositoryError> {
+        debug!("Fetching user by ID");
         let row = sqlx::query_as!(
             UserRow,
             r#"
@@ -161,6 +169,9 @@ impl<'a> UserRepository<'a> {
         .fetch_optional(self.pool)
         .await?;
 
+        if row.is_none() {
+            debug!("User not found");
+        }
         row.map(TryInto::try_into).transpose()
     }
 
@@ -170,7 +181,9 @@ impl<'a> UserRepository<'a> {
     ///
     /// Returns `RepositoryError::Conflict` if the email already exists.
     /// Returns `RepositoryError::Database` for other database errors.
+    #[instrument(skip(self), fields(email = %email.as_str()), level = "debug")]
     pub async fn create(&self, email: &Email) -> Result<User, RepositoryError> {
+        debug!("Creating user");
         let row = sqlx::query_as!(
             UserRow,
             r#"
@@ -188,12 +201,15 @@ impl<'a> UserRepository<'a> {
             if let sqlx::Error::Database(ref db_err) = e
                 && db_err.is_unique_violation()
             {
+                warn!("User creation failed: email already exists");
                 return RepositoryError::Conflict("email already exists".to_owned());
             }
             RepositoryError::Database(e)
         })?;
 
-        row.try_into()
+        let user: User = row.try_into()?;
+        info!(user_id = %user.id.as_i32(), "User created");
+        Ok(user)
     }
 
     /// Create a new user with email and password.
@@ -202,11 +218,13 @@ impl<'a> UserRepository<'a> {
     ///
     /// Returns `RepositoryError::Conflict` if the email already exists.
     /// Returns `RepositoryError::Database` for other database errors.
+    #[instrument(skip(self, password_hash), fields(email = %email.as_str()), level = "debug")]
     pub async fn create_with_password(
         &self,
         email: &Email,
         password_hash: &str,
     ) -> Result<User, RepositoryError> {
+        debug!("Creating user with password");
         let mut tx = self.pool.begin().await?;
 
         // Create user
@@ -227,6 +245,7 @@ impl<'a> UserRepository<'a> {
             if let sqlx::Error::Database(ref db_err) = e
                 && db_err.is_unique_violation()
             {
+                warn!("User creation failed: email already exists");
                 return RepositoryError::Conflict("email already exists".to_owned());
             }
             RepositoryError::Database(e)
@@ -248,6 +267,7 @@ impl<'a> UserRepository<'a> {
 
         tx.commit().await?;
 
+        info!(user_id = %user.id.as_i32(), "User created with password");
         Ok(user)
     }
 
@@ -258,10 +278,12 @@ impl<'a> UserRepository<'a> {
     /// # Errors
     ///
     /// Returns `RepositoryError::Database` if the query fails.
+    #[instrument(skip(self), fields(email = %email.as_str()), level = "debug")]
     pub async fn get_password_hash(
         &self,
         email: &Email,
     ) -> Result<Option<(User, String)>, RepositoryError> {
+        debug!("Fetching password hash for user");
         let row = sqlx::query_as!(
             UserWithPasswordRow,
             r#"
@@ -279,10 +301,12 @@ impl<'a> UserRepository<'a> {
         .await?;
 
         let Some(r) = row else {
+            debug!("User not found");
             return Ok(None);
         };
 
         let Some(password_hash) = r.password_hash else {
+            debug!("User has no password set");
             return Ok(None);
         };
 
@@ -310,10 +334,12 @@ impl<'a> UserRepository<'a> {
     ///
     /// Returns `RepositoryError::Database` if the query fails.
     /// Returns `RepositoryError::DataCorruption` if any credential data is invalid.
+    #[instrument(skip(self), fields(shopify_customer_id = %shopify_customer_id), level = "debug")]
     pub async fn get_credentials_by_shopify_customer_id(
         &self,
         shopify_customer_id: &str,
     ) -> Result<Vec<UserCredential>, RepositoryError> {
+        debug!("Fetching credentials by Shopify customer ID");
         let rows = sqlx::query_as!(
             UserCredentialRow,
             r#"
@@ -328,6 +354,7 @@ impl<'a> UserRepository<'a> {
         .fetch_all(self.pool)
         .await?;
 
+        debug!(count = rows.len(), "Found credentials");
         rows.into_iter().map(TryInto::try_into).collect()
     }
 
@@ -339,10 +366,12 @@ impl<'a> UserRepository<'a> {
     ///
     /// Returns `RepositoryError::Database` if the query fails.
     /// Returns `RepositoryError::DataCorruption` if any credential data is invalid.
+    #[instrument(skip(self), fields(email = %email.as_str()), level = "debug")]
     pub async fn get_credentials_by_email(
         &self,
         email: &Email,
     ) -> Result<Vec<UserCredential>, RepositoryError> {
+        debug!("Fetching credentials by email");
         let rows = sqlx::query_as!(
             UserCredentialRow,
             r#"
@@ -357,6 +386,7 @@ impl<'a> UserRepository<'a> {
         .fetch_all(self.pool)
         .await?;
 
+        debug!(count = rows.len(), "Found credentials");
         rows.into_iter().map(TryInto::try_into).collect()
     }
 
@@ -366,6 +396,7 @@ impl<'a> UserRepository<'a> {
     ///
     /// Returns `RepositoryError::Conflict` if the credential ID already exists.
     /// Returns `RepositoryError::Database` for other database errors.
+    #[instrument(skip(self, passkey), fields(shopify_customer_id = %shopify_customer_id, email = %email.as_str()), level = "debug")]
     pub async fn create_credential_for_shopify_customer(
         &self,
         shopify_customer_id: &str,
@@ -373,6 +404,7 @@ impl<'a> UserRepository<'a> {
         passkey: &Passkey,
         name: &str,
     ) -> Result<UserCredential, RepositoryError> {
+        debug!("Creating credential for Shopify customer");
         let public_key = serde_json::to_vec(passkey).map_err(|e| {
             RepositoryError::DataCorruption(format!("failed to serialize passkey: {e}"))
         })?;
@@ -398,12 +430,15 @@ impl<'a> UserRepository<'a> {
             if let sqlx::Error::Database(ref db_err) = e
                 && db_err.is_unique_violation()
             {
+                warn!("Credential creation failed: credential already exists");
                 return RepositoryError::Conflict("credential already exists".to_owned());
             }
             RepositoryError::Database(e)
         })?;
 
-        row.try_into()
+        let credential: UserCredential = row.try_into()?;
+        info!(credential_id = %credential.id.as_i32(), "Credential created for Shopify customer");
+        Ok(credential)
     }
 
     /// Delete a credential by its database ID for a Shopify customer.
@@ -415,11 +450,13 @@ impl<'a> UserRepository<'a> {
     /// # Errors
     ///
     /// Returns `RepositoryError::Database` if the query fails.
+    #[instrument(skip(self), fields(shopify_customer_id = %shopify_customer_id, credential_id = %credential_id.as_i32()), level = "debug")]
     pub async fn delete_credential_for_shopify_customer(
         &self,
         shopify_customer_id: &str,
         credential_id: CredentialId,
     ) -> Result<bool, RepositoryError> {
+        debug!("Deleting credential for Shopify customer");
         let result = sqlx::query!(
             r#"
             DELETE FROM storefront.user_credential
@@ -431,7 +468,13 @@ impl<'a> UserRepository<'a> {
         .execute(self.pool)
         .await?;
 
-        Ok(result.rows_affected() > 0)
+        let deleted = result.rows_affected() > 0;
+        if deleted {
+            info!("Credential deleted for Shopify customer");
+        } else {
+            debug!("Credential not found for deletion");
+        }
+        Ok(deleted)
     }
 
     // =========================================================================
@@ -444,10 +487,12 @@ impl<'a> UserRepository<'a> {
     ///
     /// Returns `RepositoryError::Database` if the query fails.
     /// Returns `RepositoryError::DataCorruption` if any credential data is invalid.
+    #[instrument(skip(self), fields(user_id = %user_id.as_i32()), level = "debug")]
     pub async fn get_credentials(
         &self,
         user_id: UserId,
     ) -> Result<Vec<UserCredential>, RepositoryError> {
+        debug!("Fetching credentials for user (legacy)");
         let rows = sqlx::query_as!(
             UserCredentialRow,
             r#"
@@ -462,6 +507,7 @@ impl<'a> UserRepository<'a> {
         .fetch_all(self.pool)
         .await?;
 
+        debug!(count = rows.len(), "Found credentials");
         rows.into_iter().map(TryInto::try_into).collect()
     }
 
@@ -471,12 +517,14 @@ impl<'a> UserRepository<'a> {
     ///
     /// Returns `RepositoryError::Conflict` if the credential ID already exists.
     /// Returns `RepositoryError::Database` for other database errors.
+    #[instrument(skip(self, passkey), fields(user_id = %user_id.as_i32()), level = "debug")]
     pub async fn create_credential(
         &self,
         user_id: UserId,
         passkey: &Passkey,
         name: &str,
     ) -> Result<UserCredential, RepositoryError> {
+        debug!("Creating credential for user (legacy)");
         let public_key = serde_json::to_vec(passkey).map_err(|e| {
             RepositoryError::DataCorruption(format!("failed to serialize passkey: {e}"))
         })?;
@@ -501,12 +549,15 @@ impl<'a> UserRepository<'a> {
             if let sqlx::Error::Database(ref db_err) = e
                 && db_err.is_unique_violation()
             {
+                warn!("Credential creation failed: credential already exists");
                 return RepositoryError::Conflict("credential already exists".to_owned());
             }
             RepositoryError::Database(e)
         })?;
 
-        row.try_into()
+        let credential: UserCredential = row.try_into()?;
+        info!(credential_id = %credential.id.as_i32(), "Credential created for user (legacy)");
+        Ok(credential)
     }
 
     // =========================================================================
@@ -519,10 +570,12 @@ impl<'a> UserRepository<'a> {
     ///
     /// Returns `RepositoryError::Database` if the query fails.
     /// Returns `RepositoryError::DataCorruption` if the credential data is invalid.
+    #[instrument(skip(self, credential_id), level = "debug")]
     pub async fn get_credential_by_webauthn_id(
         &self,
         credential_id: &[u8],
     ) -> Result<Option<UserCredential>, RepositoryError> {
+        debug!("Fetching credential by WebAuthn ID");
         let row = sqlx::query_as!(
             UserCredentialRow,
             r#"
@@ -536,6 +589,9 @@ impl<'a> UserRepository<'a> {
         .fetch_optional(self.pool)
         .await?;
 
+        if row.is_none() {
+            debug!("Credential not found");
+        }
         row.map(TryInto::try_into).transpose()
     }
 
@@ -545,11 +601,13 @@ impl<'a> UserRepository<'a> {
     ///
     /// Returns `RepositoryError::NotFound` if the credential doesn't exist.
     /// Returns `RepositoryError::Database` for other database errors.
+    #[instrument(skip(self, credential_id), fields(counter = %counter), level = "debug")]
     pub async fn update_credential_counter(
         &self,
         credential_id: &[u8],
         counter: u32,
     ) -> Result<(), RepositoryError> {
+        debug!("Updating credential counter");
         let counter_i32 = i32::try_from(counter).unwrap_or(i32::MAX);
 
         let result = sqlx::query!(
@@ -565,9 +623,11 @@ impl<'a> UserRepository<'a> {
         .await?;
 
         if result.rows_affected() == 0 {
+            debug!("Credential not found for counter update");
             return Err(RepositoryError::NotFound);
         }
 
+        info!("Credential counter updated");
         Ok(())
     }
 
@@ -579,11 +639,13 @@ impl<'a> UserRepository<'a> {
     ///
     /// Returns `RepositoryError::NotFound` if the credential doesn't exist.
     /// Returns `RepositoryError::Database` for other database errors.
+    #[instrument(skip(self, credential_id, passkey), level = "debug")]
     pub async fn update_credential(
         &self,
         credential_id: &[u8],
         passkey: &Passkey,
     ) -> Result<(), RepositoryError> {
+        debug!("Updating credential passkey data");
         let public_key = serde_json::to_vec(passkey).map_err(|e| {
             RepositoryError::DataCorruption(format!("failed to serialize passkey: {e}"))
         })?;
@@ -601,9 +663,11 @@ impl<'a> UserRepository<'a> {
         .await?;
 
         if result.rows_affected() == 0 {
+            debug!("Credential not found for update");
             return Err(RepositoryError::NotFound);
         }
 
+        info!("Credential passkey data updated");
         Ok(())
     }
 
@@ -616,11 +680,13 @@ impl<'a> UserRepository<'a> {
     /// # Errors
     ///
     /// Returns `RepositoryError::Database` if the query fails.
+    #[instrument(skip(self), fields(user_id = %user_id.as_i32(), credential_id = %credential_id.as_i32()), level = "debug")]
     pub async fn delete_credential(
         &self,
         user_id: UserId,
         credential_id: CredentialId,
     ) -> Result<bool, RepositoryError> {
+        debug!("Deleting credential for user (legacy)");
         let result = sqlx::query!(
             r#"
             DELETE FROM storefront.user_credential
@@ -632,7 +698,13 @@ impl<'a> UserRepository<'a> {
         .execute(self.pool)
         .await?;
 
-        Ok(result.rows_affected() > 0)
+        let deleted = result.rows_affected() > 0;
+        if deleted {
+            info!("Credential deleted for user (legacy)");
+        } else {
+            debug!("Credential not found for deletion");
+        }
+        Ok(deleted)
     }
 
     /// Mark a user's email as verified.
@@ -641,7 +713,9 @@ impl<'a> UserRepository<'a> {
     ///
     /// Returns `RepositoryError::NotFound` if the user doesn't exist.
     /// Returns `RepositoryError::Database` for other database errors.
+    #[instrument(skip(self), fields(user_id = %user_id.as_i32()), level = "debug")]
     pub async fn verify_email(&self, user_id: UserId) -> Result<(), RepositoryError> {
+        debug!("Verifying user email");
         let result = sqlx::query!(
             r#"
             UPDATE storefront.user
@@ -654,9 +728,11 @@ impl<'a> UserRepository<'a> {
         .await?;
 
         if result.rows_affected() == 0 {
+            debug!("User not found for email verification");
             return Err(RepositoryError::NotFound);
         }
 
+        info!("User email verified");
         Ok(())
     }
 }

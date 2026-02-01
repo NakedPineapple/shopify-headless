@@ -4,6 +4,7 @@
 
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
+use tracing::{debug, info, instrument, warn};
 
 use naked_pineapple_core::{AdminUserId, Email};
 
@@ -106,7 +107,9 @@ impl<'a> AdminInviteRepository<'a> {
     /// # Errors
     ///
     /// Returns `RepositoryError::Database` if the query fails.
+    #[instrument(skip(self), level = "debug")]
     pub async fn list_all(&self) -> Result<Vec<AdminInvite>, RepositoryError> {
+        debug!("Listing all admin invites");
         let rows = sqlx::query_as!(
             AdminInviteRow,
             r#"
@@ -130,7 +133,9 @@ impl<'a> AdminInviteRepository<'a> {
     /// # Errors
     ///
     /// Returns `RepositoryError::Database` if the query fails.
+    #[instrument(skip(self), fields(email = %email), level = "debug")]
     pub async fn get_by_email(&self, email: &str) -> Result<Option<AdminInvite>, RepositoryError> {
+        debug!("Fetching admin invite by email");
         let row = sqlx::query_as!(
             AdminInviteRow,
             r#"
@@ -155,7 +160,9 @@ impl<'a> AdminInviteRepository<'a> {
     /// # Errors
     ///
     /// Returns `RepositoryError::Database` if the query fails.
+    #[instrument(skip(self), fields(email = %email), level = "debug")]
     pub async fn is_valid_invite(&self, email: &str) -> Result<bool, RepositoryError> {
+        debug!("Checking if email has valid invite");
         let exists = sqlx::query_scalar!(
             r#"
             SELECT EXISTS(
@@ -179,6 +186,7 @@ impl<'a> AdminInviteRepository<'a> {
     ///
     /// Returns `RepositoryError::Conflict` if an invite already exists for this email.
     /// Returns `RepositoryError::Database` for other database errors.
+    #[instrument(skip(self), fields(email = %email, name = %name, role = ?role, expires_in_days = %expires_in_days), level = "debug")]
     pub async fn create(
         &self,
         email: &str,
@@ -187,6 +195,7 @@ impl<'a> AdminInviteRepository<'a> {
         invited_by: Option<AdminUserId>,
         expires_in_days: i32,
     ) -> Result<AdminInvite, RepositoryError> {
+        debug!("Creating admin invite");
         let invited_by_id = invited_by.map(|id| id.as_i32());
 
         let row = sqlx::query_as!(
@@ -212,6 +221,7 @@ impl<'a> AdminInviteRepository<'a> {
             if let sqlx::Error::Database(ref db_err) = e
                 && db_err.is_unique_violation()
             {
+                warn!("Failed to create invite: email already has an invite");
                 return RepositoryError::Conflict(
                     "invite already exists for this email".to_owned(),
                 );
@@ -219,6 +229,7 @@ impl<'a> AdminInviteRepository<'a> {
             RepositoryError::Database(e)
         })?;
 
+        info!("Admin invite created successfully");
         row.try_into()
     }
 
@@ -230,11 +241,13 @@ impl<'a> AdminInviteRepository<'a> {
     ///
     /// Returns `RepositoryError::NotFound` if the invite doesn't exist.
     /// Returns `RepositoryError::Database` for other database errors.
+    #[instrument(skip(self), fields(email = %email, used_by = %used_by.as_i32()), level = "debug")]
     pub async fn mark_used(
         &self,
         email: &str,
         used_by: AdminUserId,
     ) -> Result<(), RepositoryError> {
+        debug!("Marking admin invite as used");
         let result = sqlx::query!(
             r#"
             UPDATE admin.admin_invite
@@ -251,6 +264,7 @@ impl<'a> AdminInviteRepository<'a> {
             return Err(RepositoryError::NotFound);
         }
 
+        info!("Admin invite marked as used");
         Ok(())
     }
 
@@ -259,7 +273,9 @@ impl<'a> AdminInviteRepository<'a> {
     /// # Errors
     ///
     /// Returns `RepositoryError::Database` if the query fails.
+    #[instrument(skip(self), level = "debug")]
     pub async fn delete_expired(&self) -> Result<u64, RepositoryError> {
+        debug!("Deleting expired admin invites");
         let result = sqlx::query!(
             r#"
             DELETE FROM admin.admin_invite
@@ -269,6 +285,10 @@ impl<'a> AdminInviteRepository<'a> {
         .execute(self.pool)
         .await?;
 
+        info!(
+            count = result.rows_affected(),
+            "Deleted expired admin invites"
+        );
         Ok(result.rows_affected())
     }
 
@@ -278,7 +298,9 @@ impl<'a> AdminInviteRepository<'a> {
     ///
     /// Returns `RepositoryError::NotFound` if the invite doesn't exist.
     /// Returns `RepositoryError::Database` for other database errors.
+    #[instrument(skip(self), fields(invite_id = %id), level = "debug")]
     pub async fn delete(&self, id: i32) -> Result<(), RepositoryError> {
+        debug!("Deleting admin invite");
         let result = sqlx::query!(
             r#"
             DELETE FROM admin.admin_invite
@@ -293,6 +315,7 @@ impl<'a> AdminInviteRepository<'a> {
             return Err(RepositoryError::NotFound);
         }
 
+        info!("Admin invite deleted");
         Ok(())
     }
 }

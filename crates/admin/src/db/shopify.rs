@@ -6,6 +6,7 @@
 use chrono::{DateTime, Utc};
 use secrecy::SecretString;
 use sqlx::PgPool;
+use tracing::{debug, info, instrument};
 
 use super::RepositoryError;
 
@@ -90,7 +91,10 @@ impl<'a> ShopifyTokenRepository<'a> {
     /// # Errors
     ///
     /// Returns `RepositoryError::Database` if the query fails.
+    #[instrument(skip(self), fields(shop = %shop), level = "debug")]
     pub async fn get_by_shop(&self, shop: &str) -> Result<Option<ShopifyToken>, RepositoryError> {
+        debug!("Fetching Shopify token");
+
         let row = sqlx::query_as!(
             ShopifyTokenRow,
             r#"
@@ -110,6 +114,10 @@ impl<'a> ShopifyTokenRepository<'a> {
         .fetch_optional(self.pool)
         .await?;
 
+        if row.is_none() {
+            debug!("Shopify token not found");
+        }
+
         Ok(row.map(ShopifyToken::from))
     }
 
@@ -120,6 +128,7 @@ impl<'a> ShopifyTokenRepository<'a> {
     /// # Errors
     ///
     /// Returns `RepositoryError::Database` if the query fails.
+    #[instrument(skip(self, access_token), fields(shop = %shop), level = "debug")]
     pub async fn save(
         &self,
         shop: &str,
@@ -127,6 +136,8 @@ impl<'a> ShopifyTokenRepository<'a> {
         scopes: &[String],
         obtained_at: i64,
     ) -> Result<(), RepositoryError> {
+        debug!("Saving Shopify token");
+
         let scope = scopes.join(",");
 
         sqlx::query!(
@@ -147,6 +158,8 @@ impl<'a> ShopifyTokenRepository<'a> {
         .execute(self.pool)
         .await?;
 
+        info!("Shopify token saved");
+
         Ok(())
     }
 
@@ -155,7 +168,10 @@ impl<'a> ShopifyTokenRepository<'a> {
     /// # Errors
     ///
     /// Returns `RepositoryError::Database` if the query fails.
+    #[instrument(skip(self), fields(shop = %shop), level = "debug")]
     pub async fn delete(&self, shop: &str) -> Result<bool, RepositoryError> {
+        debug!("Deleting Shopify token");
+
         let result = sqlx::query!(
             r#"
             DELETE FROM admin.shopify_token
@@ -166,7 +182,14 @@ impl<'a> ShopifyTokenRepository<'a> {
         .execute(self.pool)
         .await?;
 
-        Ok(result.rows_affected() > 0)
+        let deleted = result.rows_affected() > 0;
+        if deleted {
+            info!("Shopify token deleted");
+        } else {
+            debug!("Shopify token not found for deletion");
+        }
+
+        Ok(deleted)
     }
 
     /// Check if a shop has a token stored.
@@ -174,7 +197,10 @@ impl<'a> ShopifyTokenRepository<'a> {
     /// # Errors
     ///
     /// Returns `RepositoryError::Database` if the query fails.
+    #[instrument(skip(self), fields(shop = %shop), level = "debug")]
     pub async fn exists(&self, shop: &str) -> Result<bool, RepositoryError> {
+        debug!("Checking if Shopify token exists");
+
         let exists = sqlx::query_scalar!(
             r#"
             SELECT EXISTS(
@@ -185,6 +211,8 @@ impl<'a> ShopifyTokenRepository<'a> {
         )
         .fetch_one(self.pool)
         .await?;
+
+        debug!(exists = %exists, "Shopify token existence check complete");
 
         Ok(exists)
     }

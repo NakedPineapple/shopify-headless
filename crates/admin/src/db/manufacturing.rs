@@ -5,6 +5,7 @@
 use chrono::{DateTime, Datelike, NaiveDate, Utc};
 use rust_decimal::Decimal;
 use sqlx::PgPool;
+use tracing::{debug, info, instrument, warn};
 
 use naked_pineapple_core::{BatchMetadataId, ManufacturingBatchId};
 
@@ -137,10 +138,12 @@ impl<'a> ManufacturingRepository<'a> {
     /// Returns `RepositoryError::Conflict` if a batch with the same number
     /// already exists for this product.
     /// Returns `RepositoryError::Database` for other database errors.
+    #[instrument(skip(self, input), level = "debug", fields(batch_number = %input.batch_number, product_id = %input.shopify_product_id))]
     pub async fn create_batch(
         &self,
         input: &CreateBatchInput,
     ) -> Result<ManufacturingBatch, RepositoryError> {
+        debug!("Creating manufacturing batch");
         let row = sqlx::query_as!(
             ManufacturingBatchRow,
             r#"
@@ -179,6 +182,7 @@ impl<'a> ManufacturingRepository<'a> {
             if let sqlx::Error::Database(ref db_err) = e
                 && db_err.constraint() == Some("idx_manufacturing_batch_number_product")
             {
+                warn!(batch_number = %input.batch_number, "Batch number already exists for this product");
                 return RepositoryError::Conflict(
                     "Batch number already exists for this product".to_string(),
                 );
@@ -186,7 +190,9 @@ impl<'a> ManufacturingRepository<'a> {
             RepositoryError::Database(e)
         })?;
 
-        Ok(row.into())
+        let batch: ManufacturingBatch = row.into();
+        info!(batch_id = %batch.id.as_i32(), batch_number = %batch.batch_number, "Manufacturing batch created");
+        Ok(batch)
     }
 
     /// Get a manufacturing batch by ID.
@@ -194,10 +200,12 @@ impl<'a> ManufacturingRepository<'a> {
     /// # Errors
     ///
     /// Returns `RepositoryError::Database` if the query fails.
+    #[instrument(skip(self), level = "debug", fields(batch_id = %id.as_i32()))]
     pub async fn get_batch(
         &self,
         id: ManufacturingBatchId,
     ) -> Result<Option<ManufacturingBatch>, RepositoryError> {
+        debug!("Fetching manufacturing batch");
         let row = sqlx::query_as!(
             ManufacturingBatchRow,
             r#"
@@ -219,6 +227,9 @@ impl<'a> ManufacturingRepository<'a> {
         .fetch_optional(self.pool)
         .await?;
 
+        if row.is_none() {
+            debug!("Manufacturing batch not found");
+        }
         Ok(row.map(Into::into))
     }
 
@@ -227,10 +238,12 @@ impl<'a> ManufacturingRepository<'a> {
     /// # Errors
     ///
     /// Returns `RepositoryError::Database` if the query fails.
+    #[instrument(skip(self, filter), level = "debug")]
     pub async fn list_batches(
         &self,
         filter: &BatchFilter,
     ) -> Result<Vec<ManufacturingBatch>, RepositoryError> {
+        debug!("Listing manufacturing batches");
         let limit = filter.limit.unwrap_or(100);
         let offset = filter.offset.unwrap_or(0);
 
@@ -266,6 +279,7 @@ impl<'a> ManufacturingRepository<'a> {
         .fetch_all(self.pool)
         .await?;
 
+        debug!(count = rows.len(), "Found manufacturing batches");
         Ok(rows.into_iter().map(Into::into).collect())
     }
 
@@ -275,11 +289,13 @@ impl<'a> ManufacturingRepository<'a> {
     ///
     /// Returns `RepositoryError::NotFound` if the batch doesn't exist.
     /// Returns `RepositoryError::Database` for other database errors.
+    #[instrument(skip(self, input), level = "debug", fields(batch_id = %id.as_i32()))]
     pub async fn update_batch(
         &self,
         id: ManufacturingBatchId,
         input: &UpdateBatchInput,
     ) -> Result<ManufacturingBatch, RepositoryError> {
+        debug!("Updating manufacturing batch");
         let row = sqlx::query_as!(
             ManufacturingBatchRow,
             r#"
@@ -316,10 +332,14 @@ impl<'a> ManufacturingRepository<'a> {
             input.notes
         )
         .fetch_optional(self.pool)
-        .await?
-        .ok_or(RepositoryError::NotFound)?;
+        .await?;
 
-        Ok(row.into())
+        let batch = row.ok_or_else(|| {
+            debug!("Manufacturing batch not found for update");
+            RepositoryError::NotFound
+        })?;
+        info!(batch_id = %id.as_i32(), "Manufacturing batch updated");
+        Ok(batch.into())
     }
 
     /// Delete a manufacturing batch.
@@ -334,7 +354,9 @@ impl<'a> ManufacturingRepository<'a> {
     /// # Errors
     ///
     /// Returns `RepositoryError::Database` if the query fails.
+    #[instrument(skip(self), level = "debug", fields(batch_id = %id.as_i32()))]
     pub async fn delete_batch(&self, id: ManufacturingBatchId) -> Result<bool, RepositoryError> {
+        debug!("Deleting manufacturing batch");
         let result = sqlx::query!(
             r#"
             DELETE FROM admin.manufacturing_batch
@@ -345,7 +367,13 @@ impl<'a> ManufacturingRepository<'a> {
         .execute(self.pool)
         .await?;
 
-        Ok(result.rows_affected() > 0)
+        let deleted = result.rows_affected() > 0;
+        if deleted {
+            info!(batch_id = %id.as_i32(), "Manufacturing batch deleted");
+        } else {
+            debug!("Manufacturing batch not found for deletion");
+        }
+        Ok(deleted)
     }
 
     /// Count total batches matching filter.
@@ -353,7 +381,9 @@ impl<'a> ManufacturingRepository<'a> {
     /// # Errors
     ///
     /// Returns `RepositoryError::Database` if the query fails.
+    #[instrument(skip(self, filter), level = "debug")]
     pub async fn count_batches(&self, filter: &BatchFilter) -> Result<i64, RepositoryError> {
+        debug!("Counting manufacturing batches");
         let count = sqlx::query_scalar!(
             r#"
             SELECT COUNT(*) as "count!"
@@ -372,6 +402,7 @@ impl<'a> ManufacturingRepository<'a> {
         .fetch_one(self.pool)
         .await?;
 
+        debug!(count = count, "Counted manufacturing batches");
         Ok(count)
     }
 
@@ -380,10 +411,12 @@ impl<'a> ManufacturingRepository<'a> {
     /// # Errors
     ///
     /// Returns `RepositoryError::Database` if the query fails.
+    #[instrument(skip(self), level = "debug", fields(batch_id = %batch_id.as_i32()))]
     pub async fn get_lots_received(
         &self,
         batch_id: ManufacturingBatchId,
     ) -> Result<i64, RepositoryError> {
+        debug!("Getting total units received for batch");
         let count = sqlx::query_scalar!(
             r#"
             SELECT COALESCE(SUM(quantity), 0) as "count!"
@@ -395,6 +428,7 @@ impl<'a> ManufacturingRepository<'a> {
         .fetch_one(self.pool)
         .await?;
 
+        debug!(units_received = count, "Found units received for batch");
         Ok(count)
     }
 
@@ -407,12 +441,14 @@ impl<'a> ManufacturingRepository<'a> {
     /// # Errors
     ///
     /// Returns `RepositoryError::Database` if the query fails.
+    #[instrument(skip(self, value), level = "debug", fields(batch_id = %batch_id.as_i32(), key = %key))]
     pub async fn set_metadata(
         &self,
         batch_id: ManufacturingBatchId,
         key: &str,
         value: &serde_json::Value,
     ) -> Result<BatchMetadata, RepositoryError> {
+        debug!("Setting batch metadata");
         let row = sqlx::query_as!(
             BatchMetadataRow,
             r#"
@@ -431,7 +467,9 @@ impl<'a> ManufacturingRepository<'a> {
         .fetch_one(self.pool)
         .await?;
 
-        Ok(row.into())
+        let metadata: BatchMetadata = row.into();
+        info!(metadata_id = %metadata.id.as_i32(), batch_id = %batch_id.as_i32(), key = %key, "Batch metadata set");
+        Ok(metadata)
     }
 
     /// Get all metadata for a batch.
@@ -439,10 +477,12 @@ impl<'a> ManufacturingRepository<'a> {
     /// # Errors
     ///
     /// Returns `RepositoryError::Database` if the query fails.
+    #[instrument(skip(self), level = "debug", fields(batch_id = %batch_id.as_i32()))]
     pub async fn get_metadata(
         &self,
         batch_id: ManufacturingBatchId,
     ) -> Result<Vec<BatchMetadata>, RepositoryError> {
+        debug!("Fetching batch metadata");
         let rows = sqlx::query_as!(
             BatchMetadataRow,
             r#"
@@ -458,6 +498,7 @@ impl<'a> ManufacturingRepository<'a> {
         .fetch_all(self.pool)
         .await?;
 
+        debug!(count = rows.len(), "Found batch metadata entries");
         Ok(rows.into_iter().map(Into::into).collect())
     }
 
@@ -470,11 +511,13 @@ impl<'a> ManufacturingRepository<'a> {
     /// # Errors
     ///
     /// Returns `RepositoryError::Database` if the query fails.
+    #[instrument(skip(self), level = "debug", fields(batch_id = %batch_id.as_i32(), key = %key))]
     pub async fn delete_metadata(
         &self,
         batch_id: ManufacturingBatchId,
         key: &str,
     ) -> Result<bool, RepositoryError> {
+        debug!("Deleting batch metadata");
         let result = sqlx::query!(
             r#"
             DELETE FROM admin.batch_metadata
@@ -486,6 +529,12 @@ impl<'a> ManufacturingRepository<'a> {
         .execute(self.pool)
         .await?;
 
-        Ok(result.rows_affected() > 0)
+        let deleted = result.rows_affected() > 0;
+        if deleted {
+            info!(batch_id = %batch_id.as_i32(), key = %key, "Batch metadata deleted");
+        } else {
+            debug!("Batch metadata not found for deletion");
+        }
+        Ok(deleted)
     }
 }

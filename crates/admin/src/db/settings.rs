@@ -4,6 +4,7 @@
 
 use serde_json::Value as JsonValue;
 use sqlx::PgPool;
+use tracing::{debug, info, instrument};
 
 /// Error type for settings operations.
 #[derive(Debug, thiserror::Error)]
@@ -19,7 +20,9 @@ pub enum SettingsError {
 /// # Errors
 ///
 /// Returns an error if the database query fails.
+#[instrument(skip(pool), fields(key = %key), level = "debug")]
 pub async fn get_setting(pool: &PgPool, key: &str) -> Result<Option<JsonValue>, SettingsError> {
+    debug!("Fetching global setting");
     let result = sqlx::query_scalar!(
         r#"
         SELECT value FROM admin.settings
@@ -38,7 +41,9 @@ pub async fn get_setting(pool: &PgPool, key: &str) -> Result<Option<JsonValue>, 
 /// # Errors
 ///
 /// Returns an error if the database query fails.
+#[instrument(skip(pool, value), fields(key = %key), level = "debug")]
 pub async fn set_setting(pool: &PgPool, key: &str, value: &JsonValue) -> Result<(), SettingsError> {
+    debug!("Setting global setting");
     sqlx::query!(
         r#"
         INSERT INTO admin.settings (key, value, admin_user_id)
@@ -51,6 +56,7 @@ pub async fn set_setting(pool: &PgPool, key: &str, value: &JsonValue) -> Result<
     .execute(pool)
     .await?;
 
+    info!("Global setting saved");
     Ok(())
 }
 
@@ -59,11 +65,13 @@ pub async fn set_setting(pool: &PgPool, key: &str, value: &JsonValue) -> Result<
 /// # Errors
 ///
 /// Returns an error if the database query fails.
+#[instrument(skip(pool), fields(user_id = %user_id, key = %key), level = "debug")]
 pub async fn get_user_setting(
     pool: &PgPool,
     user_id: i32,
     key: &str,
 ) -> Result<Option<JsonValue>, SettingsError> {
+    debug!("Fetching user setting");
     let result = sqlx::query_scalar!(
         r#"
         SELECT value FROM admin.settings
@@ -83,12 +91,14 @@ pub async fn get_user_setting(
 /// # Errors
 ///
 /// Returns an error if the database query fails.
+#[instrument(skip(pool, value), fields(user_id = %user_id, key = %key), level = "debug")]
 pub async fn set_user_setting(
     pool: &PgPool,
     user_id: i32,
     key: &str,
     value: &JsonValue,
 ) -> Result<(), SettingsError> {
+    debug!("Setting user setting");
     sqlx::query!(
         r#"
         INSERT INTO admin.settings (key, value, admin_user_id)
@@ -102,6 +112,7 @@ pub async fn set_user_setting(
     .execute(pool)
     .await?;
 
+    info!("User setting saved");
     Ok(())
 }
 
@@ -110,11 +121,13 @@ pub async fn set_user_setting(
 /// # Errors
 ///
 /// Returns an error if the database query fails.
+#[instrument(skip(pool), fields(user_id = %user_id, key = %key), level = "debug")]
 pub async fn delete_user_setting(
     pool: &PgPool,
     user_id: i32,
     key: &str,
 ) -> Result<(), SettingsError> {
+    debug!("Deleting user setting");
     sqlx::query!(
         r#"
         DELETE FROM admin.settings
@@ -126,6 +139,7 @@ pub async fn delete_user_setting(
     .execute(pool)
     .await?;
 
+    info!("User setting deleted");
     Ok(())
 }
 
@@ -134,11 +148,13 @@ pub async fn delete_user_setting(
 /// # Errors
 ///
 /// Returns an error if the database query fails.
+#[instrument(skip(pool), fields(user_id = %user_id, prefix = %prefix), level = "debug")]
 pub async fn get_user_settings_by_prefix(
     pool: &PgPool,
     user_id: i32,
     prefix: &str,
 ) -> Result<Vec<(String, JsonValue)>, SettingsError> {
+    debug!("Fetching user settings by prefix");
     let pattern = format!("{prefix}%");
     let results = sqlx::query!(
         r#"

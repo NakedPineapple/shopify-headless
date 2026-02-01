@@ -2,6 +2,7 @@
 
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
+use tracing::{debug, info, instrument, warn};
 use uuid::Uuid;
 
 use super::RepositoryError;
@@ -74,10 +75,12 @@ pub struct CreatePendingAction {
 /// # Errors
 ///
 /// Returns error if the database insert fails.
+#[instrument(skip(pool, params), fields(tool = %params.tool_name, admin_id = %params.admin_user_id, session_id = %params.chat_session_id), level = "debug")]
 pub async fn create_pending_action(
     pool: &PgPool,
     params: CreatePendingAction,
 ) -> Result<PendingAction, RepositoryError> {
+    debug!("Creating pending action");
     let action = sqlx::query_as!(
         PendingAction,
         r#"
@@ -103,6 +106,7 @@ pub async fn create_pending_action(
     .fetch_one(pool)
     .await?;
 
+    info!(action_id = %action.id, "Pending action created");
     Ok(action)
 }
 
@@ -111,10 +115,12 @@ pub async fn create_pending_action(
 /// # Errors
 ///
 /// Returns error if the database query fails.
+#[instrument(skip(pool), fields(action_id = %action_id), level = "debug")]
 pub async fn get_pending_action(
     pool: &PgPool,
     action_id: Uuid,
 ) -> Result<Option<PendingAction>, RepositoryError> {
+    debug!("Looking up pending action");
     let action = sqlx::query_as!(
         PendingAction,
         r#"
@@ -134,6 +140,7 @@ pub async fn get_pending_action(
     .fetch_optional(pool)
     .await?;
 
+    debug!(found = action.is_some(), "Pending action lookup complete");
     Ok(action)
 }
 
@@ -142,12 +149,14 @@ pub async fn get_pending_action(
 /// # Errors
 ///
 /// Returns error if the database update fails.
+#[instrument(skip(pool), fields(action_id = %action_id, channel_id = %channel_id), level = "debug")]
 pub async fn update_slack_info(
     pool: &PgPool,
     action_id: Uuid,
     message_ts: &str,
     channel_id: &str,
 ) -> Result<(), RepositoryError> {
+    debug!("Updating Slack info for pending action");
     sqlx::query!(
         r#"
         UPDATE admin.pending_actions
@@ -161,6 +170,7 @@ pub async fn update_slack_info(
     .execute(pool)
     .await?;
 
+    debug!("Slack info updated");
     Ok(())
 }
 
@@ -169,11 +179,13 @@ pub async fn update_slack_info(
 /// # Errors
 ///
 /// Returns error if the database update fails.
+#[instrument(skip(pool), fields(action_id = %action_id, approved_by = %approved_by), level = "debug")]
 pub async fn approve_action(
     pool: &PgPool,
     action_id: Uuid,
     approved_by: &str,
 ) -> Result<(), RepositoryError> {
+    debug!("Approving pending action");
     sqlx::query!(
         r#"
         UPDATE admin.pending_actions
@@ -186,6 +198,7 @@ pub async fn approve_action(
     .execute(pool)
     .await?;
 
+    info!("Action approved");
     Ok(())
 }
 
@@ -194,11 +207,13 @@ pub async fn approve_action(
 /// # Errors
 ///
 /// Returns error if the database update fails.
+#[instrument(skip(pool), fields(action_id = %action_id, rejected_by = %rejected_by), level = "debug")]
 pub async fn reject_action(
     pool: &PgPool,
     action_id: Uuid,
     rejected_by: &str,
 ) -> Result<(), RepositoryError> {
+    debug!("Rejecting pending action");
     sqlx::query!(
         r#"
         UPDATE admin.pending_actions
@@ -211,6 +226,7 @@ pub async fn reject_action(
     .execute(pool)
     .await?;
 
+    info!("Action rejected");
     Ok(())
 }
 
@@ -219,11 +235,13 @@ pub async fn reject_action(
 /// # Errors
 ///
 /// Returns error if the database update fails.
+#[instrument(skip(pool, result), fields(action_id = %action_id), level = "debug")]
 pub async fn mark_executed(
     pool: &PgPool,
     action_id: Uuid,
     result: &serde_json::Value,
 ) -> Result<(), RepositoryError> {
+    debug!("Marking action as executed");
     sqlx::query!(
         r#"
         UPDATE admin.pending_actions
@@ -236,6 +254,7 @@ pub async fn mark_executed(
     .execute(pool)
     .await?;
 
+    info!("Action marked as executed");
     Ok(())
 }
 
@@ -244,11 +263,13 @@ pub async fn mark_executed(
 /// # Errors
 ///
 /// Returns error if the database update fails.
+#[instrument(skip(pool), fields(action_id = %action_id), level = "debug")]
 pub async fn mark_failed(
     pool: &PgPool,
     action_id: Uuid,
     error_message: &str,
 ) -> Result<(), RepositoryError> {
+    debug!("Marking action as failed");
     sqlx::query!(
         r#"
         UPDATE admin.pending_actions
@@ -261,6 +282,7 @@ pub async fn mark_failed(
     .execute(pool)
     .await?;
 
+    warn!(error = %error_message, "Action marked as failed");
     Ok(())
 }
 
@@ -272,7 +294,9 @@ pub async fn mark_failed(
 /// # Errors
 ///
 /// Returns error if the database query fails.
+#[instrument(skip(pool), level = "debug")]
 pub async fn get_expiring_actions(pool: &PgPool) -> Result<Vec<PendingAction>, RepositoryError> {
+    debug!("Querying for expiring actions");
     let actions = sqlx::query_as::<_, PendingAction>(
         r"
         SELECT
@@ -299,6 +323,7 @@ pub async fn get_expiring_actions(pool: &PgPool) -> Result<Vec<PendingAction>, R
     .fetch_all(pool)
     .await?;
 
+    debug!(count = actions.len(), "Found expiring actions");
     Ok(actions)
 }
 
@@ -309,7 +334,9 @@ pub async fn get_expiring_actions(pool: &PgPool) -> Result<Vec<PendingAction>, R
 /// # Errors
 ///
 /// Returns error if the database update fails.
+#[instrument(skip(pool), level = "debug")]
 pub async fn expire_stale_actions(pool: &PgPool) -> Result<u64, RepositoryError> {
+    debug!("Expiring stale pending actions");
     let result = sqlx::query!(
         r#"
         UPDATE admin.pending_actions
@@ -320,7 +347,9 @@ pub async fn expire_stale_actions(pool: &PgPool) -> Result<u64, RepositoryError>
     .execute(pool)
     .await?;
 
-    Ok(result.rows_affected())
+    let count = result.rows_affected();
+    info!(count, "Expired stale actions");
+    Ok(count)
 }
 
 /// Get pending actions for a chat session.
@@ -328,10 +357,12 @@ pub async fn expire_stale_actions(pool: &PgPool) -> Result<u64, RepositoryError>
 /// # Errors
 ///
 /// Returns error if the database query fails.
+#[instrument(skip(pool), fields(session_id = %chat_session_id), level = "debug")]
 pub async fn get_pending_actions_for_session(
     pool: &PgPool,
     chat_session_id: i32,
 ) -> Result<Vec<PendingAction>, RepositoryError> {
+    debug!("Querying pending actions for session");
     let actions = sqlx::query_as::<_, PendingAction>(
         r"
         SELECT
@@ -349,6 +380,7 @@ pub async fn get_pending_actions_for_session(
     .fetch_all(pool)
     .await?;
 
+    debug!(count = actions.len(), "Found pending actions for session");
     Ok(actions)
 }
 
@@ -357,10 +389,12 @@ pub async fn get_pending_actions_for_session(
 /// # Errors
 ///
 /// Returns error if the database query fails.
+#[instrument(skip(pool), fields(admin_id = %admin_user_id), level = "debug")]
 pub async fn get_pending_actions_for_admin(
     pool: &PgPool,
     admin_user_id: i32,
 ) -> Result<Vec<PendingAction>, RepositoryError> {
+    debug!("Querying pending actions for admin user");
     let actions = sqlx::query_as::<_, PendingAction>(
         r"
         SELECT
@@ -378,5 +412,6 @@ pub async fn get_pending_actions_for_admin(
     .fetch_all(pool)
     .await?;
 
+    debug!(count = actions.len(), "Found pending actions for admin");
     Ok(actions)
 }
