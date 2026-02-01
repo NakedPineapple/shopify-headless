@@ -172,16 +172,22 @@ async fn index_collections(
     writer: &tantivy::IndexWriter,
     fields: &SearchFields,
 ) -> usize {
+    debug!("Starting to fetch collections from Shopify");
     let mut count = 0;
     let mut cursor: Option<String> = None;
+    let mut page = 0;
 
     loop {
+        page += 1;
+        debug!(page, cursor = ?cursor, "Fetching collections page");
         let result = storefront
             .get_collections(Some(50), cursor.clone(), None)
             .await;
 
         match result {
             Ok(connection) => {
+                let batch_size = connection.collections.len();
+                debug!(page, batch_size, "Received collections batch");
                 for collection in &connection.collections {
                     let doc = tantivy::doc!(
                         fields.doc_type => DocType::Collection.as_str(),
@@ -226,6 +232,7 @@ fn index_pages(
     writer: &tantivy::IndexWriter,
     fields: &SearchFields,
 ) -> usize {
+    debug!("Starting to index local pages");
     let mut count = 0;
 
     for page in content.get_all_pages() {
@@ -259,6 +266,7 @@ fn index_articles(
     writer: &tantivy::IndexWriter,
     fields: &SearchFields,
 ) -> usize {
+    debug!("Starting to index local articles");
     let mut count = 0;
 
     for post in content.get_published_posts() {

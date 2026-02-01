@@ -23,7 +23,7 @@ use chrono::{Datelike, Duration, Local, TimeZone, Utc};
 use futures::{Stream, StreamExt};
 use serde::Serialize;
 use sqlx::PgPool;
-use tracing::{debug, info, instrument, warn};
+use tracing::{debug, error, info, instrument, warn};
 use uuid::Uuid;
 
 use naked_pineapple_core::{AdminUserId, ChatMessageId, ChatRole, ChatSessionId};
@@ -294,12 +294,24 @@ impl<'a> ChatService<'a> {
     /// # Errors
     ///
     /// Returns an error if the database operation fails.
+    #[instrument(skip(self), fields(admin_user_id = %admin_user_id))]
     pub async fn create_session(
         &self,
         admin_user_id: AdminUserId,
     ) -> Result<ChatSession, ChatError> {
+        debug!("Creating new chat session");
+        let start = Instant::now();
+
         let repo = ChatRepository::new(self.pool);
-        Ok(repo.create_session(admin_user_id).await?)
+        let session = repo.create_session(admin_user_id).await?;
+
+        info!(
+            session_id = %session.id,
+            duration_ms = %start.elapsed().as_millis(),
+            "Chat session created successfully"
+        );
+
+        Ok(session)
     }
 
     /// Get a chat session by ID.
@@ -307,12 +319,19 @@ impl<'a> ChatService<'a> {
     /// # Errors
     ///
     /// Returns an error if the database operation fails.
+    #[instrument(skip(self), fields(session_id = %session_id))]
     pub async fn get_session(
         &self,
         session_id: ChatSessionId,
     ) -> Result<Option<ChatSession>, ChatError> {
+        debug!("Fetching chat session");
+
         let repo = ChatRepository::new(self.pool);
-        Ok(repo.get_session(session_id).await?)
+        let session = repo.get_session(session_id).await?;
+
+        debug!(found = session.is_some(), "Chat session lookup complete");
+
+        Ok(session)
     }
 
     /// List chat sessions for an admin user.
@@ -320,12 +339,19 @@ impl<'a> ChatService<'a> {
     /// # Errors
     ///
     /// Returns an error if the database operation fails.
+    #[instrument(skip(self), fields(admin_user_id = %admin_user_id))]
     pub async fn list_sessions(
         &self,
         admin_user_id: AdminUserId,
     ) -> Result<Vec<ChatSession>, ChatError> {
+        debug!("Listing chat sessions for user");
+
         let repo = ChatRepository::new(self.pool);
-        Ok(repo.list_sessions(admin_user_id).await?)
+        let sessions = repo.list_sessions(admin_user_id).await?;
+
+        debug!(count = sessions.len(), "Chat sessions retrieved");
+
+        Ok(sessions)
     }
 
     /// Get all messages in a session.
@@ -333,12 +359,19 @@ impl<'a> ChatService<'a> {
     /// # Errors
     ///
     /// Returns an error if the database operation fails.
+    #[instrument(skip(self), fields(session_id = %session_id))]
     pub async fn get_messages(
         &self,
         session_id: ChatSessionId,
     ) -> Result<Vec<ChatMessage>, ChatError> {
+        debug!("Fetching messages for session");
+
         let repo = ChatRepository::new(self.pool);
-        Ok(repo.get_messages(session_id).await?)
+        let messages = repo.get_messages(session_id).await?;
+
+        debug!(count = messages.len(), "Messages retrieved");
+
+        Ok(messages)
     }
 
     /// Send a message and get a response.
@@ -360,14 +393,20 @@ impl<'a> ChatService<'a> {
         session_id: ChatSessionId,
         user_message: &str,
     ) -> Result<Vec<ChatMessage>, ChatError> {
+        debug!("Processing chat message (non-streaming)");
+        let start = Instant::now();
+
         let repo = ChatRepository::new(self.pool);
 
         // Verify session exists
+        debug!("Verifying session exists");
         if repo.get_session(session_id).await?.is_none() {
+            warn!("Session not found");
             return Err(ChatError::SessionNotFound);
         }
 
         // Save user message
+        debug!("Saving user message");
         let user_content = serde_json::json!({ "text": user_message });
         let user_msg = repo
             .add_message(session_id, ChatRole::User, user_content)
@@ -376,13 +415,16 @@ impl<'a> ChatService<'a> {
         let mut new_messages = vec![user_msg];
 
         // Load full conversation history
+        debug!("Loading conversation history");
         let history = repo.get_messages(session_id).await?;
+        debug!(message_count = history.len(), "Conversation history loaded");
 
         // Convert to Claude message format
         let mut claude_messages = convert_to_claude_messages(&history);
 
         // Get available tools and system prompt
         let tools = all_shopify_tools();
+        debug!(tool_count = tools.len(), "Tools loaded for Claude request");
         let system_prompt = render_system_prompt();
 
         // Tool use loop
@@ -391,12 +433,18 @@ impl<'a> ChatService<'a> {
 
         loop {
             iterations += 1;
+            debug!(iteration = iterations, "Starting Claude API call iteration");
+
             if iterations > MAX_TOOL_ITERATIONS {
-                warn!("Too many tool iterations, stopping");
+                warn!(
+                    max_iterations = MAX_TOOL_ITERATIONS,
+                    "Too many tool iterations, stopping"
+                );
                 return Err(ChatError::TooManyToolIterations);
             }
 
             // Send to Claude
+            let api_start = Instant::now();
             let response = self
                 .claude
                 .chat(
@@ -409,39 +457,27 @@ impl<'a> ChatService<'a> {
             info!(
                 stop_reason = ?response.stop_reason,
                 content_blocks = response.content.len(),
+                duration_ms = %api_start.elapsed().as_millis(),
                 "Claude response received"
             );
 
             // Process response content
-            let mut has_tool_use = false;
-            let mut tool_results: Vec<ContentBlock> = Vec::new();
-
-            for block in &response.content {
-                match block {
-                    ContentBlock::Text { text } => {
-                        // Save assistant text message
-                        let content = serde_json::json!({ "text": text });
-                        let msg = repo
-                            .add_message(session_id, ChatRole::Assistant, content)
-                            .await?;
-                        new_messages.push(msg);
-                    }
-                    ContentBlock::ToolUse { id, name, input } => {
-                        has_tool_use = true;
-                        let (tool_use_msg, tool_result_msg, tool_result_block) =
-                            execute_tool_use(&repo, &executor, session_id, id, name, input).await?;
-                        new_messages.push(tool_use_msg);
-                        new_messages.push(tool_result_msg);
-                        tool_results.push(tool_result_block);
-                    }
-                    ContentBlock::ToolResult { .. } => {
-                        // Should not appear in response
-                    }
-                }
-            }
+            let (has_tool_use, tool_results) = process_response_blocks(
+                &repo,
+                &executor,
+                session_id,
+                &response.content,
+                &mut new_messages,
+            )
+            .await?;
 
             // If Claude wants to use tools, add results and continue
             if has_tool_use && response.stop_reason == Some(StopReason::ToolUse) {
+                debug!(
+                    tool_results_count = tool_results.len(),
+                    "Claude requested tool use, continuing conversation"
+                );
+
                 // Add assistant message with tool use to conversation
                 claude_messages.push(Message {
                     role: "assistant".to_string(),
@@ -457,6 +493,7 @@ impl<'a> ChatService<'a> {
                 continue;
             }
 
+            debug!("No more tool use requested, ending conversation loop");
             // Done - no more tool use
             break;
         }
@@ -464,9 +501,17 @@ impl<'a> ChatService<'a> {
         // Update session title from first message if not set
         if new_messages.len() == 1 {
             // This is the first message in a new session
+            debug!("First message in session, generating title");
             let title = generate_title(user_message);
             let _ = repo.update_session_title(session_id, &title).await;
         }
+
+        info!(
+            message_count = new_messages.len(),
+            iterations = iterations,
+            duration_ms = %start.elapsed().as_millis(),
+            "Chat message processed successfully"
+        );
 
         Ok(new_messages)
     }
@@ -491,6 +536,7 @@ impl<'a> ChatService<'a> {
         session_id: ChatSessionId,
         user_message: String,
     ) -> impl Stream<Item = ChatStreamEvent> + Send + 'static {
+        debug!("Starting streaming chat message");
         stream_chat_message(
             self.pool.clone(),
             self.claude.clone(),
@@ -526,6 +572,7 @@ pub fn stream_chat_message(
     session_id: ChatSessionId,
     user_message: String,
 ) -> impl Stream<Item = ChatStreamEvent> + Send + 'static {
+    debug!("Initializing streaming chat message");
     streaming_chat_loop(pool, claude, shopify, session_id, user_message)
 }
 
@@ -615,12 +662,18 @@ fn streaming_chat_loop(
     user_message: String,
 ) -> impl Stream<Item = ChatStreamEvent> + Send {
     stream! {
+        debug!("Starting streaming chat loop");
+        let stream_start = Instant::now();
         let repo = ChatRepository::new(&pool);
 
         // Verify session exists
+        debug!("Verifying session exists");
         match repo.get_session(session_id).await {
-            Ok(Some(_)) => {}
+            Ok(Some(_)) => {
+                debug!("Session verified");
+            }
             Ok(None) => {
+                warn!("Session not found in streaming chat");
                 yield ChatStreamEvent::Error {
                     message: "Session not found".to_string(),
                 };
@@ -628,6 +681,7 @@ fn streaming_chat_loop(
                 return;
             }
             Err(e) => {
+                error!(error = %e, "Database error verifying session");
                 yield ChatStreamEvent::Error {
                     message: format!("Database error: {e}"),
                 };
@@ -637,6 +691,7 @@ fn streaming_chat_loop(
         }
 
         // Save user message
+        debug!("Saving user message");
         let user_content = serde_json::json!({ "text": &user_message });
         let user_msg_result = repo
             .add_message(session_id, ChatRole::User, user_content)
@@ -644,12 +699,14 @@ fn streaming_chat_loop(
 
         match user_msg_result {
             Ok(msg) => {
+                debug!(message_id = %msg.id, "User message saved");
                 yield ChatStreamEvent::MessageSaved {
                     message_id: msg.id,
                     role: "user".to_string(),
                 };
             }
             Err(e) => {
+                error!(error = %e, "Failed to save user message");
                 yield ChatStreamEvent::Error {
                     message: format!("Failed to save user message: {e}"),
                 };
@@ -663,11 +720,17 @@ fn streaming_chat_loop(
             repo.get_messages(session_id).await,
             Ok(msgs) if msgs.len() == 1
         );
+        debug!(is_first_message = is_first_message, "Checked first message status");
 
         // Load full conversation history
+        debug!("Loading conversation history");
         let history = match repo.get_messages(session_id).await {
-            Ok(h) => h,
+            Ok(h) => {
+                debug!(message_count = h.len(), "Conversation history loaded");
+                h
+            }
             Err(e) => {
+                error!(error = %e, "Failed to load conversation history");
                 yield ChatStreamEvent::Error {
                     message: format!("Failed to load history: {e}"),
                 };
@@ -681,6 +744,7 @@ fn streaming_chat_loop(
 
         // Get available tools and system prompt
         let tools = all_shopify_tools();
+        debug!(tool_count = tools.len(), "Tools loaded for streaming request");
         let system_prompt = render_system_prompt();
 
         // Tool use loop
@@ -689,8 +753,13 @@ fn streaming_chat_loop(
 
         loop {
             iterations += 1;
+            debug!(iteration = iterations, "Starting streaming Claude API call iteration");
+
             if iterations > MAX_TOOL_ITERATIONS {
-                warn!("Too many tool iterations, stopping");
+                warn!(
+                    max_iterations = MAX_TOOL_ITERATIONS,
+                    "Too many tool iterations in streaming, stopping"
+                );
                 yield ChatStreamEvent::Error {
                     message: "Request processing exceeded limits".to_string(),
                 };
@@ -701,6 +770,7 @@ fn streaming_chat_loop(
             let start_time = Instant::now();
 
             // Call Claude with streaming
+            debug!("Initiating Claude streaming API call");
             let stream_result = claude
                 .chat_stream(
                     claude_messages.clone(),
@@ -710,8 +780,12 @@ fn streaming_chat_loop(
                 .await;
 
             let claude_stream = match stream_result {
-                Ok(s) => s,
+                Ok(s) => {
+                    debug!("Claude streaming response initiated");
+                    s
+                }
                 Err(e) => {
+                    error!(error = %e, "Claude streaming API error");
                     yield ChatStreamEvent::Error {
                         message: format!("Claude API error: {e}"),
                     };
@@ -732,12 +806,20 @@ fn streaming_chat_loop(
                         }
                     }
                     Err(e) => {
+                        error!(error = %e, "Error in Claude stream");
                         yield ChatStreamEvent::Error {
                             message: format!("Stream error: {e}"),
                         };
                     }
                 }
             }
+
+            debug!(
+                duration_ms = %start_time.elapsed().as_millis(),
+                blocks = state.blocks.len(),
+                stop_reason = ?state.stop_reason,
+                "Streaming response complete"
+            );
 
             // Convert duration and token counts safely (saturating at max values)
             let duration_ms = i64::try_from(start_time.elapsed().as_millis()).unwrap_or(i64::MAX);
@@ -822,6 +904,11 @@ fn streaming_chat_loop(
 
             // If there are tool uses and stop_reason is ToolUse, execute them
             if !tool_uses.is_empty() && state.stop_reason == Some(StopReason::ToolUse) {
+                debug!(
+                    tool_count = tool_uses.len(),
+                    "Processing tool use requests"
+                );
+
                 // Add assistant message with tool use to conversation
                 claude_messages.push(Message {
                     role: "assistant".to_string(),
@@ -831,6 +918,12 @@ fn streaming_chat_loop(
                 let mut tool_results: Vec<ContentBlock> = Vec::new();
 
                 for tool_use in &tool_uses {
+                    debug!(
+                        tool_name = %tool_use.name,
+                        tool_id = %tool_use.id,
+                        "Processing tool use"
+                    );
+
                     // Save tool use message
                     let tool_use_content = serde_json::json!({
                         "id": &tool_use.id,
@@ -841,6 +934,7 @@ fn streaming_chat_loop(
                         .add_message(session_id, ChatRole::ToolUse, tool_use_content)
                         .await
                     {
+                        debug!(message_id = %msg.id, "Tool use message saved");
                         yield ChatStreamEvent::MessageSaved {
                             message_id: msg.id,
                             role: "tool_use".to_string(),
@@ -848,16 +942,37 @@ fn streaming_chat_loop(
                     }
 
                     // Execute the tool
+                    debug!(tool_name = %tool_use.name, "Executing tool");
+                    let tool_start = Instant::now();
                     let result = executor.execute(&tool_use.name, &tool_use.input).await;
 
                     let (result_content, is_error) = match result {
-                        Ok(ToolResult::Success(content)) => (content, false),
+                        Ok(ToolResult::Success(content)) => {
+                            debug!(
+                                tool_name = %tool_use.name,
+                                duration_ms = %tool_start.elapsed().as_millis(),
+                                "Tool executed successfully"
+                            );
+                            (content, false)
+                        }
                         Ok(ToolResult::RequiresConfirmation { tool_name, .. }) => {
                             // Write operations require confirmation via Slack
                             // For now, return a message indicating this
+                            debug!(
+                                tool_name = %tool_name,
+                                "Tool requires confirmation"
+                            );
                             (format!("Action '{tool_name}' requires confirmation. This feature is not yet implemented."), false)
                         }
-                        Err(e) => (format!("Error: {e}"), true),
+                        Err(e) => {
+                            warn!(
+                                tool_name = %tool_use.name,
+                                error = %e,
+                                duration_ms = %tool_start.elapsed().as_millis(),
+                                "Tool execution failed"
+                            );
+                            (format!("Error: {e}"), true)
+                        }
                     };
 
                     // Emit tool result event
@@ -897,19 +1012,28 @@ fn streaming_chat_loop(
                     content: MessageContent::Blocks(tool_results),
                 });
 
+                debug!("Tool results added, continuing conversation loop");
                 // Continue the loop for Claude's next response
                 continue;
             }
 
+            debug!("No more tool use requested, ending streaming loop");
             // Done - no more tool use
             break;
         }
 
         // Update session title from first message if not set
         if is_first_message {
+            debug!("First message in session, generating title");
             let title = generate_title(&user_message);
             let _ = repo.update_session_title(session_id, &title).await;
         }
+
+        info!(
+            iterations = iterations,
+            duration_ms = %stream_start.elapsed().as_millis(),
+            "Streaming chat completed successfully"
+        );
 
         yield ChatStreamEvent::Done;
     }
@@ -1092,9 +1216,52 @@ fn get_json_str(content: &serde_json::Value, key: &str) -> String {
         .to_string()
 }
 
+/// Process Claude response content blocks.
+///
+/// Iterates through each content block, saving messages and executing tools as needed.
+/// Returns whether any tool use was requested and the tool result blocks for continuation.
+async fn process_response_blocks(
+    repo: &ChatRepository<'_>,
+    executor: &ToolExecutor<'_>,
+    session_id: ChatSessionId,
+    content: &[ContentBlock],
+    new_messages: &mut Vec<ChatMessage>,
+) -> Result<(bool, Vec<ContentBlock>), ChatError> {
+    let mut has_tool_use = false;
+    let mut tool_results: Vec<ContentBlock> = Vec::new();
+
+    for block in content {
+        match block {
+            ContentBlock::Text { text } => {
+                debug!(text_length = text.len(), "Processing text block");
+                let content = serde_json::json!({ "text": text });
+                let msg = repo
+                    .add_message(session_id, ChatRole::Assistant, content)
+                    .await?;
+                new_messages.push(msg);
+            }
+            ContentBlock::ToolUse { id, name, input } => {
+                has_tool_use = true;
+                debug!(tool_name = %name, tool_id = %id, "Processing tool use block");
+                let (tool_use_msg, tool_result_msg, tool_result_block) =
+                    execute_tool_use(repo, executor, session_id, id, name, input).await?;
+                new_messages.push(tool_use_msg);
+                new_messages.push(tool_result_msg);
+                tool_results.push(tool_result_block);
+            }
+            ContentBlock::ToolResult { .. } => {
+                debug!("Unexpected tool result block in response");
+            }
+        }
+    }
+
+    Ok((has_tool_use, tool_results))
+}
+
 /// Execute a tool use block and save the messages.
 ///
 /// Returns (`tool_use_message`, `tool_result_message`, `tool_result_block`).
+#[instrument(skip(repo, executor, input), fields(session_id = %session_id, tool_name = %name, tool_id = %id))]
 async fn execute_tool_use(
     repo: &ChatRepository<'_>,
     executor: &ToolExecutor<'_>,
@@ -1103,7 +1270,11 @@ async fn execute_tool_use(
     name: &str,
     input: &serde_json::Value,
 ) -> Result<(ChatMessage, ChatMessage, ContentBlock), ChatError> {
+    debug!("Executing tool use");
+    let start = Instant::now();
+
     // Save tool use message
+    debug!("Saving tool use message");
     let tool_use_content = serde_json::json!({
         "id": id,
         "name": name,
@@ -1114,10 +1285,25 @@ async fn execute_tool_use(
         .await?;
 
     // Execute the tool
+    debug!("Executing tool");
+    let tool_start = Instant::now();
     let result = executor.execute(name, input).await;
     let (result_content, is_error) = convert_tool_result(result);
 
+    if is_error {
+        warn!(
+            duration_ms = %tool_start.elapsed().as_millis(),
+            "Tool execution returned error"
+        );
+    } else {
+        debug!(
+            duration_ms = %tool_start.elapsed().as_millis(),
+            "Tool execution completed"
+        );
+    }
+
     // Save tool result message
+    debug!("Saving tool result message");
     let tool_result_content = serde_json::json!({
         "tool_use_id": id,
         "content": result_content,
@@ -1133,6 +1319,11 @@ async fn execute_tool_use(
         content: result_content,
         is_error: Some(is_error),
     };
+
+    debug!(
+        duration_ms = %start.elapsed().as_millis(),
+        "Tool use execution complete"
+    );
 
     Ok((tool_use_msg, tool_result_msg, tool_result_block))
 }

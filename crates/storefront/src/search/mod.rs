@@ -21,7 +21,7 @@ use tantivy::schema::{
     Field, IndexRecordOption, STORED, Schema, TextFieldIndexing, TextOptions, Value,
 };
 use tantivy::{Index, IndexReader, ReloadPolicy, Term};
-use tracing::instrument;
+use tracing::{debug, instrument, warn};
 
 pub use indexer::build_index_async;
 
@@ -128,12 +128,18 @@ impl SearchIndex {
     }
 
     /// Set the built index. Called by the background builder task.
+    #[instrument(skip(self, index, fields))]
     pub(crate) fn set_ready(&self, index: Index, fields: SearchFields) -> Result<(), SearchError> {
+        debug!("Setting search index as ready");
+
         let reader = index
             .reader_builder()
             .reload_policy(ReloadPolicy::Manual)
             .try_into()
-            .map_err(|e| SearchError::Index(format!("Failed to create reader: {e}")))?;
+            .map_err(|e| {
+                warn!(error = %e, "Failed to create index reader");
+                SearchError::Index(format!("Failed to create reader: {e}"))
+            })?;
 
         let ready = ReadyIndex {
             index,
@@ -141,11 +147,12 @@ impl SearchIndex {
             fields,
         };
 
-        *self
-            .inner
-            .write()
-            .map_err(|_| SearchError::Index("Lock poisoned".to_string()))? = Some(ready);
+        *self.inner.write().map_err(|_| {
+            warn!("Search index lock poisoned during set_ready");
+            SearchError::Index("Lock poisoned".to_string())
+        })? = Some(ready);
 
+        debug!("Search index successfully set as ready");
         Ok(())
     }
 
@@ -217,7 +224,7 @@ impl SearchIndex {
     /// # Errors
     ///
     /// Returns an error if the index lock is poisoned or the search query fails.
-    #[instrument(skip(self))]
+    #[instrument(skip(self, filters), fields(query = %query_str, sort = ?sort, limit = %limit))]
     // Allow: The RwLockReadGuard must be held for the entire search operation because
     // `ready` is a reference that borrows from the guard's protected data. Dropping
     // the guard early would release the read lock and invalidate the `ready` reference,
@@ -231,14 +238,23 @@ impl SearchIndex {
         sort: SearchSort,
         limit: usize,
     ) -> Result<SearchResults, SearchError> {
+        let start = std::time::Instant::now();
+        debug!(
+            available_filter = ?filters.available,
+            min_price = ?filters.min_price_cents,
+            max_price = ?filters.max_price_cents,
+            "Executing filtered search query"
+        );
+
         let query_str = query_str.trim().to_lowercase();
 
-        let guard = self
-            .inner
-            .read()
-            .map_err(|_| SearchError::Index("Lock poisoned".to_string()))?;
+        let guard = self.inner.read().map_err(|_| {
+            warn!("Search index lock poisoned during search_filtered");
+            SearchError::Index("Lock poisoned".to_string())
+        })?;
 
         let Some(ready) = guard.as_ref() else {
+            debug!("Search index not ready, returning empty results");
             return Ok(SearchResults {
                 query: query_str,
                 ..Default::default()
@@ -320,6 +336,15 @@ impl SearchIndex {
         let (total_count, in_stock_count, out_of_stock_count, min_price, max_price) =
             Self::compute_facets(&searcher, &ready.fields, &query_str)?;
 
+        debug!(
+            result_count = results.len(),
+            total_count,
+            in_stock_count,
+            out_of_stock_count,
+            duration_ms = %start.elapsed().as_millis(),
+            "Filtered search completed"
+        );
+
         Ok(SearchResults {
             products: results,
             collections: Vec::new(),
@@ -351,6 +376,7 @@ impl SearchIndex {
 
         // Availability filter
         if let Some(available) = filters.available {
+            debug!(available, "Applying availability filter");
             let val = u64::from(available);
             let term = Term::from_field_u64(fields.available, val);
             must_clauses.push((
@@ -363,6 +389,11 @@ impl SearchIndex {
         if filters.min_price_cents.is_some() || filters.max_price_cents.is_some() {
             let min = filters.min_price_cents.unwrap_or(0);
             let max = filters.max_price_cents.unwrap_or(u64::MAX);
+            debug!(
+                min_price_cents = min,
+                max_price_cents = max,
+                "Applying price range filter"
+            );
             let range_query = RangeQuery::new(
                 Bound::Included(Term::from_field_u64(fields.price_cents, min)),
                 Bound::Included(Term::from_field_u64(fields.price_cents, max)),
@@ -379,13 +410,24 @@ impl SearchIndex {
         fields: &SearchFields,
         top_docs: Vec<(f32, tantivy::DocAddress)>,
     ) -> Result<Vec<SearchResult>, SearchError> {
+        debug!(
+            doc_count = top_docs.len(),
+            "Collecting search results from top docs"
+        );
         let mut results = Vec::new();
         for (score, doc_address) in top_docs {
             let doc = searcher
                 .doc::<tantivy::TantivyDocument>(doc_address)
-                .map_err(|e| SearchError::Query(format!("Failed to retrieve doc: {e}")))?;
+                .map_err(|e| {
+                    warn!(error = %e, "Failed to retrieve document from index");
+                    SearchError::Query(format!("Failed to retrieve doc: {e}"))
+                })?;
             results.push(Self::doc_to_result(fields, &doc, score)?);
         }
+        debug!(
+            result_count = results.len(),
+            "Results collected successfully"
+        );
         Ok(results)
     }
 
@@ -395,6 +437,9 @@ impl SearchIndex {
         fields: &SearchFields,
         query_str: &str,
     ) -> Result<(usize, usize, usize, u64, u64), SearchError> {
+        debug!("Computing search facets");
+        let start = std::time::Instant::now();
+
         // Build base query for products only
         let product_term = Term::from_field_text(fields.doc_type, "product");
         let product_filter = TermQuery::new(product_term, IndexRecordOption::Basic);
@@ -463,6 +508,16 @@ impl SearchIndex {
             min_price = 0;
         }
 
+        debug!(
+            total,
+            in_stock,
+            out_of_stock,
+            min_price,
+            max_price,
+            duration_ms = %start.elapsed().as_millis(),
+            "Facets computed"
+        );
+
         Ok((total, in_stock, out_of_stock, min_price, max_price))
     }
 
@@ -473,7 +528,7 @@ impl SearchIndex {
     /// # Errors
     ///
     /// Returns an error if the index lock is poisoned or the search query fails.
-    #[instrument(skip(self))]
+    #[instrument(skip(self), fields(query = %query_str, limit = %limit))]
     // Allow: The RwLockReadGuard must be held for the entire search operation because
     // `ready` is a reference that borrows from the guard's protected data. Dropping
     // the guard early would release the read lock and invalidate the `ready` reference,
@@ -481,18 +536,23 @@ impl SearchIndex {
     // this lock being held.
     #[allow(clippy::significant_drop_tightening)]
     pub fn search(&self, query_str: &str, limit: usize) -> Result<SearchResults, SearchError> {
+        let start = std::time::Instant::now();
+        debug!("Executing search query");
+
         let query_str = query_str.trim().to_lowercase();
         if query_str.is_empty() {
+            debug!("Empty query string, returning empty results");
             return Ok(SearchResults::default());
         }
 
-        let guard = self
-            .inner
-            .read()
-            .map_err(|_| SearchError::Index("Lock poisoned".to_string()))?;
+        let guard = self.inner.read().map_err(|_| {
+            warn!("Search index lock poisoned during search");
+            SearchError::Index("Lock poisoned".to_string())
+        })?;
 
         let Some(ready) = guard.as_ref() else {
             // Index not ready yet, return empty results
+            debug!("Search index not ready, returning empty results");
             return Ok(SearchResults {
                 query: query_str,
                 ..Default::default()
@@ -585,6 +645,15 @@ impl SearchIndex {
                 _ => {}
             }
         }
+
+        debug!(
+            products_count = products.len(),
+            collections_count = collections.len(),
+            pages_count = pages.len(),
+            articles_count = articles.len(),
+            duration_ms = %start.elapsed().as_millis(),
+            "Search completed"
+        );
 
         Ok(SearchResults {
             products,

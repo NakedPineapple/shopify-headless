@@ -2,6 +2,8 @@
 //!
 //! Uses SMTP via lettre for delivery with Askama HTML templates.
 
+use std::time::Instant;
+
 use askama::Template;
 use lettre::{
     AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor,
@@ -10,6 +12,7 @@ use lettre::{
 };
 use secrecy::ExposeSecret;
 use thiserror::Error;
+use tracing::{debug, error, info, instrument, warn};
 
 use crate::config::EmailConfig;
 
@@ -76,7 +79,10 @@ impl EmailService {
     /// # Errors
     ///
     /// Returns error if SMTP connection fails.
+    #[instrument(skip(config), fields(smtp_host = %config.smtp_host, smtp_port = config.smtp_port))]
     pub fn new(config: &EmailConfig) -> Result<Self, SmtpError> {
+        debug!("Initializing email service");
+
         let credentials = Credentials::new(
             config.smtp_username.clone(),
             config.smtp_password.expose_secret().to_string(),
@@ -86,6 +92,11 @@ impl EmailService {
             .port(config.smtp_port)
             .credentials(credentials)
             .build();
+
+        info!(
+            from_address = %config.from_address,
+            "Email service initialized"
+        );
 
         Ok(Self {
             mailer,
@@ -98,9 +109,14 @@ impl EmailService {
     /// # Errors
     ///
     /// Returns error if email fails to send or template fails to render.
+    #[instrument(skip(self, code), fields(recipient = %to))]
     pub async fn send_verification_code(&self, to: &str, code: &str) -> Result<(), EmailError> {
+        debug!("Preparing verification code email");
+
         let html = VerificationCodeEmailHtml { code }.render()?;
         let text = VerificationCodeEmailText { code }.render()?;
+
+        debug!("Templates rendered, sending verification code email");
 
         self.send_multipart_email(
             to,
@@ -116,16 +132,22 @@ impl EmailService {
     /// # Errors
     ///
     /// Returns error if email fails to send or template fails to render.
+    #[instrument(skip(self), fields(recipient = %to, user_name = %name))]
     pub async fn send_welcome_email(&self, to: &str, name: &str) -> Result<(), EmailError> {
+        debug!("Preparing welcome email");
+
         let admin_url = "https://admin.nakedpineapple.co";
         let html = WelcomeEmailHtml { name, admin_url }.render()?;
         let text = WelcomeEmailText { name, admin_url }.render()?;
+
+        debug!("Templates rendered, sending welcome email");
 
         self.send_multipart_email(to, "Welcome to Naked Pineapple Admin", &text, &html)
             .await
     }
 
     /// Send a multipart email with both plain text and HTML versions.
+    #[instrument(skip(self, text_body, html_body), fields(recipient = %to, subject = %subject))]
     async fn send_multipart_email(
         &self,
         to: &str,
@@ -133,15 +155,18 @@ impl EmailService {
         text_body: &str,
         html_body: &str,
     ) -> Result<(), EmailError> {
+        debug!("Building email message");
+        let start = Instant::now();
+
         let email = Message::builder()
-            .from(
-                self.from_address
-                    .parse()
-                    .map_err(|_| EmailError::InvalidAddress(self.from_address.clone()))?,
-            )
-            .to(to
-                .parse()
-                .map_err(|_| EmailError::InvalidAddress(to.to_string()))?)
+            .from(self.from_address.parse().map_err(|_| {
+                warn!(address = %self.from_address, "Invalid from address");
+                EmailError::InvalidAddress(self.from_address.clone())
+            })?)
+            .to(to.parse().map_err(|_| {
+                warn!(address = %to, "Invalid recipient address");
+                EmailError::InvalidAddress(to.to_string())
+            })?)
             .subject(subject)
             .multipart(
                 MultiPart::alternative()
@@ -157,10 +182,27 @@ impl EmailService {
                     ),
             )?;
 
-        self.mailer.send(email).await?;
+        debug!("Sending email via SMTP");
+        let send_start = Instant::now();
 
-        tracing::info!(to = %to, subject = %subject, "Email sent successfully");
-        Ok(())
+        match self.mailer.send(email).await {
+            Ok(_) => {
+                info!(
+                    duration_ms = %start.elapsed().as_millis(),
+                    smtp_duration_ms = %send_start.elapsed().as_millis(),
+                    "Email sent successfully"
+                );
+                Ok(())
+            }
+            Err(e) => {
+                error!(
+                    error = %e,
+                    duration_ms = %start.elapsed().as_millis(),
+                    "Failed to send email"
+                );
+                Err(e.into())
+            }
+        }
     }
 }
 
