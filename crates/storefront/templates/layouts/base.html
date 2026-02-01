@@ -607,6 +607,40 @@
                 }
             }
 
+            // Initialize product detail tabs (Ingredients, How to Use, Shipping)
+            var productTabContainer = document.getElementById('product-details-tabs');
+            if (productTabContainer && !productTabContainer.dataset.initialized) {
+                var tabs = productTabContainer.querySelectorAll('[role="tab"]');
+                var panels = productTabContainer.querySelectorAll('[role="tabpanel"]');
+
+                tabs.forEach(function(tab) {
+                    tab.addEventListener('click', function() {
+                        // Deactivate all tabs
+                        tabs.forEach(function(t) {
+                            t.setAttribute('aria-selected', 'false');
+                            t.classList.remove('border-primary', 'text-foreground');
+                            t.classList.add('border-transparent', 'text-muted-foreground');
+                        });
+
+                        // Hide all panels
+                        panels.forEach(function(p) {
+                            p.classList.add('hidden');
+                        });
+
+                        // Activate clicked tab
+                        tab.setAttribute('aria-selected', 'true');
+                        tab.classList.add('border-primary', 'text-foreground');
+                        tab.classList.remove('border-transparent', 'text-muted-foreground');
+
+                        // Show corresponding panel
+                        var panelId = 'panel-' + tab.dataset.tab;
+                        var panel = document.getElementById(panelId);
+                        if (panel) panel.classList.remove('hidden');
+                    });
+                });
+                productTabContainer.dataset.initialized = 'true';
+            }
+
             // Initialize Before/After mobile tap toggle
             var toggleContainer = document.getElementById('toggle-container');
             if (toggleContainer && !toggleContainer.dataset.initialized) {

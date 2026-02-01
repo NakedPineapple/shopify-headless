@@ -895,43 +895,6 @@
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    // Product Details Tabs
-    // ═══════════════════════════════════════════════════════════════════════
-    function initProductTabs() {
-        var tabContainer = document.getElementById('product-details-tabs');
-        if (!tabContainer) return;
-
-        var tabs = tabContainer.querySelectorAll('[role="tab"]');
-        var panels = tabContainer.querySelectorAll('[role="tabpanel"]');
-
-        tabs.forEach(function(tab) {
-            tab.addEventListener('click', function() {
-                // Deactivate all tabs
-                tabs.forEach(function(t) {
-                    t.setAttribute('aria-selected', 'false');
-                    t.classList.remove('border-primary', 'text-foreground');
-                    t.classList.add('border-transparent', 'text-muted-foreground');
-                });
-
-                // Hide all panels
-                panels.forEach(function(p) {
-                    p.classList.add('hidden');
-                });
-
-                // Activate clicked tab
-                tab.setAttribute('aria-selected', 'true');
-                tab.classList.add('border-primary', 'text-foreground');
-                tab.classList.remove('border-transparent', 'text-muted-foreground');
-
-                // Show corresponding panel
-                var panelId = 'panel-' + tab.dataset.tab;
-                var panel = document.getElementById(panelId);
-                if (panel) panel.classList.remove('hidden');
-            });
-        });
-    }
-
-    // ═══════════════════════════════════════════════════════════════════════
     // Event Delegation
     // ═══════════════════════════════════════════════════════════════════════
     document.addEventListener('click', function(e) {
@@ -1097,7 +1060,6 @@
     // ═══════════════════════════════════════════════════════════════════════
     function init() {
         initPurchaseOptions();
-        initProductTabs();
     }
 
     if (document.readyState === 'loading') {
