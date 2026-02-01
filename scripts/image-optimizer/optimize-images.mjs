@@ -227,7 +227,13 @@ async function discoverUsedImages() {
     absolute: true,
   });
 
-  const allFiles = [...templateFiles, ...rustFiles];
+  // Scan blog content files (markdown with YAML frontmatter)
+  const blogFiles = await fg("crates/storefront/content/blog/**/*.md", {
+    cwd: PROJECT_ROOT,
+    absolute: true,
+  });
+
+  const allFiles = [...templateFiles, ...rustFiles, ...blogFiles];
 
   for (const file of allFiles) {
     const content = await readFile(file, "utf-8");

@@ -187,6 +187,9 @@ pub static IMAGE_INFO: LazyLock<HashMap<&'static str, ImageInfo>> = LazyLock::ne
             "products/starter-kit/Model_Program_March_2025_14_536fbe04-c22c-496b-837e-4f1ed60c0717",
             ("367f8dad", 1067),
         ),
+        ("shopify_images/DSC_1107", ("056f14dd", 1067)),
+        ("shopify_images/DSC_1253", ("7998ecf4", 1067)),
+        ("shopify_images/DSC_1361", ("f388ac20", 1067)),
         ("testimonials/Maddie_-_After_NP", ("253c7a46", 2400)),
         ("testimonials/Maddie_-_Before_NP", ("27db70ac", 2400)),
     ])
