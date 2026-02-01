@@ -81,7 +81,7 @@ Our formulas are designed to be gentle yet effective. However, we always recomme
 ## Subscriptions
 
 ### Do you offer subscriptions?
-Yes! Subscribe to your favorite products and save 15% on every order. Plus, you'll never run out of your skincare essentials.
+Yes! Subscribe to your favorite products and save up to 20% on every order. Plus, you'll never run out of your skincare essentials.
 
 ### How do I manage my subscription?
 Log into your account to view, modify, skip, or cancel your subscription at any time. No commitments, no hassle.
