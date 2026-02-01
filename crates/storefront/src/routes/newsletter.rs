@@ -9,6 +9,7 @@ use askama_web::WebTemplate;
 use axum::{
     Form,
     extract::{Query, State},
+    http::HeaderMap,
     response::{Html, IntoResponse},
 };
 use serde::Deserialize;
@@ -35,6 +36,21 @@ pub struct SubscribeSuccessTemplate {
 #[derive(Template, WebTemplate)]
 #[template(path = "newsletter/subscribe_error.html")]
 pub struct SubscribeErrorTemplate {
+    pub message: String,
+    pub email: String,
+}
+
+/// Blog-specific success fragment template.
+#[derive(Template, WebTemplate)]
+#[template(path = "newsletter/blog_subscribe_success.html")]
+pub struct BlogSubscribeSuccessTemplate {
+    pub email: String,
+}
+
+/// Blog-specific error fragment template.
+#[derive(Template, WebTemplate)]
+#[template(path = "newsletter/blog_subscribe_error.html")]
+pub struct BlogSubscribeErrorTemplate {
     pub message: String,
     pub email: String,
 }
@@ -88,22 +104,37 @@ pub struct UnsubscribeForm {
 /// subscribes them to the Klaviyo email list for direct email marketing.
 /// If the email already exists, shows a success message (they're already
 /// in the system and can manage preferences via their account).
-#[instrument(skip(state), fields(email = %form.email))]
+#[instrument(skip(state, headers), fields(email = %form.email))]
 pub async fn subscribe(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Form(form): Form<SubscribeForm>,
 ) -> impl IntoResponse {
     debug!("Processing newsletter subscription request");
     let email = form.email.trim().to_lowercase();
 
+    // Check if request came from the blog (uses different templates)
+    let from_blog = headers
+        .get("HX-Current-URL")
+        .and_then(|v| v.to_str().ok())
+        .is_some_and(|url| url.contains("/blog"));
+
     // Basic email validation
     if !is_valid_email(&email) {
         warn!(email = %email, "Invalid email format provided");
-        return SubscribeErrorTemplate {
-            message: "Please enter a valid email address.".to_string(),
-            email,
-        }
-        .into_response();
+        return if from_blog {
+            BlogSubscribeErrorTemplate {
+                message: "Please enter a valid email address.".to_string(),
+                email,
+            }
+            .into_response()
+        } else {
+            SubscribeErrorTemplate {
+                message: "Please enter a valid email address.".to_string(),
+                email,
+            }
+            .into_response()
+        };
     }
 
     debug!(email = %email, "Email validation passed");
@@ -140,10 +171,17 @@ pub async fn subscribe(
     {
         Ok(_customer) => {
             info!(email = %email, "Shopify customer created with marketing consent");
-            SubscribeSuccessTemplate {
-                email: email.clone(),
+            if from_blog {
+                BlogSubscribeSuccessTemplate {
+                    email: email.clone(),
+                }
+                .into_response()
+            } else {
+                SubscribeSuccessTemplate {
+                    email: email.clone(),
+                }
+                .into_response()
             }
-            .into_response()
         }
         Err(e) => {
             let error_message = e.to_string().to_lowercase();
@@ -155,17 +193,32 @@ pub async fn subscribe(
             {
                 // Treat as success - they're already in the system
                 info!(email = %email, "Email already exists in Shopify - treating as success");
-                SubscribeSuccessTemplate {
-                    email: email.clone(),
+                if from_blog {
+                    BlogSubscribeSuccessTemplate {
+                        email: email.clone(),
+                    }
+                    .into_response()
+                } else {
+                    SubscribeSuccessTemplate {
+                        email: email.clone(),
+                    }
+                    .into_response()
                 }
-                .into_response()
             } else {
                 warn!(email = %email, error = %e, "Shopify customer creation failed");
-                SubscribeErrorTemplate {
-                    message: "Something went wrong. Please try again.".to_string(),
-                    email,
+                if from_blog {
+                    BlogSubscribeErrorTemplate {
+                        message: "Something went wrong. Please try again.".to_string(),
+                        email,
+                    }
+                    .into_response()
+                } else {
+                    SubscribeErrorTemplate {
+                        message: "Something went wrong. Please try again.".to_string(),
+                        email,
+                    }
+                    .into_response()
                 }
-                .into_response()
             }
         }
     }

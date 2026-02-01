@@ -1,0 +1,32 @@
+{# Blog newsletter error fragment - styled to match the gradient section #}
+<div id="blog-newsletter-card" class="max-w-2xl mx-auto text-center">
+    <h2 class="font-display text-3xl md:text-4xl text-white mb-4">
+        Never Miss a Glow Tip
+    </h2>
+    <p class="text-white/80 text-lg mb-4">
+        Subscribe to get skincare wisdom, exclusive offers, and first access to new products delivered to your inbox.
+    </p>
+
+    {# Error message #}
+    <div class="mb-6 p-3 bg-white/10 backdrop-blur-sm border border-white/30 rounded-lg max-w-md mx-auto">
+        <p class="text-white flex items-center justify-center gap-2">
+            <i class="ph ph-warning-circle"></i>
+            {{ message }}
+        </p>
+    </div>
+
+    <form action="/newsletter/subscribe" method="post" class="flex flex-col sm:flex-row gap-3 max-w-md mx-auto"
+          hx-post="/newsletter/subscribe"
+          hx-target="#blog-newsletter-card"
+          hx-swap="outerHTML">
+        <input type="email"
+               name="email"
+               placeholder="Your email address"
+               required
+               value="{{ email }}"
+               class="flex-1 px-5 py-3.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-white placeholder:text-white/60 focus:outline-none focus:bg-white/20 focus:border-white/40 transition-all">
+        <button type="submit" class="px-8 py-3.5 bg-white text-primary font-semibold rounded-full hover:bg-cream transition-colors">
+            Subscribe
+        </button>
+    </form>
+</div>

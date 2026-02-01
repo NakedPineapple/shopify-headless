@@ -4,17 +4,17 @@
 
 {% block body_data %}{{ analytics_macro::body_attrs(analytics=analytics) }}{% endblock %}
 
-{% block title %}Blog - Naked Pineapple{% endblock %}
+{% block title %}Beyond the Skin - Naked Pineapple{% endblock %}
 
 {% block canonical %}<link rel="canonical" href="{{ base_url }}/blog">{% endblock %}
 
 {% block description %}Skincare tips, self-care rituals, and stories from the Naked Pineapple community. Discover the power of pineapple for radiant skin.{% endblock %}
 
-{% block og_title %}Naked Pineapple Blog{% endblock %}
+{% block og_title %}Beyond the Skin{% endblock %}
 {% block og_description %}Skincare tips, self-care rituals, and stories from the Naked Pineapple community.{% endblock %}
 {% block og_url %}{{ base_url }}/blog{% endblock %}
 
-{% block twitter_title %}<meta name="twitter:title" content="Naked Pineapple Blog">{% endblock %}
+{% block twitter_title %}<meta name="twitter:title" content="Beyond the Skin">{% endblock %}
 {% block twitter_description %}<meta name="twitter:description" content="Skincare tips, self-care rituals, and stories from the Naked Pineapple community.">{% endblock %}
 
 {% block content %}
@@ -33,7 +33,7 @@
         <div class="max-w-3xl mx-auto text-center">
             <span class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6 animate-fade-down">
                 <i class="ph ph-newspaper text-lg"></i>
-                The Naked Pineapple Blog
+                Beyond the Skin
             </span>
 
             <h1 class="font-display text-4xl md:text-5xl lg:text-6xl font-medium text-foreground mb-6 leading-[1.1] animate-fade-up">
@@ -180,14 +180,17 @@
     <div class="absolute inset-0 opacity-10" style="background-image: url('data:image/svg+xml,<svg width=&quot;20&quot; height=&quot;20&quot; viewBox=&quot;0 0 20 20&quot; xmlns=&quot;http://www.w3.org/2000/svg&quot;><circle cx=&quot;10&quot; cy=&quot;10&quot; r=&quot;1.5&quot; fill=&quot;white&quot;/></svg>'); background-size: 20px 20px;"></div>
 
     <div class="page-width relative">
-        <div class="max-w-2xl mx-auto text-center">
+        <div id="blog-newsletter-card" class="max-w-2xl mx-auto text-center">
             <h2 class="font-display text-3xl md:text-4xl text-white mb-4">
                 Never Miss a Glow Tip
             </h2>
             <p class="text-white/80 text-lg mb-8">
                 Subscribe to get skincare wisdom, exclusive offers, and first access to new products delivered to your inbox.
             </p>
-            <form action="/newsletter/subscribe" method="post" class="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
+            <form action="/newsletter/subscribe" method="post" class="flex flex-col sm:flex-row gap-3 max-w-md mx-auto"
+                  hx-post="/newsletter/subscribe"
+                  hx-target="#blog-newsletter-card"
+                  hx-swap="outerHTML">
                 <input type="email"
                        name="email"
                        placeholder="Your email address"
