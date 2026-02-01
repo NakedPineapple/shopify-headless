@@ -14,16 +14,21 @@
         </div>
         {% endif %}
 
-        <!-- Quick View Button -->
-        <button type="button"
-                class="absolute bottom-4 left-1/2 -translate-x-1/2 btn btn-primary opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300"
-                hx-get="/products/{{ product.handle }}/quick-view"
-                hx-target="#quick-view-content"
-                hx-swap="innerHTML"
-                hx-on::after-request="openQuickView()">
-            Quick View
-        </button>
     </a>
+
+    <!-- Quick View Button -->
+    <button type="button"
+            class="quick-view-btn absolute top-3 right-3 z-10 w-9 h-9 flex items-center justify-center bg-card/90 backdrop-blur-sm rounded-full shadow-sm opacity-0 transition-all duration-300 group-hover:opacity-100 hover:bg-card hover:shadow-md"
+            hx-get="/products/{{ product.handle }}/quick-view"
+            hx-target="#quick-view-content"
+            hx-swap="innerHTML"
+            hx-on::after-request="openQuickView()"
+            aria-label="Quick view {{ product.title }}">
+        <svg class="w-4 h-4 text-foreground" viewBox="0 0 20 20" fill="none">
+            <circle cx="9" cy="9" r="6" stroke="currentColor" stroke-width="1.5"/>
+            <path d="M13.5 13.5L17 17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+    </button>
 
     <!-- Product Info -->
     <div class="space-y-1">
