@@ -60,6 +60,23 @@ pub struct Seo {
 }
 
 // =============================================================================
+// Rating Types
+// =============================================================================
+
+/// Product rating data from Judge.me or similar review apps.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProductRating {
+    /// Average rating value (e.g., 4.5).
+    pub value: f64,
+    /// Minimum rating scale (typically 1.0).
+    pub scale_min: f64,
+    /// Maximum rating scale (typically 5.0).
+    pub scale_max: f64,
+    /// Total number of reviews.
+    pub count: i64,
+}
+
+// =============================================================================
 // Product Types
 // =============================================================================
 
@@ -180,6 +197,8 @@ pub struct Product {
     pub options: Vec<ProductOption>,
     /// Product variants.
     pub variants: Vec<ProductVariant>,
+    /// Product rating from reviews (e.g., Judge.me).
+    pub rating: Option<ProductRating>,
 }
 
 // =============================================================================

@@ -96,17 +96,23 @@
                         {% endif %}
                     </div>
 
-                    <!-- Rating placeholder -->
+                    <!-- Rating -->
+                    {% if let Some(rating) = product.rating %}
                     <div class="flex items-center gap-2 text-sm text-muted-foreground">
                         <div class="flex text-secondary">
+                            {% for _ in 0..rating.full_stars %}
                             <i class="ph-fill ph-star"></i>
-                            <i class="ph-fill ph-star"></i>
-                            <i class="ph-fill ph-star"></i>
-                            <i class="ph-fill ph-star"></i>
+                            {% endfor %}
+                            {% if rating.has_half_star %}
                             <i class="ph-fill ph-star-half"></i>
+                            {% endif %}
+                            {% for _ in 0..rating.empty_stars %}
+                            <i class="ph ph-star"></i>
+                            {% endfor %}
                         </div>
-                        <span>4.5 (24 reviews)</span>
+                        <span>{{ rating.value|fmt("{:.1}") }} ({{ rating.count }} {% if rating.count == 1 %}review{% else %}reviews{% endif %})</span>
                     </div>
+                    {% endif %}
                 </div>
 
                 <!-- Variant Selector -->

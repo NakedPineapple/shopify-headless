@@ -198,13 +198,17 @@ fn build_filters(query: &PaginationQuery) -> Option<Vec<ProductFilter>> {
     );
 
     if has_min_filter || has_max_filter {
-        let min_val = if has_min_filter { query.price_min } else { None };
-        let max_val = if has_max_filter { query.price_max } else { None };
-        tracing::debug!(
-            ?min_val,
-            ?max_val,
-            "Adding price filter"
-        );
+        let min_val = if has_min_filter {
+            query.price_min
+        } else {
+            None
+        };
+        let max_val = if has_max_filter {
+            query.price_max
+        } else {
+            None
+        };
+        tracing::debug!(?min_val, ?max_val, "Adding price filter");
         filters.push(ProductFilter {
             available: None,
             category: None,
@@ -308,10 +312,7 @@ pub async fn show(
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> Response {
     // Debug: Log incoming query parameters
-    tracing::debug!(
-        ?query,
-        "Collection show request"
-    );
+    tracing::debug!(?query, "Collection show request");
 
     let current_page = query.page.unwrap_or(1);
     let current_sort = query

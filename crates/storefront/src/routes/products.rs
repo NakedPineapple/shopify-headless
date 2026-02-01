@@ -16,6 +16,21 @@ use crate::shopify::ShopifyError;
 use crate::shopify::types::{Money, Product as ShopifyProduct, ProductRecommendationIntent};
 use crate::state::AppState;
 
+/// Product rating display data for templates.
+#[derive(Clone)]
+pub struct RatingView {
+    /// Average rating value (e.g., 4.5).
+    pub value: f64,
+    /// Number of full stars to display.
+    pub full_stars: u8,
+    /// Whether to display a half star.
+    pub has_half_star: bool,
+    /// Number of empty stars to display.
+    pub empty_stars: u8,
+    /// Total number of reviews.
+    pub count: i64,
+}
+
 /// Product display data for templates.
 #[derive(Clone)]
 pub struct ProductView {
@@ -28,6 +43,7 @@ pub struct ProductView {
     pub images: Vec<ImageView>,
     pub variants: Vec<VariantView>,
     pub ingredients: Option<String>,
+    pub rating: Option<RatingView>,
 }
 
 /// Image display data for templates.
@@ -129,6 +145,28 @@ impl From<&ShopifyProduct> for ProductView {
                 })
                 .collect(),
             ingredients: None, // Could parse from metafields if available
+            rating: product.rating.as_ref().map(|r| {
+                // Calculate star display: round to nearest 0.5, clamped to valid range
+                let clamped = r.value.clamp(0.0, 5.0);
+                let rounded = (clamped * 2.0).round() / 2.0;
+                // SAFETY: rounded is clamped to 0.0-5.0, floor gives 0-5, fits in u8
+                #[expect(
+                    clippy::cast_possible_truncation,
+                    clippy::cast_sign_loss,
+                    reason = "value is clamped to 0.0-5.0 range"
+                )]
+                let full_stars = rounded.floor() as u8;
+                let has_half_star = (rounded - rounded.floor()) >= 0.5;
+                let empty_stars = 5 - full_stars - u8::from(has_half_star);
+
+                RatingView {
+                    value: r.value,
+                    full_stars,
+                    has_half_star,
+                    empty_stars,
+                    count: r.count,
+                }
+            }),
         }
     }
 }
@@ -294,6 +332,7 @@ pub async fn show(
                         images: Vec::new(),
                         variants: Vec::new(),
                         ingredients: None,
+                        rating: None,
                     },
                     related_products: Vec::new(),
                     analytics: state.config().analytics.clone(),
@@ -319,6 +358,7 @@ pub async fn show(
                         images: Vec::new(),
                         variants: Vec::new(),
                         ingredients: None,
+                        rating: None,
                     },
                     related_products: Vec::new(),
                     analytics: state.config().analytics.clone(),
@@ -359,6 +399,7 @@ pub async fn quick_view(State(state): State<AppState>, Path(handle): Path<String
                 images: Vec::new(),
                 variants: Vec::new(),
                 ingredients: None,
+                rating: None,
             };
             QuickViewTemplate { product, store_url }.into_response()
         }

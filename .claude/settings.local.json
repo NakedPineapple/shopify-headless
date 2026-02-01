@@ -13,7 +13,6 @@
       "Bash(htmlq:*)",
       "Bash(ls:*)",
       "Bash(python3:*)",
-      "Bash(task build:*)",
       "Bash(task check:*)",
       "Bash(task fmt:*)",
       "Bash(task lint:*)",
@@ -44,6 +43,7 @@
       "Bash(cargo clippy:*)",
       "Bash(cargo fmt:*)",
       "Bash(cargo test:*)",
+      "Bash(task build:*)",
       "Bash(task rust:build:*)",
       "Read(.env)"
     ],

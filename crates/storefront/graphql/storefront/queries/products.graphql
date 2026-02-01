@@ -107,6 +107,12 @@ fragment ProductFields on Product {
   }
 }
 
+# Fragment for metafield fields
+fragment MetafieldFields on Metafield {
+  value
+  type
+}
+
 # Get a single product by handle
 query GetProductByHandle(
   $handle: String!
@@ -115,6 +121,12 @@ query GetProductByHandle(
 ) {
   product(handle: $handle) {
     ...ProductFields
+    rating: metafield(namespace: "reviews", key: "rating") {
+      ...MetafieldFields
+    }
+    ratingCount: metafield(namespace: "reviews", key: "rating_count") {
+      ...MetafieldFields
+    }
     images(first: $imageCount) {
       edges {
         node {

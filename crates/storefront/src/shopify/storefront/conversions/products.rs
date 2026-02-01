@@ -2,10 +2,45 @@
 
 use crate::shopify::types::{
     Image, InstallmentsCount, Money, PageInfo, PriceRange, Product, ProductConnection,
-    ProductOption, ProductVariant, SelectedOption, Seo, ShopPayInstallmentsPricing,
+    ProductOption, ProductRating, ProductVariant, SelectedOption, Seo, ShopPayInstallmentsPricing,
 };
 
 use super::super::queries::{get_product_by_handle, get_product_recommendations, get_products};
+
+/// JSON structure for the rating metafield value from Judge.me.
+#[derive(Debug, serde::Deserialize)]
+struct RatingMetafieldValue {
+    value: String,
+    scale_min: String,
+    scale_max: String,
+}
+
+/// Parse rating metafields into a `ProductRating`.
+fn parse_rating_metafields(
+    rating: Option<get_product_by_handle::GetProductByHandleProductRating>,
+    rating_count: Option<get_product_by_handle::GetProductByHandleProductRatingCount>,
+) -> Option<ProductRating> {
+    let rating_data = rating?;
+    let count_data = rating_count?;
+
+    // Parse the rating JSON value: {"value": "4.3", "scale_min": "1.0", "scale_max": "5.0"}
+    let rating_parsed: RatingMetafieldValue = serde_json::from_str(&rating_data.value).ok()?;
+
+    // Parse the count (simple integer as string)
+    let count: i64 = count_data.value.parse().ok()?;
+
+    // Only return rating if there are actual reviews
+    if count == 0 {
+        return None;
+    }
+
+    Some(ProductRating {
+        value: rating_parsed.value.parse().ok()?,
+        scale_min: rating_parsed.scale_min.parse().ok()?,
+        scale_max: rating_parsed.scale_max.parse().ok()?,
+        count,
+    })
+}
 
 /// Convert a `CurrencyCode` enum to string.
 fn currency_code_to_string<T: std::fmt::Debug>(code: T) -> String {
@@ -18,6 +53,7 @@ fn currency_code_to_string<T: std::fmt::Debug>(code: T) -> String {
 
 pub fn convert_product(product: get_product_by_handle::GetProductByHandleProduct) -> Product {
     let fields = product.product_fields;
+    let rating = parse_rating_metafields(product.rating, product.rating_count);
 
     Product {
         id: fields.id,
@@ -58,6 +94,7 @@ pub fn convert_product(product: get_product_by_handle::GetProductByHandleProduct
             .into_iter()
             .map(|e| convert_variant_handle(e.node))
             .collect(),
+        rating,
     }
 }
 
@@ -220,6 +257,7 @@ fn convert_products_list_product(product: get_products::GetProductsProductsEdges
             .into_iter()
             .map(|e| convert_variant_list(e.node))
             .collect(),
+        rating: None, // Rating not fetched in list queries
     }
 }
 
@@ -364,6 +402,7 @@ pub fn convert_product_recommendation(
             .into_iter()
             .map(|e| convert_variant_rec(e.node))
             .collect(),
+        rating: None, // Rating not fetched in recommendations
     }
 }
 

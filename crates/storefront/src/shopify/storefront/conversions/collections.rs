@@ -136,6 +136,7 @@ fn convert_collection_product(
                 shop_pay_installments: None,
             })
             .collect(),
+        rating: None, // Rating not fetched in collection queries
     }
 }
 
@@ -212,6 +213,7 @@ fn convert_collections_list_collection(
                 images: vec![],
                 options: vec![],
                 variants: vec![],
+                rating: None,
             })
             .collect(),
     }
