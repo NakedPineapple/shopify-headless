@@ -3,7 +3,7 @@
 use askama::Template;
 use askama_web::WebTemplate;
 use axum::{extract::State, response::IntoResponse};
-use tracing::instrument;
+use tracing::{debug, info, instrument};
 
 use crate::config::AnalyticsConfig;
 use crate::filters;
@@ -325,7 +325,14 @@ pub async fn home(
     State(state): State<AppState>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> impl IntoResponse {
+    debug!("Rendering home page with hero carousel and product collections");
+
     // Fetch skincare products from collection
+    debug!(
+        collection = SKINCARE_COLLECTION,
+        limit = PRODUCTS_PER_COLLECTION,
+        "Fetching skincare products for home page"
+    );
     let skincare_products = state
         .storefront()
         .get_collection_by_handle(
@@ -342,10 +349,21 @@ pub async fn home(
                 tracing::error!("Failed to fetch skincare collection: {e}");
                 Vec::new()
             },
-            |collection| collection.products.iter().map(ProductView::from).collect(),
+            |collection| {
+                debug!(
+                    product_count = collection.products.len(),
+                    "Successfully fetched skincare products"
+                );
+                collection.products.iter().map(ProductView::from).collect()
+            },
         );
 
     // Fetch merch products from collection
+    debug!(
+        collection = MERCH_COLLECTION,
+        limit = PRODUCTS_PER_COLLECTION,
+        "Fetching merch products for home page"
+    );
     let merch_products = state
         .storefront()
         .get_collection_by_handle(
@@ -362,11 +380,23 @@ pub async fn home(
                 tracing::error!("Failed to fetch merch collection: {e}");
                 Vec::new()
             },
-            |collection| collection.products.iter().map(ProductView::from).collect(),
+            |collection| {
+                debug!(
+                    product_count = collection.products.len(),
+                    "Successfully fetched merch products"
+                );
+                collection.products.iter().map(ProductView::from).collect()
+            },
         );
 
     let base_url = state.config().base_url.clone();
     let logo_url = crate::filters::get_logo_url(&base_url);
+
+    info!(
+        skincare_count = skincare_products.len(),
+        merch_count = merch_products.len(),
+        "Home page rendered successfully"
+    );
 
     HomeTemplate {
         hero: HeroConfig::default(),

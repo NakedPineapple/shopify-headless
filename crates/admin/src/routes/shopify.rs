@@ -14,7 +14,7 @@ use hmac::{Hmac, Mac};
 use serde::Deserialize;
 use sha2::Sha256;
 use tower_sessions::Session;
-use tracing::instrument;
+use tracing::{debug, info, instrument, warn};
 
 use crate::db::ShopifyTokenRepository;
 use crate::filters;
@@ -159,8 +159,11 @@ async fn settings_page(
     session: Session,
     Query(params): Query<SettingsQueryParams>,
 ) -> Response {
+    debug!("Loading Shopify settings page");
+
     // Check super_admin permission
     if let Err(response) = require_super_admin(&state, &session).await {
+        warn!("Non-super_admin attempted to access Shopify settings");
         return response;
     }
 
@@ -172,8 +175,11 @@ async fn settings_page(
         .flatten()
     else {
         // This should never happen after require_super_admin, but handle gracefully
+        warn!("Admin session missing after require_super_admin check");
         return Redirect::to("/auth/login").into_response();
     };
+
+    debug!(admin_id = %admin.id.as_i32(), "Super admin accessing Shopify settings");
 
     // Check connection status and get token details
     let shop = state.shopify().store().to_string();
@@ -181,6 +187,8 @@ async fn settings_page(
     let token = repo.get_by_shop(&shop).await.ok().flatten();
     let connected = token.is_some();
     let scopes = token.map_or_else(Vec::new, |t| t.scopes);
+
+    debug!(shop = %shop, connected = %connected, scope_count = scopes.len(), "Retrieved Shopify connection status");
 
     // Map query params to user-friendly messages
     let success_message = params.success.as_deref().map(|s| match s {
@@ -210,6 +218,8 @@ async fn settings_page(
         error_message,
     };
 
+    info!(admin_id = %admin.id.as_i32(), connected = %connected, "Rendered Shopify settings page");
+
     Html(template.render().unwrap_or_else(|e| {
         tracing::error!("Template render error: {}", e);
         "Internal Server Error".to_string()
@@ -220,13 +230,17 @@ async fn settings_page(
 /// GET /shopify/connect - Start OAuth flow.
 #[instrument(skip(state, session))]
 async fn connect(State(state): State<AppState>, session: Session) -> Response {
+    debug!("Initiating Shopify OAuth connection flow");
+
     // Check super_admin permission
     if let Err(response) = require_super_admin(&state, &session).await {
+        warn!("Non-super_admin attempted to initiate Shopify OAuth connection");
         return response;
     }
 
     // Generate a random state parameter for CSRF protection
     let oauth_state = uuid::Uuid::new_v4().to_string();
+    debug!(oauth_state = %oauth_state, "Generated OAuth state for CSRF protection");
 
     // Store state in session
     if let Err(e) = session.insert(OAUTH_STATE_KEY, &oauth_state).await {
@@ -242,62 +256,68 @@ async fn connect(State(state): State<AppState>, session: Session) -> Response {
 
     // Build redirect URI
     let redirect_uri = format!("{}/shopify/callback", state.config().base_url);
+    debug!(redirect_uri = %redirect_uri, "Built OAuth callback redirect URI");
 
     // Generate authorization URL
     let auth_url = state
         .shopify()
         .authorization_url(&redirect_uri, ADMIN_SCOPES, &oauth_state);
 
-    tracing::info!("Redirecting to Shopify OAuth: {}", auth_url);
+    info!(shop = %state.shopify().store(), "Redirecting to Shopify OAuth authorization");
     Redirect::to(&auth_url).into_response()
 }
 
 /// GET /shopify/callback - Handle OAuth callback.
-#[instrument(skip(state, session))]
+#[instrument(skip(state, session, params))]
 async fn callback(
     State(state): State<AppState>,
     session: Session,
     Query(params): Query<OAuthCallbackParams>,
 ) -> Response {
+    debug!("Processing Shopify OAuth callback");
+
     // Check for errors from Shopify
     if let Some(error) = &params.error {
         let description = params.error_description.as_deref().unwrap_or_default();
-        tracing::error!("Shopify OAuth error: {} - {}", error, description);
+        warn!(error = %error, description = %description, "Shopify OAuth authorization denied");
         return Redirect::to("/shopify?error=oauth_denied").into_response();
     }
 
     // Verify HMAC signature from Shopify
     if !verify_shopify_hmac(&params, state.shopify().client_secret()) {
-        tracing::error!("Invalid HMAC signature in OAuth callback");
+        warn!("Invalid HMAC signature in OAuth callback - possible tampering");
         return Redirect::to("/shopify?error=oauth_invalid_hmac").into_response();
     }
+    debug!("HMAC signature verified successfully");
 
     // Get code and state
     let Some(code) = &params.code else {
-        tracing::error!("Missing authorization code in callback");
+        warn!("Missing authorization code in OAuth callback");
         return Redirect::to("/shopify?error=oauth_failed").into_response();
     };
 
     let Some(callback_state) = &params.state else {
-        tracing::error!("Missing state parameter in callback");
+        warn!("Missing state parameter in OAuth callback");
         return Redirect::to("/shopify?error=oauth_failed").into_response();
     };
 
     // Verify state matches what we stored
     let stored_state: Option<String> = session.get(OAUTH_STATE_KEY).await.ok().flatten();
     if stored_state.as_ref() != Some(callback_state) {
-        tracing::error!(
+        warn!(
             stored = ?stored_state,
             received = %callback_state,
             "OAuth state mismatch - possible CSRF attack or session not persisted"
         );
         return Redirect::to("/shopify?error=oauth_invalid_state").into_response();
     }
+    debug!("OAuth state parameter verified successfully");
 
     // Clear the state from session
     let _ = session.remove::<String>(OAUTH_STATE_KEY).await;
 
     // Exchange code for token
+    debug!("Exchanging authorization code for access token");
     let token = match state.shopify().exchange_code(code).await {
         Ok(token) => token,
         Err(e) => {
@@ -305,6 +325,7 @@ async fn callback(
             return Redirect::to("/shopify?error=oauth_exchange_failed").into_response();
         }
     };
+    debug!(shop = %token.shop, "Successfully exchanged OAuth code for access token");
 
     // Store token in database
     let repo = ShopifyTokenRepository::new(state.pool());
@@ -314,6 +335,7 @@ async fn callback(
         .map(|s| s.trim().to_string())
         .collect();
 
+    debug!(shop = %token.shop, scope_count = scopes.len(), "Saving Shopify token to database");
     if let Err(e) = repo
         .save(&token.shop, &token.access_token, &scopes, token.obtained_at)
         .await
@@ -322,19 +344,23 @@ async fn callback(
         return Redirect::to("/shopify?error=oauth_save_failed").into_response();
     }
 
-    tracing::info!("Successfully connected to Shopify store: {}", token.shop);
+    info!(shop = %token.shop, scope_count = scopes.len(), "Successfully connected to Shopify store");
     Redirect::to("/shopify?success=connected").into_response()
 }
 
 /// GET /shopify/disconnect - Disconnect from Shopify.
 #[instrument(skip(state, session))]
 async fn disconnect(State(state): State<AppState>, session: Session) -> Response {
+    debug!("Processing Shopify disconnect request");
+
     // Check super_admin permission
     if let Err(response) = require_super_admin(&state, &session).await {
+        warn!("Non-super_admin attempted to disconnect Shopify");
         return response;
     }
 
     let shop = state.shopify().store();
+    debug!(shop = %shop, "Disconnecting from Shopify store");
 
     // Delete token from database
     let repo = ShopifyTokenRepository::new(state.pool());
@@ -342,10 +368,11 @@ async fn disconnect(State(state): State<AppState>, session: Session) -> Response
         tracing::error!("Failed to delete Shopify token: {}", e);
         return Redirect::to("/shopify?error=disconnect_failed").into_response();
     }
+    debug!(shop = %shop, "Deleted Shopify token from database");
 
     // Clear token from client
     state.shopify().clear_token().await;
 
-    tracing::info!("Disconnected from Shopify store: {}", shop);
+    info!(shop = %shop, "Successfully disconnected from Shopify store");
     Redirect::to("/shopify?success=disconnected").into_response()
 }

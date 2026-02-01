@@ -45,6 +45,8 @@
       "Bash(cargo test:*)",
       "Bash(task build:*)",
       "Bash(task rust:build:*)",
+      "Bash(task rust:check:*)",
+      "Bash(task rust:clippy:*)",
       "Read(.env)"
     ],
     "ask": [

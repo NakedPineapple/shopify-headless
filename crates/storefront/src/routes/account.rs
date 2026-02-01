@@ -22,6 +22,7 @@ use axum::{
     response::{IntoResponse, Redirect, Response},
 };
 use serde::Deserialize;
+use tracing::{debug, error, info, instrument, warn};
 
 use crate::config::AnalyticsConfig;
 use crate::filters;
@@ -161,31 +162,40 @@ impl From<AddressForm> for AddressInput {
 /// # Route
 ///
 /// `GET /account`
+#[instrument(skip(state, token, nonce))]
 pub async fn index(
     State(state): State<AppState>,
     RequireShopifyCustomer(token): RequireShopifyCustomer,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> impl IntoResponse {
+    debug!("Rendering account overview page");
+
     // Fetch customer data from Shopify
     let customer = match state.customer().get_customer(&token.access_token).await {
-        Ok(customer) => customer,
+        Ok(customer) => {
+            debug!(email = ?customer.email, "Fetched customer data from Shopify");
+            customer
+        }
         Err(e) => {
-            tracing::error!("Failed to fetch customer: {}", e);
+            error!("Failed to fetch customer: {}", e);
             return Redirect::to("/auth/shopify/login").into_response();
         }
     };
 
     // Fetch recent orders
     let recent_orders = match state.customer().get_orders(&token.access_token, 3).await {
-        Ok(orders) => orders
-            .into_iter()
-            .map(|o| OrderView {
-                number: o.name.clone(),
-                total: format_money(&o.total_price),
-            })
-            .collect(),
+        Ok(orders) => {
+            debug!(order_count = orders.len(), "Fetched recent orders");
+            orders
+                .into_iter()
+                .map(|o| OrderView {
+                    number: o.name.clone(),
+                    total: format_money(&o.total_price),
+                })
+                .collect()
+        }
         Err(e) => {
-            tracing::warn!("Failed to fetch orders: {}", e);
+            warn!("Failed to fetch orders: {}", e);
             Vec::new()
         }
     };
@@ -216,6 +226,8 @@ pub async fn index(
         zip: addr.zip.unwrap_or_default(),
     });
 
+    info!("Successfully rendered account overview page");
+
     AccountIndexTemplate {
         user,
         recent_orders,
@@ -233,18 +245,29 @@ pub async fn index(
 /// # Route
 ///
 /// `GET /account/orders`
+#[instrument(skip(state, token, nonce))]
 pub async fn orders(
     State(state): State<AppState>,
     RequireShopifyCustomer(token): RequireShopifyCustomer,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> impl IntoResponse {
+    debug!("Fetching order history page");
+
     let orders = match state.customer().get_orders(&token.access_token, 50).await {
-        Ok(orders) => orders,
+        Ok(orders) => {
+            debug!(order_count = orders.len(), "Fetched orders from Shopify");
+            orders
+        }
         Err(e) => {
-            tracing::error!("Failed to fetch orders: {}", e);
+            error!("Failed to fetch orders: {}", e);
             Vec::new()
         }
     };
+
+    info!(
+        order_count = orders.len(),
+        "Successfully rendered order history page"
+    );
 
     OrdersTemplate {
         orders,
@@ -258,29 +281,52 @@ pub async fn orders(
 /// # Route
 ///
 /// `GET /account/addresses`
+#[instrument(skip(state, token, nonce))]
 pub async fn addresses(
     State(state): State<AppState>,
     RequireShopifyCustomer(token): RequireShopifyCustomer,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> impl IntoResponse {
+    debug!("Fetching addresses list page");
+
     // Fetch addresses
     let addresses = match state
         .customer()
         .get_addresses(&token.access_token, 50)
         .await
     {
-        Ok(addresses) => addresses,
+        Ok(addresses) => {
+            debug!(
+                address_count = addresses.len(),
+                "Fetched addresses from Shopify"
+            );
+            addresses
+        }
         Err(e) => {
-            tracing::error!("Failed to fetch addresses: {}", e);
+            error!("Failed to fetch addresses: {}", e);
             Vec::new()
         }
     };
 
     // Fetch customer to get default address ID
     let default_address_id = match state.customer().get_customer(&token.access_token).await {
-        Ok(customer) => customer.default_address.map(|a| a.id),
-        Err(_) => None,
+        Ok(customer) => {
+            debug!(
+                has_default = customer.default_address.is_some(),
+                "Fetched default address info"
+            );
+            customer.default_address.map(|a| a.id)
+        }
+        Err(e) => {
+            warn!("Failed to fetch customer for default address: {}", e);
+            None
+        }
     };
+
+    info!(
+        address_count = addresses.len(),
+        "Successfully rendered addresses list page"
+    );
 
     AddressesTemplate {
         addresses,
@@ -295,11 +341,16 @@ pub async fn addresses(
 /// # Route
 ///
 /// `GET /account/addresses/new`
+#[instrument(skip(state, _token, nonce))]
 pub async fn new_address(
     State(state): State<AppState>,
     RequireShopifyCustomer(_token): RequireShopifyCustomer,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> impl IntoResponse {
+    debug!("Rendering new address form");
+
+    info!("Successfully rendered new address form");
+
     AddressFormTemplate {
         is_edit: false,
         address_id: None,
@@ -315,12 +366,15 @@ pub async fn new_address(
 /// # Route
 ///
 /// `POST /account/addresses`
+#[instrument(skip(state, token, nonce, form))]
 pub async fn create_address(
     State(state): State<AppState>,
     RequireShopifyCustomer(token): RequireShopifyCustomer,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
     Form(form): Form<AddressForm>,
 ) -> Response {
+    debug!("Creating new address");
+
     let input: AddressInput = form.into();
 
     match state
@@ -328,9 +382,12 @@ pub async fn create_address(
         .create_address(&token.access_token, input)
         .await
     {
-        Ok(_) => Redirect::to("/account/addresses").into_response(),
+        Ok(_) => {
+            info!("Successfully created new address");
+            Redirect::to("/account/addresses").into_response()
+        }
         Err(e) => {
-            tracing::error!("Failed to create address: {}", e);
+            error!("Failed to create address: {}", e);
             AddressFormTemplate {
                 is_edit: false,
                 address_id: None,
@@ -349,29 +406,40 @@ pub async fn create_address(
 /// # Route
 ///
 /// `GET /account/addresses/:id/edit`
+#[instrument(skip(state, token, nonce), fields(address_id = %address_id))]
 pub async fn edit_address(
     State(state): State<AppState>,
     RequireShopifyCustomer(token): RequireShopifyCustomer,
     Path(address_id): Path<String>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> Response {
+    debug!("Rendering edit address form");
+
     // Fetch addresses and find the one we want
     let addresses = match state
         .customer()
         .get_addresses(&token.access_token, 50)
         .await
     {
-        Ok(addresses) => addresses,
+        Ok(addresses) => {
+            debug!(
+                address_count = addresses.len(),
+                "Fetched addresses from Shopify"
+            );
+            addresses
+        }
         Err(e) => {
-            tracing::error!("Failed to fetch addresses: {}", e);
+            error!("Failed to fetch addresses: {}", e);
             return Redirect::to("/account/addresses").into_response();
         }
     };
 
     let Some(addr) = addresses.into_iter().find(|a| a.id == address_id) else {
-        tracing::warn!("Address not found: {}", address_id);
+        warn!(address_id = %address_id, "Address not found");
         return Redirect::to("/account/addresses").into_response();
     };
+
+    info!("Successfully rendered edit address form");
 
     AddressFormTemplate {
         is_edit: true,
@@ -389,6 +457,7 @@ pub async fn edit_address(
 /// # Route
 ///
 /// `POST /account/addresses/:id`
+#[instrument(skip(state, token, nonce, form), fields(address_id = %address_id))]
 pub async fn update_address(
     State(state): State<AppState>,
     RequireShopifyCustomer(token): RequireShopifyCustomer,
@@ -396,6 +465,8 @@ pub async fn update_address(
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
     Form(form): Form<AddressForm>,
 ) -> Response {
+    debug!("Updating existing address");
+
     let input: AddressInput = form.into();
 
     match state
@@ -403,9 +474,12 @@ pub async fn update_address(
         .update_address(&token.access_token, &address_id, input)
         .await
     {
-        Ok(_) => Redirect::to("/account/addresses").into_response(),
+        Ok(_) => {
+            info!("Successfully updated address");
+            Redirect::to("/account/addresses").into_response()
+        }
         Err(e) => {
-            tracing::error!("Failed to update address: {}", e);
+            error!("Failed to update address: {}", e);
             // Fetch the address again to show the form with error
             let addresses = state
                 .customer()
@@ -432,22 +506,26 @@ pub async fn update_address(
 /// # Route
 ///
 /// `DELETE /account/addresses/:id`
+#[instrument(skip(state, token), fields(address_id = %address_id))]
 pub async fn delete_address(
     State(state): State<AppState>,
     RequireShopifyCustomer(token): RequireShopifyCustomer,
     Path(address_id): Path<String>,
 ) -> Response {
+    debug!("Deleting address");
+
     match state
         .customer()
         .delete_address(&token.access_token, &address_id)
         .await
     {
         Ok(()) => {
+            info!("Successfully deleted address");
             // Return empty response for HTMX (removes the element)
             StatusCode::OK.into_response()
         }
         Err(e) => {
-            tracing::error!("Failed to delete address: {}", e);
+            error!("Failed to delete address: {}", e);
             StatusCode::INTERNAL_SERVER_ERROR.into_response()
         }
     }

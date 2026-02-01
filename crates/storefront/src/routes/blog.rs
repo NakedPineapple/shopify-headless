@@ -10,7 +10,7 @@ use axum::{
     routing::get,
 };
 use chrono::NaiveDate;
-use tracing::instrument;
+use tracing::{debug, info, instrument, warn};
 
 use crate::config::AnalyticsConfig;
 use crate::content::Post;
@@ -84,11 +84,16 @@ pub async fn index(
     State(state): State<AppState>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> impl IntoResponse {
+    debug!("Rendering blog index page");
+
     let posts: Vec<PostView> = state
         .content()
         .get_published_posts()
         .map(PostView::from)
         .collect();
+
+    info!(post_count = posts.len(), "Blog index loaded successfully");
+
     BlogIndexTemplate {
         posts,
         analytics: state.config().analytics.clone(),
@@ -108,13 +113,16 @@ pub async fn show(
     Path(slug): Path<String>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> Result<impl IntoResponse, StatusCode> {
-    let post = state
-        .content()
-        .get_post(&slug)
-        .ok_or(StatusCode::NOT_FOUND)?;
+    debug!(slug = %slug, "Loading blog post");
+
+    let post = state.content().get_post(&slug).ok_or_else(|| {
+        warn!(slug = %slug, "Blog post not found");
+        StatusCode::NOT_FOUND
+    })?;
 
     // Don't show draft posts
     if post.meta.draft {
+        warn!(slug = %slug, "Attempted to access draft blog post");
         return Err(StatusCode::NOT_FOUND);
     }
 
@@ -126,6 +134,13 @@ pub async fn show(
         .collect();
 
     let post_view = PostView::from(post);
+
+    debug!(
+        slug = %slug,
+        title = %post_view.title,
+        recent_posts_count = recent_posts.len(),
+        "Blog post data loaded"
+    );
 
     // SEO breadcrumbs
     let breadcrumbs = vec![
@@ -145,6 +160,8 @@ pub async fn show(
 
     let base_url = state.config().base_url.clone();
     let logo_url = crate::filters::get_logo_url(&base_url);
+
+    info!(slug = %slug, title = %post_view.title, "Blog post rendered successfully");
 
     Ok(BlogShowTemplate {
         post: post_view,

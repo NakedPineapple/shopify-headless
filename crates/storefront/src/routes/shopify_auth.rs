@@ -12,6 +12,7 @@ use axum::{
 use rand::Rng;
 use serde::Deserialize;
 use tower_sessions::Session;
+use tracing::{debug, error, info, instrument, warn};
 
 use crate::models::session_keys;
 use crate::shopify::CustomerAccessToken;
@@ -51,7 +52,10 @@ fn generate_random_string(length: usize) -> String {
 /// # Route
 ///
 /// `GET /auth/shopify/login`
+#[instrument(skip(state, session))]
 pub async fn login(State(state): State<AppState>, session: Session) -> Response {
+    debug!("Initiating Shopify Customer Account OAuth login flow");
+
     // Generate CSRF state and OpenID nonce
     let oauth_state = generate_random_string(32);
     let nonce = generate_random_string(32);
@@ -61,7 +65,7 @@ pub async fn login(State(state): State<AppState>, session: Session) -> Response 
         .insert(session_keys::SHOPIFY_OAUTH_STATE, &oauth_state)
         .await
     {
-        tracing::error!("Failed to store OAuth state in session: {}", e);
+        error!("Failed to store OAuth state in session: {}", e);
         return Redirect::to("/auth/login?error=session").into_response();
     }
 
@@ -69,7 +73,7 @@ pub async fn login(State(state): State<AppState>, session: Session) -> Response 
         .insert(session_keys::SHOPIFY_OAUTH_NONCE, &nonce)
         .await
     {
-        tracing::error!("Failed to store OAuth nonce in session: {}", e);
+        error!("Failed to store OAuth nonce in session: {}", e);
         return Redirect::to("/auth/login?error=session").into_response();
     }
 
@@ -81,6 +85,7 @@ pub async fn login(State(state): State<AppState>, session: Session) -> Response 
         .customer()
         .authorization_url(&redirect_uri, &oauth_state, &nonce);
 
+    info!("Redirecting user to Shopify authorization page");
     Redirect::to(&auth_url).into_response()
 }
 
@@ -92,27 +97,34 @@ pub async fn login(State(state): State<AppState>, session: Session) -> Response 
 /// # Route
 ///
 /// `GET /auth/shopify/callback`
+#[instrument(skip(state, session, query))]
 pub async fn callback(
     State(state): State<AppState>,
     session: Session,
     Query(query): Query<CallbackQuery>,
 ) -> Response {
+    debug!("Processing Shopify OAuth callback");
+
     // Check for OAuth errors from Shopify
     if let Some(error) = query.error {
         let description = query.error_description.unwrap_or_default();
-        tracing::warn!("Shopify OAuth error: {} - {}", error, description);
+        warn!(
+            oauth_error = %error,
+            error_description = %description,
+            "Shopify OAuth authorization denied"
+        );
         return Redirect::to("/auth/login?error=shopify_denied").into_response();
     }
 
     // Verify we have an authorization code
     let Some(code) = query.code else {
-        tracing::warn!("Shopify OAuth callback missing code");
+        warn!("Shopify OAuth callback missing authorization code");
         return Redirect::to("/auth/login?error=missing_code").into_response();
     };
 
     // Verify state parameter (CSRF protection)
     let Some(returned_state) = query.state else {
-        tracing::warn!("Shopify OAuth callback missing state");
+        warn!("Shopify OAuth callback missing state parameter");
         return Redirect::to("/auth/login?error=missing_state").into_response();
     };
 
@@ -123,9 +135,11 @@ pub async fn callback(
         .flatten();
 
     if stored_state.as_ref() != Some(&returned_state) {
-        tracing::warn!("Shopify OAuth state mismatch");
+        warn!("Shopify OAuth state mismatch - possible CSRF attack");
         return Redirect::to("/auth/login?error=invalid_state").into_response();
     }
+
+    debug!("OAuth state validated, clearing one-time use tokens");
 
     // Clear the stored state (one-time use)
     let _ = session
@@ -138,11 +152,13 @@ pub async fn callback(
     // Build redirect URI (must match the one used in authorization request)
     let redirect_uri = format!("{}/auth/shopify/callback", state.config().base_url);
 
+    debug!("Exchanging authorization code for access tokens");
+
     // Exchange code for tokens
     let token = match state.customer().exchange_code(&code, &redirect_uri).await {
         Ok(token) => token,
         Err(e) => {
-            tracing::error!("Failed to exchange Shopify OAuth code: {}", e);
+            error!(error = %e, "Failed to exchange Shopify OAuth code for tokens");
             return Redirect::to("/auth/login?error=token_exchange").into_response();
         }
     };
@@ -152,11 +168,11 @@ pub async fn callback(
         .insert(session_keys::SHOPIFY_CUSTOMER_TOKEN, &token)
         .await
     {
-        tracing::error!("Failed to store Shopify customer token: {}", e);
+        error!(error = %e, "Failed to store Shopify customer token in session");
         return Redirect::to("/auth/login?error=session").into_response();
     }
 
-    tracing::info!("Shopify customer authenticated successfully");
+    info!("Shopify customer authenticated successfully");
 
     // Redirect to account page
     Redirect::to("/account").into_response()
@@ -170,7 +186,10 @@ pub async fn callback(
 /// # Route
 ///
 /// `POST /auth/shopify/logout`
+#[instrument(skip(state, session))]
 pub async fn logout(State(state): State<AppState>, session: Session) -> Response {
+    debug!("Processing Shopify customer logout request");
+
     // Get the current token to extract id_token for Shopify logout
     let token: Option<CustomerAccessToken> = session
         .get(session_keys::SHOPIFY_CUSTOMER_TOKEN)
@@ -183,15 +202,19 @@ pub async fn logout(State(state): State<AppState>, session: Session) -> Response
         .remove::<CustomerAccessToken>(session_keys::SHOPIFY_CUSTOMER_TOKEN)
         .await;
 
+    debug!("Cleared Shopify customer token from session");
+
     // If we have an id_token, redirect to Shopify logout
     if let Some(token) = token
         && let Some(id_token) = token.id_token
     {
         let post_logout_uri = format!("{}/", state.config().base_url);
         let logout_url = state.customer().logout_url(&id_token, &post_logout_uri);
+        info!("Redirecting to Shopify logout endpoint for full session termination");
         return Redirect::to(&logout_url).into_response();
     }
 
+    info!("Shopify customer logged out locally (no Shopify session to terminate)");
     // Otherwise just redirect to home
     Redirect::to("/").into_response()
 }

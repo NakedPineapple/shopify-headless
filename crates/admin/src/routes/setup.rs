@@ -16,6 +16,7 @@ use axum::{
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use tower_sessions::Session;
+use tracing::{debug, info, instrument, warn};
 use webauthn_rs::prelude::*;
 
 use naked_pineapple_core::Email;
@@ -83,7 +84,9 @@ pub fn router() -> Router<AppState> {
 /// Render the setup page.
 ///
 /// GET /auth/setup
+#[instrument]
 async fn setup_page() -> impl IntoResponse {
+    debug!("Rendering admin setup page for new user registration");
     Html(
         SetupPageTemplate
             .render()
@@ -111,15 +114,20 @@ pub struct SendCodeResponse {
 /// Send a verification code to the email if it has a valid invite.
 ///
 /// POST /api/auth/setup/send-code
+#[instrument(skip(state, session))]
 async fn send_verification_code(
     State(state): State<AppState>,
     session: Session,
     Json(req): Json<SendCodeRequest>,
 ) -> Result<Json<SendCodeResponse>, ApiError> {
+    debug!("Processing verification code request for admin setup");
     let email = req.email.trim().to_lowercase();
 
     // Validate email format
-    let parsed_email = Email::parse(&email).map_err(|_| ApiError::new("Invalid email address"))?;
+    let parsed_email = Email::parse(&email).map_err(|_| {
+        warn!(email = %email, "Invalid email format provided");
+        ApiError::new("Invalid email address")
+    })?;
 
     // Check if invite exists and is valid
     let invite_repo = AdminInviteRepository::new(state.pool());
@@ -129,6 +137,7 @@ async fn send_verification_code(
         .map_err(|e| ApiError::new(format!("Database error: {e}")))?;
 
     if !is_valid {
+        warn!(email = %email, "No valid invite found for email");
         return Err(ApiError::new(
             "No valid invite found for this email address",
         ));
@@ -142,6 +151,7 @@ async fn send_verification_code(
         .map_err(|e| ApiError::new(format!("Database error: {e}")))?;
 
     if existing.is_some() {
+        warn!(email = %email, "Admin account already exists with this email");
         return Err(ApiError::new(
             "An admin account already exists with this email",
         ));
@@ -184,13 +194,14 @@ async fn send_verification_code(
             })?;
     } else {
         // Development mode - log the code
-        tracing::warn!(
+        warn!(
             email = %email,
             code = %code,
             "SMTP not configured - verification code logged (dev mode)"
         );
     }
 
+    info!(email = %email, "Verification code sent successfully");
     Ok(Json(SendCodeResponse {
         success: true,
         message: "Verification code sent to your email".to_owned(),
@@ -218,29 +229,41 @@ pub struct VerifyCodeResponse {
 /// Verify the code entered by the user.
 ///
 /// POST /api/auth/setup/verify-code
+#[instrument(skip(state, session))]
 async fn verify_code(
     State(state): State<AppState>,
     session: Session,
     Json(req): Json<VerifyCodeRequest>,
 ) -> Result<Json<VerifyCodeResponse>, ApiError> {
+    debug!("Verifying email verification code for admin setup");
+
     // Get stored verification data
     let stored_code: String = session
         .get(setup_session_keys::VERIFICATION_CODE)
         .await
         .map_err(|e| ApiError::new(format!("Session error: {e}")))?
-        .ok_or_else(|| ApiError::new("No verification in progress. Please request a new code."))?;
+        .ok_or_else(|| {
+            warn!("No verification in progress - missing code in session");
+            ApiError::new("No verification in progress. Please request a new code.")
+        })?;
 
     let stored_email: String = session
         .get(setup_session_keys::VERIFICATION_EMAIL)
         .await
         .map_err(|e| ApiError::new(format!("Session error: {e}")))?
-        .ok_or_else(|| ApiError::new("No verification in progress. Please request a new code."))?;
+        .ok_or_else(|| {
+            warn!("No verification in progress - missing email in session");
+            ApiError::new("No verification in progress. Please request a new code.")
+        })?;
 
     let expires_timestamp: i64 = session
         .get(setup_session_keys::VERIFICATION_EXPIRES)
         .await
         .map_err(|e| ApiError::new(format!("Session error: {e}")))?
-        .ok_or_else(|| ApiError::new("No verification in progress. Please request a new code."))?;
+        .ok_or_else(|| {
+            warn!("No verification in progress - missing expiration in session");
+            ApiError::new("No verification in progress. Please request a new code.")
+        })?;
 
     // Check expiration
     let now = Utc::now().timestamp();
@@ -249,6 +272,7 @@ async fn verify_code(
         let _ = session
             .remove::<String>(setup_session_keys::VERIFICATION_CODE)
             .await;
+        warn!(email = %stored_email, "Verification code expired");
         return Err(ApiError::new(
             "Verification code has expired. Please request a new code.",
         ));
@@ -256,6 +280,7 @@ async fn verify_code(
 
     // Verify code
     if req.code.trim() != stored_code {
+        warn!(email = %stored_email, "Invalid verification code entered");
         return Err(ApiError::new("Invalid verification code"));
     }
 
@@ -276,8 +301,12 @@ async fn verify_code(
         .get_by_email(&stored_email)
         .await
         .map_err(|e| ApiError::new(format!("Database error: {e}")))?
-        .ok_or_else(|| ApiError::new("Invite not found"))?;
+        .ok_or_else(|| {
+            warn!(email = %stored_email, "Invite not found after code verification");
+            ApiError::new("Invite not found")
+        })?;
 
+    info!(email = %stored_email, "Email verified successfully for admin setup");
     Ok(Json(VerifyCodeResponse {
         success: true,
         email: stored_email,
@@ -305,11 +334,14 @@ pub struct StartRegistrationResponse {
 /// Start passkey registration for the verified email.
 ///
 /// POST /api/auth/setup/register/start
+#[instrument(skip(state, session))]
 async fn register_start(
     State(state): State<AppState>,
     session: Session,
     Json(req): Json<StartRegistrationRequest>,
 ) -> Result<Json<StartRegistrationResponse>, ApiError> {
+    debug!("Starting passkey registration for new admin user");
+
     // Verify email was verified
     let email_verified: bool = session
         .get(setup_session_keys::EMAIL_VERIFIED)
@@ -318,6 +350,7 @@ async fn register_start(
         .unwrap_or(false);
 
     if !email_verified {
+        warn!("Attempted passkey registration without email verification");
         return Err(ApiError::new(
             "Email not verified. Please verify your email first.",
         ));
@@ -327,7 +360,10 @@ async fn register_start(
         .get(setup_session_keys::VERIFICATION_EMAIL)
         .await
         .map_err(|e| ApiError::new(format!("Session error: {e}")))?
-        .ok_or_else(|| ApiError::new("No email in session. Please start over."))?;
+        .ok_or_else(|| {
+            warn!("No email in session during passkey registration start");
+            ApiError::new("No email in session. Please start over.")
+        })?;
 
     // Validate invite is still valid
     let invite_repo = AdminInviteRepository::new(state.pool());
@@ -335,9 +371,13 @@ async fn register_start(
         .get_by_email(&email)
         .await
         .map_err(|e| ApiError::new(format!("Database error: {e}")))?
-        .ok_or_else(|| ApiError::new("Invite not found"))?;
+        .ok_or_else(|| {
+            warn!(email = %email, "Invite not found during passkey registration");
+            ApiError::new("Invite not found")
+        })?;
 
     if !invite.is_valid() {
+        warn!(email = %email, "Invite expired during passkey registration");
         return Err(ApiError::new("Invite is no longer valid"));
     }
 
@@ -359,7 +399,7 @@ async fn register_start(
 
     // Store pending registration info including the webauthn_user_id
     let pending = PendingRegistration {
-        email,
+        email: email.clone(),
         display_name: req.display_name,
         passkey_name: req.passkey_name.unwrap_or_else(|| "Passkey".to_owned()),
         webauthn_user_id,
@@ -370,6 +410,7 @@ async fn register_start(
         .await
         .map_err(|e| ApiError::new(format!("Session error: {e}")))?;
 
+    info!(email = %email, "Passkey registration challenge created");
     Ok(Json(StartRegistrationResponse { options: ccr }))
 }
 
@@ -389,24 +430,33 @@ pub struct FinishRegistrationResponse {
 /// Finish passkey registration and create admin user.
 ///
 /// POST /api/auth/setup/register/finish
+#[instrument(skip(state, session, req))]
 async fn register_finish(
     State(state): State<AppState>,
     session: Session,
     Json(req): Json<FinishRegistrationRequest>,
 ) -> Result<Json<FinishRegistrationResponse>, ApiError> {
+    debug!("Finishing passkey registration and creating admin user");
+
     // Get registration state
     let reg_state: PasskeyRegistration = session
         .get(session_keys::WEBAUTHN_REG)
         .await
         .map_err(|e| ApiError::new(format!("Session error: {e}")))?
-        .ok_or_else(|| ApiError::new("No registration in progress"))?;
+        .ok_or_else(|| {
+            warn!("No registration state in session during passkey finish");
+            ApiError::new("No registration in progress")
+        })?;
 
     // Get pending registration info
     let pending: PendingRegistration = session
         .get("setup_pending_registration")
         .await
         .map_err(|e| ApiError::new(format!("Session error: {e}")))?
-        .ok_or_else(|| ApiError::new("No registration in progress"))?;
+        .ok_or_else(|| {
+            warn!("No pending registration info in session during passkey finish");
+            ApiError::new("No registration in progress")
+        })?;
 
     // Clear registration state
     let _ = session
@@ -420,7 +470,10 @@ async fn register_finish(
     let passkey = state
         .webauthn()
         .finish_passkey_registration(&req.credential, &reg_state)
-        .map_err(|e| ApiError::new(format!("WebAuthn error: {e}")))?;
+        .map_err(|e| {
+            warn!(email = %pending.email, error = %e, "WebAuthn passkey registration failed");
+            ApiError::new(format!("WebAuthn error: {e}"))
+        })?;
 
     // Get invite to get role
     let invite_repo = AdminInviteRepository::new(state.pool());
@@ -428,9 +481,13 @@ async fn register_finish(
         .get_by_email(&pending.email)
         .await
         .map_err(|e| ApiError::new(format!("Database error: {e}")))?
-        .ok_or_else(|| ApiError::new("Invite not found"))?;
+        .ok_or_else(|| {
+            warn!(email = %pending.email, "Invite not found during passkey finish");
+            ApiError::new("Invite not found")
+        })?;
 
     if !invite.is_valid() {
+        warn!(email = %pending.email, "Invite expired during passkey finish");
         return Err(ApiError::new("Invite is no longer valid"));
     }
 
@@ -481,7 +538,7 @@ async fn register_finish(
         .await
         .map_err(|e| ApiError::new(format!("Session error: {e}")))?;
 
-    tracing::info!(
+    info!(
         admin_id = %user.id.as_i32(),
         email = %pending.email,
         "New admin user registered successfully"
@@ -493,7 +550,7 @@ async fn register_finish(
             .send_welcome_email(&pending.email, &pending.display_name)
             .await
     {
-        tracing::warn!(error = %e, "Failed to send welcome email");
+        warn!(error = %e, "Failed to send welcome email");
     }
 
     Ok(Json(FinishRegistrationResponse {

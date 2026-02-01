@@ -12,7 +12,7 @@ use axum::{
     response::{Html, IntoResponse},
 };
 use serde::Deserialize;
-use tracing::instrument;
+use tracing::{debug, error, info, instrument, warn};
 
 use crate::filters;
 use crate::services::KlaviyoClient;
@@ -93,10 +93,12 @@ pub async fn subscribe(
     State(state): State<AppState>,
     Form(form): Form<SubscribeForm>,
 ) -> impl IntoResponse {
+    debug!("Processing newsletter subscription request");
     let email = form.email.trim().to_lowercase();
 
     // Basic email validation
     if !is_valid_email(&email) {
+        warn!(email = %email, "Invalid email format provided");
         return SubscribeErrorTemplate {
             message: "Please enter a valid email address.".to_string(),
             email,
@@ -104,26 +106,32 @@ pub async fn subscribe(
         .into_response();
     }
 
+    debug!(email = %email, "Email validation passed");
+
     // Subscribe to Klaviyo list (primary email marketing platform)
     if let Some(klaviyo_config) = state.config().klaviyo.as_ref() {
+        debug!(email = %email, "Attempting Klaviyo subscription");
         match KlaviyoClient::new(klaviyo_config) {
             Ok(client) => {
                 if let Err(e) = client.subscribe_email(&email).await {
-                    tracing::warn!(email = %email, error = %e, "Klaviyo subscription failed");
+                    warn!(email = %email, error = %e, "Klaviyo subscription failed");
                     // Continue anyway - Shopify sync will eventually add them
                 } else {
-                    tracing::info!(email = %email, "Klaviyo subscription successful");
+                    info!(email = %email, "Klaviyo subscription successful");
                 }
             }
             Err(e) => {
-                tracing::warn!(error = %e, "Failed to create Klaviyo client");
+                warn!(error = %e, "Failed to create Klaviyo client");
             }
         }
+    } else {
+        debug!("Klaviyo not configured, skipping Klaviyo subscription");
     }
 
     // Create a new Shopify customer with marketing consent
     // Using a random password since they won't use it (newsletter-only subscription)
     let password = generate_random_password();
+    debug!(email = %email, "Creating Shopify customer with marketing consent");
 
     match state
         .storefront()
@@ -131,7 +139,7 @@ pub async fn subscribe(
         .await
     {
         Ok(_customer) => {
-            tracing::info!(email = %email, "Shopify customer created with marketing consent");
+            info!(email = %email, "Shopify customer created with marketing consent");
             SubscribeSuccessTemplate {
                 email: email.clone(),
             }
@@ -146,13 +154,13 @@ pub async fn subscribe(
                 || error_message.contains("already exists")
             {
                 // Treat as success - they're already in the system
-                tracing::info!(email = %email, "Email already exists in Shopify - treating as success");
+                info!(email = %email, "Email already exists in Shopify - treating as success");
                 SubscribeSuccessTemplate {
                     email: email.clone(),
                 }
                 .into_response()
             } else {
-                tracing::warn!(email = %email, error = %e, "Shopify customer creation failed");
+                warn!(email = %email, error = %e, "Shopify customer creation failed");
                 SubscribeErrorTemplate {
                     message: "Something went wrong. Please try again.".to_string(),
                     email,
@@ -172,10 +180,13 @@ pub async fn unsubscribe_page(
     Query(query): Query<UnsubscribeQuery>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> impl IntoResponse {
+    debug!("Rendering unsubscribe page");
     let email = query.email.unwrap_or_default();
+    debug!(email = %email, "Unsubscribe page requested");
 
     // Check if Klaviyo is configured
     if state.config().klaviyo.is_none() {
+        warn!("Klaviyo not configured, unsubscribe service unavailable");
         return Html(
             UnsubscribeErrorTemplate {
                 message: "Unsubscribe service is not available. Please contact support."
@@ -189,6 +200,7 @@ pub async fn unsubscribe_page(
         .into_response();
     }
 
+    debug!(email = %email, "Rendering unsubscribe form");
     Html(
         UnsubscribeTemplate {
             email,
@@ -211,15 +223,24 @@ pub async fn unsubscribe(
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
     Form(form): Form<UnsubscribeForm>,
 ) -> impl IntoResponse {
+    debug!("Processing unsubscribe request");
     let email = form.email.trim().to_lowercase();
+    debug!(
+        email = %email,
+        unsubscribe_email = form.unsubscribe_email,
+        unsubscribe_sms = form.unsubscribe_sms,
+        "Unsubscribe options selected"
+    );
 
     // Validate email
     if !is_valid_email(&email) {
+        warn!(email = %email, "Invalid email format for unsubscribe");
         return render_unsubscribe_error("Please enter a valid email address.", &email, &nonce);
     }
 
     // Check if at least one option is selected
     if !form.unsubscribe_email && !form.unsubscribe_sms {
+        warn!(email = %email, "No unsubscribe options selected");
         return render_unsubscribe_error(
             "Please select at least one option to unsubscribe from.",
             &email,
@@ -229,6 +250,7 @@ pub async fn unsubscribe(
 
     // Get Klaviyo config
     let Some(klaviyo_config) = state.config().klaviyo.as_ref() else {
+        warn!("Klaviyo not configured for unsubscribe request");
         return render_unsubscribe_error(
             "Unsubscribe service is not available. Please contact support.",
             &email,
@@ -237,10 +259,11 @@ pub async fn unsubscribe(
     };
 
     // Create Klaviyo client
+    debug!("Creating Klaviyo client for unsubscribe");
     let client = match KlaviyoClient::new(klaviyo_config) {
         Ok(c) => c,
         Err(e) => {
-            tracing::error!(error = %e, "Failed to create Klaviyo client");
+            error!(error = %e, "Failed to create Klaviyo client");
             return render_unsubscribe_error(
                 "Something went wrong. Please try again later.",
                 &email,
@@ -250,6 +273,7 @@ pub async fn unsubscribe(
     };
 
     // Process the unsubscribe request
+    debug!(email = %email, "Delegating to process_unsubscribe");
     process_unsubscribe(&client, &email, &form, &nonce).await
 }
 
@@ -260,16 +284,20 @@ async fn process_unsubscribe(
     form: &UnsubscribeForm,
     nonce: &str,
 ) -> axum::response::Response {
+    debug!(email = %email, "Looking up Klaviyo profile");
     // Find profile by email
     let profile = match client.find_profile_by_email(email).await {
-        Ok(p) => p,
+        Ok(p) => {
+            debug!(email = %email, profile_id = %p.id, "Found Klaviyo profile");
+            p
+        }
         Err(crate::services::KlaviyoError::ProfileNotFound(_)) => {
             // Profile not found - show success anyway (don't reveal if email exists)
-            tracing::info!(email = %email, "Profile not found - showing success");
+            info!(email = %email, "Profile not found - showing success");
             return render_unsubscribe_success(email, nonce);
         }
         Err(e) => {
-            tracing::error!(email = %email, error = %e, "Failed to find profile");
+            error!(email = %email, error = %e, "Failed to find profile");
             return render_unsubscribe_error(
                 "Something went wrong. Please try again later.",
                 email,
@@ -281,24 +309,27 @@ async fn process_unsubscribe(
     // Unsubscribe from selected channels
     let mut errors = Vec::new();
 
-    if form.unsubscribe_email
-        && let Err(e) = client.unsubscribe_email(&profile.id).await
-    {
-        tracing::error!(email = %email, error = %e, "Failed to unsubscribe from email");
-        errors.push("email");
+    if form.unsubscribe_email {
+        debug!(email = %email, profile_id = %profile.id, "Unsubscribing from email");
+        if let Err(e) = client.unsubscribe_email(&profile.id).await {
+            error!(email = %email, error = %e, "Failed to unsubscribe from email");
+            errors.push("email");
+        }
     }
 
-    if form.unsubscribe_sms
-        && let Err(e) = client.unsubscribe_sms(&profile.id).await
-    {
-        tracing::error!(email = %email, error = %e, "Failed to unsubscribe from SMS");
-        errors.push("sms");
+    if form.unsubscribe_sms {
+        debug!(email = %email, profile_id = %profile.id, "Unsubscribing from SMS");
+        if let Err(e) = client.unsubscribe_sms(&profile.id).await {
+            error!(email = %email, error = %e, "Failed to unsubscribe from SMS");
+            errors.push("sms");
+        }
     }
 
     if errors.is_empty() {
-        tracing::info!(email = %email, "Unsubscribe successful");
+        info!(email = %email, "Unsubscribe successful");
         render_unsubscribe_success(email, nonce)
     } else {
+        warn!(email = %email, failed_channels = ?errors, "Partial unsubscribe failure");
         render_unsubscribe_error(
             &format!(
                 "Failed to unsubscribe from {}. Please try again or contact support.",

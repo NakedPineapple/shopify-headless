@@ -32,6 +32,8 @@ async fn handle_interaction(
     headers: HeaderMap,
     body: String,
 ) -> Result<impl IntoResponse, AppError> {
+    debug!("Handling Slack interaction webhook for button clicks from confirmation messages");
+
     // Extract headers for signature verification
     let timestamp = headers
         .get("X-Slack-Request-Timestamp")

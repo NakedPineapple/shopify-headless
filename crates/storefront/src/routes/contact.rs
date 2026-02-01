@@ -4,7 +4,7 @@
 
 use axum::{Json, extract::State, http::StatusCode, response::IntoResponse};
 use serde::{Deserialize, Serialize};
-use tracing::instrument;
+use tracing::{debug, info, instrument, warn};
 
 use crate::services::KlaviyoClient;
 use crate::state::AppState;
@@ -34,15 +34,17 @@ pub struct ContactResponse {
 ///
 /// Tracks the question as a Klaviyo event, which can trigger flows
 /// to notify the support team and send an auto-response.
-#[instrument(skip(state), fields(email = %form.email, product = %form.product))]
+#[instrument(skip(state, form), fields(email = %form.email, product = %form.product))]
 pub async fn product_question(
     State(state): State<AppState>,
     Json(form): Json<ProductQuestionForm>,
 ) -> impl IntoResponse {
+    debug!("Processing product question submission");
     let email = form.email.trim().to_lowercase();
 
     // Basic email validation
     if !is_valid_email(&email) {
+        warn!(email = %email, "Invalid email address submitted");
         return (
             StatusCode::BAD_REQUEST,
             Json(ContactResponse {
@@ -54,6 +56,11 @@ pub async fn product_question(
 
     // Validate required fields
     if form.name.trim().is_empty() || form.message.trim().is_empty() {
+        warn!(
+            name_empty = form.name.trim().is_empty(),
+            message_empty = form.message.trim().is_empty(),
+            "Missing required fields in product question form"
+        );
         return (
             StatusCode::BAD_REQUEST,
             Json(ContactResponse {
@@ -62,6 +69,8 @@ pub async fn product_question(
             }),
         );
     }
+
+    debug!("Form validation passed, checking Klaviyo configuration");
 
     // Get Klaviyo config
     let Some(klaviyo_config) = state.config().klaviyo.as_ref() else {
@@ -74,6 +83,8 @@ pub async fn product_question(
             }),
         );
     };
+
+    debug!("Klaviyo configured, creating client");
 
     // Create Klaviyo client
     let client = match KlaviyoClient::new(klaviyo_config) {
@@ -90,6 +101,8 @@ pub async fn product_question(
         }
     };
 
+    debug!("Klaviyo client created, building event properties");
+
     // Build event properties
     let properties = serde_json::json!({
         "product": form.product.trim(),
@@ -99,13 +112,18 @@ pub async fn product_question(
         "source": "Product Page - Ask a Question"
     });
 
+    debug!(
+        event_name = "Asked Product Question",
+        "Tracking event in Klaviyo"
+    );
+
     // Track the event in Klaviyo
     match client
         .track_event(&email, "Asked Product Question", properties)
         .await
     {
         Ok(()) => {
-            tracing::info!(email = %email, product = %form.product, "Product question tracked");
+            info!(email = %email, product = %form.product, "Product question tracked successfully in Klaviyo");
             (
                 StatusCode::OK,
                 Json(ContactResponse {

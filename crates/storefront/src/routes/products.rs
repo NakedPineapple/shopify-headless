@@ -8,7 +8,7 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use serde::Deserialize;
-use tracing::instrument;
+use tracing::{debug, info, instrument, warn};
 
 use crate::config::AnalyticsConfig;
 use crate::filters;
@@ -137,6 +137,64 @@ fn format_price(money: &Money) -> String {
     )
 }
 
+/// Build a `RatingView` from Shopify product rating.
+fn build_rating_view(r: &crate::shopify::types::ProductRating) -> RatingView {
+    let clamped = r.value.clamp(0.0, 5.0);
+    let rounded = (clamped * 2.0).round() / 2.0;
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "value is clamped"
+    )]
+    let full_stars = rounded.floor() as u8;
+    let has_half_star = (rounded - rounded.floor()) >= 0.5;
+    let empty_stars = 5 - full_stars - u8::from(has_half_star);
+    RatingView {
+        value: r.value,
+        full_stars,
+        has_half_star,
+        empty_stars,
+        count: r.count,
+    }
+}
+
+/// Build selling plan group views from Shopify data.
+fn build_selling_plan_groups(
+    groups: &[crate::shopify::types::SellingPlanGroup],
+) -> Vec<SellingPlanGroupView> {
+    groups
+        .iter()
+        .map(|group| SellingPlanGroupView {
+            name: group.name.clone(),
+            selling_plans: group
+                .selling_plans
+                .iter()
+                .map(|sp| {
+                    let discount_percentage = sp.price_adjustments.first().and_then(|adj| {
+                        if let SellingPlanPriceAdjustmentValue::Percentage(p) =
+                            &adj.adjustment_value
+                        {
+                            #[expect(
+                                clippy::cast_possible_truncation,
+                                reason = "discount percentages are small"
+                            )]
+                            Some(*p as i64)
+                        } else {
+                            None
+                        }
+                    });
+                    SellingPlanView {
+                        id: sp.id.clone(),
+                        name: sp.name.clone(),
+                        discount_percentage,
+                        discount_text: discount_percentage.map(|p| format!("Save {p}%")),
+                    }
+                })
+                .collect(),
+        })
+        .collect()
+}
+
 impl From<&ShopifyProduct> for ProductView {
     fn from(product: &ShopifyProduct) -> Self {
         Self {
@@ -186,66 +244,9 @@ impl From<&ShopifyProduct> for ProductView {
             promotes: product.promotes.clone(),
             benefits: product.benefits.clone(),
             free_from: product.free_from.clone(),
-            rating: product.rating.as_ref().map(|r| {
-                // Calculate star display: round to nearest 0.5, clamped to valid range
-                let clamped = r.value.clamp(0.0, 5.0);
-                let rounded = (clamped * 2.0).round() / 2.0;
-                // SAFETY: rounded is clamped to 0.0-5.0, floor gives 0-5, fits in u8
-                #[expect(
-                    clippy::cast_possible_truncation,
-                    clippy::cast_sign_loss,
-                    reason = "value is clamped to 0.0-5.0 range"
-                )]
-                let full_stars = rounded.floor() as u8;
-                let has_half_star = (rounded - rounded.floor()) >= 0.5;
-                let empty_stars = 5 - full_stars - u8::from(has_half_star);
-
-                RatingView {
-                    value: r.value,
-                    full_stars,
-                    has_half_star,
-                    empty_stars,
-                    count: r.count,
-                }
-            }),
+            rating: product.rating.as_ref().map(build_rating_view),
             requires_selling_plan: product.requires_selling_plan,
-            selling_plan_groups: product
-                .selling_plan_groups
-                .iter()
-                .map(|group| SellingPlanGroupView {
-                    name: group.name.clone(),
-                    selling_plans: group
-                        .selling_plans
-                        .iter()
-                        .map(|sp| {
-                            // Extract discount percentage from first price adjustment
-                            let discount_percentage =
-                                sp.price_adjustments.first().and_then(|adj| {
-                                    if let SellingPlanPriceAdjustmentValue::Percentage(p) =
-                                        &adj.adjustment_value
-                                    {
-                                        #[expect(
-                                            clippy::cast_possible_truncation,
-                                            reason = "discount percentages are small integers"
-                                        )]
-                                        Some(*p as i64)
-                                    } else {
-                                        None
-                                    }
-                                });
-
-                            let discount_text = discount_percentage.map(|p| format!("Save {p}%"));
-
-                            SellingPlanView {
-                                id: sp.id.clone(),
-                                name: sp.name.clone(),
-                                discount_percentage,
-                                discount_text,
-                            }
-                        })
-                        .collect(),
-                })
-                .collect(),
+            selling_plan_groups: build_selling_plan_groups(&product.selling_plan_groups),
         }
     }
 }
@@ -299,7 +300,9 @@ pub async fn index(
     Query(query): Query<PaginationQuery>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> Response {
+    debug!("Fetching product listing page");
     let current_page = query.page.unwrap_or(1);
+    debug!(current_page, "Pagination parameters");
 
     // Fetch products from Shopify Storefront API
     let result = state
@@ -314,6 +317,11 @@ pub async fn index(
 
             // Estimate total pages (Shopify doesn't give total count easily)
             let has_more = connection.page_info.has_next_page;
+
+            info!(
+                product_count = products.len(),
+                current_page, has_more, "Successfully fetched product listing"
+            );
 
             ProductsIndexTemplate {
                 products,
@@ -331,7 +339,7 @@ pub async fn index(
             .into_response()
         }
         Err(e) => {
-            tracing::error!("Failed to fetch products: {e}");
+            tracing::error!(error = %e, "Failed to fetch products from Shopify");
             // Return empty products page on error
             ProductsIndexTemplate {
                 products: Vec::new(),
@@ -347,6 +355,49 @@ pub async fn index(
     }
 }
 
+/// Build an error product template response.
+fn build_error_product_template(
+    status: StatusCode,
+    handle: String,
+    title: &str,
+    description: &str,
+    state: &AppState,
+    nonce: String,
+) -> Response {
+    (
+        status,
+        ProductShowTemplate {
+            product: ProductView {
+                handle,
+                title: title.to_string(),
+                description: description.to_string(),
+                product_type: String::new(),
+                price: "$0.00".to_string(),
+                compare_at_price: None,
+                featured_image: None,
+                images: Vec::new(),
+                variants: Vec::new(),
+                ingredients: None,
+                directions: None,
+                warning: None,
+                promotes: Vec::new(),
+                benefits: None,
+                free_from: Vec::new(),
+                rating: None,
+                requires_selling_plan: false,
+                selling_plan_groups: Vec::new(),
+            },
+            related_products: Vec::new(),
+            analytics: state.config().analytics.clone(),
+            nonce,
+            base_url: state.config().base_url.clone(),
+            breadcrumbs: Vec::new(),
+            store_url: state.config().shopify.store.clone(),
+        },
+    )
+        .into_response()
+}
+
 /// Display product detail page.
 #[instrument(skip(state, nonce))]
 pub async fn show(
@@ -354,15 +405,16 @@ pub async fn show(
     Path(handle): Path<String>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> Response {
-    // Fetch product from Shopify Storefront API
+    debug!(handle = %handle, "Fetching product detail page");
     let result = state.storefront().get_product_by_handle(&handle).await;
 
     match result {
         Ok(shopify_product) => {
+            debug!(product_id = %shopify_product.id, title = %shopify_product.title, "Product fetched");
             let product = ProductView::from(&shopify_product);
 
-            // Fetch related products
-            let related_products = state
+            debug!(product_id = %shopify_product.id, "Fetching related product recommendations");
+            let related_products: Vec<ProductView> = state
                 .storefront()
                 .get_product_recommendations(
                     &shopify_product.id,
@@ -372,7 +424,8 @@ pub async fn show(
                 .map(|products| products.iter().take(4).map(ProductView::from).collect())
                 .unwrap_or_default();
 
-            // SEO breadcrumbs
+            info!(handle = %handle, title = %product.title, related_count = related_products.len(), "Rendered product detail page");
+
             let breadcrumbs = vec![
                 BreadcrumbItem {
                     name: "Home".to_string(),
@@ -400,74 +453,26 @@ pub async fn show(
             .into_response()
         }
         Err(ShopifyError::NotFound(_)) => {
-            // Return 404 for missing products
-            (
+            warn!(handle = %handle, "Product not found");
+            build_error_product_template(
                 StatusCode::NOT_FOUND,
-                ProductShowTemplate {
-                    product: ProductView {
-                        handle: handle.clone(),
-                        title: "Product Not Found".to_string(),
-                        description: "This product could not be found.".to_string(),
-                        product_type: String::new(),
-                        price: "$0.00".to_string(),
-                        compare_at_price: None,
-                        featured_image: None,
-                        images: Vec::new(),
-                        variants: Vec::new(),
-                        ingredients: None,
-                        directions: None,
-                        warning: None,
-                        promotes: Vec::new(),
-                        benefits: None,
-                        free_from: Vec::new(),
-                        rating: None,
-                        requires_selling_plan: false,
-                        selling_plan_groups: Vec::new(),
-                    },
-                    related_products: Vec::new(),
-                    analytics: state.config().analytics.clone(),
-                    nonce,
-                    base_url: state.config().base_url.clone(),
-                    breadcrumbs: Vec::new(),
-                    store_url: state.config().shopify.store.clone(),
-                },
+                handle,
+                "Product Not Found",
+                "This product could not be found.",
+                &state,
+                nonce,
             )
-                .into_response()
         }
         Err(e) => {
-            tracing::error!("Failed to fetch product {handle}: {e}");
-            (
+            tracing::error!(handle = %handle, error = %e, "Failed to fetch product from Shopify");
+            build_error_product_template(
                 StatusCode::INTERNAL_SERVER_ERROR,
-                ProductShowTemplate {
-                    product: ProductView {
-                        handle,
-                        title: "Error".to_string(),
-                        description: "An error occurred loading this product.".to_string(),
-                        product_type: String::new(),
-                        price: "$0.00".to_string(),
-                        compare_at_price: None,
-                        featured_image: None,
-                        images: Vec::new(),
-                        variants: Vec::new(),
-                        ingredients: None,
-                        directions: None,
-                        warning: None,
-                        promotes: Vec::new(),
-                        benefits: None,
-                        free_from: Vec::new(),
-                        rating: None,
-                        requires_selling_plan: false,
-                        selling_plan_groups: Vec::new(),
-                    },
-                    related_products: Vec::new(),
-                    analytics: state.config().analytics.clone(),
-                    nonce,
-                    base_url: state.config().base_url.clone(),
-                    breadcrumbs: Vec::new(),
-                    store_url: state.config().shopify.store.clone(),
-                },
+                handle,
+                "Error",
+                "An error occurred loading this product.",
+                &state,
+                nonce,
             )
-                .into_response()
         }
     }
 }
@@ -475,6 +480,8 @@ pub async fn show(
 /// Display quick view fragment (for HTMX).
 #[instrument(skip(state))]
 pub async fn quick_view(State(state): State<AppState>, Path(handle): Path<String>) -> Response {
+    debug!(handle = %handle, "Fetching quick view product fragment");
+
     // Fetch product from Shopify Storefront API
     let result = state.storefront().get_product_by_handle(&handle).await;
 
@@ -484,10 +491,15 @@ pub async fn quick_view(State(state): State<AppState>, Path(handle): Path<String
     match result {
         Ok(shopify_product) => {
             let product = ProductView::from(&shopify_product);
+            info!(
+                handle = %handle,
+                title = %product.title,
+                "Successfully rendered quick view fragment"
+            );
             QuickViewTemplate { product, store_url }.into_response()
         }
         Err(e) => {
-            tracing::error!("Failed to fetch product for quick view {handle}: {e}");
+            warn!(handle = %handle, error = %e, "Failed to fetch product for quick view");
             // Return a minimal error fragment
             let product = ProductView {
                 handle,

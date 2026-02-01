@@ -11,6 +11,7 @@ use axum::{
     routing::{get, post},
 };
 use tower_sessions::Session;
+use tracing::{debug, info, instrument, warn};
 
 use crate::filters;
 use crate::middleware::clear_current_admin;
@@ -31,7 +32,9 @@ pub fn router() -> Router<AppState> {
 /// Render the login page.
 ///
 /// GET /auth/login
+#[instrument]
 async fn login_page() -> impl IntoResponse {
+    debug!("Rendering login page");
     Html(
         LoginPageTemplate
             .render()
@@ -42,9 +45,15 @@ async fn login_page() -> impl IntoResponse {
 /// Logout and clear session.
 ///
 /// POST /auth/logout
+#[instrument(skip(session))]
 async fn logout(session: Session) -> impl IntoResponse {
+    debug!("Processing logout request");
+
     // Clear the current admin from session
-    let _ = clear_current_admin(&session).await;
+    match clear_current_admin(&session).await {
+        Ok(()) => info!("Admin session cleared"),
+        Err(e) => warn!(error = %e, "Failed to clear admin session"),
+    }
 
     // Redirect to login page
     Redirect::to("/auth/login")

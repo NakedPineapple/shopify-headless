@@ -8,7 +8,7 @@ use axum::{
     response::{Html, IntoResponse, Redirect},
 };
 use serde::Deserialize;
-use tracing::instrument;
+use tracing::{debug, info, instrument, warn};
 
 use crate::{
     filters,
@@ -760,12 +760,14 @@ pub struct NoteFormInput {
 // =============================================================================
 
 /// GET /customers - List customers with search and pagination.
-#[instrument(skip(admin, state))]
+#[instrument(skip(admin, state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn index(
     RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Query(query): Query<CustomersQuery>,
 ) -> Html<String> {
+    debug!("Loading customers list");
+
     // Build Shopify query string from filters
     let shopify_query = build_shopify_query(&query);
 
@@ -859,12 +861,13 @@ pub async fn index(
 }
 
 /// GET /customers/:id - Show customer detail.
-#[instrument(skip(admin, state))]
+#[instrument(skip(admin, state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn show(
     RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> impl IntoResponse {
+    debug!("Viewing customer detail");
     let gid = format!("gid://shopify/Customer/{id}");
 
     match state.shopify().get_customer(&gid).await {
@@ -881,7 +884,10 @@ pub async fn show(
             }))
             .into_response()
         }
-        Ok(None) => (StatusCode::NOT_FOUND, "Customer not found").into_response(),
+        Ok(None) => {
+            warn!(customer_id = %id, "Customer not found");
+            (StatusCode::NOT_FOUND, "Customer not found").into_response()
+        }
         Err(e) => {
             tracing::error!("Failed to fetch customer: {e}");
             (StatusCode::INTERNAL_SERVER_ERROR, "Failed to load customer").into_response()
@@ -890,8 +896,9 @@ pub async fn show(
 }
 
 /// GET /customers/new - Show create customer form.
-#[instrument(skip(admin))]
+#[instrument(skip(admin), fields(admin_id = %admin.id.as_i32()))]
 pub async fn new(RequireAdminAuth(admin): RequireAdminAuth) -> Html<String> {
+    debug!("Showing new customer form");
     let template = CustomerNewTemplate {
         admin_user: AdminUserView::from(&admin),
         current_path: "/customers/new".to_string(),
@@ -905,12 +912,13 @@ pub async fn new(RequireAdminAuth(admin): RequireAdminAuth) -> Html<String> {
 }
 
 /// POST /customers - Create new customer.
-#[instrument(skip(admin, state, input))]
+#[instrument(skip(admin, state, input), fields(admin_id = %admin.id.as_i32()))]
 pub async fn create(
     RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Form(input): Form<CustomerFormInput>,
 ) -> impl IntoResponse {
+    debug!("Creating new customer");
     let tags: Vec<String> = input
         .tags
         .as_deref()
@@ -934,6 +942,7 @@ pub async fn create(
     {
         Ok(id) => {
             let short_id = extract_short_id(&id);
+            info!(customer_id = %short_id, "Customer created successfully");
             Redirect::to(&format!("/customers/{short_id}")).into_response()
         }
         Err(e) => {
@@ -953,12 +962,13 @@ pub async fn create(
 }
 
 /// GET /customers/:id/edit - Show edit customer form.
-#[instrument(skip(admin, state))]
+#[instrument(skip(admin, state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn edit(
     RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> impl IntoResponse {
+    debug!("Showing edit customer form");
     let gid = format!("gid://shopify/Customer/{id}");
 
     match state.shopify().get_customer(&gid).await {
@@ -976,7 +986,10 @@ pub async fn edit(
             }))
             .into_response()
         }
-        Ok(None) => (StatusCode::NOT_FOUND, "Customer not found").into_response(),
+        Ok(None) => {
+            warn!(customer_id = %id, "Customer not found for edit");
+            (StatusCode::NOT_FOUND, "Customer not found").into_response()
+        }
         Err(e) => {
             tracing::error!("Failed to fetch customer: {e}");
             (StatusCode::INTERNAL_SERVER_ERROR, "Failed to load customer").into_response()
@@ -985,13 +998,14 @@ pub async fn edit(
 }
 
 /// POST /customers/:id - Update customer.
-#[instrument(skip(admin, state, input))]
+#[instrument(skip(admin, state, input), fields(admin_id = %admin.id.as_i32()))]
 pub async fn update(
     RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Path(id): Path<String>,
     Form(input): Form<CustomerFormInput>,
 ) -> impl IntoResponse {
+    debug!("Updating customer");
     let gid = format!("gid://shopify/Customer/{id}");
 
     let tags: Option<Vec<String>> = input.tags.as_ref().map(|t| {
@@ -1011,7 +1025,10 @@ pub async fn update(
     };
 
     match state.shopify().update_customer(&gid, params).await {
-        Ok(_) => Redirect::to(&format!("/customers/{id}")).into_response(),
+        Ok(_) => {
+            info!(customer_id = %id, "Customer updated successfully");
+            Redirect::to(&format!("/customers/{id}")).into_response()
+        }
         Err(e) => {
             tracing::error!("Failed to update customer: {e}");
 
@@ -1040,18 +1057,22 @@ pub async fn update(
 }
 
 /// POST /customers/:id/delete - Delete customer (super admin only).
-#[instrument(skip(state))]
+#[instrument(skip(admin, state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn delete(
-    RequireSuperAdmin(_): RequireSuperAdmin,
+    RequireSuperAdmin(admin): RequireSuperAdmin,
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> impl IntoResponse {
+    debug!("Deleting customer");
     let gid = format!("gid://shopify/Customer/{id}");
 
     match state.shopify().delete_customer(&gid).await {
-        Ok(_) => Redirect::to("/customers").into_response(),
+        Ok(_) => {
+            info!(customer_id = %id, "Customer deleted successfully");
+            Redirect::to("/customers").into_response()
+        }
         Err(e) => {
-            tracing::error!("Failed to delete customer: {e}");
+            warn!(customer_id = %id, error = %e, "Failed to delete customer");
             (
                 StatusCode::BAD_REQUEST,
                 format!("Failed to delete customer: {e}"),
@@ -1062,13 +1083,14 @@ pub async fn delete(
 }
 
 /// POST /customers/:id/tags - Add or remove tags (HTMX partial).
-#[instrument(skip(state, input))]
+#[instrument(skip(admin, state, input), fields(admin_id = %admin.id.as_i32()))]
 pub async fn update_tags(
-    RequireAdminAuth(_): RequireAdminAuth,
+    RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Path(id): Path<String>,
     Form(input): Form<TagsFormInput>,
 ) -> impl IntoResponse {
+    debug!(action = %input.action, "Updating customer tags");
     let gid = format!("gid://shopify/Customer/{id}");
 
     let tags: Vec<String> = input
@@ -1086,6 +1108,7 @@ pub async fn update_tags(
 
     match result {
         Ok(_) => {
+            info!(customer_id = %id, action = %input.action, "Customer tags updated successfully");
             // Return updated tags partial
             if let Ok(Some(customer)) = state.shopify().get_customer(&gid).await {
                 let tags_html = customer
@@ -1113,20 +1136,21 @@ pub async fn update_tags(
             Html("Tags updated").into_response()
         }
         Err(e) => {
-            tracing::error!("Failed to update tags: {e}");
+            warn!(customer_id = %id, error = %e, "Failed to update tags");
             (StatusCode::BAD_REQUEST, format!("Failed: {e}")).into_response()
         }
     }
 }
 
 /// POST /customers/:id/note - Update customer note (HTMX partial).
-#[instrument(skip(state, input))]
+#[instrument(skip(admin, state, input), fields(admin_id = %admin.id.as_i32()))]
 pub async fn update_note(
-    RequireAdminAuth(_): RequireAdminAuth,
+    RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Path(id): Path<String>,
     Form(input): Form<NoteFormInput>,
 ) -> impl IntoResponse {
+    debug!("Updating customer note");
     let gid = format!("gid://shopify/Customer/{id}");
 
     let params = crate::shopify::types::CustomerUpdateParams {
@@ -1135,59 +1159,70 @@ pub async fn update_note(
     };
 
     match state.shopify().update_customer(&gid, params).await {
-        Ok(_) => Html("Note saved").into_response(),
+        Ok(_) => {
+            info!(customer_id = %id, "Customer note updated successfully");
+            Html("Note saved").into_response()
+        }
         Err(e) => {
-            tracing::error!("Failed to update note: {e}");
+            warn!(customer_id = %id, error = %e, "Failed to update note");
             (StatusCode::BAD_REQUEST, format!("Failed: {e}")).into_response()
         }
     }
 }
 
 /// POST /customers/:id/send-invite - Send account invitation email.
-#[instrument(skip(state))]
+#[instrument(skip(admin, state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn send_invite(
-    RequireAdminAuth(_): RequireAdminAuth,
+    RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> impl IntoResponse {
+    debug!("Sending customer invite");
     let gid = format!("gid://shopify/Customer/{id}");
 
     match state.shopify().send_customer_invite(&gid).await {
-        Ok(()) => Html(
-            r#"<span class="text-green-600 dark:text-green-400">
-                <i class="ph ph-check mr-1"></i>Invitation sent
-            </span>"#,
-        )
-        .into_response(),
+        Ok(()) => {
+            info!(customer_id = %id, "Customer invite sent successfully");
+            Html(
+                r#"<span class="text-green-600 dark:text-green-400">
+                    <i class="ph ph-check mr-1"></i>Invitation sent
+                </span>"#,
+            )
+            .into_response()
+        }
         Err(e) => {
-            tracing::error!("Failed to send invite: {e}");
+            warn!(customer_id = %id, error = %e, "Failed to send invite");
             (StatusCode::BAD_REQUEST, format!("Failed: {e}")).into_response()
         }
     }
 }
 
 /// POST /customers/:id/activation-url - Generate activation URL.
-#[instrument(skip(state))]
+#[instrument(skip(admin, state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn activation_url(
-    RequireAdminAuth(_): RequireAdminAuth,
+    RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> impl IntoResponse {
+    debug!("Generating customer activation URL");
     let gid = format!("gid://shopify/Customer/{id}");
 
     match state.shopify().generate_customer_activation_url(&gid).await {
-        Ok(url) => Html(format!(
-            r#"<div class="p-3 bg-muted rounded-lg">
-                <p class="text-xs text-muted-foreground mb-1">Activation URL (expires in 30 days)</p>
-                <input type="text" value="{url}" readonly
-                       class="w-full p-2 bg-input rounded text-sm font-mono"
-                       onclick="this.select(); navigator.clipboard.writeText(this.value);">
-                <p class="text-xs text-muted-foreground mt-1">Click to copy</p>
-            </div>"#
-        ))
-        .into_response(),
+        Ok(url) => {
+            info!(customer_id = %id, "Activation URL generated successfully");
+            Html(format!(
+                r#"<div class="p-3 bg-muted rounded-lg">
+                    <p class="text-xs text-muted-foreground mb-1">Activation URL (expires in 30 days)</p>
+                    <input type="text" value="{url}" readonly
+                           class="w-full p-2 bg-input rounded text-sm font-mono"
+                           onclick="this.select(); navigator.clipboard.writeText(this.value);">
+                    <p class="text-xs text-muted-foreground mt-1">Click to copy</p>
+                </div>"#
+            ))
+            .into_response()
+        }
         Err(e) => {
-            tracing::error!("Failed to generate activation URL: {e}");
+            warn!(customer_id = %id, error = %e, "Failed to generate activation URL");
             (StatusCode::BAD_REQUEST, format!("Failed: {e}")).into_response()
         }
     }
@@ -1367,13 +1402,14 @@ pub struct UpdateMarketingForm {
 }
 
 /// Update customer marketing consent.
-#[instrument(skip(state))]
+#[instrument(skip(admin, state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn update_marketing(
-    RequireAdminAuth(_): RequireAdminAuth,
+    RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Path(id): Path<String>,
     Form(form): Form<UpdateMarketingForm>,
 ) -> impl IntoResponse {
+    debug!(marketing_type = %form.marketing_type, "Updating customer marketing consent");
     let gid = format!("gid://shopify/Customer/{id}");
     let marketing_state = if form.subscribed == "true" {
         "SUBSCRIBED"
@@ -1400,32 +1436,35 @@ pub async fn update_marketing(
     };
 
     match result {
-        Ok(()) => Html(format!(
-            r##"<div class="mb-3 p-2 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400 text-sm rounded">
-                Marketing preferences updated
-            </div>
-            <div class="space-y-4">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm font-medium text-foreground">Email Marketing</p>
-                        <p class="text-xs text-muted-foreground">Receive promotional emails</p>
-                    </div>
-                    <button type="button"
-                            hx-post="/customers/{id}/marketing"
-                            hx-vals='{{"type": "email", "subscribed": "{subscribed}"}}'
-                            hx-target="#marketing-container"
-                            hx-swap="innerHTML"
-                            class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors bg-primary">
-                        <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-6"></span>
-                    </button>
+        Ok(()) => {
+            info!(customer_id = %id, marketing_type = %form.marketing_type, state = %marketing_state, "Marketing consent updated successfully");
+            Html(format!(
+                r##"<div class="mb-3 p-2 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400 text-sm rounded">
+                    Marketing preferences updated
                 </div>
-            </div>"##,
-            id = id,
-            subscribed = if marketing_state == "SUBSCRIBED" { "false" } else { "true" }
-        ))
-        .into_response(),
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-foreground">Email Marketing</p>
+                            <p class="text-xs text-muted-foreground">Receive promotional emails</p>
+                        </div>
+                        <button type="button"
+                                hx-post="/customers/{id}/marketing"
+                                hx-vals='{{"type": "email", "subscribed": "{subscribed}"}}'
+                                hx-target="#marketing-container"
+                                hx-swap="innerHTML"
+                                class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors bg-primary">
+                            <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-6"></span>
+                        </button>
+                    </div>
+                </div>"##,
+                id = id,
+                subscribed = if marketing_state == "SUBSCRIBED" { "false" } else { "true" }
+            ))
+            .into_response()
+        }
         Err(e) => {
-            tracing::error!("Failed to update marketing consent: {e}");
+            warn!(customer_id = %id, error = %e, "Failed to update marketing consent");
             (StatusCode::BAD_REQUEST, format!("Failed: {e}")).into_response()
         }
     }
@@ -1452,13 +1491,14 @@ pub struct AddressForm {
 }
 
 /// Create a new address for a customer.
-#[instrument(skip(state, form))]
+#[instrument(skip(admin, state, form), fields(admin_id = %admin.id.as_i32()))]
 pub async fn address_create(
-    RequireAdminAuth(_): RequireAdminAuth,
+    RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Path(id): Path<String>,
     Form(form): Form<AddressForm>,
 ) -> impl IntoResponse {
+    debug!("Creating customer address");
     let gid = format!("gid://shopify/Customer/{id}");
 
     let address_input = crate::shopify::types::AddressInput {
@@ -1480,24 +1520,26 @@ pub async fn address_create(
         .await
     {
         Ok(_address) => {
+            info!(customer_id = %id, "Customer address created successfully");
             // Redirect back to customer page to show updated addresses
             Redirect::to(&format!("/customers/{id}")).into_response()
         }
         Err(e) => {
-            tracing::error!("Failed to create address: {e}");
+            warn!(customer_id = %id, error = %e, "Failed to create address");
             (StatusCode::BAD_REQUEST, format!("Failed: {e}")).into_response()
         }
     }
 }
 
 /// Update an existing customer address.
-#[instrument(skip(state, form))]
+#[instrument(skip(admin, state, form), fields(admin_id = %admin.id.as_i32()))]
 pub async fn address_update(
-    RequireAdminAuth(_): RequireAdminAuth,
+    RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Path((customer_id, address_id)): Path<(String, String)>,
     Form(form): Form<AddressForm>,
 ) -> impl IntoResponse {
+    debug!("Updating customer address");
     let shopify_customer_gid = format!("gid://shopify/Customer/{customer_id}");
     let mailing_address_gid = format!("gid://shopify/MailingAddress/{address_id}");
 
@@ -1519,21 +1561,25 @@ pub async fn address_update(
         .update_customer_address(&shopify_customer_gid, &mailing_address_gid, address_input)
         .await
     {
-        Ok(_address) => Redirect::to(&format!("/customers/{customer_id}")).into_response(),
+        Ok(_address) => {
+            info!(customer_id = %customer_id, address_id = %address_id, "Customer address updated successfully");
+            Redirect::to(&format!("/customers/{customer_id}")).into_response()
+        }
         Err(e) => {
-            tracing::error!("Failed to update address: {e}");
+            warn!(customer_id = %customer_id, address_id = %address_id, error = %e, "Failed to update address");
             (StatusCode::BAD_REQUEST, format!("Failed: {e}")).into_response()
         }
     }
 }
 
 /// Delete a customer address.
-#[instrument(skip(state))]
+#[instrument(skip(admin, state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn address_delete(
-    RequireAdminAuth(_): RequireAdminAuth,
+    RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Path((customer_id, address_id)): Path<(String, String)>,
 ) -> impl IntoResponse {
+    debug!("Deleting customer address");
     let shopify_customer_gid = format!("gid://shopify/Customer/{customer_id}");
     let mailing_address_gid = format!("gid://shopify/MailingAddress/{address_id}");
 
@@ -1542,21 +1588,25 @@ pub async fn address_delete(
         .delete_customer_address(&shopify_customer_gid, &mailing_address_gid)
         .await
     {
-        Ok(_) => Redirect::to(&format!("/customers/{customer_id}")).into_response(),
+        Ok(_) => {
+            info!(customer_id = %customer_id, address_id = %address_id, "Customer address deleted successfully");
+            Redirect::to(&format!("/customers/{customer_id}")).into_response()
+        }
         Err(e) => {
-            tracing::error!("Failed to delete address: {e}");
+            warn!(customer_id = %customer_id, address_id = %address_id, error = %e, "Failed to delete address");
             (StatusCode::BAD_REQUEST, format!("Failed: {e}")).into_response()
         }
     }
 }
 
 /// Set a customer's default address.
-#[instrument(skip(state))]
+#[instrument(skip(admin, state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn set_default_address(
-    RequireAdminAuth(_): RequireAdminAuth,
+    RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Path((customer_id, address_id)): Path<(String, String)>,
 ) -> impl IntoResponse {
+    debug!("Setting customer default address");
     let shopify_customer_gid = format!("gid://shopify/Customer/{customer_id}");
     let mailing_address_gid = format!("gid://shopify/MailingAddress/{address_id}");
 
@@ -1565,9 +1615,12 @@ pub async fn set_default_address(
         .set_customer_default_address(&shopify_customer_gid, &mailing_address_gid)
         .await
     {
-        Ok(()) => Redirect::to(&format!("/customers/{customer_id}")).into_response(),
+        Ok(()) => {
+            info!(customer_id = %customer_id, address_id = %address_id, "Default address set successfully");
+            Redirect::to(&format!("/customers/{customer_id}")).into_response()
+        }
         Err(e) => {
-            tracing::error!("Failed to set default address: {e}");
+            warn!(customer_id = %customer_id, address_id = %address_id, error = %e, "Failed to set default address");
             (StatusCode::BAD_REQUEST, format!("Failed: {e}")).into_response()
         }
     }
@@ -1589,13 +1642,14 @@ pub struct MergeForm {
 }
 
 /// Merge two customers (`super_admin` only).
-#[instrument(skip(state, form))]
+#[instrument(skip(admin, state, form), fields(admin_id = %admin.id.as_i32()))]
 pub async fn merge(
-    RequireSuperAdmin(_): RequireSuperAdmin,
+    RequireSuperAdmin(admin): RequireSuperAdmin,
     State(state): State<AppState>,
     Path(id): Path<String>,
     Form(form): Form<MergeForm>,
 ) -> impl IntoResponse {
+    debug!(merge_into = %id, merge_from = %form.merge_customer_id, "Merging customers");
     let customer_one_gid = format!("gid://shopify/Customer/{id}");
 
     // TODO: If merge_customer_id contains '@', look up customer by email first
@@ -1617,10 +1671,11 @@ pub async fn merge(
         Ok(resulting_id) => {
             // Extract short ID from resulting GID
             let short_id = resulting_id.rsplit('/').next().unwrap_or(&id);
+            info!(resulting_customer_id = %short_id, merged_customer_id = %form.merge_customer_id, "Customers merged successfully");
             Redirect::to(&format!("/customers/{short_id}")).into_response()
         }
         Err(e) => {
-            tracing::error!("Failed to merge customers: {e}");
+            warn!(customer_id = %id, merge_customer_id = %form.merge_customer_id, error = %e, "Failed to merge customers");
             (StatusCode::BAD_REQUEST, format!("Failed: {e}")).into_response()
         }
     }
@@ -1639,13 +1694,15 @@ pub struct BulkTagsForm {
 }
 
 /// Bulk add/remove tags from customers.
-#[instrument(skip(state, form))]
+#[instrument(skip(state, form), fields(admin_id = %admin.id.as_i32()))]
 pub async fn bulk_tags(
-    RequireAdminAuth(_): RequireAdminAuth,
+    RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Form(form): Form<BulkTagsForm>,
 ) -> impl IntoResponse {
+    debug!(action = %form.action, "Performing bulk tag operation");
     let ids: Vec<&str> = form.ids.split(',').map(str::trim).collect();
+    let customer_count = ids.len();
     let tags: Vec<String> = form
         .tags
         .split(',')
@@ -1659,7 +1716,7 @@ pub async fn bulk_tags(
 
     let mut errors = Vec::new();
 
-    for id in ids {
+    for id in &ids {
         let gid = format!("gid://shopify/Customer/{id}");
         let result = match form.action.as_str() {
             "add" => state.shopify().add_customer_tags(&gid, tags.clone()).await,
@@ -1680,8 +1737,10 @@ pub async fn bulk_tags(
     }
 
     if errors.is_empty() {
+        info!(customer_count = customer_count, action = %form.action, "Bulk tag operation completed successfully");
         Redirect::to("/customers").into_response()
     } else {
+        warn!(error_count = errors.len(), action = %form.action, "Some bulk tag operations failed");
         (
             StatusCode::PARTIAL_CONTENT,
             format!("Some operations failed: {}", errors.join("; ")),
@@ -1698,13 +1757,15 @@ pub struct BulkMarketingForm {
 }
 
 /// Bulk update marketing consent.
-#[instrument(skip(state, form))]
+#[instrument(skip(state, form), fields(admin_id = %admin.id.as_i32()))]
 pub async fn bulk_marketing(
-    RequireAdminAuth(_): RequireAdminAuth,
+    RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Form(form): Form<BulkMarketingForm>,
 ) -> impl IntoResponse {
+    debug!(subscribed = %form.subscribed, "Performing bulk marketing update");
     let ids: Vec<&str> = form.ids.split(',').map(str::trim).collect();
+    let customer_count = ids.len();
     let marketing_state = if form.subscribed == "true" {
         "SUBSCRIBED"
     } else {
@@ -1717,7 +1778,7 @@ pub async fn bulk_marketing(
 
     let mut errors = Vec::new();
 
-    for id in ids {
+    for id in &ids {
         let gid = format!("gid://shopify/Customer/{id}");
         if let Err(e) = state
             .shopify()
@@ -1729,8 +1790,10 @@ pub async fn bulk_marketing(
     }
 
     if errors.is_empty() {
+        info!(customer_count = customer_count, state = %marketing_state, "Bulk marketing update completed successfully");
         Redirect::to("/customers").into_response()
     } else {
+        warn!(error_count = errors.len(), state = %marketing_state, "Some bulk marketing updates failed");
         (
             StatusCode::PARTIAL_CONTENT,
             format!("Some operations failed: {}", errors.join("; ")),

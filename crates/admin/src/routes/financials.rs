@@ -12,7 +12,7 @@ use axum::{
 use chrono::NaiveDate;
 use rust_decimal::Decimal;
 use serde::Deserialize;
-use tracing::instrument;
+use tracing::{debug, info, instrument, warn};
 
 use crate::{
     db::{InventoryLotRepository, ManufacturingRepository, RepositoryError},
@@ -282,6 +282,67 @@ fn find_location_name(locations: &[LocationView], location_id: &str) -> Option<S
         .map(|l| l.name.clone())
 }
 
+/// Build a single `LotView` from lot data.
+fn build_lot_view(
+    lwr: &crate::models::inventory_lot::InventoryLotWithRemaining,
+    locations: &[LocationView],
+) -> LotView {
+    let location_name = lwr
+        .lot
+        .shopify_location_id
+        .as_ref()
+        .and_then(|lid| find_location_name(locations, lid));
+    let location_short_id = lwr
+        .lot
+        .shopify_location_id
+        .as_ref()
+        .map(|lid| extract_short_id(lid));
+    LotView {
+        id: lwr.lot.id.as_i32(),
+        lot_number: lwr.lot.lot_number.clone(),
+        quantity: lwr.lot.quantity,
+        quantity_remaining: lwr.quantity_remaining,
+        received_date: lwr.lot.received_date.to_string(),
+        shopify_location_id: lwr.lot.shopify_location_id.clone(),
+        location_name,
+        location_short_id,
+        notes: lwr.lot.notes.clone(),
+    }
+}
+
+/// Convert lots with remaining quantity to lot views.
+fn lots_to_views(
+    lots: &[crate::models::inventory_lot::InventoryLotWithRemaining],
+    locations: &[LocationView],
+) -> Vec<LotView> {
+    lots.iter()
+        .map(|lwr| build_lot_view(lwr, locations))
+        .collect()
+}
+
+/// Fetch product info (title, image, variant title) from Shopify.
+async fn fetch_product_info(
+    shopify: &crate::shopify::AdminClient,
+    product_id: &str,
+    variant_id: Option<&str>,
+) -> (Option<String>, Option<String>, Option<String>) {
+    match shopify.get_product(product_id).await {
+        Ok(Some(product)) => {
+            let title = Some(product.title.clone());
+            let image = product.images.first().map(|img| img.url.clone());
+            let var_title = variant_id.and_then(|vid| {
+                product
+                    .variants
+                    .iter()
+                    .find(|v| v.id == vid)
+                    .map(|v| v.title.clone())
+            });
+            (title, image, var_title)
+        }
+        Ok(None) | Err(_) => (None, None, None),
+    }
+}
+
 /// Convert products to search results.
 fn products_to_search_results(
     products: Vec<crate::shopify::types::AdminProduct>,
@@ -390,18 +451,20 @@ struct ProductSearchResultsTemplate {
 // =============================================================================
 
 /// Financials landing page - redirects to manufacturing.
-#[instrument(skip_all)]
+#[instrument]
 pub async fn index() -> Redirect {
+    debug!("Redirecting from financials landing to manufacturing");
     Redirect::to("/financials/manufacturing")
 }
 
 /// Manufacturing batches index.
-#[instrument(skip_all)]
+#[instrument(skip(state), fields(admin_id = %user.id.as_i32()))]
 pub async fn manufacturing_index(
     State(state): State<AppState>,
     RequireAdminAuth(user): RequireAdminAuth,
     Query(query): Query<BatchesQuery>,
 ) -> impl IntoResponse {
+    debug!("Listing manufacturing batches with filters");
     let repo = ManufacturingRepository::new(state.pool());
 
     let page = query.page.unwrap_or(1).max(1);
@@ -418,7 +481,10 @@ pub async fn manufacturing_index(
     };
 
     let batches = match repo.list_batches(&filter).await {
-        Ok(batches) => batches,
+        Ok(batches) => {
+            debug!(count = batches.len(), "Retrieved batches from database");
+            batches
+        }
         Err(e) => {
             tracing::error!(?e, "Failed to list batches");
             return Html(format!("Error: {e}")).into_response();
@@ -501,16 +567,23 @@ pub async fn manufacturing_index(
 }
 
 /// New batch form.
-#[instrument(skip_all)]
+#[instrument(skip(state), fields(admin_id = %user.id.as_i32()))]
 pub async fn manufacturing_new(
     State(state): State<AppState>,
     RequireAdminAuth(user): RequireAdminAuth,
 ) -> impl IntoResponse {
+    debug!("Rendering new batch form");
     // Fetch recent products for quick selection
     let recent_products = match state.shopify().get_products(10, None, None).await {
-        Ok(conn) => products_to_search_results(conn.products),
+        Ok(conn) => {
+            debug!(
+                count = conn.products.len(),
+                "Retrieved recent products from Shopify"
+            );
+            products_to_search_results(conn.products)
+        }
         Err(e) => {
-            tracing::warn!(?e, "Failed to fetch products");
+            warn!(?e, "Failed to fetch products from Shopify");
             vec![]
         }
     };
@@ -528,12 +601,18 @@ pub async fn manufacturing_new(
 }
 
 /// Create batch.
-#[instrument(skip_all)]
+#[instrument(skip(state, form), fields(admin_id = %user.id.as_i32()))]
 pub async fn manufacturing_create(
     State(state): State<AppState>,
-    RequireAdminAuth(_user): RequireAdminAuth,
+    RequireAdminAuth(user): RequireAdminAuth,
     Form(form): Form<CreateBatchForm>,
 ) -> impl IntoResponse {
+    debug!(
+        batch_number = %form.batch_number,
+        product_id = %form.shopify_product_id,
+        quantity = form.quantity,
+        "Creating new manufacturing batch"
+    );
     let repo = ManufacturingRepository::new(state.pool());
 
     let input = CreateBatchInput {
@@ -550,9 +629,15 @@ pub async fn manufacturing_create(
     };
 
     match repo.create_batch(&input).await {
-        Ok(batch) => Redirect::to(&format!("/financials/manufacturing/{}", batch.id.as_i32()))
-            .into_response(),
-        Err(RepositoryError::Conflict(msg)) => Html(format!("Error: {msg}")).into_response(),
+        Ok(batch) => {
+            info!(batch_id = batch.id.as_i32(), "Created manufacturing batch");
+            Redirect::to(&format!("/financials/manufacturing/{}", batch.id.as_i32()))
+                .into_response()
+        }
+        Err(RepositoryError::Conflict(msg)) => {
+            warn!(%msg, "Batch creation conflict - duplicate batch number");
+            Html(format!("Error: {msg}")).into_response()
+        }
         Err(e) => {
             tracing::error!(?e, "Failed to create batch");
             Html(format!("Error: {e}")).into_response()
@@ -560,57 +645,14 @@ pub async fn manufacturing_create(
     }
 }
 
-/// Batch detail page.
-#[instrument(skip_all)]
-pub async fn manufacturing_show(
-    State(state): State<AppState>,
-    RequireAdminAuth(user): RequireAdminAuth,
-    Path(id): Path<i32>,
-) -> impl IntoResponse {
-    let mfg_repo = ManufacturingRepository::new(state.pool());
-    let lot_repo = InventoryLotRepository::new(state.pool());
-
-    let batch_id = naked_pineapple_core::ManufacturingBatchId::new(id);
-
-    let batch = match mfg_repo.get_batch(batch_id).await {
-        Ok(Some(batch)) => batch,
-        Ok(None) => return Redirect::to("/financials/manufacturing").into_response(),
-        Err(e) => {
-            tracing::error!(?e, "Failed to get batch");
-            return Html(format!("Error: {e}")).into_response();
-        }
-    };
-
-    let lots_received = mfg_repo.get_lots_received(batch_id).await.unwrap_or(0);
-    let lots = match lot_repo.list_lots_for_batch(batch_id).await {
-        Ok(lots) => lots,
-        Err(e) => {
-            tracing::error!(?e, "Failed to list lots");
-            Vec::new()
-        }
-    };
-
-    // Fetch product info from Shopify
-    let (product_title, product_image, variant_title) =
-        if let Ok(Some(product)) = state.shopify().get_product(&batch.shopify_product_id).await {
-            let title = Some(product.title.clone());
-            let image = product.images.first().map(|img| img.url.clone());
-            let var_title = batch.shopify_variant_id.as_ref().and_then(|vid| {
-                product
-                    .variants
-                    .iter()
-                    .find(|v| &v.id == vid)
-                    .map(|v| v.title.clone())
-            });
-            (title, image, var_title)
-        } else {
-            (None, None, None)
-        };
-
-    // Fetch locations for lot names
-    let locations = fetch_locations(state.shopify()).await;
-
-    let batch_view = BatchView {
+/// Build a `BatchView` from batch data with product info.
+fn build_batch_view(
+    batch: &crate::models::manufacturing::ManufacturingBatch,
+    lots_received: i64,
+    product_info: (Option<String>, Option<String>, Option<String>),
+) -> BatchView {
+    let (product_title, product_image, variant_title) = product_info;
+    BatchView {
         id: batch.id.as_i32(),
         batch_number: batch.batch_number.clone(),
         shopify_product_id: batch.shopify_product_id.clone(),
@@ -626,37 +668,58 @@ pub async fn manufacturing_show(
         outer_carton_cost_per_item: format!("{:.4}", batch.outer_carton_cost_per_item),
         cost_per_unit: format!("{:.4}", batch.cost_per_unit),
         total_batch_cost: format!("{:.2}", batch.total_batch_cost),
-        currency_code: batch.currency_code,
-        notes: batch.notes,
+        currency_code: batch.currency_code.clone(),
+        notes: batch.notes.clone(),
         lots_received,
+    }
+}
+
+/// Batch detail page.
+#[instrument(skip(state), fields(admin_id = %user.id.as_i32(), batch_id = id))]
+pub async fn manufacturing_show(
+    State(state): State<AppState>,
+    RequireAdminAuth(user): RequireAdminAuth,
+    Path(id): Path<i32>,
+) -> impl IntoResponse {
+    debug!("Viewing manufacturing batch details");
+    let mfg_repo = ManufacturingRepository::new(state.pool());
+    let lot_repo = InventoryLotRepository::new(state.pool());
+    let batch_id = naked_pineapple_core::ManufacturingBatchId::new(id);
+
+    let batch = match mfg_repo.get_batch(batch_id).await {
+        Ok(Some(batch)) => {
+            debug!(batch_number = %batch.batch_number, "Found batch");
+            batch
+        }
+        Ok(None) => {
+            warn!("Batch not found, redirecting to index");
+            return Redirect::to("/financials/manufacturing").into_response();
+        }
+        Err(e) => {
+            tracing::error!(?e, "Failed to get batch");
+            return Html(format!("Error: {e}")).into_response();
+        }
     };
 
-    let lot_views: Vec<LotView> = lots
-        .into_iter()
-        .map(|lwr| {
-            let location_name = lwr
-                .lot
-                .shopify_location_id
-                .as_ref()
-                .and_then(|lid| find_location_name(&locations, lid));
-            let location_short_id = lwr
-                .lot
-                .shopify_location_id
-                .as_ref()
-                .map(|lid| extract_short_id(lid));
-            LotView {
-                id: lwr.lot.id.as_i32(),
-                lot_number: lwr.lot.lot_number,
-                quantity: lwr.lot.quantity,
-                quantity_remaining: lwr.quantity_remaining,
-                received_date: lwr.lot.received_date.to_string(),
-                shopify_location_id: lwr.lot.shopify_location_id,
-                location_name,
-                location_short_id,
-                notes: lwr.lot.notes,
-            }
-        })
-        .collect();
+    let lots_received = mfg_repo.get_lots_received(batch_id).await.unwrap_or(0);
+    let lots = lot_repo
+        .list_lots_for_batch(batch_id)
+        .await
+        .unwrap_or_else(|e| {
+            tracing::error!(?e, "Failed to list lots");
+            Vec::new()
+        });
+
+    let product_info = fetch_product_info(
+        state.shopify(),
+        &batch.shopify_product_id,
+        batch.shopify_variant_id.as_deref(),
+    )
+    .await;
+    let locations = fetch_locations(state.shopify()).await;
+
+    let batch_view = build_batch_view(&batch, lots_received, product_info);
+    let lot_views = lots_to_views(&lots, &locations);
 
     let template = ManufacturingShowTemplate {
         admin_user: AdminUserView::from(&user),
@@ -674,18 +737,25 @@ pub async fn manufacturing_show(
 }
 
 /// Edit batch form.
-#[instrument(skip_all)]
+#[instrument(skip(state), fields(admin_id = %user.id.as_i32(), batch_id = id))]
 pub async fn manufacturing_edit(
     State(state): State<AppState>,
     RequireAdminAuth(user): RequireAdminAuth,
     Path(id): Path<i32>,
 ) -> impl IntoResponse {
+    debug!("Rendering batch edit form");
     let repo = ManufacturingRepository::new(state.pool());
     let batch_id = naked_pineapple_core::ManufacturingBatchId::new(id);
 
     let batch = match repo.get_batch(batch_id).await {
-        Ok(Some(batch)) => batch,
-        Ok(None) => return Redirect::to("/financials/manufacturing").into_response(),
+        Ok(Some(batch)) => {
+            debug!(batch_number = %batch.batch_number, "Found batch for editing");
+            batch
+        }
+        Ok(None) => {
+            warn!("Batch not found for editing, redirecting to index");
+            return Redirect::to("/financials/manufacturing").into_response();
+        }
         Err(e) => {
             tracing::error!(?e, "Failed to get batch");
             return Html(format!("Error: {e}")).into_response();
@@ -747,13 +817,14 @@ pub async fn manufacturing_edit(
 }
 
 /// Update batch.
-#[instrument(skip_all)]
+#[instrument(skip(state, form), fields(admin_id = %user.id.as_i32(), batch_id = id))]
 pub async fn manufacturing_update(
     State(state): State<AppState>,
-    RequireAdminAuth(_user): RequireAdminAuth,
+    RequireAdminAuth(user): RequireAdminAuth,
     Path(id): Path<i32>,
     Form(form): Form<UpdateBatchForm>,
 ) -> impl IntoResponse {
+    debug!("Updating manufacturing batch");
     let repo = ManufacturingRepository::new(state.pool());
     let batch_id = naked_pineapple_core::ManufacturingBatchId::new(id);
 
@@ -769,8 +840,14 @@ pub async fn manufacturing_update(
     };
 
     match repo.update_batch(batch_id, &input).await {
-        Ok(_) => Redirect::to(&format!("/financials/manufacturing/{id}")).into_response(),
-        Err(RepositoryError::NotFound) => Redirect::to("/financials/manufacturing").into_response(),
+        Ok(_) => {
+            info!("Updated manufacturing batch");
+            Redirect::to(&format!("/financials/manufacturing/{id}")).into_response()
+        }
+        Err(RepositoryError::NotFound) => {
+            warn!("Batch not found for update, redirecting to index");
+            Redirect::to("/financials/manufacturing").into_response()
+        }
         Err(e) => {
             tracing::error!(?e, "Failed to update batch");
             Html(format!("Error: {e}")).into_response()
@@ -779,17 +856,21 @@ pub async fn manufacturing_update(
 }
 
 /// Delete batch.
-#[instrument(skip_all)]
+#[instrument(skip(state), fields(admin_id = %user.id.as_i32(), batch_id = id))]
 pub async fn manufacturing_delete(
     State(state): State<AppState>,
-    RequireAdminAuth(_user): RequireAdminAuth,
+    RequireAdminAuth(user): RequireAdminAuth,
     Path(id): Path<i32>,
 ) -> impl IntoResponse {
+    debug!("Deleting manufacturing batch");
     let repo = ManufacturingRepository::new(state.pool());
     let batch_id = naked_pineapple_core::ManufacturingBatchId::new(id);
 
     match repo.delete_batch(batch_id).await {
-        Ok(_) => Redirect::to("/financials/manufacturing"),
+        Ok(_) => {
+            info!("Deleted manufacturing batch");
+            Redirect::to("/financials/manufacturing")
+        }
         Err(e) => {
             tracing::error!(?e, "Failed to delete batch");
             Redirect::to(&format!("/financials/manufacturing/{id}"))
@@ -802,18 +883,25 @@ pub async fn manufacturing_delete(
 // =============================================================================
 
 /// New lot form.
-#[instrument(skip_all)]
+#[instrument(skip(state), fields(admin_id = %user.id.as_i32(), batch_id))]
 pub async fn lot_new(
     State(state): State<AppState>,
     RequireAdminAuth(user): RequireAdminAuth,
     Path(batch_id): Path<i32>,
 ) -> impl IntoResponse {
+    debug!("Rendering new lot form for batch");
     let repo = ManufacturingRepository::new(state.pool());
     let id = naked_pineapple_core::ManufacturingBatchId::new(batch_id);
 
     let batch = match repo.get_batch(id).await {
-        Ok(Some(batch)) => batch,
-        Ok(None) => return Redirect::to("/financials/manufacturing").into_response(),
+        Ok(Some(batch)) => {
+            debug!(batch_number = %batch.batch_number, "Found parent batch for new lot");
+            batch
+        }
+        Ok(None) => {
+            warn!("Parent batch not found, redirecting to index");
+            return Redirect::to("/financials/manufacturing").into_response();
+        }
         Err(e) => {
             tracing::error!(?e, "Failed to get batch");
             return Html(format!("Error: {e}")).into_response();
@@ -879,13 +967,18 @@ pub async fn lot_new(
 }
 
 /// Create lot.
-#[instrument(skip_all)]
+#[instrument(skip(state, form), fields(admin_id = %user.id.as_i32(), batch_id))]
 pub async fn lot_create(
     State(state): State<AppState>,
-    RequireAdminAuth(_user): RequireAdminAuth,
+    RequireAdminAuth(user): RequireAdminAuth,
     Path(batch_id): Path<i32>,
     Form(form): Form<CreateLotForm>,
 ) -> impl IntoResponse {
+    debug!(
+        lot_number = %form.lot_number,
+        quantity = form.quantity,
+        "Creating new inventory lot"
+    );
     let repo = InventoryLotRepository::new(state.pool());
     let id = naked_pineapple_core::ManufacturingBatchId::new(batch_id);
 
@@ -899,7 +992,10 @@ pub async fn lot_create(
     };
 
     match repo.create_lot(&input).await {
-        Ok(_) => Redirect::to(&format!("/financials/manufacturing/{batch_id}")).into_response(),
+        Ok(lot) => {
+            info!(lot_id = lot.id.as_i32(), "Created inventory lot");
+            Redirect::to(&format!("/financials/manufacturing/{batch_id}")).into_response()
+        }
         Err(e) => {
             tracing::error!(?e, "Failed to create lot");
             Html(format!("Error: {e}")).into_response()
@@ -908,21 +1004,27 @@ pub async fn lot_create(
 }
 
 /// Edit lot form.
-#[instrument(skip_all)]
+#[instrument(skip(state), fields(admin_id = %user.id.as_i32(), batch_id, lot_id))]
 pub async fn lot_edit(
     State(state): State<AppState>,
     RequireAdminAuth(user): RequireAdminAuth,
     Path((batch_id, lot_id)): Path<(i32, i32)>,
 ) -> impl IntoResponse {
+    debug!("Rendering lot edit form");
     let mfg_repo = ManufacturingRepository::new(state.pool());
     let lot_repo = InventoryLotRepository::new(state.pool());
-
     let b_id = naked_pineapple_core::ManufacturingBatchId::new(batch_id);
     let l_id = naked_pineapple_core::InventoryLotId::new(lot_id);
 
     let batch = match mfg_repo.get_batch(b_id).await {
-        Ok(Some(batch)) => batch,
-        Ok(None) => return Redirect::to("/financials/manufacturing").into_response(),
+        Ok(Some(batch)) => {
+            debug!(batch_number = %batch.batch_number, "Found parent batch");
+            batch
+        }
+        Ok(None) => {
+            warn!("Parent batch not found for lot edit, redirecting to index");
+            return Redirect::to("/financials/manufacturing").into_response();
+        }
         Err(e) => {
             tracing::error!(?e, "Failed to get batch");
             return Html(format!("Error: {e}")).into_response();
@@ -930,8 +1032,12 @@ pub async fn lot_edit(
     };
 
     let lot_with_remaining = match lot_repo.get_lot_with_remaining(l_id).await {
-        Ok(Some(lot)) => lot,
+        Ok(Some(lot)) => {
+            debug!(lot_number = %lot.lot.lot_number, "Found lot for editing");
+            lot
+        }
         Ok(None) => {
+            warn!("Lot not found for editing, redirecting to batch");
             return Redirect::to(&format!("/financials/manufacturing/{batch_id}")).into_response();
         }
         Err(e) => {
@@ -941,71 +1047,16 @@ pub async fn lot_edit(
     };
 
     let lots_received = mfg_repo.get_lots_received(b_id).await.unwrap_or(0);
-
-    // Fetch product info from Shopify
-    let (product_title, product_image, variant_title) =
-        if let Ok(Some(product)) = state.shopify().get_product(&batch.shopify_product_id).await {
-            let title = Some(product.title.clone());
-            let image = product.images.first().map(|img| img.url.clone());
-            let var_title = batch.shopify_variant_id.as_ref().and_then(|vid| {
-                product
-                    .variants
-                    .iter()
-                    .find(|v| &v.id == vid)
-                    .map(|v| v.title.clone())
-            });
-            (title, image, var_title)
-        } else {
-            (None, None, None)
-        };
-
-    // Fetch locations for dropdown
+    let product_info = fetch_product_info(
+        state.shopify(),
+        &batch.shopify_product_id,
+        batch.shopify_variant_id.as_deref(),
+    )
+    .await;
     let locations = fetch_locations(state.shopify()).await;
 
-    // Resolve location name for current lot
-    let location_name = lot_with_remaining
-        .lot
-        .shopify_location_id
-        .as_ref()
-        .and_then(|lid| find_location_name(&locations, lid));
-    let location_short_id = lot_with_remaining
-        .lot
-        .shopify_location_id
-        .as_ref()
-        .map(|lid| extract_short_id(lid));
-
-    let batch_view = BatchView {
-        id: batch.id.as_i32(),
-        batch_number: batch.batch_number.clone(),
-        shopify_product_id: batch.shopify_product_id.clone(),
-        shopify_variant_id: batch.shopify_variant_id.clone(),
-        product_title,
-        product_image,
-        variant_title,
-        product_short_id: extract_short_id(&batch.shopify_product_id),
-        quantity: batch.quantity,
-        manufacture_date: batch.manufacture_date.to_string(),
-        raw_cost_per_item: format!("{:.4}", batch.raw_cost_per_item),
-        label_cost_per_item: format!("{:.4}", batch.label_cost_per_item),
-        outer_carton_cost_per_item: format!("{:.4}", batch.outer_carton_cost_per_item),
-        cost_per_unit: format!("{:.4}", batch.cost_per_unit),
-        total_batch_cost: format!("{:.2}", batch.total_batch_cost),
-        currency_code: batch.currency_code,
-        notes: batch.notes,
-        lots_received,
-    };
-
-    let lot_view = LotView {
-        id: lot_with_remaining.lot.id.as_i32(),
-        lot_number: lot_with_remaining.lot.lot_number,
-        quantity: lot_with_remaining.lot.quantity,
-        quantity_remaining: lot_with_remaining.quantity_remaining,
-        received_date: lot_with_remaining.lot.received_date.to_string(),
-        shopify_location_id: lot_with_remaining.lot.shopify_location_id,
-        location_name,
-        location_short_id,
-        notes: lot_with_remaining.lot.notes,
-    };
+    let batch_view = build_batch_view(&batch, lots_received, product_info);
+    let lot_view = build_lot_view(&lot_with_remaining, &locations);
 
     let template = LotEditTemplate {
         admin_user: AdminUserView::from(&user),
@@ -1024,13 +1075,14 @@ pub async fn lot_edit(
 }
 
 /// Update lot.
-#[instrument(skip_all)]
+#[instrument(skip(state, form), fields(admin_id = %user.id.as_i32(), batch_id, lot_id))]
 pub async fn lot_update(
     State(state): State<AppState>,
-    RequireAdminAuth(_user): RequireAdminAuth,
+    RequireAdminAuth(user): RequireAdminAuth,
     Path((batch_id, lot_id)): Path<(i32, i32)>,
     Form(form): Form<UpdateLotForm>,
 ) -> impl IntoResponse {
+    debug!("Updating inventory lot");
     let repo = InventoryLotRepository::new(state.pool());
     let l_id = naked_pineapple_core::InventoryLotId::new(lot_id);
 
@@ -1043,8 +1095,12 @@ pub async fn lot_update(
     };
 
     match repo.update_lot(l_id, &input).await {
-        Ok(_) => Redirect::to(&format!("/financials/manufacturing/{batch_id}")).into_response(),
+        Ok(_) => {
+            info!("Updated inventory lot");
+            Redirect::to(&format!("/financials/manufacturing/{batch_id}")).into_response()
+        }
         Err(RepositoryError::NotFound) => {
+            warn!("Lot not found for update, redirecting to batch");
             Redirect::to(&format!("/financials/manufacturing/{batch_id}")).into_response()
         }
         Err(e) => {
@@ -1055,17 +1111,21 @@ pub async fn lot_update(
 }
 
 /// Delete lot.
-#[instrument(skip_all)]
+#[instrument(skip(state), fields(admin_id = %user.id.as_i32(), batch_id, lot_id))]
 pub async fn lot_delete(
     State(state): State<AppState>,
-    RequireAdminAuth(_user): RequireAdminAuth,
+    RequireAdminAuth(user): RequireAdminAuth,
     Path((batch_id, lot_id)): Path<(i32, i32)>,
 ) -> impl IntoResponse {
+    debug!("Deleting inventory lot");
     let repo = InventoryLotRepository::new(state.pool());
     let l_id = naked_pineapple_core::InventoryLotId::new(lot_id);
 
     match repo.delete_lot(l_id).await {
-        Ok(_) => Redirect::to(&format!("/financials/manufacturing/{batch_id}")),
+        Ok(_) => {
+            info!("Deleted inventory lot");
+            Redirect::to(&format!("/financials/manufacturing/{batch_id}"))
+        }
         Err(e) => {
             tracing::error!(?e, "Failed to delete lot");
             Redirect::to(&format!("/financials/manufacturing/{batch_id}"))

@@ -10,7 +10,7 @@ use axum::{
     response::Html,
 };
 use serde::Deserialize;
-use tracing::instrument;
+use tracing::{debug, info, instrument, warn};
 
 use crate::{
     filters,
@@ -207,12 +207,13 @@ pub struct ChannelDetailTemplate {
 // =============================================================================
 
 /// Analytics overview page.
-#[instrument(skip(admin, state))]
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn index(
     RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Query(query): Query<AnalyticsQuery>,
 ) -> Html<String> {
+    debug!("Fetching analytics overview page with date range query");
     let date_range = query.to_date_range();
 
     // Fetch analytics data in parallel
@@ -223,9 +224,16 @@ pub async fn index(
     );
 
     let summary = match analytics_result {
-        Ok(analytics) => AnalyticsSummaryView::from(&analytics),
+        Ok(analytics) => {
+            info!(
+                total_sales = %analytics.total_sales,
+                total_orders = %analytics.total_orders,
+                "Successfully fetched channel analytics"
+            );
+            AnalyticsSummaryView::from(&analytics)
+        }
         Err(e) => {
-            tracing::error!("Failed to fetch channel analytics: {e}");
+            warn!("Failed to fetch channel analytics: {e}");
             AnalyticsSummaryView {
                 total_sales: "$0.00".to_string(),
                 total_net_sales: "$0.00".to_string(),
@@ -238,17 +246,23 @@ pub async fn index(
     };
 
     let trend = match trend_result {
-        Ok(metrics) => metrics.iter().map(DailyMetricsView::from).collect(),
+        Ok(metrics) => {
+            debug!(data_points = %metrics.len(), "Fetched trend data");
+            metrics.iter().map(DailyMetricsView::from).collect()
+        }
         Err(e) => {
-            tracing::error!("Failed to fetch trend data: {e}");
+            warn!("Failed to fetch trend data: {e}");
             vec![]
         }
     };
 
     let channels = match channels_result {
-        Ok(channels) => channels.iter().map(SalesChannelView::from).collect(),
+        Ok(channels) => {
+            debug!(channel_count = %channels.len(), "Fetched sales channels");
+            channels.iter().map(SalesChannelView::from).collect()
+        }
         Err(e) => {
-            tracing::error!("Failed to fetch sales channels: {e}");
+            warn!("Failed to fetch sales channels: {e}");
             vec![]
         }
     };
@@ -269,11 +283,13 @@ pub async fn index(
 }
 
 /// Sales channels list page.
-#[instrument(skip(admin, state))]
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn channels(
     RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
 ) -> Html<String> {
+    debug!("Fetching sales channels list page");
+
     // Fetch channels and count in parallel
     let (channels_result, count_result) = tokio::join!(
         state.shopify().get_sales_channels(),
@@ -281,15 +297,18 @@ pub async fn channels(
     );
 
     let channels = match channels_result {
-        Ok(channels) => channels.iter().map(SalesChannelView::from).collect(),
+        Ok(channels) => {
+            info!(channel_count = %channels.len(), "Successfully fetched sales channels");
+            channels.iter().map(SalesChannelView::from).collect()
+        }
         Err(e) => {
-            tracing::error!("Failed to fetch sales channels: {e}");
+            warn!("Failed to fetch sales channels: {e}");
             vec![]
         }
     };
 
     let channel_count = count_result.unwrap_or_else(|e| {
-        tracing::error!("Failed to fetch channel count: {e}");
+        warn!("Failed to fetch channel count: {e}");
         0
     });
 
@@ -307,13 +326,14 @@ pub async fn channels(
 }
 
 /// Channel detail page - deep-dive for a single channel.
-#[instrument(skip(admin, state))]
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn channel_detail(
     RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Path(channel_name): Path<String>,
     Query(query): Query<AnalyticsQuery>,
 ) -> Html<String> {
+    debug!(channel = %channel_name, "Fetching channel detail page");
     let date_range = query.to_date_range();
 
     // Fetch trend data for this specific channel
@@ -323,9 +343,16 @@ pub async fn channel_detail(
         .await;
 
     let trend = match trend_result {
-        Ok(metrics) => metrics.iter().map(DailyMetricsView::from).collect(),
+        Ok(metrics) => {
+            info!(
+                channel = %channel_name,
+                data_points = %metrics.len(),
+                "Successfully fetched channel trend data"
+            );
+            metrics.iter().map(DailyMetricsView::from).collect()
+        }
         Err(e) => {
-            tracing::error!("Failed to fetch channel trend: {e}");
+            warn!(channel = %channel_name, "Failed to fetch channel trend: {e}");
             vec![]
         }
     };

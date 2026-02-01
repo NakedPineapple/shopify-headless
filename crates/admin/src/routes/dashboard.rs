@@ -2,7 +2,7 @@
 
 use askama::Template;
 use axum::{extract::State, response::Html};
-use tracing::instrument;
+use tracing::{debug, info, instrument, warn};
 
 use crate::{
     filters,
@@ -181,12 +181,100 @@ impl From<&Order> for RecentOrderView {
     }
 }
 
+/// Process orders result into metrics and recent orders list.
+fn process_orders_result(
+    result: Result<crate::shopify::types::OrderConnection, crate::shopify::AdminShopifyError>,
+) -> (usize, f64, Vec<RecentOrderView>) {
+    match result {
+        Ok(order_conn) => {
+            let count = order_conn.orders.len();
+            let revenue: f64 = order_conn
+                .orders
+                .iter()
+                .filter_map(|o| o.total_price.amount.parse::<f64>().ok())
+                .sum();
+            let recent: Vec<RecentOrderView> = order_conn
+                .orders
+                .iter()
+                .take(5)
+                .map(RecentOrderView::from)
+                .collect();
+            debug!(
+                order_count = count,
+                total_revenue = revenue,
+                "Fetched orders from Shopify"
+            );
+            (count, revenue, recent)
+        }
+        Err(e) => {
+            warn!(error = %e, "Failed to fetch orders from Shopify");
+            (0, 0.0, vec![])
+        }
+    }
+}
+
+/// Process products result into count and low stock items.
+fn process_products_result(
+    result: Result<
+        crate::shopify::types::AdminProductConnection,
+        crate::shopify::AdminShopifyError,
+    >,
+) -> (String, Vec<LowStockItemView>) {
+    match result {
+        Ok(product_conn) => {
+            let count = if product_conn.page_info.has_next_page {
+                "50+".to_string()
+            } else {
+                product_conn.products.len().to_string()
+            };
+            let low_stock: Vec<LowStockItemView> = product_conn
+                .products
+                .iter()
+                .flat_map(LowStockItemView::from_product)
+                .take(5)
+                .collect();
+            debug!(product_count = %count, "Fetched products from Shopify");
+            if !low_stock.is_empty() {
+                info!(low_stock_count = low_stock.len(), "Found low stock items");
+            }
+            (count, low_stock)
+        }
+        Err(e) => {
+            warn!(error = %e, "Failed to fetch products from Shopify");
+            ("0".to_string(), vec![])
+        }
+    }
+}
+
+/// Process customers result into count string.
+fn process_customers_result(
+    result: Result<crate::shopify::types::CustomerConnection, crate::shopify::AdminShopifyError>,
+) -> String {
+    match result {
+        Ok(customer_conn) => {
+            let count = if customer_conn.page_info.has_next_page {
+                "50+".to_string()
+            } else {
+                customer_conn.customers.len().to_string()
+            };
+            debug!(customer_count = %count, "Fetched customers from Shopify");
+            count
+        }
+        Err(e) => {
+            warn!(error = %e, "Failed to fetch customers from Shopify");
+            "0".to_string()
+        }
+    }
+}
+
 /// Dashboard page handler.
-#[instrument(skip(admin, state))]
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn dashboard(
     RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
 ) -> Html<String> {
+    debug!("Loading dashboard page");
+
     // Fetch data from Shopify Admin API in parallel
     let orders_future = state.shopify().get_orders(50, None, None);
     let products_future = state.shopify().get_products(50, None, None);
@@ -201,70 +289,9 @@ pub async fn dashboard(
     let (orders_result, products_result, customers_result) =
         tokio::join!(orders_future, products_future, customers_future);
 
-    // Process orders for metrics and recent orders
-    let (order_count, total_revenue, recent_orders) = match orders_result {
-        Ok(order_conn) => {
-            let count = order_conn.orders.len();
-            let revenue: f64 = order_conn
-                .orders
-                .iter()
-                .filter_map(|o| o.total_price.amount.parse::<f64>().ok())
-                .sum();
-            let recent: Vec<RecentOrderView> = order_conn
-                .orders
-                .iter()
-                .take(5)
-                .map(RecentOrderView::from)
-                .collect();
-            (count, revenue, recent)
-        }
-        Err(e) => {
-            tracing::error!("Failed to fetch orders: {e}");
-            (0, 0.0, vec![])
-        }
-    };
-
-    // Get product count and low stock items
-    let (product_count, low_stock_items) = match products_result {
-        Ok(product_conn) => {
-            // Shopify doesn't return total count easily, so we approximate
-            // In production, you'd cache this or use a separate count query
-            let count = if product_conn.page_info.has_next_page {
-                "50+".to_string() // Indicates there are more
-            } else {
-                product_conn.products.len().to_string()
-            };
-
-            // Extract low stock items from all products
-            let low_stock: Vec<LowStockItemView> = product_conn
-                .products
-                .iter()
-                .flat_map(LowStockItemView::from_product)
-                .take(5) // Limit to 5 items on dashboard
-                .collect();
-
-            (count, low_stock)
-        }
-        Err(e) => {
-            tracing::error!("Failed to fetch products: {e}");
-            ("0".to_string(), vec![])
-        }
-    };
-
-    // Get customer count
-    let customer_count = match customers_result {
-        Ok(customer_conn) => {
-            if customer_conn.page_info.has_next_page {
-                "50+".to_string()
-            } else {
-                customer_conn.customers.len().to_string()
-            }
-        }
-        Err(e) => {
-            tracing::error!("Failed to fetch customers: {e}");
-            "0".to_string()
-        }
-    };
+    let (order_count, total_revenue, recent_orders) = process_orders_result(orders_result);
+    let (product_count, low_stock_items) = process_products_result(products_result);
+    let customer_count = process_customers_result(customers_result);
 
     let metrics = DashboardMetrics {
         orders: order_count.to_string(),
@@ -273,7 +300,6 @@ pub async fn dashboard(
         products: product_count,
     };
 
-    // Build activity feed from recent orders
     let recent_activity: Vec<ActivityView> = recent_orders
         .iter()
         .take(5)
@@ -281,7 +307,7 @@ pub async fn dashboard(
             activity_type: "order".to_string(),
             icon: "📦".to_string(),
             description: format!("New order {} from {}", order.number, order.customer_name),
-            time_ago: "Recently".to_string(), // Would need proper time formatting
+            time_ago: "Recently".to_string(),
         })
         .collect();
 
@@ -295,7 +321,7 @@ pub async fn dashboard(
     };
 
     Html(template.render().unwrap_or_else(|e| {
-        tracing::error!("Template render error: {}", e);
+        warn!(error = %e, "Dashboard template render error");
         "Internal Server Error".to_string()
     }))
 }

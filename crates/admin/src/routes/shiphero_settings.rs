@@ -114,8 +114,11 @@ async fn settings_page(
     session: Session,
     axum::extract::Query(params): axum::extract::Query<SettingsQueryParams>,
 ) -> Response {
+    tracing::debug!("Loading ShipHero settings page");
+
     // Check super_admin permission
     if let Err(response) = require_super_admin(&state, &session).await {
+        tracing::warn!("Non-super-admin attempted to access ShipHero settings");
         return response;
     }
 
@@ -126,6 +129,7 @@ async fn settings_page(
         .ok()
         .flatten()
     else {
+        tracing::warn!("No admin in session for ShipHero settings page");
         return Redirect::to("/auth/login").into_response();
     };
 
@@ -186,14 +190,17 @@ async fn settings_page(
 /// POST /settings/shiphero/connect - Connect to `ShipHero`.
 ///
 /// Authenticates with email/password to obtain JWT tokens.
-#[instrument(skip(state, session, req))]
+#[instrument(skip(state, session, req), fields(email = %req.email))]
 async fn connect(
     State(state): State<AppState>,
     session: Session,
     Json(req): Json<ConnectRequest>,
 ) -> Response {
+    tracing::debug!("Attempting to connect to ShipHero");
+
     // Check super_admin permission
     if let Err(response) = require_super_admin(&state, &session).await {
+        tracing::warn!("Non-super-admin attempted to connect ShipHero");
         return response;
     }
 
@@ -205,9 +212,12 @@ async fn connect(
         .flatten()
         .map(|a| a.id.as_i32());
 
+    tracing::debug!(admin_id = ?admin_id, "Admin initiating ShipHero connection");
+
     // Validate input
     let email = req.email.trim();
     if email.is_empty() {
+        tracing::debug!("ShipHero connect rejected: empty email");
         return (
             StatusCode::BAD_REQUEST,
             Json(ApiResponse::error("Email is required")),
@@ -217,6 +227,7 @@ async fn connect(
 
     let password = req.password.trim();
     if password.is_empty() {
+        tracing::debug!("ShipHero connect rejected: empty password");
         return (
             StatusCode::BAD_REQUEST,
             Json(ApiResponse::error("Password is required")),
@@ -275,8 +286,11 @@ async fn connect(
 /// POST /settings/shiphero/disconnect - Disconnect from `ShipHero`.
 #[instrument(skip(state, session))]
 async fn disconnect(State(state): State<AppState>, session: Session) -> Response {
+    tracing::debug!("Processing ShipHero disconnect request");
+
     // Check super_admin permission
     if let Err(response) = require_super_admin(&state, &session).await {
+        tracing::warn!("Non-super-admin attempted to disconnect ShipHero");
         return response;
     }
 
@@ -287,20 +301,24 @@ async fn disconnect(State(state): State<AppState>, session: Session) -> Response
         return Redirect::to("/settings/shiphero?error=disconnect_failed").into_response();
     }
 
-    tracing::info!("Disconnected from ShipHero");
+    tracing::info!("Successfully disconnected from ShipHero");
     Redirect::to("/settings/shiphero?success=disconnected").into_response()
 }
 
 /// POST /settings/shiphero/test - Test connection to `ShipHero`.
 #[instrument(skip(state, session))]
 async fn test_connection(State(state): State<AppState>, session: Session) -> Response {
+    tracing::debug!("Testing ShipHero connection");
+
     // Check super_admin permission
     if let Err(response) = require_super_admin(&state, &session).await {
+        tracing::warn!("Non-super-admin attempted to test ShipHero connection");
         return response;
     }
 
     // Check if we have a client configured
     let Some(client) = state.shiphero() else {
+        tracing::debug!("ShipHero test failed: no client configured");
         return (
             StatusCode::BAD_REQUEST,
             Json(ApiResponse::error("ShipHero is not connected")),
@@ -308,14 +326,18 @@ async fn test_connection(State(state): State<AppState>, session: Session) -> Res
             .into_response();
     };
 
+    tracing::debug!("Executing ShipHero API test call");
+
     // Test the connection
     match client.test_connection().await {
         Ok(account) => {
             // Update last_used_at
             let repo = ShipHeroCredentialsRepository::new(state.pool());
-            let _ = repo.touch("default").await;
+            if let Err(e) = repo.touch("default").await {
+                tracing::warn!(error = %e, "Failed to update ShipHero last_used_at");
+            }
 
-            tracing::info!(account_id = %account.id, "ShipHero connection test passed");
+            tracing::info!(account_id = %account.id, email = %account.email, "ShipHero connection test passed");
             (
                 StatusCode::OK,
                 Json(ApiResponse::success(format!(
@@ -326,7 +348,7 @@ async fn test_connection(State(state): State<AppState>, session: Session) -> Res
                 .into_response()
         }
         Err(e) => {
-            tracing::error!(error = %e, "ShipHero connection test failed");
+            tracing::warn!(error = %e, "ShipHero connection test failed");
             (
                 StatusCode::BAD_REQUEST,
                 Json(ApiResponse::error(format!("Connection test failed: {e}"))),

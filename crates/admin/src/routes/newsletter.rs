@@ -12,6 +12,7 @@ use axum::{
     routing::{get, post},
 };
 use serde::Deserialize;
+use tracing::{debug, info, instrument, warn};
 
 use crate::filters;
 use crate::middleware::{RequireAdminAuth, RequireSuperAdmin};
@@ -203,11 +204,20 @@ fn get_klaviyo_client(state: &AppState) -> Result<KlaviyoClient, NewsletterError
 /// Newsletter dashboard with stats and recent campaigns.
 ///
 /// GET /newsletter
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32()))]
 async fn index(
     State(state): State<AppState>,
     RequireAdminAuth(admin): RequireAdminAuth,
 ) -> Result<impl IntoResponse, NewsletterError> {
-    let client = get_klaviyo_client(&state)?;
+    debug!("Loading newsletter dashboard with stats and recent campaigns");
+
+    let client = match get_klaviyo_client(&state) {
+        Ok(c) => c,
+        Err(e) => {
+            warn!("Klaviyo client not configured");
+            return Err(e);
+        }
+    };
 
     // Fetch subscriber stats and recent campaigns
     let subscriber_stats = client.get_subscriber_stats().await?;
@@ -215,6 +225,12 @@ async fn index(
 
     // Take only the 5 most recent
     let recent_campaigns: Vec<_> = recent_campaigns.into_iter().take(5).collect();
+
+    info!(
+        subscriber_count = subscriber_stats.email_subscribers,
+        recent_campaign_count = recent_campaigns.len(),
+        "Newsletter dashboard loaded successfully"
+    );
 
     let template = NewsletterIndexTemplate {
         admin_user: AdminUserView::from(&admin),
@@ -231,12 +247,25 @@ async fn index(
 /// List all campaigns with optional filters.
 ///
 /// GET /newsletter/campaigns
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32()))]
 async fn campaigns_list(
     State(state): State<AppState>,
     RequireAdminAuth(admin): RequireAdminAuth,
     axum::extract::Query(query): axum::extract::Query<CampaignListQuery>,
 ) -> Result<impl IntoResponse, NewsletterError> {
-    let client = get_klaviyo_client(&state)?;
+    debug!(
+        channel_filter = ?query.channel,
+        status_filter = ?query.status,
+        "Listing campaigns with filters"
+    );
+
+    let client = match get_klaviyo_client(&state) {
+        Ok(c) => c,
+        Err(e) => {
+            warn!("Klaviyo client not configured");
+            return Err(e);
+        }
+    };
 
     let channel_filter = query.channel.as_deref().and_then(|c| match c {
         "email" => Some(CampaignChannel::Email),
@@ -255,6 +284,8 @@ async fn campaigns_list(
 
     let campaigns = client.list_campaigns(status_filter, channel_filter).await?;
 
+    info!(campaign_count = campaigns.len(), "Campaign list loaded");
+
     let template = CampaignsListTemplate {
         admin_user: AdminUserView::from(&admin),
         current_path: "/newsletter/campaigns".to_string(),
@@ -271,10 +302,13 @@ async fn campaigns_list(
 /// Show campaign creation form.
 ///
 /// GET /newsletter/campaigns/new
+#[instrument(fields(admin_id = %admin.id.as_i32()))]
 async fn campaign_new(
     RequireSuperAdmin(admin): RequireSuperAdmin,
     axum::extract::Query(query): axum::extract::Query<NewCampaignQuery>,
 ) -> impl IntoResponse {
+    debug!(channel = %query.channel, "Showing new campaign form");
+
     let template = CampaignFormTemplate {
         admin_user: AdminUserView::from(&admin),
         current_path: "/newsletter/campaigns/new".to_string(),
@@ -294,13 +328,22 @@ async fn campaign_new(
 /// Create a new campaign.
 ///
 /// POST /newsletter/campaigns/new
+#[instrument(skip(state, form), fields(admin_id = %admin.id.as_i32()))]
 async fn campaign_create(
     State(state): State<AppState>,
-    RequireSuperAdmin(_admin): RequireSuperAdmin,
+    RequireSuperAdmin(admin): RequireSuperAdmin,
     axum::extract::Query(query): axum::extract::Query<NewCampaignQuery>,
     Form(form): Form<CreateEmailCampaignForm>,
 ) -> Result<Response, NewsletterError> {
-    let client = get_klaviyo_client(&state)?;
+    debug!(channel = %query.channel, campaign_name = %form.name, "Creating new campaign");
+
+    let client = match get_klaviyo_client(&state) {
+        Ok(c) => c,
+        Err(e) => {
+            warn!("Klaviyo client not configured");
+            return Err(e);
+        }
+    };
 
     let campaign = if query.channel == "sms" {
         // For SMS, the subject field is actually the body
@@ -313,19 +356,47 @@ async fn campaign_create(
             .await?
     };
 
+    info!(
+        campaign_id = %campaign.id,
+        campaign_name = %form.name,
+        channel = %query.channel,
+        "Campaign created successfully"
+    );
+
+    // Suppress unused variable warning for admin used only in instrument macro
+    let _ = &admin;
+
     Ok(Redirect::to(&format!("/newsletter/campaigns/{}", campaign.id)).into_response())
 }
 
 /// Show campaign details.
 ///
 /// GET /newsletter/campaigns/{id}
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32(), campaign_id = %id))]
 async fn campaign_show(
     State(state): State<AppState>,
     RequireAdminAuth(admin): RequireAdminAuth,
     Path(id): Path<String>,
 ) -> Result<impl IntoResponse, NewsletterError> {
-    let client = get_klaviyo_client(&state)?;
-    let campaign = client.get_campaign(&id).await?;
+    debug!("Loading campaign details");
+
+    let client = match get_klaviyo_client(&state) {
+        Ok(c) => c,
+        Err(e) => {
+            warn!("Klaviyo client not configured");
+            return Err(e);
+        }
+    };
+
+    let campaign = match client.get_campaign(&id).await {
+        Ok(c) => c,
+        Err(e) => {
+            warn!(error = %e, "Failed to fetch campaign");
+            return Err(e.into());
+        }
+    };
+
+    info!(campaign_name = %campaign.attributes.name, "Campaign details loaded");
 
     let template = CampaignShowTemplate {
         admin_user: AdminUserView::from(&admin),
@@ -341,13 +412,31 @@ async fn campaign_show(
 /// Show campaign edit form.
 ///
 /// GET /newsletter/campaigns/{id}/edit
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32(), campaign_id = %id))]
 async fn campaign_edit(
     State(state): State<AppState>,
     RequireSuperAdmin(admin): RequireSuperAdmin,
     Path(id): Path<String>,
 ) -> Result<impl IntoResponse, NewsletterError> {
-    let client = get_klaviyo_client(&state)?;
-    let campaign = client.get_campaign(&id).await?;
+    debug!("Loading campaign edit form");
+
+    let client = match get_klaviyo_client(&state) {
+        Ok(c) => c,
+        Err(e) => {
+            warn!("Klaviyo client not configured");
+            return Err(e);
+        }
+    };
+
+    let campaign = match client.get_campaign(&id).await {
+        Ok(c) => c,
+        Err(e) => {
+            warn!(error = %e, "Failed to fetch campaign for editing");
+            return Err(e.into());
+        }
+    };
+
+    info!(campaign_name = %campaign.attributes.name, "Campaign edit form loaded");
 
     let template = CampaignFormTemplate {
         admin_user: AdminUserView::from(&admin),
@@ -366,14 +455,32 @@ async fn campaign_edit(
 /// Update an existing campaign.
 ///
 /// POST /newsletter/campaigns/{id}/edit
+#[instrument(skip(state, form), fields(admin_id = %admin.id.as_i32(), campaign_id = %id))]
 async fn campaign_update(
     State(state): State<AppState>,
-    RequireSuperAdmin(_admin): RequireSuperAdmin,
+    RequireSuperAdmin(admin): RequireSuperAdmin,
     Path(id): Path<String>,
     Form(form): Form<UpdateCampaignForm>,
 ) -> Result<Response, NewsletterError> {
-    let client = get_klaviyo_client(&state)?;
-    client.update_campaign(&id, Some(&form.name)).await?;
+    debug!(new_name = %form.name, "Updating campaign");
+
+    let client = match get_klaviyo_client(&state) {
+        Ok(c) => c,
+        Err(e) => {
+            warn!("Klaviyo client not configured");
+            return Err(e);
+        }
+    };
+
+    if let Err(e) = client.update_campaign(&id, Some(&form.name)).await {
+        warn!(error = %e, "Failed to update campaign");
+        return Err(e.into());
+    }
+
+    info!(new_name = %form.name, "Campaign updated successfully");
+
+    // Suppress unused variable warning for admin used only in instrument macro
+    let _ = &admin;
 
     Ok(Redirect::to(&format!("/newsletter/campaigns/{id}")).into_response())
 }
@@ -381,13 +488,31 @@ async fn campaign_update(
 /// Send a campaign immediately.
 ///
 /// POST /newsletter/campaigns/{id}/send
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32(), campaign_id = %id))]
 async fn campaign_send(
     State(state): State<AppState>,
-    RequireSuperAdmin(_admin): RequireSuperAdmin,
+    RequireSuperAdmin(admin): RequireSuperAdmin,
     Path(id): Path<String>,
 ) -> Result<Response, NewsletterError> {
-    let client = get_klaviyo_client(&state)?;
-    client.send_campaign(&id).await?;
+    debug!("Initiating campaign send");
+
+    let client = match get_klaviyo_client(&state) {
+        Ok(c) => c,
+        Err(e) => {
+            warn!("Klaviyo client not configured");
+            return Err(e);
+        }
+    };
+
+    if let Err(e) = client.send_campaign(&id).await {
+        warn!(error = %e, "Failed to send campaign");
+        return Err(e.into());
+    }
+
+    info!("Campaign sent successfully");
+
+    // Suppress unused variable warning for admin used only in instrument macro
+    let _ = &admin;
 
     Ok(Redirect::to(&format!("/newsletter/campaigns/{id}")).into_response())
 }
@@ -395,13 +520,31 @@ async fn campaign_send(
 /// Delete a draft campaign.
 ///
 /// POST /newsletter/campaigns/{id}/delete
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32(), campaign_id = %id))]
 async fn campaign_delete(
     State(state): State<AppState>,
-    RequireSuperAdmin(_admin): RequireSuperAdmin,
+    RequireSuperAdmin(admin): RequireSuperAdmin,
     Path(id): Path<String>,
 ) -> Result<Response, NewsletterError> {
-    let client = get_klaviyo_client(&state)?;
-    client.delete_campaign(&id).await?;
+    debug!("Deleting campaign");
+
+    let client = match get_klaviyo_client(&state) {
+        Ok(c) => c,
+        Err(e) => {
+            warn!("Klaviyo client not configured");
+            return Err(e);
+        }
+    };
+
+    if let Err(e) = client.delete_campaign(&id).await {
+        warn!(error = %e, "Failed to delete campaign");
+        return Err(e.into());
+    }
+
+    info!("Campaign deleted successfully");
+
+    // Suppress unused variable warning for admin used only in instrument macro
+    let _ = &admin;
 
     Ok(Redirect::to("/newsletter/campaigns").into_response())
 }
@@ -409,13 +552,31 @@ async fn campaign_delete(
 /// Preview a campaign.
 ///
 /// GET /newsletter/campaigns/{id}/preview
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32(), campaign_id = %id))]
 async fn campaign_preview(
     State(state): State<AppState>,
     RequireAdminAuth(admin): RequireAdminAuth,
     Path(id): Path<String>,
 ) -> Result<impl IntoResponse, NewsletterError> {
-    let client = get_klaviyo_client(&state)?;
-    let campaign = client.get_campaign(&id).await?;
+    debug!("Loading campaign preview");
+
+    let client = match get_klaviyo_client(&state) {
+        Ok(c) => c,
+        Err(e) => {
+            warn!("Klaviyo client not configured");
+            return Err(e);
+        }
+    };
+
+    let campaign = match client.get_campaign(&id).await {
+        Ok(c) => c,
+        Err(e) => {
+            warn!(error = %e, "Failed to fetch campaign for preview");
+            return Err(e.into());
+        }
+    };
+
+    info!(campaign_name = %campaign.attributes.name, "Campaign preview loaded");
 
     let template = CampaignPreviewTemplate {
         admin_user: AdminUserView::from(&admin),

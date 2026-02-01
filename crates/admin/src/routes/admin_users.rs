@@ -9,7 +9,7 @@ use axum::{
 };
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
-use tracing::instrument;
+use tracing::{debug, info, instrument, warn};
 
 use naked_pineapple_core::{AdminRole, AdminUserId};
 
@@ -132,28 +132,33 @@ pub struct ErrorTemplate {
 // =============================================================================
 
 /// Admin users list page handler (`super_admin` only).
-#[instrument(skip(admin, state))]
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn index(
     RequireSuperAdmin(admin): RequireSuperAdmin,
     State(state): State<AppState>,
 ) -> Html<String> {
+    debug!("Listing all admin users and pending invites");
+
     let user_repo = AdminUserRepository::new(state.pool());
     let invite_repo = AdminInviteRepository::new(state.pool());
     let current_user_id = admin.id.as_i32();
 
     // Fetch all users
-    let users = match user_repo.list_all().await {
-        Ok(users) => users
-            .iter()
-            .map(|u| AdminUserListItem {
-                id: u.id.as_i32(),
-                email: u.email.to_string(),
-                name: u.name.clone(),
-                role: format!("{}", u.role),
-                created_at: u.created_at,
-                is_current_user: u.id == admin.id,
-            })
-            .collect(),
+    let users: Vec<AdminUserListItem> = match user_repo.list_all().await {
+        Ok(users) => {
+            debug!(user_count = users.len(), "Fetched admin users");
+            users
+                .iter()
+                .map(|u| AdminUserListItem {
+                    id: u.id.as_i32(),
+                    email: u.email.to_string(),
+                    name: u.name.clone(),
+                    role: format!("{}", u.role),
+                    created_at: u.created_at,
+                    is_current_user: u.id == admin.id,
+                })
+                .collect()
+        }
         Err(e) => {
             tracing::error!("Failed to fetch admin users: {e}");
             vec![]
@@ -161,17 +166,31 @@ pub async fn index(
     };
 
     // Fetch pending invites (not used, not expired)
-    let pending_invites = match invite_repo.list_all().await {
-        Ok(invites) => invites
-            .iter()
-            .filter(|i| !i.is_used())
-            .map(InviteListItem::from)
-            .collect(),
+    let pending_invites: Vec<InviteListItem> = match invite_repo.list_all().await {
+        Ok(invites) => {
+            let pending: Vec<InviteListItem> = invites
+                .iter()
+                .filter(|i| !i.is_used())
+                .map(InviteListItem::from)
+                .collect();
+            debug!(
+                total_invites = invites.len(),
+                pending_invites = pending.len(),
+                "Fetched admin invites"
+            );
+            pending
+        }
         Err(e) => {
             tracing::error!("Failed to fetch invites: {e}");
             vec![]
         }
     };
+
+    info!(
+        user_count = users.len(),
+        pending_invite_count = pending_invites.len(),
+        "Rendered admin users index page"
+    );
 
     let template = AdminUsersIndexTemplate {
         admin_user: AdminUserView::from(&admin),
@@ -190,17 +209,20 @@ pub async fn index(
 /// Update an admin user's role.
 ///
 /// POST /admin-users/{id}/role
-#[instrument(skip(admin, state))]
+#[instrument(skip(state, form), fields(admin_id = %admin.id.as_i32(), target_user_id = %id))]
 pub async fn update_role(
     RequireSuperAdmin(admin): RequireSuperAdmin,
     State(state): State<AppState>,
     Path(id): Path<i32>,
     Form(form): Form<UpdateRoleForm>,
 ) -> Response {
+    debug!(new_role = %form.role, "Updating admin user role");
+
     let target_id = AdminUserId::new(id);
 
     // Cannot modify yourself
     if target_id == admin.id {
+        warn!("Admin attempted to change their own role");
         return error_response(StatusCode::FORBIDDEN, "You cannot change your own role");
     }
 
@@ -208,7 +230,10 @@ pub async fn update_role(
     let new_role = match form.role.as_str() {
         "admin" => AdminRole::Admin,
         "super_admin" => AdminRole::SuperAdmin,
-        _ => return error_response(StatusCode::BAD_REQUEST, "Invalid role"),
+        _ => {
+            warn!(role = %form.role, "Invalid role specified");
+            return error_response(StatusCode::BAD_REQUEST, "Invalid role");
+        }
     };
 
     let user_repo = AdminUserRepository::new(state.pool());
@@ -220,6 +245,7 @@ pub async fn update_role(
         && let Ok(count) = user_repo.count_by_role(AdminRole::SuperAdmin).await
         && count <= 1
     {
+        warn!("Attempted to demote the last super admin");
         return error_response(StatusCode::FORBIDDEN, "Cannot demote the last super admin");
     }
 
@@ -227,6 +253,7 @@ pub async fn update_role(
     let updated_user = match user_repo.update_role(target_id, new_role).await {
         Ok(user) => user,
         Err(RepositoryError::NotFound) => {
+            warn!("Target user not found for role update");
             return error_response(StatusCode::NOT_FOUND, "User not found");
         }
         Err(e) => {
@@ -234,6 +261,12 @@ pub async fn update_role(
             return error_response(StatusCode::INTERNAL_SERVER_ERROR, "Failed to update role");
         }
     };
+
+    info!(
+        target_user_id = %updated_user.id.as_i32(),
+        new_role = %updated_user.role,
+        "Successfully updated admin user role"
+    );
 
     // Return updated row
     let template = AdminUserRowTemplate {
@@ -258,17 +291,20 @@ pub async fn update_role(
 /// Delete an admin user.
 ///
 /// POST /admin-users/{id}/delete
-#[instrument(skip(admin, state))]
+#[instrument(skip(state, form), fields(admin_id = %admin.id.as_i32(), target_user_id = %id))]
 pub async fn delete_user(
     RequireSuperAdmin(admin): RequireSuperAdmin,
     State(state): State<AppState>,
     Path(id): Path<i32>,
     Form(form): Form<DeleteUserForm>,
 ) -> Response {
+    debug!("Deleting admin user");
+
     let target_id = AdminUserId::new(id);
 
     // Cannot delete yourself
     if target_id == admin.id {
+        warn!("Admin attempted to delete their own account");
         return error_response(StatusCode::FORBIDDEN, "You cannot delete your own account");
     }
 
@@ -277,7 +313,10 @@ pub async fn delete_user(
     // Get the user to verify email confirmation
     let target_user = match user_repo.get_by_id(target_id).await {
         Ok(Some(user)) => user,
-        Ok(None) => return error_response(StatusCode::NOT_FOUND, "User not found"),
+        Ok(None) => {
+            warn!("Target user not found for deletion");
+            return error_response(StatusCode::NOT_FOUND, "User not found");
+        }
         Err(e) => {
             tracing::error!("Failed to get user: {e}");
             return error_response(StatusCode::INTERNAL_SERVER_ERROR, "Failed to get user");
@@ -286,6 +325,7 @@ pub async fn delete_user(
 
     // Verify email confirmation
     if form.confirm_email.trim().to_lowercase() != target_user.email.as_str().to_lowercase() {
+        warn!("Email confirmation did not match for user deletion");
         return error_response(StatusCode::BAD_REQUEST, "Email confirmation does not match");
     }
 
@@ -294,6 +334,7 @@ pub async fn delete_user(
         && let Ok(count) = user_repo.count_by_role(AdminRole::SuperAdmin).await
         && count <= 1
     {
+        warn!("Attempted to delete the last super admin");
         return error_response(StatusCode::FORBIDDEN, "Cannot delete the last super admin");
     }
 
@@ -303,6 +344,11 @@ pub async fn delete_user(
         return error_response(StatusCode::INTERNAL_SERVER_ERROR, "Failed to delete user");
     }
 
+    info!(
+        deleted_user_email = %target_user.email,
+        "Successfully deleted admin user"
+    );
+
     // Return empty response with hx-swap delete
     StatusCode::OK.into_response()
 }
@@ -310,20 +356,29 @@ pub async fn delete_user(
 /// Create a new admin invite.
 ///
 /// POST /admin-users/invites
-#[instrument(skip(admin, state))]
+#[instrument(skip(state, form), fields(admin_id = %admin.id.as_i32()))]
 pub async fn create_invite(
     RequireSuperAdmin(admin): RequireSuperAdmin,
     State(state): State<AppState>,
     Form(form): Form<CreateInviteForm>,
 ) -> Response {
+    debug!(
+        email = %form.email,
+        name = %form.name,
+        role = %form.role,
+        "Creating admin invite"
+    );
+
     let email = form.email.trim().to_lowercase();
     let name = form.name.trim();
 
     // Validate inputs
     if email.is_empty() {
+        warn!("Invite creation failed: email is empty");
         return error_response(StatusCode::BAD_REQUEST, "Email is required");
     }
     if name.is_empty() {
+        warn!("Invite creation failed: name is empty");
         return error_response(StatusCode::BAD_REQUEST, "Name is required");
     }
 
@@ -331,11 +386,15 @@ pub async fn create_invite(
     let role = match form.role.as_str() {
         "admin" => AdminRole::Admin,
         "super_admin" => AdminRole::SuperAdmin,
-        _ => return error_response(StatusCode::BAD_REQUEST, "Invalid role"),
+        _ => {
+            warn!(role = %form.role, "Invalid role specified for invite");
+            return error_response(StatusCode::BAD_REQUEST, "Invalid role");
+        }
     };
 
     let expires_in_days = form.expires_in_days.unwrap_or(7);
     if !(1..=30).contains(&expires_in_days) {
+        warn!(expires_in_days, "Invalid expiration days for invite");
         return error_response(
             StatusCode::BAD_REQUEST,
             "Expiration must be between 1 and 30 days",
@@ -346,6 +405,7 @@ pub async fn create_invite(
 
     // Check for existing valid invite
     if matches!(invite_repo.is_valid_invite(&email).await, Ok(true)) {
+        warn!(email = %email, "Valid invite already exists for this email");
         return error_response(
             StatusCode::CONFLICT,
             "A valid invite already exists for this email",
@@ -357,6 +417,7 @@ pub async fn create_invite(
     if let Ok(parsed_email) = naked_pineapple_core::Email::parse(&email)
         && let Ok(Some(_)) = user_repo.get_by_email(&parsed_email).await
     {
+        warn!(email = %email, "Admin with this email already exists");
         return error_response(
             StatusCode::CONFLICT,
             "An admin with this email already exists",
@@ -370,6 +431,7 @@ pub async fn create_invite(
     {
         Ok(invite) => invite,
         Err(RepositoryError::Conflict(msg)) => {
+            warn!(email = %email, "Invite creation conflict: {msg}");
             return error_response(StatusCode::CONFLICT, &msg);
         }
         Err(e) => {
@@ -377,6 +439,14 @@ pub async fn create_invite(
             return error_response(StatusCode::INTERNAL_SERVER_ERROR, "Failed to create invite");
         }
     };
+
+    info!(
+        invite_id = invite.id,
+        email = %email,
+        role = %role,
+        expires_in_days,
+        "Successfully created admin invite"
+    );
 
     // Return the new invite row
     let template = InviteRowTemplate {
@@ -393,21 +463,26 @@ pub async fn create_invite(
 /// Delete an admin invite.
 ///
 /// POST /admin-users/invites/{id}/delete
-#[instrument(skip(_admin, state))]
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32(), invite_id = %id))]
 pub async fn delete_invite(
-    RequireSuperAdmin(_admin): RequireSuperAdmin,
+    RequireSuperAdmin(admin): RequireSuperAdmin,
     State(state): State<AppState>,
     Path(id): Path<i32>,
 ) -> Response {
+    debug!("Deleting admin invite");
+
     let invite_repo = AdminInviteRepository::new(state.pool());
 
     if let Err(e) = invite_repo.delete(id).await {
         if matches!(e, RepositoryError::NotFound) {
+            warn!("Invite not found for deletion");
             return error_response(StatusCode::NOT_FOUND, "Invite not found");
         }
         tracing::error!("Failed to delete invite: {e}");
         return error_response(StatusCode::INTERNAL_SERVER_ERROR, "Failed to delete invite");
     }
+
+    info!("Successfully deleted admin invite");
 
     // Return empty response with hx-swap delete
     StatusCode::OK.into_response()

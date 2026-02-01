@@ -8,7 +8,7 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use serde::Deserialize;
-use tracing::instrument;
+use tracing::{debug, info, instrument, warn};
 
 use crate::config::AnalyticsConfig;
 use crate::filters;
@@ -110,11 +110,13 @@ pub struct CollectionShowTemplate {
 const PRODUCTS_PER_PAGE: usize = 12;
 
 /// Display collection listing page.
-#[instrument(skip(state, nonce))]
+#[instrument(skip_all)]
 pub async fn index(
     State(state): State<AppState>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> Response {
+    debug!("Fetching all collections from Shopify Storefront API");
+
     // Fetch collections from Shopify Storefront API
     let result = state
         .storefront()
@@ -129,6 +131,11 @@ pub async fn index(
                 .map(CollectionView::from)
                 .collect();
 
+            info!(
+                collection_count = collections.len(),
+                "Successfully loaded collections index"
+            );
+
             CollectionsIndexTemplate {
                 collections,
                 analytics: state.config().analytics.clone(),
@@ -138,7 +145,7 @@ pub async fn index(
             .into_response()
         }
         Err(e) => {
-            tracing::error!("Failed to fetch collections: {e}");
+            warn!(error = %e, "Failed to fetch collections from Shopify");
             CollectionsIndexTemplate {
                 collections: Vec::new(),
                 analytics: state.config().analytics.clone(),
@@ -169,7 +176,7 @@ fn build_filters(query: &PaginationQuery) -> Option<Vec<ProductFilter>> {
 
     // In-stock filter
     if query.available == Some(true) {
-        tracing::debug!("Adding availability filter: available=true");
+        debug!("Adding availability filter: available=true");
         filters.push(ProductFilter {
             available: Some(true),
             category: None,
@@ -189,7 +196,7 @@ fn build_filters(query: &PaginationQuery) -> Option<Vec<ProductFilter>> {
     let has_min_filter = query.price_min.is_some_and(|v| v > 0.0);
     let has_max_filter = query.price_max.is_some_and(|v| v < 200.0);
 
-    tracing::debug!(
+    debug!(
         price_min = ?query.price_min,
         price_max = ?query.price_max,
         has_min_filter,
@@ -208,7 +215,7 @@ fn build_filters(query: &PaginationQuery) -> Option<Vec<ProductFilter>> {
         } else {
             None
         };
-        tracing::debug!(?min_val, ?max_val, "Adding price filter");
+        debug!(?min_val, ?max_val, "Adding price filter");
         filters.push(ProductFilter {
             available: None,
             category: None,
@@ -232,12 +239,29 @@ fn build_filters(query: &PaginationQuery) -> Option<Vec<ProductFilter>> {
         Some(filters)
     };
 
-    tracing::debug!(
-        filter_count = result.as_ref().map_or(0, |f| f.len()),
+    debug!(
+        filter_count = result.as_ref().map_or(0, Vec::len),
         "build_filters complete"
     );
 
     result
+}
+
+/// Active filter state for collection display.
+#[derive(Clone)]
+struct CollectionFilterState {
+    current_sort: String,
+    filter_available: bool,
+    filter_price_min: Option<f64>,
+    filter_price_max: Option<f64>,
+}
+
+impl CollectionFilterState {
+    /// Check if a non-default price filter is actively applied.
+    fn has_price_filter(&self) -> bool {
+        self.filter_price_min.is_some_and(|v| v > 0.0)
+            || self.filter_price_max.is_some_and(|v| v < 200.0)
+    }
 }
 
 /// Parameters for building an error collection template.
@@ -246,10 +270,7 @@ struct ErrorParams {
     handle: String,
     title: &'static str,
     description: Option<&'static str>,
-    current_sort: String,
-    filter_available: bool,
-    filter_price_min: Option<f64>,
-    filter_price_max: Option<f64>,
+    filters: CollectionFilterState,
 }
 
 /// Build SEO breadcrumbs for a collection page.
@@ -272,9 +293,7 @@ fn build_breadcrumbs(title: &str) -> Vec<BreadcrumbItem> {
 
 /// Create an error response for collection pages.
 fn error_template(params: ErrorParams, state: &AppState, nonce: String) -> Response {
-    let has_price_filter = params.filter_price_min.is_some_and(|v| v > 0.0)
-        || params.filter_price_max.is_some_and(|v| v < 200.0);
-
+    let has_price_filter = params.filters.has_price_filter();
     (
         params.status,
         CollectionShowTemplate {
@@ -293,26 +312,94 @@ fn error_template(params: ErrorParams, state: &AppState, nonce: String) -> Respo
             nonce,
             base_url: state.config().base_url.clone(),
             breadcrumbs: Vec::new(),
-            current_sort: params.current_sort,
-            filter_available: params.filter_available,
-            filter_price_min: params.filter_price_min,
-            filter_price_max: params.filter_price_max,
+            current_sort: params.filters.current_sort,
+            filter_available: params.filters.filter_available,
+            filter_price_min: params.filters.filter_price_min,
+            filter_price_max: params.filters.filter_price_max,
             has_price_filter,
         },
     )
         .into_response()
 }
 
+/// Log collection result including product prices for debugging.
+fn log_collection_result(result: &Result<ShopifyCollection, ShopifyError>) {
+    match result {
+        Ok(collection) => {
+            let prices: Vec<String> = collection
+                .products
+                .iter()
+                .map(|p| format!("{}: {}", p.title, p.price_range.min_variant_price.amount))
+                .collect();
+            debug!(
+                product_count = collection.products.len(),
+                ?prices,
+                "Received collection response"
+            );
+        }
+        Err(e) => {
+            debug!(error = %e, "Shopify collection request failed");
+        }
+    }
+}
+
+/// Build the success response template for collection show.
+fn build_collection_response(
+    shopify_collection: &ShopifyCollection,
+    current_page: u32,
+    filters: CollectionFilterState,
+    state: &AppState,
+    nonce: String,
+) -> Response {
+    let collection = CollectionView::from(shopify_collection);
+    let products: Vec<ProductView> = shopify_collection
+        .products
+        .iter()
+        .map(ProductView::from)
+        .collect();
+    let has_more = products.len() >= PRODUCTS_PER_PAGE;
+    let has_price_filter = filters.has_price_filter();
+
+    info!(
+        collection_title = %collection.title,
+        product_count = products.len(),
+        current_page,
+        has_more_pages = has_more,
+        "Successfully loaded collection detail page"
+    );
+
+    CollectionShowTemplate {
+        breadcrumbs: build_breadcrumbs(&collection.title),
+        collection,
+        products,
+        current_page,
+        total_pages: if has_more {
+            current_page + 1
+        } else {
+            current_page
+        },
+        has_more_pages: has_more,
+        analytics: state.config().analytics.clone(),
+        nonce,
+        base_url: state.config().base_url.clone(),
+        current_sort: filters.current_sort,
+        filter_available: filters.filter_available,
+        filter_price_min: filters.filter_price_min,
+        filter_price_max: filters.filter_price_max,
+        has_price_filter,
+    }
+    .into_response()
+}
+
 /// Display collection detail page with products.
-#[instrument(skip(state, nonce))]
+#[instrument(skip(state, nonce), fields(handle = %handle))]
 pub async fn show(
     State(state): State<AppState>,
     Path(handle): Path<String>,
     Query(query): Query<PaginationQuery>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> Response {
-    // Debug: Log incoming query parameters
-    tracing::debug!(?query, "Collection show request");
+    debug!(?query, "Fetching collection detail page with products");
 
     let current_page = query.page.unwrap_or(1);
     let current_sort = query
@@ -320,31 +407,26 @@ pub async fn show(
         .clone()
         .unwrap_or_else(|| "best-selling".to_string());
     let (sort_key, reverse) = parse_sort(query.sort.as_deref());
-
-    // Build filters from query params
     let filter_available = query.available.unwrap_or(false);
     let filter_price_min = query.price_min;
     let filter_price_max = query.price_max;
     let filters = build_filters(&query);
 
-    // Debug: Log the filters being sent to Shopify
-    tracing::debug!(
+    debug!(
         filter_available,
         ?filter_price_min,
         ?filter_price_max,
         has_filters = filters.is_some(),
-        filter_count = filters.as_ref().map_or(0, |f| f.len()),
-        "Built filters for Shopify"
+        filter_count = filters.as_ref().map_or(0, Vec::len),
+        "Built filters for Shopify API request"
     );
 
-    // Fetch collection and products from Shopify Storefront API
     #[allow(clippy::cast_possible_wrap)]
-    let products_per_page = PRODUCTS_PER_PAGE as i64;
     let result = state
         .storefront()
         .get_collection_by_handle(
             &handle,
-            Some(products_per_page),
+            Some(PRODUCTS_PER_PAGE as i64),
             None,
             sort_key,
             reverse,
@@ -352,87 +434,47 @@ pub async fn show(
         )
         .await;
 
-    // Debug: Log the result including product prices
-    match &result {
-        Ok(collection) => {
-            let prices: Vec<String> = collection
-                .products
-                .iter()
-                .map(|p| format!("{}: {}", p.title, p.price_range.min_variant_price.amount))
-                .collect();
-            tracing::debug!(
-                success = true,
-                product_count = collection.products.len(),
-                ?prices,
-                "Shopify collection response"
-            );
-        }
-        Err(e) => {
-            tracing::debug!(
-                success = false,
-                error = %e,
-                "Shopify collection response"
-            );
-        }
-    }
+    log_collection_result(&result);
+
+    let filter_state = CollectionFilterState {
+        current_sort,
+        filter_available,
+        filter_price_min,
+        filter_price_max,
+    };
 
     let err_params = |status, title, desc| ErrorParams {
         status,
         handle: handle.clone(),
         title,
         description: desc,
-        current_sort: current_sort.clone(),
-        filter_available,
-        filter_price_min,
-        filter_price_max,
+        filters: filter_state.clone(),
     };
 
     match result {
-        Ok(shopify_collection) => {
-            let collection = CollectionView::from(&shopify_collection);
-            let products: Vec<ProductView> = shopify_collection
-                .products
-                .iter()
-                .map(ProductView::from)
-                .collect();
-            let has_more = products.len() >= PRODUCTS_PER_PAGE;
-
-            // Determine if we have an active price filter (not at default 0-200 range)
-            let has_price_filter = filter_price_min.is_some_and(|v| v > 0.0)
-                || filter_price_max.is_some_and(|v| v < 200.0);
-
-            CollectionShowTemplate {
-                breadcrumbs: build_breadcrumbs(&collection.title),
-                collection,
-                products,
-                current_page,
-                total_pages: if has_more {
-                    current_page + 1
-                } else {
-                    current_page
-                },
-                has_more_pages: has_more,
-                analytics: state.config().analytics.clone(),
-                nonce,
-                base_url: state.config().base_url.clone(),
-                current_sort,
-                filter_available,
-                filter_price_min,
-                filter_price_max,
-                has_price_filter,
-            }
-            .into_response()
-        }
-        Err(ShopifyError::NotFound(_)) => error_template(
-            err_params(StatusCode::NOT_FOUND, "Collection Not Found", None),
+        Ok(shopify_collection) => build_collection_response(
+            &shopify_collection,
+            current_page,
+            filter_state.clone(),
             &state,
             nonce,
         ),
-        Err(e) => {
-            tracing::error!("Failed to fetch collection {handle}: {e}");
-            let desc = Some("An error occurred loading this collection.");
+        Err(ShopifyError::NotFound(_)) => {
+            warn!("Collection not found");
             error_template(
-                err_params(StatusCode::INTERNAL_SERVER_ERROR, "Error", desc),
+                err_params(StatusCode::NOT_FOUND, "Collection Not Found", None),
+                &state,
+                nonce,
+            )
+        }
+        Err(e) => {
+            warn!(error = %e, "Failed to fetch collection from Shopify");
+            error_template(
+                err_params(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Error",
+                    Some("An error occurred loading this collection."),
+                ),
                 &state,
                 nonce,
             )

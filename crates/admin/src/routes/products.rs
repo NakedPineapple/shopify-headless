@@ -8,7 +8,7 @@ use axum::{
     response::{Html, IntoResponse, Redirect},
 };
 use serde::Deserialize;
-use tracing::instrument;
+use tracing::{debug, info, instrument};
 
 use crate::{
     filters,
@@ -261,12 +261,13 @@ impl From<&AdminProduct> for ProductDetailView {
 }
 
 /// Products list page handler.
-#[instrument(skip(admin, state))]
+#[instrument(skip(admin, state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn index(
     RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Query(query): Query<PaginationQuery>,
 ) -> Html<String> {
+    debug!("Loading products list");
     let result = state
         .shopify()
         .get_products(25, query.cursor.clone(), query.query.clone())
@@ -303,12 +304,13 @@ pub async fn index(
 }
 
 /// Product detail page handler.
-#[instrument(skip(admin, state))]
+#[instrument(skip(admin, state), fields(admin_id = %admin.id.as_i32(), product_id = %id))]
 pub async fn show(
     RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> impl IntoResponse {
+    debug!("Loading product detail");
     // Ensure ID has the proper Shopify format
     let product_id = if id.starts_with("gid://") {
         id
@@ -339,8 +341,9 @@ pub async fn show(
 }
 
 /// New product form handler.
-#[instrument(skip(admin))]
+#[instrument(skip(admin), fields(admin_id = %admin.id.as_i32()))]
 pub async fn new_product(RequireAdminAuth(admin): RequireAdminAuth) -> Html<String> {
+    debug!("Loading new product form");
     let template = ProductNewTemplate {
         admin_user: AdminUserView::from(&admin),
         current_path: "/products".to_string(),
@@ -354,12 +357,13 @@ pub async fn new_product(RequireAdminAuth(admin): RequireAdminAuth) -> Html<Stri
 }
 
 /// Create product handler.
-#[instrument(skip(admin, state))]
+#[instrument(skip(admin, state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn create(
     RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Form(input): Form<ProductFormInput>,
 ) -> impl IntoResponse {
+    debug!(title = %input.title, "Creating new product");
     // Parse tags from comma-separated string
     let tags: Vec<String> = input
         .tags
@@ -383,7 +387,7 @@ pub async fn create(
         .await
     {
         Ok(product_id) => {
-            tracing::info!(product_id = %product_id, title = %input.title, "Product created");
+            info!(product_id = %product_id, title = %input.title, "Product created");
             // Extract numeric ID for redirect
             let numeric_id = product_id.split('/').next_back().unwrap_or(&product_id);
             Redirect::to(&format!("/products/{numeric_id}")).into_response()
@@ -406,12 +410,13 @@ pub async fn create(
 }
 
 /// Edit product form handler.
-#[instrument(skip(admin, state))]
+#[instrument(skip(admin, state), fields(admin_id = %admin.id.as_i32(), product_id = %id))]
 pub async fn edit(
     RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> impl IntoResponse {
+    debug!("Loading product edit form");
     let product_id = if id.starts_with("gid://") {
         id
     } else {
@@ -442,13 +447,14 @@ pub async fn edit(
 }
 
 /// Update product handler.
-#[instrument(skip(admin, state))]
+#[instrument(skip(admin, state), fields(admin_id = %admin.id.as_i32(), product_id = %id))]
 pub async fn update(
     RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Path(id): Path<String>,
     Form(input): Form<ProductFormInput>,
 ) -> impl IntoResponse {
+    debug!(title = %input.title, "Updating product");
     let product_id = if id.starts_with("gid://") {
         id.clone()
     } else {
@@ -510,7 +516,7 @@ pub async fn update(
         .await
     {
         Ok(_) => {
-            tracing::info!(product_id = %product_id, "Product updated");
+            info!(product_id = %product_id, "Product updated");
             let numeric_id = id.split('/').next_back().unwrap_or(&id);
             Redirect::to(&format!("/products/{numeric_id}")).into_response()
         }
@@ -534,12 +540,13 @@ pub async fn update(
 
 /// Archive product handler (HTMX).
 /// Requires `super_admin` role.
-#[instrument(skip(_admin, state))]
+#[instrument(skip(admin, state), fields(admin_id = %admin.id.as_i32(), product_id = %id))]
 pub async fn archive(
-    RequireSuperAdmin(_admin): RequireSuperAdmin,
+    RequireSuperAdmin(admin): RequireSuperAdmin,
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> impl IntoResponse {
+    debug!("Archiving product");
     let product_id = if id.starts_with("gid://") {
         id.clone()
     } else {
@@ -577,7 +584,7 @@ pub async fn archive(
         .await
     {
         Ok(_) => {
-            tracing::info!(product_id = %product_id, "Product archived");
+            info!(product_id = %product_id, "Product archived");
             (
                 StatusCode::OK,
                 [("HX-Trigger", "product-archived")],
@@ -603,12 +610,13 @@ pub async fn archive(
 
 /// Delete product handler.
 /// Requires `super_admin` role.
-#[instrument(skip(_admin, state))]
+#[instrument(skip(admin, state), fields(admin_id = %admin.id.as_i32(), product_id = %id))]
 pub async fn delete(
-    RequireSuperAdmin(_admin): RequireSuperAdmin,
+    RequireSuperAdmin(admin): RequireSuperAdmin,
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> impl IntoResponse {
+    debug!("Deleting product");
     let product_id = if id.starts_with("gid://") {
         id.clone()
     } else {
@@ -617,7 +625,7 @@ pub async fn delete(
 
     match state.shopify().delete_product(&product_id).await {
         Ok(_) => {
-            tracing::info!(product_id = %product_id, "Product deleted");
+            info!(product_id = %product_id, "Product deleted");
             Redirect::to("/products").into_response()
         }
         Err(e) => {
@@ -641,13 +649,14 @@ pub struct VariantFormInput {
 }
 
 /// Update variant handler (HTMX).
-#[instrument(skip(_admin, state))]
+#[instrument(skip(admin, state), fields(admin_id = %admin.id.as_i32(), product_id = %product_id, variant_id = %variant_id))]
 pub async fn update_variant(
-    RequireAdminAuth(_admin): RequireAdminAuth,
+    RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Path((product_id, variant_id)): Path<(String, String)>,
     Form(input): Form<VariantFormInput>,
 ) -> impl IntoResponse {
+    debug!("Updating product variant");
     let full_product_id = if product_id.starts_with("gid://") {
         product_id.clone()
     } else {
@@ -673,7 +682,7 @@ pub async fn update_variant(
         .await
     {
         Ok(variant) => {
-            tracing::info!(variant_id = %full_variant_id, "Variant updated");
+            info!(variant_id = %full_variant_id, "Variant updated");
             // Return a success message with updated values
             let html = format!(
                 r#"<div class="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
@@ -727,12 +736,13 @@ pub async fn update_variant(
 // ============================================================================
 
 /// Delete image from product handler (HTMX).
-#[instrument(skip(_admin, state))]
+#[instrument(skip(admin, state), fields(admin_id = %admin.id.as_i32(), media_id = %media_id))]
 pub async fn delete_image(
-    RequireAdminAuth(_admin): RequireAdminAuth,
+    RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Path((_, media_id)): Path<(String, String)>,
 ) -> impl IntoResponse {
+    debug!("Deleting product image");
     // File IDs use MediaImage prefix
     let full_media_id = if media_id.starts_with("gid://") {
         media_id.clone()
@@ -746,7 +756,7 @@ pub async fn delete_image(
         .await
     {
         Ok(deleted_ids) => {
-            tracing::info!(media_id = %full_media_id, "Image deleted");
+            info!(media_id = %full_media_id, "Image deleted");
             let html = if deleted_ids.is_empty() {
                 r#"<div class="text-red-600 dark:text-red-400 text-sm">No images were deleted</div>"#.to_string()
             } else {
@@ -780,13 +790,14 @@ pub struct ImageMoveInput {
 }
 
 /// Reorder product images handler.
-#[instrument(skip(_admin, state))]
+#[instrument(skip(state, moves), fields(admin_id = %admin.id.as_i32(), product_id = %id))]
 pub async fn reorder_images(
-    RequireAdminAuth(_admin): RequireAdminAuth,
+    RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Path(id): Path<String>,
     Json(moves): Json<Vec<ImageMoveInput>>,
 ) -> impl IntoResponse {
+    debug!("Reordering product images");
     let product_id = if id.starts_with("gid://") {
         id
     } else {
@@ -812,7 +823,7 @@ pub async fn reorder_images(
         .await
     {
         Ok(()) => {
-            tracing::info!(product_id = %product_id, "Images reordered");
+            info!(product_id = %product_id, "Images reordered");
             (StatusCode::OK, Json(serde_json::json!({"success": true}))).into_response()
         }
         Err(e) => {
@@ -834,13 +845,14 @@ pub struct AltTextInput {
 }
 
 /// Update image alt text handler.
-#[instrument(skip(_admin, state))]
+#[instrument(skip(admin, state), fields(admin_id = %admin.id.as_i32(), media_id = %media_id))]
 pub async fn update_image_alt(
-    RequireAdminAuth(_admin): RequireAdminAuth,
+    RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Path((_, media_id)): Path<(String, String)>,
     Form(input): Form<AltTextInput>,
 ) -> impl IntoResponse {
+    debug!("Updating image alt text");
     // File IDs use MediaImage prefix
     let full_media_id = if media_id.starts_with("gid://") {
         media_id.clone()
@@ -854,7 +866,7 @@ pub async fn update_image_alt(
         .await
     {
         Ok(()) => {
-            tracing::info!(media_id = %full_media_id, alt = %input.alt_text, "Image alt text updated");
+            info!(media_id = %full_media_id, alt = %input.alt_text, "Image alt text updated");
             (
                 StatusCode::OK,
                 Json(serde_json::json!({
@@ -953,13 +965,14 @@ async fn upload_to_staged_target(
 }
 
 /// Upload image to product handler.
-#[instrument(skip(_admin, state, multipart))]
+#[instrument(skip(admin, state, multipart), fields(admin_id = %admin.id.as_i32(), product_id = %id))]
 pub async fn upload_image(
-    RequireAdminAuth(_admin): RequireAdminAuth,
+    RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Path(id): Path<String>,
     multipart: axum::extract::Multipart,
 ) -> impl IntoResponse {
+    debug!("Uploading product image");
     let product_id = if id.starts_with("gid://") {
         id.clone()
     } else {
@@ -1020,7 +1033,7 @@ pub async fn upload_image(
         .await
     {
         Ok(()) => {
-            tracing::info!(product_id = %product_id, filename = %file.filename, "Image uploaded");
+            info!(product_id = %product_id, filename = %file.filename, "Image uploaded");
             (
                 StatusCode::OK,
                 Json(serde_json::json!({"success": true, "filename": file.filename})),

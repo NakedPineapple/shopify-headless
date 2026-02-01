@@ -13,6 +13,7 @@ use axum::{
 use secrecy::{ExposeSecret, SecretString};
 use serde::Deserialize;
 use tower_sessions::Session;
+use tracing::{debug, info, instrument, warn};
 
 use crate::config::AnalyticsConfig;
 use crate::filters;
@@ -147,11 +148,13 @@ pub struct ActivateTemplate {
 // =============================================================================
 
 /// Display the login page.
+#[instrument(skip(state, nonce))]
 pub async fn login_page(
     State(state): State<AppState>,
     Query(query): Query<MessageQuery>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> impl IntoResponse {
+    debug!("Rendering login page");
     LoginTemplate {
         error: query.error,
         success: query.success,
@@ -163,11 +166,13 @@ pub async fn login_page(
 /// Handle login form submission.
 ///
 /// Authenticates via Shopify Storefront API `customerAccessTokenCreate` mutation.
+#[instrument(skip(state, session, form), fields(email = %form.email))]
 pub async fn login(
     State(state): State<AppState>,
     session: Session,
     Form(form): Form<LoginForm>,
 ) -> Response {
+    debug!("Processing login attempt");
     // Call Shopify Storefront API to create access token
     match state
         .storefront()
@@ -175,6 +180,7 @@ pub async fn login(
         .await
     {
         Ok(token) => {
+            debug!("Access token created, fetching customer details");
             // Fetch customer details using the token
             match state
                 .storefront()
@@ -196,16 +202,17 @@ pub async fn login(
                         return Redirect::to("/auth/login?error=session").into_response();
                     }
 
+                    info!(email = %form.email, "Customer logged in successfully");
                     Redirect::to("/account").into_response()
                 }
                 Err(e) => {
-                    tracing::warn!("Failed to fetch customer after login: {}", e);
+                    warn!("Failed to fetch customer after login: {}", e);
                     Redirect::to("/auth/login?error=customer_fetch").into_response()
                 }
             }
         }
         Err(e) => {
-            tracing::warn!("Login failed: {}", e);
+            warn!("Login failed: {}", e);
             Redirect::to("/auth/login?error=credentials").into_response()
         }
     }
@@ -216,11 +223,13 @@ pub async fn login(
 // =============================================================================
 
 /// Display the registration page.
+#[instrument(skip(state, nonce))]
 pub async fn register_page(
     State(state): State<AppState>,
     Query(query): Query<MessageQuery>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> impl IntoResponse {
+    debug!("Rendering registration page");
     RegisterTemplate {
         error: query.error,
         analytics: state.config().analytics.clone(),
@@ -232,21 +241,26 @@ pub async fn register_page(
 ///
 /// Creates customer via Shopify Storefront API `customerCreate` mutation.
 /// Shopify automatically sends an activation email.
+#[instrument(skip(state, nonce, form), fields(email = %form.email))]
 pub async fn register(
     State(state): State<AppState>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
     Form(form): Form<RegisterForm>,
 ) -> Response {
+    debug!("Processing registration request");
     // Validate passwords match
     if form.password != form.password_confirm {
+        warn!("Registration failed: password mismatch");
         return Redirect::to("/auth/register?error=password_mismatch").into_response();
     }
 
     // Validate password length
     if form.password.len() < 8 {
+        warn!("Registration failed: password too short");
         return Redirect::to("/auth/register?error=password_too_short").into_response();
     }
 
+    debug!("Calling Shopify API to create customer");
     // Call Shopify Storefront API to create customer
     // Shopify will automatically send an activation email
     match state
@@ -261,6 +275,7 @@ pub async fn register(
         .await
     {
         Ok(customer) => {
+            info!(email = %form.email, "Customer registered successfully, activation email sent");
             // Don't log the user in - they need to activate first
             // Show success page telling them to check their email
             RegisterSuccessTemplate {
@@ -271,7 +286,7 @@ pub async fn register(
             .into_response()
         }
         Err(e) => {
-            tracing::warn!("Registration failed: {}", e);
+            warn!("Registration failed: {}", e);
             // Check for specific error types
             let error_msg = e.to_string();
             if error_msg.contains("taken") || error_msg.contains("already") {
@@ -290,38 +305,47 @@ pub async fn register(
 /// Display the account activation page.
 ///
 /// Called when user clicks the activation link in Shopify's email.
+#[instrument(skip(state, nonce))]
 pub async fn activate_page(
     State(state): State<AppState>,
     Query(query): Query<CallbackQuery>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> Response {
-    match query.url {
-        Some(url) => ActivateTemplate {
+    debug!("Rendering account activation page");
+    if let Some(url) = query.url {
+        debug!("Activation URL provided, showing activation form");
+        ActivateTemplate {
             error: query.error,
             activation_url: url,
             analytics: state.config().analytics.clone(),
             nonce,
         }
-        .into_response(),
-        None => Redirect::to("/auth/login?error=invalid_activation_link").into_response(),
+        .into_response()
+    } else {
+        warn!("Activation page accessed without URL parameter");
+        Redirect::to("/auth/login?error=invalid_activation_link").into_response()
     }
 }
 
 /// Handle account activation form submission.
 ///
 /// Activates customer via Shopify Storefront API `customerActivateByUrl` mutation.
+#[instrument(skip(state, session, form))]
 pub async fn activate(
     State(state): State<AppState>,
     session: Session,
     Query(query): Query<CallbackQuery>,
     Form(form): Form<ActivateForm>,
 ) -> Response {
+    debug!("Processing account activation request");
     let Some(activation_url) = query.url else {
+        warn!("Activation attempted without URL parameter");
         return Redirect::to("/auth/login?error=invalid_activation_link").into_response();
     };
 
     // Validate passwords match
     if form.password != form.password_confirm {
+        warn!("Account activation failed: password mismatch");
         let redirect_url = format!(
             "/auth/activate?url={}&error=password_mismatch",
             urlencoding::encode(&activation_url)
@@ -329,6 +353,7 @@ pub async fn activate(
         return Redirect::to(&redirect_url).into_response();
     }
 
+    debug!("Calling Shopify API to activate customer");
     // Call Shopify Storefront API to activate customer
     match state
         .storefront()
@@ -350,11 +375,12 @@ pub async fn activate(
                 return Redirect::to("/auth/login?error=session").into_response();
             }
 
+            info!("Customer account activated successfully");
             // Redirect to account page - user is now logged in
             Redirect::to("/account?activated=true").into_response()
         }
         Err(e) => {
-            tracing::warn!("Account activation failed: {}", e);
+            warn!("Account activation failed: {}", e);
             let redirect_url = format!(
                 "/auth/activate?url={}&error=activation_failed",
                 urlencoding::encode(&activation_url)
@@ -369,11 +395,13 @@ pub async fn activate(
 // =============================================================================
 
 /// Display the forgot password page.
+#[instrument(skip(state, nonce))]
 pub async fn forgot_password_page(
     State(state): State<AppState>,
     Query(query): Query<MessageQuery>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> impl IntoResponse {
+    debug!("Rendering forgot password page");
     ForgotPasswordTemplate {
         error: query.error,
         success: query.success,
@@ -385,15 +413,19 @@ pub async fn forgot_password_page(
 /// Handle forgot password form submission.
 ///
 /// Sends recovery email via Shopify Storefront API `customerRecover` mutation.
+#[instrument(skip(state, form), fields(email = %form.email))]
 pub async fn forgot_password(
     State(state): State<AppState>,
     Form(form): Form<ForgotPasswordForm>,
 ) -> Response {
+    debug!("Processing password recovery request");
     // Call Shopify Storefront API to send recovery email
     // We always show success to prevent email enumeration
     if let Err(e) = state.storefront().recover_customer(&form.email).await {
-        tracing::warn!("Password recovery request failed: {}", e);
+        warn!("Password recovery request failed: {}", e);
         // Still show success to prevent email enumeration
+    } else {
+        info!(email = %form.email, "Password recovery email sent");
     }
 
     Redirect::to("/auth/forgot-password?success=email_sent").into_response()
@@ -402,38 +434,47 @@ pub async fn forgot_password(
 /// Display the reset password page.
 ///
 /// Called when user clicks the reset link in Shopify's email.
+#[instrument(skip(state, nonce))]
 pub async fn reset_password_page(
     State(state): State<AppState>,
     Query(query): Query<CallbackQuery>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> Response {
-    match query.url {
-        Some(url) => ResetPasswordTemplate {
+    debug!("Rendering reset password page");
+    if let Some(url) = query.url {
+        debug!("Reset URL provided, showing reset form");
+        ResetPasswordTemplate {
             error: query.error,
             reset_url: url,
             analytics: state.config().analytics.clone(),
             nonce,
         }
-        .into_response(),
-        None => Redirect::to("/auth/forgot-password?error=invalid_reset_link").into_response(),
+        .into_response()
+    } else {
+        warn!("Reset password page accessed without URL parameter");
+        Redirect::to("/auth/forgot-password?error=invalid_reset_link").into_response()
     }
 }
 
 /// Handle reset password form submission.
 ///
 /// Resets password via Shopify Storefront API `customerResetByUrl` mutation.
+#[instrument(skip(state, session, form))]
 pub async fn reset_password(
     State(state): State<AppState>,
     session: Session,
     Query(query): Query<CallbackQuery>,
     Form(form): Form<ResetPasswordForm>,
 ) -> Response {
+    debug!("Processing password reset request");
     let Some(reset_url) = query.url else {
+        warn!("Password reset attempted without URL parameter");
         return Redirect::to("/auth/forgot-password?error=invalid_reset_link").into_response();
     };
 
     // Validate passwords match
     if form.password != form.password_confirm {
+        warn!("Password reset failed: password mismatch");
         let redirect_url = format!(
             "/auth/reset-password?url={}&error=password_mismatch",
             urlencoding::encode(&reset_url)
@@ -441,6 +482,7 @@ pub async fn reset_password(
         return Redirect::to(&redirect_url).into_response();
     }
 
+    debug!("Calling Shopify API to reset password");
     // Call Shopify Storefront API to reset password
     match state
         .storefront()
@@ -462,11 +504,12 @@ pub async fn reset_password(
                 return Redirect::to("/auth/login?error=session").into_response();
             }
 
+            info!("Customer password reset successfully");
             // Redirect to account page - user is now logged in
             Redirect::to("/account").into_response()
         }
         Err(e) => {
-            tracing::warn!("Password reset failed: {}", e);
+            warn!("Password reset failed: {}", e);
             let redirect_url = format!(
                 "/auth/reset-password?url={}&error=reset_failed",
                 urlencoding::encode(&reset_url)
@@ -483,19 +526,22 @@ pub async fn reset_password(
 /// Handle logout.
 ///
 /// Clears the session and optionally deletes the Shopify access token.
+#[instrument(skip(state, session))]
 pub async fn logout(State(state): State<AppState>, session: Session) -> Response {
+    debug!("Processing logout request");
     // Get the current customer to delete their access token
     if let Ok(Some(customer)) = session
         .get::<CurrentCustomer>(crate::models::session_keys::CURRENT_CUSTOMER)
         .await
     {
+        debug!("Found customer session, deleting Shopify access token");
         // Delete the access token from Shopify (best effort)
         if let Err(e) = state
             .storefront()
             .delete_access_token(customer.access_token().expose_secret())
             .await
         {
-            tracing::warn!("Failed to delete Shopify access token: {}", e);
+            warn!("Failed to delete Shopify access token: {}", e);
         }
     }
 
@@ -508,5 +554,6 @@ pub async fn logout(State(state): State<AppState>, session: Session) -> Response
         tracing::error!("Failed to flush session: {}", e);
     }
 
+    info!("Customer logged out successfully");
     Redirect::to("/").into_response()
 }

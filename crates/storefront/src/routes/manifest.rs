@@ -4,6 +4,7 @@ use axum::{
     http::header,
     response::{IntoResponse, Response},
 };
+use tracing::{debug, info, instrument};
 
 use crate::image_manifest::get_image_hash;
 
@@ -13,10 +14,20 @@ fn image_base_url() -> String {
 }
 
 /// Serve the web app manifest with hashed icon URLs.
+#[instrument]
 pub async fn webmanifest() -> Response {
+    debug!("Generating web app manifest with hashed icon URLs");
+
     let base = image_base_url();
     let hash_192 = get_image_hash("favicon/android-chrome-192x192");
     let hash_512 = get_image_hash("favicon/android-chrome-512x512");
+
+    debug!(
+        base_url = %base,
+        hash_192 = %hash_192,
+        hash_512 = %hash_512,
+        "Resolved image hashes for manifest icons"
+    );
 
     let manifest = serde_json::json!({
         "name": "Naked Pineapple",
@@ -37,6 +48,8 @@ pub async fn webmanifest() -> Response {
         "background_color": "#fffbf7",
         "display": "standalone"
     });
+
+    info!("Successfully generated web app manifest");
 
     (
         [(header::CONTENT_TYPE, "application/manifest+json")],

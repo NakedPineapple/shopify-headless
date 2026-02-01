@@ -9,7 +9,7 @@ use axum::{
     routing::get,
 };
 use serde::{Deserialize, Deserializer};
-use tracing::instrument;
+use tracing::{debug, info, instrument, warn};
 
 use crate::config::AnalyticsConfig;
 use crate::filters;
@@ -94,9 +94,11 @@ pub async fn suggest(
     State(state): State<AppState>,
     Query(query): Query<SuggestQuery>,
 ) -> impl IntoResponse {
+    debug!("Handling search suggestions request");
     let query_str = query.q.trim();
 
     if query_str.is_empty() {
+        debug!("Empty search query, returning empty results");
         return SearchResultsTemplate {
             results: SearchResults::default(),
             is_ready: state.search().is_ready(),
@@ -104,7 +106,22 @@ pub async fn suggest(
         .into_response();
     }
 
-    let results = state.search().search(query_str, 4).unwrap_or_default();
+    debug!(query = %query_str, "Executing search suggestions query");
+    let results = match state.search().search(query_str, 4) {
+        Ok(results) => {
+            info!(
+                query = %query_str,
+                product_count = results.products.len(),
+                collection_count = results.collections.len(),
+                "Search suggestions completed successfully"
+            );
+            results
+        }
+        Err(e) => {
+            warn!(query = %query_str, error = %e, "Search suggestions query failed");
+            SearchResults::default()
+        }
+    };
 
     SearchResultsTemplate {
         results,
@@ -121,6 +138,7 @@ pub async fn search_page(
     Query(query): Query<SearchPageQuery>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> impl IntoResponse {
+    debug!("Handling full search page request");
     let query_str = query.q.trim();
     let sort = SearchSort::parse(&query.sort_by);
 
@@ -131,10 +149,33 @@ pub async fn search_page(
         max_price_cents: query.price_lte.map(|p| (p * 100.0) as u64),
     };
 
-    let results = state
+    debug!(
+        query = %query_str,
+        sort = %sort.as_str(),
+        available_filter = ?filters.available,
+        min_price_cents = ?filters.min_price_cents,
+        max_price_cents = ?filters.max_price_cents,
+        "Executing filtered search query"
+    );
+
+    let results = match state
         .search()
         .search_filtered(query_str, &filters, sort, 100)
-        .unwrap_or_default();
+    {
+        Ok(results) => {
+            info!(
+                query = %query_str,
+                product_count = results.products.len(),
+                collection_count = results.collections.len(),
+                "Search page query completed successfully"
+            );
+            results
+        }
+        Err(e) => {
+            warn!(query = %query_str, error = %e, "Search page query failed");
+            SearchResults::default()
+        }
+    };
 
     SearchPageTemplate {
         query: query.q.clone(),

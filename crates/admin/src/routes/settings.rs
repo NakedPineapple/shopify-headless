@@ -13,7 +13,7 @@ use axum::{
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use tower_sessions::Session;
-use tracing::instrument;
+use tracing::{debug, info, instrument, warn};
 
 use naked_pineapple_core::{AdminCredentialId, Email};
 
@@ -171,18 +171,23 @@ pub struct UpdateSlackUserIdResponse {
 /// Render the settings page.
 ///
 /// GET /settings
-#[instrument(skip(state))]
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32()))]
 async fn settings_page(
     State(state): State<AppState>,
     RequireAdminAuth(admin): RequireAdminAuth,
     Query(params): Query<SettingsQueryParams>,
 ) -> Response {
+    debug!("Loading settings page");
+
     // Get credentials for this admin
     let auth = AdminAuthService::new(state.pool(), state.webauthn());
     let credentials = match auth.get_credentials(admin.id).await {
-        Ok(creds) => creds,
+        Ok(creds) => {
+            debug!(credential_count = creds.len(), "Loaded admin credentials");
+            creds
+        }
         Err(e) => {
-            tracing::error!(error = %e, "Failed to get credentials");
+            warn!(error = %e, "Failed to get credentials");
             return Redirect::to("/").into_response();
         }
     };
@@ -246,19 +251,23 @@ async fn settings_page(
 /// Update the admin's display name.
 ///
 /// POST /api/settings/profile
-#[instrument(skip(state, session))]
+#[instrument(skip(state, session), fields(admin_id = %admin.id.as_i32()))]
 async fn update_profile(
     State(state): State<AppState>,
     session: Session,
     RequireAdminAuth(admin): RequireAdminAuth,
     Json(req): Json<UpdateProfileRequest>,
 ) -> Result<Json<UpdateProfileResponse>, ApiError> {
+    debug!("Updating admin profile");
+
     let name = req.name.trim();
     if name.is_empty() {
+        debug!("Profile update rejected: empty name");
         return Err(ApiError::new("Name cannot be empty"));
     }
 
     if name.len() > 100 {
+        debug!("Profile update rejected: name too long");
         return Err(ApiError::new("Name is too long"));
     }
 
@@ -280,6 +289,7 @@ async fn update_profile(
         .await
         .map_err(|e| ApiError::new(format!("Session error: {e}")))?;
 
+    info!(new_name = %updated_user.name, "Admin profile updated");
     Ok(Json(UpdateProfileResponse {
         success: true,
         name: updated_user.name,
@@ -293,13 +303,15 @@ async fn update_profile(
 /// Send a verification code to the new email address.
 ///
 /// POST /api/settings/email/send-code
-#[instrument(skip(state, session))]
+#[instrument(skip(state, session), fields(admin_id = %admin.id.as_i32(), target_email = %req.email))]
 async fn send_email_code(
     State(state): State<AppState>,
     session: Session,
     RequireAdminAuth(admin): RequireAdminAuth,
     Json(req): Json<SendEmailCodeRequest>,
 ) -> Result<Json<SendEmailCodeResponse>, ApiError> {
+    debug!("Processing email change request");
+
     let new_email = req.email.trim().to_lowercase();
 
     // Validate email format
@@ -308,6 +320,7 @@ async fn send_email_code(
 
     // Check it's different from current email
     if parsed_email == admin.email {
+        debug!("Email change rejected: same as current email");
         return Err(ApiError::new("This is already your email address"));
     }
 
@@ -318,12 +331,15 @@ async fn send_email_code(
         .await
         .map_err(|e| ApiError::new(format!("Database error: {e}")))?
     {
+        warn!("Email change rejected: email already in use");
         return Err(ApiError::new("This email address is already in use"));
     }
 
     // Generate verification code
     let code = generate_verification_code();
     let expires_at = Utc::now() + chrono::Duration::minutes(10);
+
+    debug!("Storing email verification code in session");
 
     // Store in session
     session
@@ -341,16 +357,18 @@ async fn send_email_code(
 
     // Send verification email
     if let Some(email_service) = state.email_service() {
+        debug!("Sending email verification code");
         email_service
             .send_verification_code(&new_email, &code)
             .await
             .map_err(|e| {
-                tracing::error!(error = %e, "Failed to send verification email");
+                warn!(error = %e, "Failed to send verification email");
                 ApiError::new("Failed to send verification email. Please try again.")
             })?;
+        info!("Email verification code sent");
     } else {
         // Development mode - log the code
-        tracing::warn!(
+        warn!(
             email = %new_email,
             code = %code,
             "SMTP not configured - verification code logged (dev mode)"
@@ -366,19 +384,24 @@ async fn send_email_code(
 /// Verify the code and complete email change.
 ///
 /// POST /api/settings/email/verify
-#[instrument(skip(state, session))]
+#[instrument(skip(state, session), fields(admin_id = %admin.id.as_i32()))]
 async fn verify_email(
     State(state): State<AppState>,
     session: Session,
     RequireAdminAuth(admin): RequireAdminAuth,
     Json(req): Json<VerifyEmailRequest>,
 ) -> Result<Json<VerifyEmailResponse>, ApiError> {
+    debug!("Verifying email change code");
+
     // Get stored verification data
     let stored_code: String = session
         .get(email_change_keys::CODE)
         .await
         .map_err(|e| ApiError::new(format!("Session error: {e}")))?
-        .ok_or_else(|| ApiError::new("No email change in progress. Please request a new code."))?;
+        .ok_or_else(|| {
+            debug!("Email verification failed: no code in session");
+            ApiError::new("No email change in progress. Please request a new code.")
+        })?;
 
     let target_email: String = session
         .get(email_change_keys::TARGET)
@@ -395,6 +418,7 @@ async fn verify_email(
     // Check expiration
     let now = Utc::now().timestamp();
     if now > expires_timestamp {
+        debug!("Email verification failed: code expired");
         // Clear expired verification
         let _ = session.remove::<String>(email_change_keys::CODE).await;
         let _ = session.remove::<String>(email_change_keys::TARGET).await;
@@ -406,8 +430,11 @@ async fn verify_email(
 
     // Verify code
     if req.code.trim() != stored_code {
+        warn!("Email verification failed: invalid code");
         return Err(ApiError::new("Invalid verification code"));
     }
+
+    debug!("Email verification code valid, updating email");
 
     // Clear verification state
     let _ = session.remove::<String>(email_change_keys::CODE).await;
@@ -424,6 +451,7 @@ async fn verify_email(
         .await
         .map_err(|e| match e {
             crate::db::RepositoryError::Conflict(_) => {
+                warn!("Email update failed: email taken by another user");
                 ApiError::new("This email address is already in use")
             }
             other => ApiError::new(format!("Failed to update email: {other}")),
@@ -440,6 +468,7 @@ async fn verify_email(
         .await
         .map_err(|e| ApiError::new(format!("Session error: {e}")))?;
 
+    info!(new_email = %updated_user.email, "Admin email updated successfully");
     Ok(Json(VerifyEmailResponse {
         success: true,
         email: updated_user.email.to_string(),
@@ -453,12 +482,14 @@ async fn verify_email(
 /// Delete a passkey.
 ///
 /// DELETE /api/settings/passkeys/{id}
-#[instrument(skip(state))]
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32(), credential_id = id))]
 async fn delete_passkey(
     State(state): State<AppState>,
     RequireAdminAuth(admin): RequireAdminAuth,
     Path(id): Path<i32>,
 ) -> Result<Json<DeletePasskeyResponse>, ApiError> {
+    debug!("Deleting passkey");
+
     let credential_id = AdminCredentialId::new(id);
 
     let auth = AdminAuthService::new(state.pool(), state.webauthn());
@@ -466,14 +497,17 @@ async fn delete_passkey(
         .await
         .map_err(|e| match e {
             crate::services::AdminAuthError::LastCredential => {
+                warn!("Passkey deletion rejected: last passkey");
                 ApiError::new("Cannot delete your only passkey")
             }
             crate::services::AdminAuthError::CredentialNotFound => {
+                debug!("Passkey deletion failed: not found");
                 ApiError::new("Passkey not found")
             }
             other => ApiError::new(format!("Failed to delete passkey: {other}")),
         })?;
 
+    info!("Passkey deleted successfully");
     Ok(Json(DeletePasskeyResponse { success: true }))
 }
 
@@ -503,12 +537,14 @@ fn validate_slack_user_id(id: &str) -> Result<(), &'static str> {
 /// Update the admin's Slack user ID.
 ///
 /// POST /api/settings/slack
-#[instrument(skip(state))]
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32()))]
 async fn update_slack_user_id(
     State(state): State<AppState>,
     RequireAdminAuth(admin): RequireAdminAuth,
     Json(req): Json<UpdateSlackUserIdRequest>,
 ) -> Result<Json<UpdateSlackUserIdResponse>, ApiError> {
+    debug!(slack_user_id = ?req.slack_user_id, "Updating Slack user ID");
+
     // Normalize: trim and uppercase
     let slack_user_id = req
         .slack_user_id
@@ -520,7 +556,10 @@ async fn update_slack_user_id(
     if let Some(ref id) = slack_user_id
         && !id.is_empty()
     {
-        validate_slack_user_id(id).map_err(ApiError::new)?;
+        validate_slack_user_id(id).map_err(|e| {
+            debug!(error = e, "Slack user ID validation failed");
+            ApiError::new(e)
+        })?;
     }
 
     // Convert empty string to None
@@ -533,6 +572,7 @@ async fn update_slack_user_id(
         .await
         .map_err(|e| ApiError::new(format!("Failed to update Slack ID: {e}")))?;
 
+    info!(slack_user_id = ?updated_user.slack_user_id, "Slack user ID updated");
     Ok(Json(UpdateSlackUserIdResponse {
         success: true,
         slack_user_id: updated_user.slack_user_id,

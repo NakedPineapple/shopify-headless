@@ -9,7 +9,7 @@ use axum::{
 };
 use serde::Deserialize;
 use std::collections::HashMap;
-use tracing::instrument;
+use tracing::{debug, instrument};
 
 use crate::{
     components::data_table::{DataTableConfig, FilterType, inventory_table_config},
@@ -612,12 +612,14 @@ fn build_preserve_params(query: &InventoryQuery) -> String {
 // =============================================================================
 
 /// GET /inventory - Inventory list page.
-#[instrument(skip(admin, state))]
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn index(
     RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Query(query): Query<InventoryQuery>,
 ) -> Html<String> {
+    debug!("Loading inventory list");
+
     // Fetch locations and inventory items in parallel
     let locations_future = state.shopify().get_locations();
     let shopify_query = build_shopify_query(&query);
@@ -714,12 +716,14 @@ pub async fn index(
 }
 
 /// POST /inventory/adjust - Adjust inventory quantity (HTMX handler).
-#[instrument(skip(_admin, state))]
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn adjust(
-    RequireAdminAuth(_admin): RequireAdminAuth,
+    RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Form(form): Form<InventoryAdjustForm>,
 ) -> impl IntoResponse {
+    debug!("Adjusting inventory quantity");
+
     let reason = form
         .reason
         .as_deref()
@@ -773,12 +777,14 @@ pub async fn adjust(
 }
 
 /// POST /inventory/set - Set inventory quantity (HTMX handler).
-#[instrument(skip(_admin, state))]
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn set(
-    RequireAdminAuth(_admin): RequireAdminAuth,
+    RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Form(form): Form<InventorySetForm>,
 ) -> impl IntoResponse {
+    debug!("Setting inventory quantity");
+
     let reason = form.reason.as_deref().unwrap_or("Manual set from admin");
 
     match state
@@ -827,12 +833,14 @@ pub async fn set(
 }
 
 /// GET /inventory/:id - Inventory item detail page.
-#[instrument(skip(admin, state))]
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn show(
     RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> impl IntoResponse {
+    debug!("Loading inventory item details");
+
     let inventory_item_id = normalize_inventory_item_id(&id);
 
     // Fetch inventory item and locations in parallel
@@ -881,12 +889,14 @@ pub async fn show(
 }
 
 /// GET /inventory/:id/edit - Inventory item edit page.
-#[instrument(skip(admin, state))]
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn edit(
     RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> impl IntoResponse {
+    debug!("Loading inventory item edit page");
+
     let inventory_item_id = normalize_inventory_item_id(&id);
 
     let item = match state.shopify().get_inventory_item(&inventory_item_id).await {
@@ -915,13 +925,15 @@ pub async fn edit(
 }
 
 /// POST /inventory/:id - Update inventory item.
-#[instrument(skip(_admin, state))]
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn update(
-    RequireAdminAuth(_admin): RequireAdminAuth,
+    RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Path(id): Path<String>,
     Form(form): Form<InventoryUpdateForm>,
 ) -> impl IntoResponse {
+    debug!("Updating inventory item");
+
     let inventory_item_id = normalize_inventory_item_id(&id);
 
     let input = InventoryItemUpdateInput {
@@ -958,12 +970,14 @@ pub async fn update(
 }
 
 /// POST /inventory/move - Move inventory between locations (HTMX handler).
-#[instrument(skip(_admin, state))]
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn move_quantity(
-    RequireAdminAuth(_admin): RequireAdminAuth,
+    RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Form(form): Form<InventoryMoveForm>,
 ) -> impl IntoResponse {
+    debug!("Moving inventory between locations");
+
     let reason = form
         .reason
         .as_deref()
@@ -1018,13 +1032,15 @@ pub async fn move_quantity(
 }
 
 /// POST /inventory/:id/activate - Activate inventory at a location.
-#[instrument(skip(_admin, state))]
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn activate(
-    RequireAdminAuth(_admin): RequireAdminAuth,
+    RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Path(id): Path<String>,
     Form(form): Form<InventoryActivateForm>,
 ) -> impl IntoResponse {
+    debug!("Activating inventory at location");
+
     match state
         .shopify()
         .activate_inventory(&form.inventory_item_id, &form.location_id)
@@ -1055,13 +1071,15 @@ pub async fn activate(
 }
 
 /// POST /inventory/:id/deactivate - Deactivate inventory at a location.
-#[instrument(skip(_admin, state))]
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn deactivate(
-    RequireAdminAuth(_admin): RequireAdminAuth,
+    RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Path(id): Path<String>,
     Form(form): Form<InventoryDeactivateForm>,
 ) -> impl IntoResponse {
+    debug!("Deactivating inventory at location");
+
     match state
         .shopify()
         .deactivate_inventory(&form.inventory_level_id)

@@ -10,7 +10,7 @@ use axum::{
     response::{Html, IntoResponse, Redirect},
 };
 use serde::Deserialize;
-use tracing::instrument;
+use tracing::{debug, error, info, instrument, warn};
 
 use naked_pineapple_core::AdminRole;
 
@@ -231,12 +231,14 @@ pub struct CollectionShowTemplate {
 }
 
 /// Collections list page handler.
-#[instrument(skip(admin, state))]
+#[instrument(skip(admin, state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn index(
     RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Query(query): Query<PaginationQuery>,
 ) -> Html<String> {
+    debug!("Loading collections list");
+
     let result = state
         .shopify()
         .get_collections(25, query.cursor.clone(), query.query.clone())
@@ -253,7 +255,7 @@ pub async fn index(
             )
         }
         Err(e) => {
-            tracing::error!("Failed to fetch collections: {e}");
+            error!("Failed to fetch collections: {e}");
             (vec![], false, None)
         }
     };
@@ -268,18 +270,20 @@ pub async fn index(
     };
 
     Html(template.render().unwrap_or_else(|e| {
-        tracing::error!("Template render error: {}", e);
+        error!("Template render error: {}", e);
         "Internal Server Error".to_string()
     }))
 }
 
 /// Show collection details page handler.
-#[instrument(skip(admin, state))]
+#[instrument(skip(admin, state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn show(
     RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> impl IntoResponse {
+    debug!("Showing collection details");
+
     let collection_id = if id.starts_with("gid://") {
         id
     } else {
@@ -308,14 +312,14 @@ pub async fn show(
             };
 
             Html(template.render().unwrap_or_else(|e| {
-                tracing::error!("Template render error: {}", e);
+                error!("Template render error: {}", e);
                 "Internal Server Error".to_string()
             }))
             .into_response()
         }
         Ok(None) => (StatusCode::NOT_FOUND, "Collection not found").into_response(),
         Err(e) => {
-            tracing::error!("Failed to fetch collection: {e}");
+            error!("Failed to fetch collection: {e}");
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Failed to fetch collection",
@@ -326,8 +330,10 @@ pub async fn show(
 }
 
 /// New collection form handler.
-#[instrument(skip(admin))]
+#[instrument(skip(admin), fields(admin_id = %admin.id.as_i32()))]
 pub async fn new_collection(RequireAdminAuth(admin): RequireAdminAuth) -> Html<String> {
+    debug!("Showing new collection form");
+
     let template = CollectionNewTemplate {
         admin_user: AdminUserView::from(&admin),
         current_path: "/collections".to_string(),
@@ -335,25 +341,27 @@ pub async fn new_collection(RequireAdminAuth(admin): RequireAdminAuth) -> Html<S
     };
 
     Html(template.render().unwrap_or_else(|e| {
-        tracing::error!("Template render error: {}", e);
+        error!("Template render error: {}", e);
         "Internal Server Error".to_string()
     }))
 }
 
 /// Create collection handler.
-#[instrument(skip(admin, state))]
+#[instrument(skip(admin, state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn create(
     RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Form(input): Form<CollectionFormInput>,
 ) -> impl IntoResponse {
+    debug!("Creating new collection");
+
     match state
         .shopify()
         .create_collection(&input.title, input.description_html.as_deref())
         .await
     {
         Ok(collection_id) => {
-            tracing::info!(collection_id = %collection_id, title = %input.title, "Collection created");
+            info!(collection_id = %collection_id, title = %input.title, "Collection created");
             let numeric_id = collection_id
                 .split('/')
                 .next_back()
@@ -362,7 +370,7 @@ pub async fn create(
             Redirect::to(&format!("/collections/{numeric_id}")).into_response()
         }
         Err(e) => {
-            tracing::error!(title = %input.title, error = %e, "Failed to create collection");
+            error!(title = %input.title, error = %e, "Failed to create collection");
             let template = CollectionNewTemplate {
                 admin_user: AdminUserView::from(&admin),
                 current_path: "/collections".to_string(),
@@ -370,7 +378,7 @@ pub async fn create(
             };
 
             Html(template.render().unwrap_or_else(|e| {
-                tracing::error!("Template render error: {}", e);
+                error!("Template render error: {}", e);
                 "Internal Server Error".to_string()
             }))
             .into_response()
@@ -379,12 +387,14 @@ pub async fn create(
 }
 
 /// Edit collection form handler.
-#[instrument(skip(admin, state))]
+#[instrument(skip(admin, state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn edit(
     RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> impl IntoResponse {
+    debug!("Showing collection edit form");
+
     let collection_id = if id.starts_with("gid://") {
         id
     } else {
@@ -401,7 +411,7 @@ pub async fn edit(
         Ok(Some(c)) => c,
         Ok(None) => return (StatusCode::NOT_FOUND, "Collection not found").into_response(),
         Err(e) => {
-            tracing::error!("Failed to fetch collection: {e}");
+            error!("Failed to fetch collection: {e}");
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Failed to fetch collection",
@@ -440,7 +450,7 @@ pub async fn edit(
     };
 
     Html(template.render().unwrap_or_else(|e| {
-        tracing::error!("Template render error: {}", e);
+        error!("Template render error: {}", e);
         "Internal Server Error".to_string()
     }))
     .into_response()
@@ -485,14 +495,14 @@ async fn handle_publication_changes(
             .await
         {
             Ok(()) => {
-                tracing::info!(
+                info!(
                     collection_id = %collection_id,
                     channels = ?to_publish,
                     "Collection published to channels"
                 );
             }
             Err(e) => {
-                tracing::error!(
+                error!(
                     collection_id = %collection_id,
                     channels = ?to_publish,
                     error = %e,
@@ -510,14 +520,14 @@ async fn handle_publication_changes(
             .await
         {
             Ok(()) => {
-                tracing::info!(
+                info!(
                     collection_id = %collection_id,
                     channels = ?to_unpublish,
                     "Collection unpublished from channels"
                 );
             }
             Err(e) => {
-                tracing::error!(
+                error!(
                     collection_id = %collection_id,
                     channels = ?to_unpublish,
                     error = %e,
@@ -583,20 +593,22 @@ async fn render_edit_error(
     };
 
     Html(template.render().unwrap_or_else(|e| {
-        tracing::error!("Template render error: {}", e);
+        error!("Template render error: {}", e);
         "Internal Server Error".to_string()
     }))
     .into_response()
 }
 
 /// Update collection handler.
-#[instrument(skip(admin, state))]
+#[instrument(skip(admin, state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn update(
     RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Path(id): Path<String>,
     Form(input): Form<CollectionFormInput>,
 ) -> impl IntoResponse {
+    debug!("Updating collection");
+
     let collection_id = if id.starts_with("gid://") {
         id.clone()
     } else {
@@ -610,7 +622,7 @@ pub async fn update(
             return (StatusCode::NOT_FOUND, "Collection not found").into_response();
         }
         Err(e) => {
-            tracing::error!(collection_id = %collection_id, error = %e, "Failed to fetch collection");
+            error!(collection_id = %collection_id, error = %e, "Failed to fetch collection");
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Failed to fetch collection",
@@ -626,7 +638,7 @@ pub async fn update(
     if admin.role != AdminRole::SuperAdmin
         && is_trying_to_unpublish(&current_collection.publications, &publication_ids)
     {
-        tracing::warn!(
+        warn!(
             collection_id = %collection_id,
             admin_id = %admin.id,
             "Non-super-admin attempted to unpublish collection from channels"
@@ -684,7 +696,7 @@ pub async fn update(
             )
             .await;
 
-            tracing::info!(collection_id = %collection_id, "Collection updated");
+            info!(collection_id = %collection_id, "Collection updated");
             let numeric_id = collection_id
                 .split('/')
                 .next_back()
@@ -692,19 +704,21 @@ pub async fn update(
             Redirect::to(&format!("/collections/{numeric_id}")).into_response()
         }
         Err(e) => {
-            tracing::error!(collection_id = %collection_id, error = %e, "Failed to update collection");
+            error!(collection_id = %collection_id, error = %e, "Failed to update collection");
             render_edit_error(&state, &admin, &current_collection, e.to_string()).await
         }
     }
 }
 
 /// Delete collection handler (`super_admin` only).
-#[instrument(skip(_admin, state))]
+#[instrument(skip(admin, state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn delete(
-    RequireSuperAdmin(_admin): RequireSuperAdmin,
+    RequireSuperAdmin(admin): RequireSuperAdmin,
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> impl IntoResponse {
+    debug!("Deleting collection");
+
     let collection_id = if id.starts_with("gid://") {
         id.clone()
     } else {
@@ -713,24 +727,26 @@ pub async fn delete(
 
     match state.shopify().delete_collection(&collection_id).await {
         Ok(_) => {
-            tracing::info!(collection_id = %collection_id, "Collection deleted");
+            info!(collection_id = %collection_id, "Collection deleted");
             Redirect::to("/collections").into_response()
         }
         Err(e) => {
-            tracing::error!(collection_id = %collection_id, error = %e, "Failed to delete collection");
+            error!(collection_id = %collection_id, error = %e, "Failed to delete collection");
             (StatusCode::BAD_REQUEST, format!("Failed to delete: {e}")).into_response()
         }
     }
 }
 
 /// Add products to collection handler (HTMX).
-#[instrument(skip(admin, state))]
+#[instrument(skip(admin, state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn add_products(
     RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Path(id): Path<String>,
     Json(input): Json<ProductsFormInput>,
 ) -> impl IntoResponse {
+    debug!("Adding products to collection");
+
     let collection_id = if id.starts_with("gid://") {
         id.clone()
     } else {
@@ -756,7 +772,7 @@ pub async fn add_products(
         .await
     {
         Ok(()) => {
-            tracing::info!(collection_id = %collection_id, "Products added to collection");
+            info!(collection_id = %collection_id, "Products added to collection");
             // Re-fetch and return updated products table
             match state
                 .shopify()
@@ -780,7 +796,7 @@ pub async fn add_products(
                     };
 
                     Html(template.render().unwrap_or_else(|e| {
-                        tracing::error!("Template render error: {}", e);
+                        error!("Template render error: {}", e);
                         "Internal Server Error".to_string()
                     }))
                     .into_response()
@@ -789,7 +805,7 @@ pub async fn add_products(
             }
         }
         Err(e) => {
-            tracing::error!(collection_id = %collection_id, error = %e, "Failed to add products");
+            error!(collection_id = %collection_id, error = %e, "Failed to add products");
             (
                 StatusCode::BAD_REQUEST,
                 format!("Failed to add products: {e}"),
@@ -800,13 +816,15 @@ pub async fn add_products(
 }
 
 /// Remove products from collection handler (HTMX).
-#[instrument(skip(admin, state))]
+#[instrument(skip(admin, state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn remove_products(
     RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Path(id): Path<String>,
     Json(input): Json<ProductsFormInput>,
 ) -> impl IntoResponse {
+    debug!("Removing products from collection");
+
     let collection_id = if id.starts_with("gid://") {
         id.clone()
     } else {
@@ -832,7 +850,7 @@ pub async fn remove_products(
         .await
     {
         Ok(()) => {
-            tracing::info!(collection_id = %collection_id, "Products removed from collection");
+            info!(collection_id = %collection_id, "Products removed from collection");
             // Re-fetch and return updated products table
             match state
                 .shopify()
@@ -856,7 +874,7 @@ pub async fn remove_products(
                     };
 
                     Html(template.render().unwrap_or_else(|e| {
-                        tracing::error!("Template render error: {}", e);
+                        error!("Template render error: {}", e);
                         "Internal Server Error".to_string()
                     }))
                     .into_response()
@@ -865,7 +883,7 @@ pub async fn remove_products(
             }
         }
         Err(e) => {
-            tracing::error!(collection_id = %collection_id, error = %e, "Failed to remove products");
+            error!(collection_id = %collection_id, error = %e, "Failed to remove products");
             (
                 StatusCode::BAD_REQUEST,
                 format!("Failed to remove products: {e}"),
@@ -886,13 +904,15 @@ pub struct SortOrderInput {
 }
 
 /// Update collection sort order handler (JSON).
-#[instrument(skip(_admin, state))]
+#[instrument(skip(admin, state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn update_sort_order(
-    RequireAdminAuth(_admin): RequireAdminAuth,
+    RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Path(id): Path<String>,
     Json(input): Json<SortOrderInput>,
 ) -> impl IntoResponse {
+    debug!("Updating collection sort order");
+
     let collection_id = if id.starts_with("gid://") {
         id.clone()
     } else {
@@ -905,7 +925,7 @@ pub async fn update_sort_order(
         .await
     {
         Ok(()) => {
-            tracing::info!(collection_id = %collection_id, sort_order = %input.sort_order, "Collection sort order updated");
+            info!(collection_id = %collection_id, sort_order = %input.sort_order, "Collection sort order updated");
             (
                 StatusCode::OK,
                 Json(serde_json::json!({"success": true, "sort_order": input.sort_order})),
@@ -913,7 +933,7 @@ pub async fn update_sort_order(
                 .into_response()
         }
         Err(e) => {
-            tracing::error!(collection_id = %collection_id, error = %e, "Failed to update sort order");
+            error!(collection_id = %collection_id, error = %e, "Failed to update sort order");
             (
                 StatusCode::BAD_REQUEST,
                 Json(serde_json::json!({"error": format!("Failed to update sort order: {e}")})),
@@ -938,13 +958,15 @@ pub struct ProductMoveInput {
 }
 
 /// Reorder products in a collection handler (HTMX/JSON).
-#[instrument(skip(_admin, state))]
+#[instrument(skip(admin, state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn reorder_products(
-    RequireAdminAuth(_admin): RequireAdminAuth,
+    RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Path(id): Path<String>,
     Json(moves): Json<Vec<ProductMoveInput>>,
 ) -> impl IntoResponse {
+    debug!("Reordering products in collection");
+
     let collection_id = if id.starts_with("gid://") {
         id.clone()
     } else {
@@ -970,11 +992,11 @@ pub async fn reorder_products(
         .await
     {
         Ok(()) => {
-            tracing::info!(collection_id = %collection_id, "Products reordered in collection");
+            info!(collection_id = %collection_id, "Products reordered in collection");
             (StatusCode::OK, Json(serde_json::json!({"success": true}))).into_response()
         }
         Err(e) => {
-            tracing::error!(collection_id = %collection_id, error = %e, "Failed to reorder products");
+            error!(collection_id = %collection_id, error = %e, "Failed to reorder products");
             (
                 StatusCode::BAD_REQUEST,
                 Json(serde_json::json!({"error": format!("Failed to reorder products: {e}")})),
@@ -1013,7 +1035,7 @@ async fn extract_file_from_multipart(
                     });
                 }
                 Err(e) => {
-                    tracing::error!(error = %e, "Failed to read file bytes");
+                    error!(error = %e, "Failed to read file bytes");
                     return Err("Failed to read file");
                 }
             }
@@ -1053,25 +1075,27 @@ async fn upload_to_staged_target(
             } else {
                 let status = response.status();
                 let body = response.text().await.unwrap_or_default();
-                tracing::error!(status = %status, body = %body, "Staged upload failed");
+                error!(status = %status, body = %body, "Staged upload failed");
                 Err(format!("Upload failed with status {status}"))
             }
         }
         Err(e) => {
-            tracing::error!(error = %e, "Failed to upload to staged target");
+            error!(error = %e, "Failed to upload to staged target");
             Err(format!("Upload failed: {e}"))
         }
     }
 }
 
 /// Upload collection image handler.
-#[instrument(skip(_admin, state))]
+#[instrument(skip(admin, state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn upload_image(
-    RequireAdminAuth(_admin): RequireAdminAuth,
+    RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Path(id): Path<String>,
     multipart: axum::extract::Multipart,
 ) -> impl IntoResponse {
+    debug!("Uploading collection image");
+
     let collection_id = if id.starts_with("gid://") {
         id.clone()
     } else {
@@ -1100,7 +1124,7 @@ pub async fn upload_image(
     {
         Ok(target) => target,
         Err(e) => {
-            tracing::error!(error = %e, "Failed to create staged upload");
+            error!(error = %e, "Failed to create staged upload");
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({"error": format!("Failed to create upload: {e}")})),
@@ -1132,7 +1156,7 @@ pub async fn upload_image(
         .await
     {
         Ok(()) => {
-            tracing::info!(collection_id = %collection_id, filename = %file.filename, "Collection image uploaded");
+            info!(collection_id = %collection_id, filename = %file.filename, "Collection image uploaded");
             (
                 StatusCode::OK,
                 Json(serde_json::json!({"success": true, "filename": file.filename})),
@@ -1140,7 +1164,7 @@ pub async fn upload_image(
                 .into_response()
         }
         Err(e) => {
-            tracing::error!(error = %e, "Failed to update collection image");
+            error!(error = %e, "Failed to update collection image");
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({"error": format!("Failed to update image: {e}")})),
@@ -1151,12 +1175,14 @@ pub async fn upload_image(
 }
 
 /// Delete collection image handler.
-#[instrument(skip(_admin, state))]
+#[instrument(skip(admin, state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn delete_image(
-    RequireAdminAuth(_admin): RequireAdminAuth,
+    RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> impl IntoResponse {
+    debug!("Deleting collection image");
+
     let collection_id = if id.starts_with("gid://") {
         id.clone()
     } else {
@@ -1169,11 +1195,11 @@ pub async fn delete_image(
         .await
     {
         Ok(()) => {
-            tracing::info!(collection_id = %collection_id, "Collection image deleted");
+            info!(collection_id = %collection_id, "Collection image deleted");
             (StatusCode::OK, Json(serde_json::json!({"success": true}))).into_response()
         }
         Err(e) => {
-            tracing::error!(collection_id = %collection_id, error = %e, "Failed to delete image");
+            error!(collection_id = %collection_id, error = %e, "Failed to delete image");
             (
                 StatusCode::BAD_REQUEST,
                 Json(serde_json::json!({"error": format!("Failed to delete image: {e}")})),

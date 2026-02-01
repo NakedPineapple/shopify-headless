@@ -7,7 +7,7 @@ use askama::Template;
 use askama_web::WebTemplate;
 use axum::{Router, extract::State, http::StatusCode, response::IntoResponse, routing::get};
 use chrono::NaiveDate;
-use tracing::instrument;
+use tracing::{debug, info, instrument, warn};
 
 use crate::config::AnalyticsConfig;
 use crate::filters;
@@ -87,10 +87,14 @@ fn serve_content_page(
     slug: &str,
     nonce: String,
 ) -> Result<ContentPageTemplate, StatusCode> {
-    let page = state
-        .content()
-        .get_page(slug)
-        .ok_or(StatusCode::NOT_FOUND)?;
+    debug!(slug = %slug, "Looking up content page by slug");
+
+    let page = state.content().get_page(slug).ok_or_else(|| {
+        warn!(slug = %slug, "Content page not found");
+        StatusCode::NOT_FOUND
+    })?;
+
+    info!(slug = %slug, title = %page.meta.title, "Serving content page");
 
     Ok(ContentPageTemplate {
         title: page.meta.title.clone(),
@@ -107,10 +111,13 @@ fn serve_content_page(
 // =============================================================================
 
 /// Display the About page.
+#[instrument(skip(state, nonce))]
 pub async fn about(
     State(state): State<AppState>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> AboutTemplate {
+    debug!("Rendering About page");
+    info!("Serving About page");
     AboutTemplate {
         analytics: state.config().analytics.clone(),
         nonce,
@@ -118,10 +125,13 @@ pub async fn about(
 }
 
 /// Display the Wholesale page.
+#[instrument(skip(state, nonce))]
 pub async fn wholesale(
     State(state): State<AppState>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> WholesaleTemplate {
+    debug!("Rendering Wholesale page");
+    info!("Serving Wholesale page");
     WholesaleTemplate {
         analytics: state.config().analytics.clone(),
         nonce,
@@ -129,10 +139,13 @@ pub async fn wholesale(
 }
 
 /// Display the Model Program page.
+#[instrument(skip(state, nonce))]
 pub async fn model_program(
     State(state): State<AppState>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> ModelProgramTemplate {
+    debug!("Rendering Model Program page");
+    info!("Serving Model Program page");
     ModelProgramTemplate {
         analytics: state.config().analytics.clone(),
         nonce,
@@ -140,10 +153,13 @@ pub async fn model_program(
 }
 
 /// Display the Affiliate Program page.
+#[instrument(skip(state, nonce))]
 pub async fn affiliate_program(
     State(state): State<AppState>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> AffiliateTemplate {
+    debug!("Rendering Affiliate Program page");
+    info!("Serving Affiliate Program page");
     AffiliateTemplate {
         analytics: state.config().analytics.clone(),
         nonce,
@@ -151,10 +167,13 @@ pub async fn affiliate_program(
 }
 
 /// Display the Teen Program page.
+#[instrument(skip(state, nonce))]
 pub async fn teen_program(
     State(state): State<AppState>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> TeenProgramTemplate {
+    debug!("Rendering Teen Program page");
+    info!("Serving Teen Program page");
     TeenProgramTemplate {
         analytics: state.config().analytics.clone(),
         nonce,
@@ -162,10 +181,13 @@ pub async fn teen_program(
 }
 
 /// Display the Subscriptions page.
+#[instrument(skip(state, nonce))]
 pub async fn subscriptions(
     State(state): State<AppState>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> SubscriptionsTemplate {
+    debug!("Rendering Subscriptions page");
+    info!("Serving Subscriptions page");
     SubscriptionsTemplate {
         analytics: state.config().analytics.clone(),
         nonce,
@@ -186,6 +208,7 @@ pub async fn terms(
     State(state): State<AppState>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> Result<impl IntoResponse, StatusCode> {
+    debug!("Handling request for Terms of Service page");
     serve_content_page(&state, "terms", nonce)
 }
 
@@ -199,6 +222,7 @@ pub async fn privacy(
     State(state): State<AppState>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> Result<impl IntoResponse, StatusCode> {
+    debug!("Handling request for Privacy Policy page");
     serve_content_page(&state, "privacy", nonce)
 }
 
@@ -212,6 +236,7 @@ pub async fn accessibility(
     State(state): State<AppState>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> Result<impl IntoResponse, StatusCode> {
+    debug!("Handling request for Accessibility page");
     serve_content_page(&state, "accessibility", nonce)
 }
 
@@ -225,6 +250,7 @@ pub async fn faq(
     State(state): State<AppState>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> Result<impl IntoResponse, StatusCode> {
+    debug!("Handling request for FAQ page");
     serve_content_page(&state, "faq", nonce)
 }
 
@@ -238,6 +264,7 @@ pub async fn shipping(
     State(state): State<AppState>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> Result<impl IntoResponse, StatusCode> {
+    debug!("Handling request for Shipping & Returns page");
     serve_content_page(&state, "shipping", nonce)
 }
 
@@ -251,6 +278,7 @@ pub async fn data_sharing_opt_out(
     State(state): State<AppState>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> Result<impl IntoResponse, StatusCode> {
+    debug!("Handling request for Data Sharing Opt-Out page");
     serve_content_page(&state, "data-sharing-opt-out", nonce)
 }
 
@@ -264,6 +292,7 @@ pub async fn directions(
     State(state): State<AppState>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> Result<impl IntoResponse, StatusCode> {
+    debug!("Handling request for Directions page");
     serve_content_page(&state, "directions", nonce)
 }
 
@@ -277,6 +306,7 @@ pub async fn collabs(
     State(state): State<AppState>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> Result<impl IntoResponse, StatusCode> {
+    debug!("Handling request for Collabs page");
     serve_content_page(&state, "collabs", nonce)
 }
 

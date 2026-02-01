@@ -15,6 +15,7 @@ use axum::{
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use std::convert::Infallible;
+use tracing::{debug, info, instrument, warn};
 
 use naked_pineapple_core::{AdminUserId, ChatSessionId};
 
@@ -159,7 +160,9 @@ impl IntoResponse for ChatError {
 /// Render the chat interface page.
 ///
 /// GET /chat
+#[instrument(skip_all, fields(admin_id = %admin.id.as_i32()))]
 async fn chat_page(RequireAdminAuth(admin): RequireAdminAuth) -> impl IntoResponse {
+    debug!("Rendering chat interface page");
     let template = ChatPageTemplate {
         admin_user: AdminUserView::from(&admin),
         current_path: "/chat".to_string(),
@@ -174,14 +177,17 @@ async fn chat_page(RequireAdminAuth(admin): RequireAdminAuth) -> impl IntoRespon
 /// List chat sessions for the current admin user.
 ///
 /// GET /chat/sessions
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32()))]
 async fn list_sessions(
     State(state): State<AppState>,
     RequireAdminAuth(admin): RequireAdminAuth,
 ) -> Result<Json<Vec<SessionResponse>>, ChatError> {
+    debug!("Listing chat sessions for admin user");
     let claude = ClaudeClient::new(state.config().claude());
     let service = ChatService::new(state.pool(), &claude, state.shopify());
 
     let sessions = service.list_sessions(admin.id).await?;
+    debug!(session_count = sessions.len(), "Retrieved chat sessions");
 
     Ok(Json(sessions.into_iter().map(Into::into).collect()))
 }
@@ -189,14 +195,17 @@ async fn list_sessions(
 /// Create a new chat session.
 ///
 /// POST /chat/sessions
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32()))]
 async fn create_session(
     State(state): State<AppState>,
     RequireAdminAuth(admin): RequireAdminAuth,
 ) -> Result<(StatusCode, Json<SessionResponse>), ChatError> {
+    debug!("Creating new chat session");
     let claude = ClaudeClient::new(state.config().claude());
     let service = ChatService::new(state.pool(), &claude, state.shopify());
 
     let session = service.create_session(admin.id).await?;
+    info!(session_id = %session.id.as_i32(), "Chat session created");
 
     Ok((StatusCode::CREATED, Json(session.into())))
 }
@@ -204,11 +213,13 @@ async fn create_session(
 /// Get a chat session with all its messages.
 ///
 /// GET /chat/sessions/:id
+#[instrument(skip(state, _admin), fields(session_id = %id))]
 async fn get_session(
     State(state): State<AppState>,
     RequireAdminAuth(_admin): RequireAdminAuth,
     Path(id): Path<i32>,
 ) -> Result<Json<SessionWithMessagesResponse>, ChatError> {
+    debug!("Fetching chat session with messages");
     let session_id = ChatSessionId::new(id);
 
     let claude = ClaudeClient::new(state.config().claude());
@@ -220,6 +231,10 @@ async fn get_session(
         .ok_or(ChatError::SessionNotFound)?;
 
     let messages = service.get_messages(session_id).await?;
+    debug!(
+        message_count = messages.len(),
+        "Retrieved session with messages"
+    );
 
     Ok(Json(SessionWithMessagesResponse {
         session: session.into(),
@@ -232,18 +247,22 @@ async fn get_session(
 /// POST /chat/sessions/:id/messages
 ///
 /// Returns all new messages (user message + assistant response + any tool use).
+#[instrument(skip(state, _admin, request), fields(session_id = %id))]
 async fn send_message(
     State(state): State<AppState>,
     RequireAdminAuth(_admin): RequireAdminAuth,
     Path(id): Path<i32>,
     Json(request): Json<SendMessageRequest>,
 ) -> Result<Json<SendMessageResponse>, ChatError> {
+    debug!("Sending message to chat session");
     let session_id = ChatSessionId::new(id);
 
     let claude = ClaudeClient::new(state.config().claude());
     let service = ChatService::new(state.pool(), &claude, state.shopify());
 
+    info!(session_id = %id, "Processing chat message");
     let messages = service.send_message(session_id, &request.message).await?;
+    info!(session_id = %id, response_count = messages.len(), "Chat message processed");
 
     Ok(Json(SendMessageResponse {
         messages: messages.into_iter().map(Into::into).collect(),
@@ -257,18 +276,22 @@ async fn send_message(
 /// Streams events in real-time as Claude generates the response.
 /// Text tokens are sent as they arrive, tool use is streamed, and
 /// tool results are sent after execution.
+#[instrument(skip(state, _admin, request), fields(session_id = %id))]
 async fn send_message_stream(
     State(state): State<AppState>,
     RequireAdminAuth(_admin): RequireAdminAuth,
     Path(id): Path<i32>,
     Json(request): Json<SendMessageRequest>,
 ) -> Sse<impl futures::Stream<Item = Result<Event, Infallible>>> {
+    debug!("Starting streaming message response");
     let session_id = ChatSessionId::new(id);
 
     // Clone owned values for the streaming function (all use Arc internally)
     let pool = state.pool().clone();
     let claude = ClaudeClient::new(state.config().claude());
     let shopify = state.shopify().clone();
+
+    info!(session_id = %id, "Initiating SSE stream for chat message");
 
     // Use true streaming - events are yielded as Claude generates them
     let event_stream = stream_chat_message(pool, claude, shopify, session_id, request.message);
@@ -332,11 +355,13 @@ struct HistoryPageTemplate {
 /// Render the chat history list page.
 ///
 /// GET /chat/history
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32(), page = %params.page))]
 async fn history_page(
     State(state): State<AppState>,
     RequireAdminAuth(admin): RequireAdminAuth,
     Query(params): Query<HistoryQueryParams>,
 ) -> impl IntoResponse {
+    debug!("Rendering chat history page");
     let is_super_admin = admin.role == crate::models::AdminRole::SuperAdmin;
 
     // Non-super admins can only see their own sessions
@@ -359,6 +384,13 @@ async fn history_page(
         .list_sessions_paginated(admin_filter, SESSIONS_PER_PAGE, offset)
         .await
         .unwrap_or_default();
+
+    debug!(
+        total_sessions = total_sessions,
+        current_page = current_page,
+        session_count = sessions.len(),
+        "Retrieved paginated chat history"
+    );
 
     // Convert to view models (we'd need to join with admin_user for names in a real impl)
     let session_views: Vec<HistorySessionView> = sessions
@@ -415,11 +447,13 @@ struct HistoryShowTemplate {
 /// Render a past conversation (read-only view).
 ///
 /// GET /chat/history/:id
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32(), session_id = %id))]
 async fn history_show(
     State(state): State<AppState>,
     RequireAdminAuth(admin): RequireAdminAuth,
     Path(id): Path<i32>,
 ) -> Result<impl IntoResponse, Response> {
+    debug!("Rendering chat history detail page");
     let session_id = ChatSessionId::new(id);
     let is_super_admin = admin.role == crate::models::AdminRole::SuperAdmin;
 
@@ -429,20 +463,36 @@ async fn history_show(
     let session = repo
         .get_session(session_id)
         .await
-        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Database error").into_response())?
-        .ok_or_else(|| (StatusCode::NOT_FOUND, "Session not found").into_response())?;
+        .map_err(|e| {
+            warn!(error = %e, "Database error fetching session");
+            (StatusCode::INTERNAL_SERVER_ERROR, "Database error").into_response()
+        })?
+        .ok_or_else(|| {
+            warn!(session_id = %id, "Session not found");
+            (StatusCode::NOT_FOUND, "Session not found").into_response()
+        })?;
 
     // Check permission: super admin or session owner
     let is_owner = session.admin_user_id == admin.id;
     if !is_super_admin && !is_owner {
+        warn!(
+            admin_id = %admin.id.as_i32(),
+            session_owner = %session.admin_user_id.as_i32(),
+            "Access denied to session"
+        );
         return Err((StatusCode::FORBIDDEN, "Access denied").into_response());
     }
 
     // Get messages
-    let messages = repo
-        .get_messages(session_id)
-        .await
-        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Database error").into_response())?;
+    let messages = repo.get_messages(session_id).await.map_err(|e| {
+        warn!(error = %e, "Database error fetching messages");
+        (StatusCode::INTERNAL_SERVER_ERROR, "Database error").into_response()
+    })?;
+
+    debug!(
+        message_count = messages.len(),
+        "Retrieved session messages for history view"
+    );
 
     let message_views: Vec<HistoryMessageView> = messages
         .into_iter()
@@ -471,11 +521,13 @@ async fn history_show(
 /// Continue a past conversation (redirect to chat page with session selected).
 ///
 /// POST /chat/history/:id/continue
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32(), session_id = %id))]
 async fn history_continue(
     State(state): State<AppState>,
     RequireAdminAuth(admin): RequireAdminAuth,
     Path(id): Path<i32>,
 ) -> Result<impl IntoResponse, Response> {
+    debug!("Continuing past chat session");
     let session_id = ChatSessionId::new(id);
 
     let repo = ChatRepository::new(state.pool());
@@ -484,12 +536,21 @@ async fn history_continue(
     let is_owner = repo
         .session_belongs_to_admin(session_id, admin.id)
         .await
-        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Database error").into_response())?;
+        .map_err(|e| {
+            warn!(error = %e, "Database error checking session ownership");
+            (StatusCode::INTERNAL_SERVER_ERROR, "Database error").into_response()
+        })?;
 
     if !is_owner {
+        warn!(
+            admin_id = %admin.id.as_i32(),
+            session_id = %id,
+            "Access denied - not session owner"
+        );
         return Err((StatusCode::FORBIDDEN, "Access denied").into_response());
     }
 
+    info!(session_id = %id, "Redirecting to continue chat session");
     // Redirect to main chat page (JavaScript will select the session)
     Ok(Redirect::to(&format!("/chat?session={id}")))
 }
@@ -497,11 +558,13 @@ async fn history_continue(
 /// Delete a chat session.
 ///
 /// DELETE /chat/sessions/:id
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32(), session_id = %id))]
 async fn delete_session(
     State(state): State<AppState>,
     RequireAdminAuth(admin): RequireAdminAuth,
     Path(id): Path<i32>,
 ) -> Result<impl IntoResponse, Response> {
+    debug!("Deleting chat session");
     let session_id = ChatSessionId::new(id);
     let is_super_admin = admin.role == crate::models::AdminRole::SuperAdmin;
 
@@ -511,17 +574,29 @@ async fn delete_session(
     let session = repo
         .get_session(session_id)
         .await
-        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Database error").into_response())?
-        .ok_or_else(|| (StatusCode::NOT_FOUND, "Session not found").into_response())?;
+        .map_err(|e| {
+            warn!(error = %e, "Database error fetching session for deletion");
+            (StatusCode::INTERNAL_SERVER_ERROR, "Database error").into_response()
+        })?
+        .ok_or_else(|| {
+            warn!(session_id = %id, "Session not found for deletion");
+            (StatusCode::NOT_FOUND, "Session not found").into_response()
+        })?;
 
     // Check permission: super admin or session owner
     let is_owner = session.admin_user_id == admin.id;
     if !is_super_admin && !is_owner {
+        warn!(
+            admin_id = %admin.id.as_i32(),
+            session_owner = %session.admin_user_id.as_i32(),
+            "Access denied to delete session"
+        );
         return Err((StatusCode::FORBIDDEN, "Access denied").into_response());
     }
 
     // Delete the session
-    repo.delete_session(session_id).await.map_err(|_| {
+    repo.delete_session(session_id).await.map_err(|e| {
+        warn!(error = %e, "Failed to delete session");
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             "Failed to delete session",
@@ -529,6 +604,7 @@ async fn delete_session(
             .into_response()
     })?;
 
+    info!(session_id = %id, "Chat session deleted");
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -742,13 +818,19 @@ fn process_tool_result(
 /// Get debug information for a session (super admin only).
 ///
 /// GET /chat/sessions/:id/debug
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32(), session_id = %id))]
 async fn get_session_debug(
     State(state): State<AppState>,
     RequireAdminAuth(admin): RequireAdminAuth,
     Path(id): Path<i32>,
 ) -> Result<Json<SessionDebugResponse>, Response> {
+    debug!("Fetching debug information for chat session");
     // Check super admin permission
     if admin.role != crate::models::AdminRole::SuperAdmin {
+        warn!(
+            admin_id = %admin.id.as_i32(),
+            "Non-super admin attempted to access debug endpoint"
+        );
         return Err((StatusCode::FORBIDDEN, "Super admin access required").into_response());
     }
 
@@ -759,14 +841,20 @@ async fn get_session_debug(
     let _session = repo
         .get_session(session_id)
         .await
-        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Database error").into_response())?
-        .ok_or_else(|| (StatusCode::NOT_FOUND, "Session not found").into_response())?;
+        .map_err(|e| {
+            warn!(error = %e, "Database error fetching session for debug");
+            (StatusCode::INTERNAL_SERVER_ERROR, "Database error").into_response()
+        })?
+        .ok_or_else(|| {
+            warn!(session_id = %id, "Session not found for debug");
+            (StatusCode::NOT_FOUND, "Session not found").into_response()
+        })?;
 
     // Get all messages and extract debug metrics
-    let messages = repo
-        .get_messages(session_id)
-        .await
-        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Database error").into_response())?;
+    let messages = repo.get_messages(session_id).await.map_err(|e| {
+        warn!(error = %e, "Database error fetching messages for debug");
+        (StatusCode::INTERNAL_SERVER_ERROR, "Database error").into_response()
+    })?;
 
     let metrics = extract_debug_metrics(&messages);
 
@@ -793,6 +881,14 @@ async fn get_session_debug(
 
     let api_call_count = i32::try_from(metrics.api_calls.len()).unwrap_or(i32::MAX);
     let tool_call_count = i32::try_from(metrics.tool_executions.len()).unwrap_or(i32::MAX);
+
+    debug!(
+        api_calls = api_call_count,
+        tool_calls = tool_call_count,
+        input_tokens = metrics.total_input_tokens,
+        output_tokens = metrics.total_output_tokens,
+        "Retrieved debug metrics"
+    );
 
     Ok(Json(SessionDebugResponse {
         session_id: id,

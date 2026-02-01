@@ -8,7 +8,7 @@ use axum::{
     response::{Html, IntoResponse},
 };
 use serde::{Deserialize, Serialize};
-use tracing::instrument;
+use tracing::{debug, info, instrument, warn};
 
 use crate::{
     components::data_table::{DataTableConfig, gift_cards_table_config},
@@ -531,12 +531,13 @@ pub struct GiftCardUpdateInput {
 }
 
 /// Gift cards list page handler.
-#[instrument(skip(admin, state))]
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn index(
     RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Query(query): Query<GiftCardsQuery>,
 ) -> Html<String> {
+    debug!("Fetching gift cards list page");
     let shopify_query = query.build_shopify_query();
     let sort_key = query.parse_sort_key();
     let reverse = query.is_reverse();
@@ -551,6 +552,11 @@ pub async fn index(
         Ok(conn) => {
             let gift_cards: Vec<GiftCardView> =
                 conn.gift_cards.iter().map(GiftCardView::from).collect();
+            debug!(
+                count = gift_cards.len(),
+                has_next_page = conn.page_info.has_next_page,
+                "Retrieved gift cards"
+            );
             (
                 gift_cards,
                 conn.page_info.has_next_page,
@@ -559,7 +565,7 @@ pub async fn index(
             )
         }
         Err(e) => {
-            tracing::error!("Failed to fetch gift cards: {e}");
+            warn!("Failed to fetch gift cards: {e}");
             (vec![], false, None, None)
         }
     };
@@ -586,11 +592,12 @@ pub async fn index(
 }
 
 /// New gift card form handler.
-#[instrument(skip(admin, state))]
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn new_gift_card(
     RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
 ) -> Html<String> {
+    debug!("Rendering new gift card form");
     // Fetch gift card configuration for limits
     let issue_limit = state
         .shopify()
@@ -615,12 +622,13 @@ pub async fn new_gift_card(
 }
 
 /// Create gift card handler.
-#[instrument(skip(admin, state))]
+#[instrument(skip(state, input), fields(admin_id = %admin.id.as_i32()))]
 pub async fn create(
     RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Form(input): Form<GiftCardFormInput>,
 ) -> impl IntoResponse {
+    debug!(initial_value = %input.initial_value, "Creating new gift card");
     match state
         .shopify()
         .create_gift_card(
@@ -634,7 +642,7 @@ pub async fn create(
         .await
     {
         Ok((gift_card_id, code)) => {
-            tracing::info!(gift_card_id = %gift_card_id, initial_value = %input.initial_value, "Gift card created");
+            info!(gift_card_id = %gift_card_id, initial_value = %input.initial_value, "Gift card created");
             let template = GiftCardNewTemplate {
                 admin_user: AdminUserView::from(&admin),
                 current_path: "/gift-cards".to_string(),
@@ -650,7 +658,7 @@ pub async fn create(
             .into_response()
         }
         Err(e) => {
-            tracing::error!(initial_value = %input.initial_value, error = %e, "Failed to create gift card");
+            warn!(initial_value = %input.initial_value, error = %e, "Failed to create gift card");
 
             // Fetch issue limit for error page
             let issue_limit = state
@@ -679,12 +687,13 @@ pub async fn create(
 }
 
 /// Deactivate gift card handler (HTMX).
-#[instrument(skip(_admin, state))]
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn deactivate(
-    RequireAdminAuth(_admin): RequireAdminAuth,
+    RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> impl IntoResponse {
+    debug!("Deactivating gift card");
     let gift_card_id = if id.starts_with("gid://") {
         id
     } else {
@@ -693,7 +702,7 @@ pub async fn deactivate(
 
     match state.shopify().deactivate_gift_card(&gift_card_id).await {
         Ok(()) => {
-            tracing::info!(gift_card_id = %gift_card_id, "Gift card deactivated");
+            info!(gift_card_id = %gift_card_id, "Gift card deactivated");
             (
                 StatusCode::OK,
                 [("HX-Trigger", "gift-card-deactivated")],
@@ -705,7 +714,7 @@ pub async fn deactivate(
                 .into_response()
         }
         Err(e) => {
-            tracing::error!(gift_card_id = %gift_card_id, error = %e, "Failed to deactivate gift card");
+            warn!(gift_card_id = %gift_card_id, error = %e, "Failed to deactivate gift card");
             (
                 StatusCode::BAD_REQUEST,
                 Html(format!("<span class=\"text-red-400\">Error: {e}</span>")),
@@ -716,12 +725,13 @@ pub async fn deactivate(
 }
 
 /// Gift card detail page handler.
-#[instrument(skip(admin, state))]
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn show(
     RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> impl IntoResponse {
+    debug!("Fetching gift card detail page");
     let gift_card_id = if id.starts_with("gid://") {
         id
     } else {
@@ -730,6 +740,7 @@ pub async fn show(
 
     match state.shopify().get_gift_card_detail(&gift_card_id).await {
         Ok(gift_card) => {
+            debug!(gift_card_id = %gift_card_id, "Retrieved gift card details");
             let gift_card_view = GiftCardDetailView::from(&gift_card);
             let template = GiftCardShowTemplate {
                 admin_user: AdminUserView::from(&admin),
@@ -745,7 +756,7 @@ pub async fn show(
             .into_response()
         }
         Err(e) => {
-            tracing::error!(gift_card_id = %gift_card_id, error = %e, "Failed to fetch gift card");
+            warn!(gift_card_id = %gift_card_id, error = %e, "Failed to fetch gift card");
             (
                 StatusCode::NOT_FOUND,
                 Html("Gift card not found".to_string()),
@@ -756,13 +767,18 @@ pub async fn show(
 }
 
 /// Adjust gift card balance handler (HTMX).
-#[instrument(skip(_admin, state))]
+#[instrument(skip(state, input), fields(admin_id = %admin.id.as_i32()))]
 pub async fn adjust_balance(
-    RequireAdminAuth(_admin): RequireAdminAuth,
+    RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Path(id): Path<String>,
     Form(input): Form<AdjustBalanceInput>,
 ) -> impl IntoResponse {
+    debug!(
+        adjustment_type = %input.adjustment_type,
+        amount = %input.amount,
+        "Adjusting gift card balance"
+    );
     let gift_card_id = if id.starts_with("gid://") {
         id
     } else {
@@ -784,7 +800,7 @@ pub async fn adjust_balance(
     match result {
         Ok(tx) => {
             let amount: f64 = tx.amount.amount.parse().unwrap_or(0.0);
-            tracing::info!(
+            info!(
                 gift_card_id = %gift_card_id,
                 amount = %amount,
                 adjustment_type = %input.adjustment_type,
@@ -798,7 +814,7 @@ pub async fn adjust_balance(
                 .into_response()
         }
         Err(e) => {
-            tracing::error!(
+            warn!(
                 gift_card_id = %gift_card_id,
                 error = %e,
                 "Failed to adjust gift card balance"
@@ -815,12 +831,13 @@ pub async fn adjust_balance(
 }
 
 /// Send notification to customer handler (HTMX).
-#[instrument(skip(_admin, state))]
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn notify_customer(
-    RequireAdminAuth(_admin): RequireAdminAuth,
+    RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> impl IntoResponse {
+    debug!("Sending gift card notification to customer");
     let gift_card_id = if id.starts_with("gid://") {
         id
     } else {
@@ -833,7 +850,7 @@ pub async fn notify_customer(
         .await
     {
         Ok(()) => {
-            tracing::info!(gift_card_id = %gift_card_id, "Gift card notification sent to customer");
+            info!(gift_card_id = %gift_card_id, "Gift card notification sent to customer");
             (
                 StatusCode::OK,
                 Html(
@@ -844,7 +861,7 @@ pub async fn notify_customer(
                 .into_response()
         }
         Err(e) => {
-            tracing::error!(
+            warn!(
                 gift_card_id = %gift_card_id,
                 error = %e,
                 "Failed to send gift card notification to customer"
@@ -861,12 +878,13 @@ pub async fn notify_customer(
 }
 
 /// Send notification to recipient handler (HTMX).
-#[instrument(skip(_admin, state))]
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn notify_recipient(
-    RequireAdminAuth(_admin): RequireAdminAuth,
+    RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> impl IntoResponse {
+    debug!("Sending gift card notification to recipient");
     let gift_card_id = if id.starts_with("gid://") {
         id
     } else {
@@ -879,7 +897,7 @@ pub async fn notify_recipient(
         .await
     {
         Ok(()) => {
-            tracing::info!(gift_card_id = %gift_card_id, "Gift card notification sent to recipient");
+            info!(gift_card_id = %gift_card_id, "Gift card notification sent to recipient");
             (
                 StatusCode::OK,
                 Html(
@@ -890,7 +908,7 @@ pub async fn notify_recipient(
                 .into_response()
         }
         Err(e) => {
-            tracing::error!(
+            warn!(
                 gift_card_id = %gift_card_id,
                 error = %e,
                 "Failed to send gift card notification to recipient"
@@ -907,13 +925,14 @@ pub async fn notify_recipient(
 }
 
 /// Update gift card note handler (HTMX).
-#[instrument(skip(_admin, state))]
+#[instrument(skip(state, input), fields(admin_id = %admin.id.as_i32()))]
 pub async fn update_note(
-    RequireAdminAuth(_admin): RequireAdminAuth,
+    RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Path(id): Path<String>,
     Form(input): Form<UpdateNoteInput>,
 ) -> impl IntoResponse {
+    debug!("Updating gift card note");
     let gift_card_id = if id.starts_with("gid://") {
         id
     } else {
@@ -926,7 +945,7 @@ pub async fn update_note(
         .await
     {
         Ok(()) => {
-            tracing::info!(gift_card_id = %gift_card_id, "Gift card note updated");
+            info!(gift_card_id = %gift_card_id, "Gift card note updated");
             (
                 StatusCode::OK,
                 [("HX-Trigger", "note-updated")],
@@ -938,7 +957,7 @@ pub async fn update_note(
                 .into_response()
         }
         Err(e) => {
-            tracing::error!(
+            warn!(
                 gift_card_id = %gift_card_id,
                 error = %e,
                 "Failed to update gift card note"
@@ -955,12 +974,13 @@ pub async fn update_note(
 }
 
 /// Gift card edit page handler.
-#[instrument(skip(admin, state))]
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn edit(
     RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> impl IntoResponse {
+    debug!("Fetching gift card edit page");
     let gift_card_id = if id.starts_with("gid://") {
         id
     } else {
@@ -969,6 +989,7 @@ pub async fn edit(
 
     match state.shopify().get_gift_card_detail(&gift_card_id).await {
         Ok(gift_card) => {
+            debug!(gift_card_id = %gift_card_id, "Retrieved gift card for editing");
             let template = GiftCardEditTemplate {
                 admin_user: AdminUserView::from(&admin),
                 current_path: "/gift-cards".to_string(),
@@ -984,7 +1005,7 @@ pub async fn edit(
             .into_response()
         }
         Err(e) => {
-            tracing::error!(gift_card_id = %gift_card_id, error = %e, "Failed to fetch gift card");
+            warn!(gift_card_id = %gift_card_id, error = %e, "Failed to fetch gift card for editing");
             (
                 StatusCode::NOT_FOUND,
                 Html("Gift card not found".to_string()),
@@ -995,13 +1016,14 @@ pub async fn edit(
 }
 
 /// Gift card update handler.
-#[instrument(skip(admin, state))]
+#[instrument(skip(state, input), fields(admin_id = %admin.id.as_i32()))]
 pub async fn update(
     RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Path(id): Path<String>,
     Form(input): Form<GiftCardUpdateInput>,
 ) -> impl IntoResponse {
+    debug!("Updating gift card");
     let gift_card_id = if id.starts_with("gid://") {
         id.clone()
     } else {
@@ -1023,7 +1045,7 @@ pub async fn update(
     let gift_card = match state.shopify().get_gift_card_detail(&gift_card_id).await {
         Ok(gc) => gc,
         Err(e) => {
-            tracing::error!(gift_card_id = %gift_card_id, error = %e, "Failed to fetch gift card after update");
+            warn!(gift_card_id = %gift_card_id, error = %e, "Failed to fetch gift card after update");
             return (
                 StatusCode::NOT_FOUND,
                 Html("Gift card not found".to_string()),
@@ -1034,11 +1056,11 @@ pub async fn update(
 
     let (error, success) = match result {
         Ok(()) => {
-            tracing::info!(gift_card_id = %gift_card_id, "Gift card updated");
+            info!(gift_card_id = %gift_card_id, "Gift card updated");
             (None, true)
         }
         Err(e) => {
-            tracing::error!(gift_card_id = %gift_card_id, error = %e, "Failed to update gift card");
+            warn!(gift_card_id = %gift_card_id, error = %e, "Failed to update gift card");
             (Some(e.to_string()), false)
         }
     };
@@ -1065,13 +1087,14 @@ pub struct BulkDeactivateInput {
 }
 
 /// Bulk deactivate gift cards handler.
-#[instrument(skip(_admin, state))]
+#[instrument(skip(state, input), fields(admin_id = %admin.id.as_i32()))]
 pub async fn bulk_deactivate(
-    RequireAdminAuth(_admin): RequireAdminAuth,
+    RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Form(input): Form<BulkDeactivateInput>,
 ) -> impl IntoResponse {
     let ids: Vec<&str> = input.ids.split(',').filter(|s| !s.is_empty()).collect();
+    debug!(count = ids.len(), "Bulk deactivating gift cards");
     let mut success_count = 0;
     let mut error_count = 0;
 
@@ -1085,14 +1108,20 @@ pub async fn bulk_deactivate(
         match state.shopify().deactivate_gift_card(&gift_card_id).await {
             Ok(()) => {
                 success_count += 1;
-                tracing::info!(gift_card_id = %gift_card_id, "Gift card deactivated (bulk)");
+                debug!(gift_card_id = %gift_card_id, "Gift card deactivated (bulk)");
             }
             Err(e) => {
                 error_count += 1;
-                tracing::error!(gift_card_id = %gift_card_id, error = %e, "Failed to deactivate gift card (bulk)");
+                warn!(gift_card_id = %gift_card_id, error = %e, "Failed to deactivate gift card (bulk)");
             }
         }
     }
+
+    info!(
+        success_count = success_count,
+        error_count = error_count,
+        "Bulk deactivation completed"
+    );
 
     if error_count == 0 {
         (

@@ -103,6 +103,34 @@ impl StorefrontClient {
         }
     }
 
+    /// Convert `graphql_client` errors to our error type.
+    fn convert_graphql_errors(errors: Vec<graphql_client::Error>) -> Vec<super::GraphQLError> {
+        errors
+            .into_iter()
+            .map(|e| super::GraphQLError {
+                message: e.message,
+                locations: e.locations.map_or_else(Vec::new, |locs| {
+                    locs.into_iter()
+                        .map(|l| super::GraphQLErrorLocation {
+                            line: i64::from(l.line),
+                            column: i64::from(l.column),
+                        })
+                        .collect()
+                }),
+                path: e.path.map_or_else(Vec::new, |p| {
+                    p.into_iter()
+                        .map(|fragment| match fragment {
+                            graphql_client::PathFragment::Key(s) => serde_json::Value::String(s),
+                            graphql_client::PathFragment::Index(i) => {
+                                serde_json::Value::Number(i.into())
+                            }
+                        })
+                        .collect()
+                }),
+            })
+            .collect()
+    }
+
     /// Execute a GraphQL query.
     async fn execute<Q: GraphQLQuery>(
         &self,
@@ -112,21 +140,14 @@ impl StorefrontClient {
         Q::Variables: serde::Serialize,
     {
         let request_body = Q::build_query(variables);
-
-        // Debug: Log the request body being sent to Shopify
         if let Ok(json) = serde_json::to_string_pretty(&request_body) {
-            tracing::debug!(
-                request_body = %json,
-                "Sending GraphQL request to Shopify"
-            );
+            tracing::debug!(request_body = %json, "Sending GraphQL request to Shopify");
         }
 
         let response = self
             .inner
             .client
             .post(&self.inner.endpoint)
-            // Private access tokens use a different header than public tokens
-            // See: https://shopify.dev/docs/storefronts/headless/building-with-the-storefront-api/getting-started
             .header("Shopify-Storefront-Private-Token", &self.inner.access_token)
             .header("Content-Type", "application/json")
             .json(&request_body)
@@ -134,8 +155,6 @@ impl StorefrontClient {
             .await?;
 
         let status = response.status();
-
-        // Check for rate limiting
         if status == reqwest::StatusCode::TOO_MANY_REQUESTS {
             let retry_after = response
                 .headers()
@@ -146,16 +165,10 @@ impl StorefrontClient {
             return Err(ShopifyError::RateLimited(retry_after));
         }
 
-        // Get response body as text first for better error diagnostics
         let response_text = response.text().await?;
-
-        // Check for non-success status codes
         if !status.is_success() {
-            tracing::error!(
-                status = %status,
-                body = %response_text.chars().take(500).collect::<String>(),
-                "Shopify API returned non-success status"
-            );
+            let body_preview: String = response_text.chars().take(500).collect();
+            tracing::error!(status = %status, body = %body_preview, "Shopify API returned non-success status");
             return Err(ShopifyError::GraphQL(vec![super::GraphQLError {
                 message: format!(
                     "HTTP {status}: {}",
@@ -166,64 +179,25 @@ impl StorefrontClient {
             }]));
         }
 
-        // Parse the response
         let response: Response<Q::ResponseData> = match serde_json::from_str(&response_text) {
             Ok(r) => r,
             Err(e) => {
-                tracing::error!(
-                    error = %e,
-                    body = %response_text.chars().take(500).collect::<String>(),
-                    "Failed to parse Shopify GraphQL response"
-                );
+                let body_preview: String = response_text.chars().take(500).collect();
+                tracing::error!(error = %e, body = %body_preview, "Failed to parse Shopify GraphQL response");
                 return Err(ShopifyError::Parse(e));
             }
         };
 
-        // Check for GraphQL errors
         if let Some(errors) = response.errors
             && !errors.is_empty()
         {
-            // Log the raw errors for debugging
-            tracing::debug!(
-                errors = ?errors,
-                "GraphQL errors in response"
-            );
-
-            return Err(ShopifyError::GraphQL(
-                errors
-                    .into_iter()
-                    .map(|e| super::GraphQLError {
-                        message: e.message,
-                        locations: e.locations.map_or_else(Vec::new, |locs| {
-                            locs.into_iter()
-                                .map(|l| super::GraphQLErrorLocation {
-                                    line: i64::from(l.line),
-                                    column: i64::from(l.column),
-                                })
-                                .collect()
-                        }),
-                        path: e.path.map_or_else(Vec::new, |p| {
-                            p.into_iter()
-                                .map(|fragment| match fragment {
-                                    graphql_client::PathFragment::Key(s) => {
-                                        serde_json::Value::String(s)
-                                    }
-                                    graphql_client::PathFragment::Index(i) => {
-                                        serde_json::Value::Number(i.into())
-                                    }
-                                })
-                                .collect()
-                        }),
-                    })
-                    .collect(),
-            ));
+            tracing::debug!(errors = ?errors, "GraphQL errors in response");
+            return Err(ShopifyError::GraphQL(Self::convert_graphql_errors(errors)));
         }
 
         response.data.ok_or_else(|| {
-            tracing::error!(
-                body = %response_text.chars().take(500).collect::<String>(),
-                "Shopify GraphQL response has no data and no errors"
-            );
+            let body_preview: String = response_text.chars().take(500).collect();
+            tracing::error!(body = %body_preview, "Shopify GraphQL response has no data and no errors");
             ShopifyError::GraphQL(vec![super::GraphQLError {
                 message: "No data in response".to_string(),
                 locations: vec![],
@@ -437,7 +411,7 @@ impl StorefrontClient {
             sort_key = ?variables.sort_key,
             reverse = ?variables.reverse,
             has_filters = variables.filters.is_some(),
-            filter_count = variables.filters.as_ref().map_or(0, |f| f.len()),
+            filter_count = variables.filters.as_ref().map_or(0, Vec::len),
             cache_key = %cache_key,
             "Sending GraphQL request for collection"
         );

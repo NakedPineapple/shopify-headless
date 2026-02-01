@@ -11,7 +11,7 @@ use axum::{
     response::{Html, IntoResponse},
 };
 use serde::Deserialize;
-use tracing::instrument;
+use tracing::{debug, info, instrument, warn};
 
 use crate::{
     components::data_table::{
@@ -444,18 +444,17 @@ pub struct TransactionsPartialTemplate {
 // =============================================================================
 
 /// Payouts list page handler.
-#[instrument(skip(admin, state))]
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn index(
     RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Query(query): Query<PayoutsQuery>,
 ) -> Html<String> {
-    // Parse sort parameters
-    tracing::debug!(
+    debug!(
         sort = ?query.sort,
         dir = ?query.dir,
         cursor = ?query.cursor,
-        "Payouts index request"
+        "Loading payouts list page with pagination and sorting"
     );
 
     let sort_key = query
@@ -463,7 +462,7 @@ pub async fn index(
         .as_deref()
         .and_then(PayoutSortKey::from_str_param);
 
-    tracing::debug!(
+    debug!(
         sort_key = ?sort_key,
         "Parsed sort key from query param {:?}",
         query.sort
@@ -476,12 +475,20 @@ pub async fn index(
         .get_payouts(25, query.cursor.clone(), sort_key, reverse)
         .await;
 
-    tracing::debug!(success = result.is_ok(), "Shopify get_payouts result");
+    debug!(
+        success = result.is_ok(),
+        "Shopify get_payouts API call completed"
+    );
 
     let (payouts, has_next_page, next_cursor, balance) = match result {
         Ok(conn) => {
             let payouts: Vec<PayoutView> = conn.payouts.iter().map(PayoutView::from).collect();
             let balance = conn.balance.as_ref().map(|b| format!("${}", b.amount));
+            info!(
+                payouts_count = payouts.len(),
+                has_next_page = conn.page_info.has_next_page,
+                "Successfully loaded payouts list"
+            );
             (
                 payouts,
                 conn.page_info.has_next_page,
@@ -490,7 +497,7 @@ pub async fn index(
             )
         }
         Err(e) => {
-            tracing::error!("Failed to fetch payouts: {e}");
+            warn!("Failed to fetch payouts from Shopify: {e}");
             (vec![], false, None, None)
         }
     };
@@ -508,24 +515,24 @@ pub async fn index(
     };
 
     Html(template.render().unwrap_or_else(|e| {
-        tracing::error!("Template render error: {}", e);
+        tracing::error!("Payouts index template render error: {}", e);
         "Internal Server Error".to_string()
     }))
 }
 
 /// Payout detail page handler.
-#[instrument(skip(admin, state))]
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn show(
     RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> impl IntoResponse {
+    debug!(payout_id = %id, "Loading payout detail page");
     let payout_id = normalize_payout_id(&id);
 
     match state.shopify().get_payout_detail(&payout_id).await {
         Ok(payout) => {
-            // Fetch transactions for this payout using payout_date filter + client-side payout_id filter
-            tracing::info!(
+            debug!(
                 payout_id = %payout_id,
                 issued_at = ?payout.issued_at,
                 "Fetching transactions for payout"
@@ -541,16 +548,26 @@ pub async fn show(
                 .await;
 
             let (transactions, has_more, cursor) = match transactions_result {
-                Ok(conn) => (
-                    conn.transactions
+                Ok(conn) => {
+                    let txns: Vec<TransactionView> = conn
+                        .transactions
                         .iter()
                         .map(TransactionView::from)
-                        .collect(),
-                    conn.page_info.has_next_page,
-                    conn.page_info.end_cursor,
-                ),
+                        .collect();
+                    info!(
+                        payout_id = %payout_id,
+                        transactions_count = txns.len(),
+                        has_more = conn.page_info.has_next_page,
+                        "Successfully loaded payout detail with transactions"
+                    );
+                    (
+                        txns,
+                        conn.page_info.has_next_page,
+                        conn.page_info.end_cursor,
+                    )
+                }
                 Err(e) => {
-                    tracing::warn!("Failed to fetch transactions: {e}");
+                    warn!(payout_id = %payout_id, "Failed to fetch transactions for payout: {e}");
                     (vec![], false, None)
                 }
             };
@@ -566,25 +583,32 @@ pub async fn show(
             };
 
             Html(template.render().unwrap_or_else(|e| {
-                tracing::error!("Template render error: {}", e);
+                tracing::error!("Payout show template render error: {}", e);
                 "Internal Server Error".to_string()
             }))
             .into_response()
         }
         Err(e) => {
-            tracing::error!("Failed to fetch payout: {e}");
+            warn!(payout_id = %payout_id, "Payout not found: {e}");
             (StatusCode::NOT_FOUND, format!("Payout not found: {e}")).into_response()
         }
     }
 }
 
 /// Disputes list page handler.
-#[instrument(skip(admin, state))]
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn disputes_index(
     RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Query(query): Query<DisputesQuery>,
 ) -> Html<String> {
+    debug!(
+        cursor = ?query.cursor,
+        query = ?query.query,
+        status = ?query.status,
+        "Loading disputes list page"
+    );
+
     let result = state
         .shopify()
         .get_disputes(25, query.cursor.clone(), query.query.clone())
@@ -598,6 +622,12 @@ pub async fn disputes_index(
                 .filter(|d| matches!(d.status, DisputeStatus::NeedsResponse))
                 .count();
             let disputes: Vec<DisputeView> = conn.disputes.iter().map(DisputeView::from).collect();
+            info!(
+                disputes_count = disputes.len(),
+                needs_response_count = needs_response,
+                has_next_page = conn.page_info.has_next_page,
+                "Successfully loaded disputes list"
+            );
             (
                 disputes,
                 conn.page_info.has_next_page,
@@ -606,7 +636,7 @@ pub async fn disputes_index(
             )
         }
         Err(e) => {
-            tracing::error!("Failed to fetch disputes: {e}");
+            warn!("Failed to fetch disputes from Shopify: {e}");
             (vec![], false, None, 0)
         }
     };
@@ -628,22 +658,28 @@ pub async fn disputes_index(
     };
 
     Html(template.render().unwrap_or_else(|e| {
-        tracing::error!("Template render error: {}", e);
+        tracing::error!("Disputes index template render error: {}", e);
         "Internal Server Error".to_string()
     }))
 }
 
 /// Dispute detail page handler.
-#[instrument(skip(admin, state))]
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn dispute_show(
     RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> impl IntoResponse {
+    debug!(dispute_id = %id, "Loading dispute detail page");
     let dispute_id = normalize_dispute_id(&id);
 
     match state.shopify().get_dispute(&dispute_id).await {
         Ok(dispute) => {
+            info!(
+                dispute_id = %dispute_id,
+                status = ?dispute.dispute.status,
+                "Successfully loaded dispute detail"
+            );
             let template = DisputeShowTemplate {
                 admin_user: AdminUserView::from(&admin),
                 current_path: "/payouts/disputes".to_string(),
@@ -651,28 +687,37 @@ pub async fn dispute_show(
             };
 
             Html(template.render().unwrap_or_else(|e| {
-                tracing::error!("Template render error: {}", e);
+                tracing::error!("Dispute show template render error: {}", e);
                 "Internal Server Error".to_string()
             }))
             .into_response()
         }
         Err(e) => {
-            tracing::error!("Failed to fetch dispute: {e}");
+            warn!(dispute_id = %dispute_id, "Dispute not found: {e}");
             (StatusCode::NOT_FOUND, format!("Dispute not found: {e}")).into_response()
         }
     }
 }
 
 /// Bank accounts page handler.
-#[instrument(skip(admin, state))]
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn bank_accounts(
     RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
 ) -> Html<String> {
+    debug!("Loading bank accounts page");
+
     let accounts = match state.shopify().get_bank_accounts().await {
-        Ok(accounts) => accounts.iter().map(BankAccountView::from).collect(),
+        Ok(accounts) => {
+            let views: Vec<BankAccountView> = accounts.iter().map(BankAccountView::from).collect();
+            info!(
+                accounts_count = views.len(),
+                "Successfully loaded bank accounts"
+            );
+            views
+        }
         Err(e) => {
-            tracing::error!("Failed to fetch bank accounts: {e}");
+            warn!("Failed to fetch bank accounts from Shopify: {e}");
             vec![]
         }
     };
@@ -684,21 +729,29 @@ pub async fn bank_accounts(
     };
 
     Html(template.render().unwrap_or_else(|e| {
-        tracing::error!("Template render error: {}", e);
+        tracing::error!("Bank accounts template render error: {}", e);
         "Internal Server Error".to_string()
     }))
 }
 
 /// Payout settings page handler.
-#[instrument(skip(admin, state))]
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn settings(
     RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
 ) -> Html<String> {
+    debug!("Loading payout settings page");
+
     let schedule = match state.shopify().get_payout_schedule().await {
-        Ok(schedule) => PayoutScheduleView::from(&schedule),
+        Ok(schedule) => {
+            info!(
+                interval = ?schedule.interval,
+                "Successfully loaded payout schedule"
+            );
+            PayoutScheduleView::from(&schedule)
+        }
         Err(e) => {
-            tracing::error!("Failed to fetch payout schedule: {e}");
+            warn!("Failed to fetch payout schedule from Shopify: {e}");
             PayoutScheduleView {
                 interval: "Unknown".to_string(),
                 interval_description: "Could not load schedule".to_string(),
@@ -715,7 +768,7 @@ pub async fn settings(
     };
 
     Html(template.render().unwrap_or_else(|e| {
-        tracing::error!("Template render error: {}", e);
+        tracing::error!("Payout settings template render error: {}", e);
         "Internal Server Error".to_string()
     }))
 }
@@ -725,13 +778,18 @@ pub async fn settings(
 /// # Errors
 ///
 /// Returns 500 if transactions cannot be fetched or template fails to render.
-#[instrument(skip(state))]
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn transactions(
-    RequireAdminAuth(_admin): RequireAdminAuth,
+    RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Path(id): Path<String>,
     Query(query): Query<TransactionsQuery>,
 ) -> impl IntoResponse {
+    debug!(
+        payout_id = %id,
+        cursor = ?query.cursor,
+        "Loading more transactions for payout (HTMX partial)"
+    );
     let payout_id = normalize_payout_id(&id);
 
     match state
@@ -745,25 +803,32 @@ pub async fn transactions(
         .await
     {
         Ok(conn) => {
+            let txns: Vec<TransactionView> = conn
+                .transactions
+                .iter()
+                .map(TransactionView::from)
+                .collect();
+            info!(
+                payout_id = %payout_id,
+                transactions_count = txns.len(),
+                has_more = conn.page_info.has_next_page,
+                "Successfully loaded transactions partial"
+            );
             let template = TransactionsPartialTemplate {
-                transactions: conn
-                    .transactions
-                    .iter()
-                    .map(TransactionView::from)
-                    .collect(),
+                transactions: txns,
                 has_more: conn.page_info.has_next_page,
                 next_cursor: conn.page_info.end_cursor,
                 payout_id: id,
             };
 
             Html(template.render().unwrap_or_else(|e| {
-                tracing::error!("Template render error: {}", e);
+                tracing::error!("Transactions partial template render error: {}", e);
                 "Error loading transactions".to_string()
             }))
             .into_response()
         }
         Err(e) => {
-            tracing::error!("Failed to fetch transactions: {e}");
+            warn!(payout_id = %payout_id, "Failed to fetch transactions: {e}");
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Failed to load transactions",
@@ -778,19 +843,20 @@ pub async fn transactions(
 /// # Errors
 ///
 /// Returns 500 if transactions cannot be fetched.
-#[instrument(skip(state))]
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn export_csv(
-    RequireAdminAuth(_admin): RequireAdminAuth,
+    RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> impl IntoResponse {
+    debug!(payout_id = %id, "Exporting payout transactions to CSV");
     let payout_id = normalize_payout_id(&id);
 
     // Get payout details to extract the issued_at date for filtering
     let payout_date = match state.shopify().get_payout_detail(&payout_id).await {
         Ok(payout) => payout.issued_at,
         Err(e) => {
-            tracing::warn!("Could not fetch payout for date: {e}");
+            warn!(payout_id = %payout_id, "Could not fetch payout for date: {e}");
             None
         }
     };
@@ -820,6 +886,12 @@ pub async fn export_csv(
             }
 
             let filename = format!("payout-{}-transactions.csv", extract_short_id(&payout_id));
+            info!(
+                payout_id = %payout_id,
+                transactions_count = conn.transactions.len(),
+                filename = %filename,
+                "Successfully exported transactions to CSV"
+            );
             (
                 StatusCode::OK,
                 [
@@ -834,7 +906,7 @@ pub async fn export_csv(
                 .into_response()
         }
         Err(e) => {
-            tracing::error!("Failed to export transactions: {e}");
+            warn!(payout_id = %payout_id, "Failed to export transactions to CSV: {e}");
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Failed to export transactions",
@@ -848,15 +920,21 @@ pub async fn export_csv(
 ///
 /// Redirects to Shopify admin for evidence submission since the API
 /// requires file uploads which are complex to handle in this context.
-#[instrument]
+#[instrument(fields(admin_id = %admin.id.as_i32()))]
 pub async fn dispute_submit_evidence(
-    RequireAdminAuth(_admin): RequireAdminAuth,
+    RequireAdminAuth(admin): RequireAdminAuth,
     Path(id): Path<String>,
 ) -> impl IntoResponse {
+    debug!(dispute_id = %id, "Redirecting to Shopify admin for dispute evidence submission");
     // The Shopify Payments API for dispute evidence primarily handles file uploads
     // which requires a more complex flow. Redirect to Shopify admin for now.
     let shopify_url =
         format!("https://admin.shopify.com/store/naked-pineapple/settings/payments/disputes/{id}");
+    info!(
+        dispute_id = %id,
+        redirect_url = %shopify_url,
+        "Redirecting admin to Shopify for evidence submission"
+    );
     axum::response::Redirect::temporary(&shopify_url)
 }
 

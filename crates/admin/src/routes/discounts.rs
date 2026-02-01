@@ -10,7 +10,7 @@ use axum::{
     response::{Html, IntoResponse, Redirect},
 };
 use serde::{Deserialize, Serialize};
-use tracing::instrument;
+use tracing::{debug, info, instrument, warn};
 
 use crate::{
     components::data_table::{
@@ -721,12 +721,13 @@ async fn fetch_and_sort_discounts(
 }
 
 /// Discounts list page handler.
-#[instrument(skip(admin, state))]
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn index(
     RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Query(query): Query<DiscountsQuery>,
 ) -> Html<String> {
+    debug!("Loading discounts list");
     let config = discounts_table_config();
     let shopify_query = build_query_string(&query);
     let reverse = query.dir.as_deref() == Some("desc");
@@ -810,12 +811,13 @@ pub async fn index(
 }
 
 /// Discount detail page handler.
-#[instrument(skip(admin, state))]
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn show(
     RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> impl IntoResponse {
+    debug!("Loading discount detail");
     let discount_id = normalize_discount_id(&id);
 
     find_discount_by_id(&state, &discount_id).await.map_or_else(
@@ -840,8 +842,9 @@ pub async fn show(
 // =============================================================================
 
 /// Step 1: Choose discount method (Code vs Automatic).
-#[instrument(skip(admin))]
+#[instrument(skip_all, fields(admin_id = %admin.id.as_i32()))]
 pub async fn new_step1(RequireAdminAuth(admin): RequireAdminAuth) -> Html<String> {
+    debug!("Loading discount creation step 1 (choose method)");
     let template = DiscountNewStep1Template {
         admin_user: AdminUserView::from(&admin),
         current_path: "/discounts".to_string(),
@@ -854,11 +857,12 @@ pub async fn new_step1(RequireAdminAuth(admin): RequireAdminAuth) -> Html<String
 }
 
 /// Step 2: Choose discount type.
-#[instrument(skip(admin))]
+#[instrument(skip_all, fields(admin_id = %admin.id.as_i32()))]
 pub async fn new_step2(
     RequireAdminAuth(admin): RequireAdminAuth,
     Path(method): Path<String>,
 ) -> Html<String> {
+    debug!("Loading discount creation step 2 (choose type)");
     let template = DiscountNewStep2Template {
         admin_user: AdminUserView::from(&admin),
         current_path: "/discounts".to_string(),
@@ -872,11 +876,12 @@ pub async fn new_step2(
 }
 
 /// Step 3: Full discount form.
-#[instrument(skip(admin))]
+#[instrument(skip_all, fields(admin_id = %admin.id.as_i32()))]
 pub async fn new_step3(
     RequireAdminAuth(admin): RequireAdminAuth,
     Path((method, discount_type)): Path<(String, String)>,
 ) -> Html<String> {
+    debug!("Loading discount creation step 3 (full form)");
     let template = DiscountNewStep3Template {
         admin_user: AdminUserView::from(&admin),
         current_path: "/discounts".to_string(),
@@ -892,8 +897,9 @@ pub async fn new_step3(
 }
 
 /// Legacy new discount form handler.
-#[instrument(skip(admin))]
+#[instrument(skip_all, fields(admin_id = %admin.id.as_i32()))]
 pub async fn new_discount(RequireAdminAuth(admin): RequireAdminAuth) -> Html<String> {
+    debug!("Loading legacy discount creation form");
     let template = DiscountNewTemplate {
         admin_user: AdminUserView::from(&admin),
         current_path: "/discounts".to_string(),
@@ -911,12 +917,13 @@ pub async fn new_discount(RequireAdminAuth(admin): RequireAdminAuth) -> Html<Str
 // =============================================================================
 
 /// Create basic discount handler.
-#[instrument(skip(admin, state))]
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn create_basic(
     RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Form(input): Form<BasicDiscountFormInput>,
 ) -> impl IntoResponse {
+    debug!("Creating basic discount");
     // Parse discount value
     let (percentage, amount) = if input.discount_type == "percentage" {
         let pct = input.value.parse::<f64>().unwrap_or(0.0) / 100.0;
@@ -945,7 +952,7 @@ pub async fn create_basic(
         .await
     {
         Ok(discount_id) => {
-            tracing::info!(discount_id = %discount_id, code = %code, "Discount created");
+            info!(discount_id = %discount_id, code = %code, "Discount created");
             Redirect::to("/discounts").into_response()
         }
         Err(e) => {
@@ -968,12 +975,13 @@ pub async fn create_basic(
 }
 
 /// Legacy create discount handler.
-#[instrument(skip(admin, state))]
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn create(
     RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Form(input): Form<BasicDiscountFormInput>,
 ) -> impl IntoResponse {
+    debug!("Creating discount (legacy handler)");
     create_basic(RequireAdminAuth(admin), State(state), Form(input)).await
 }
 
@@ -991,12 +999,13 @@ fn normalize_discount_id(id: &str) -> String {
 }
 
 /// Edit discount form handler.
-#[instrument(skip(admin, state))]
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn edit(
     RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> impl IntoResponse {
+    debug!("Loading discount edit form");
     let discount_id = normalize_discount_id(&id);
 
     find_discount_by_id(&state, &discount_id).await.map_or_else(
@@ -1018,13 +1027,14 @@ pub async fn edit(
 }
 
 /// Update discount handler.
-#[instrument(skip(admin, state))]
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn update(
     RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Path(id): Path<String>,
     Form(input): Form<BasicDiscountFormInput>,
 ) -> impl IntoResponse {
+    debug!("Updating discount");
     use crate::shopify::DiscountUpdateInput;
 
     let discount_id = normalize_discount_id(&id);
@@ -1041,7 +1051,7 @@ pub async fn update(
         .await
     {
         Ok(()) => {
-            tracing::info!(discount_id = %discount_id, "Discount updated");
+            info!(discount_id = %discount_id, "Discount updated");
             Redirect::to("/discounts").into_response()
         }
         Err(e) => {
@@ -1072,17 +1082,18 @@ pub async fn update(
 // =============================================================================
 
 /// Activate discount handler.
-#[instrument(skip(_admin, state))]
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn activate(
-    RequireAdminAuth(_admin): RequireAdminAuth,
+    RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> impl IntoResponse {
+    debug!("Activating discount");
     let discount_id = normalize_discount_id(&id);
 
     match state.shopify().activate_discount(&discount_id).await {
         Ok(()) => {
-            tracing::info!(discount_id = %discount_id, "Discount activated");
+            info!(discount_id = %discount_id, "Discount activated");
             (
                 StatusCode::OK,
                 [("HX-Trigger", "discount-activated")],
@@ -1104,17 +1115,18 @@ pub async fn activate(
 }
 
 /// Deactivate discount handler (HTMX).
-#[instrument(skip(_admin, state))]
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn deactivate(
-    RequireAdminAuth(_admin): RequireAdminAuth,
+    RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> impl IntoResponse {
+    debug!("Deactivating discount");
     let discount_id = normalize_discount_id(&id);
 
     match state.shopify().deactivate_discount(&discount_id).await {
         Ok(()) => {
-            tracing::info!(discount_id = %discount_id, "Discount deactivated");
+            info!(discount_id = %discount_id, "Discount deactivated");
             (
                 StatusCode::OK,
                 [("HX-Trigger", "discount-deactivated")],
@@ -1136,17 +1148,18 @@ pub async fn deactivate(
 }
 
 /// Delete discount handler.
-#[instrument(skip(_admin, state))]
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn delete(
-    RequireAdminAuth(_admin): RequireAdminAuth,
+    RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> impl IntoResponse {
+    debug!("Deleting discount");
     let discount_id = normalize_discount_id(&id);
 
     match state.shopify().delete_discount(&discount_id).await {
         Ok(()) => {
-            tracing::info!(discount_id = %discount_id, "Discount deleted");
+            info!(discount_id = %discount_id, "Discount deleted");
             (
                 StatusCode::OK,
                 [
@@ -1171,15 +1184,16 @@ pub async fn delete(
 }
 
 /// Duplicate discount handler.
-#[instrument(skip(_admin, _state))]
+#[instrument(skip(_state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn duplicate(
-    RequireAdminAuth(_admin): RequireAdminAuth,
+    RequireAdminAuth(admin): RequireAdminAuth,
     State(_state): State<AppState>,
     Path(id): Path<String>,
 ) -> impl IntoResponse {
+    debug!("Duplicating discount");
     // TODO: Implement duplicate functionality
     // This requires fetching the discount details and creating a copy
-    tracing::warn!(discount_id = %id, "Duplicate discount not yet implemented");
+    warn!(discount_id = %id, "Duplicate discount not yet implemented");
     Redirect::to("/discounts").into_response()
 }
 
@@ -1196,17 +1210,18 @@ fn parse_ids(ids_str: &str) -> Vec<String> {
 }
 
 /// Bulk activate discounts handler.
-#[instrument(skip(_admin, state))]
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn bulk_activate(
-    RequireAdminAuth(_admin): RequireAdminAuth,
+    RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Form(input): Form<BulkActionInput>,
 ) -> impl IntoResponse {
+    debug!("Bulk activating discounts");
     let ids = parse_ids(&input.ids);
 
     match state.shopify().bulk_activate_code_discounts(ids).await {
         Ok(()) => {
-            tracing::info!("Bulk activated discounts");
+            info!("Bulk activated discounts");
             (
                 StatusCode::OK,
                 [("HX-Trigger", "discounts-bulk-activated")],
@@ -1222,17 +1237,18 @@ pub async fn bulk_activate(
 }
 
 /// Bulk deactivate discounts handler.
-#[instrument(skip(_admin, state))]
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn bulk_deactivate(
-    RequireAdminAuth(_admin): RequireAdminAuth,
+    RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Form(input): Form<BulkActionInput>,
 ) -> impl IntoResponse {
+    debug!("Bulk deactivating discounts");
     let ids = parse_ids(&input.ids);
 
     match state.shopify().bulk_deactivate_code_discounts(ids).await {
         Ok(()) => {
-            tracing::info!("Bulk deactivated discounts");
+            info!("Bulk deactivated discounts");
             (
                 StatusCode::OK,
                 [("HX-Trigger", "discounts-bulk-deactivated")],
@@ -1248,17 +1264,18 @@ pub async fn bulk_deactivate(
 }
 
 /// Bulk delete discounts handler.
-#[instrument(skip(_admin, state))]
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn bulk_delete(
-    RequireAdminAuth(_admin): RequireAdminAuth,
+    RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
     Form(input): Form<BulkActionInput>,
 ) -> impl IntoResponse {
+    debug!("Bulk deleting discounts");
     let ids = parse_ids(&input.ids);
 
     match state.shopify().bulk_delete_code_discounts(ids).await {
         Ok(()) => {
-            tracing::info!("Bulk deleted discounts");
+            info!("Bulk deleted discounts");
             (
                 StatusCode::OK,
                 [
@@ -1281,48 +1298,52 @@ pub async fn bulk_delete(
 // =============================================================================
 
 /// Search products API handler.
-#[instrument(skip(_admin, _state))]
+#[instrument(skip(_state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn api_search_products(
-    RequireAdminAuth(_admin): RequireAdminAuth,
+    RequireAdminAuth(admin): RequireAdminAuth,
     State(_state): State<AppState>,
     Query(query): Query<SearchQuery>,
 ) -> Json<Vec<serde_json::Value>> {
+    debug!("Searching products");
     // TODO: Implement product search
     // This requires adding a search_products method to the Shopify client
-    tracing::debug!(query = ?query.q, "Product search");
+    debug!(query = ?query.q, "Product search");
     Json(vec![])
 }
 
 /// Search collections API handler.
-#[instrument(skip(_admin, _state))]
+#[instrument(skip(_state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn api_search_collections(
-    RequireAdminAuth(_admin): RequireAdminAuth,
+    RequireAdminAuth(admin): RequireAdminAuth,
     State(_state): State<AppState>,
     Query(query): Query<SearchQuery>,
 ) -> Json<Vec<serde_json::Value>> {
+    debug!("Searching collections");
     // TODO: Implement collection search
-    tracing::debug!(query = ?query.q, "Collection search");
+    debug!(query = ?query.q, "Collection search");
     Json(vec![])
 }
 
 /// Search customers API handler.
-#[instrument(skip(_admin, _state))]
+#[instrument(skip(_state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn api_search_customers(
-    RequireAdminAuth(_admin): RequireAdminAuth,
+    RequireAdminAuth(admin): RequireAdminAuth,
     State(_state): State<AppState>,
     Query(query): Query<SearchQuery>,
 ) -> Json<Vec<serde_json::Value>> {
+    debug!("Searching customers");
     // TODO: Implement customer search
-    tracing::debug!(query = ?query.q, "Customer search");
+    debug!(query = ?query.q, "Customer search");
     Json(vec![])
 }
 
 /// Get customer segments API handler.
-#[instrument(skip(_admin, state))]
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn api_customer_segments(
-    RequireAdminAuth(_admin): RequireAdminAuth,
+    RequireAdminAuth(admin): RequireAdminAuth,
     State(state): State<AppState>,
 ) -> Json<Vec<CustomerSegmentView>> {
+    debug!("Loading customer segments");
     match state.shopify().get_customer_segments(50).await {
         Ok(segments) => {
             let views: Vec<CustomerSegmentView> =
@@ -1337,15 +1358,16 @@ pub async fn api_customer_segments(
 }
 
 /// Add codes to a discount API handler.
-#[instrument(skip(_admin, _state))]
+#[instrument(skip(_state), fields(admin_id = %admin.id.as_i32()))]
 pub async fn api_add_codes(
-    RequireAdminAuth(_admin): RequireAdminAuth,
+    RequireAdminAuth(admin): RequireAdminAuth,
     State(_state): State<AppState>,
     Path(id): Path<String>,
     Form(input): Form<AddCodesInput>,
 ) -> impl IntoResponse {
+    debug!("Adding codes to discount");
     // TODO: Implement add codes functionality
     // This requires calling the discountRedeemCodeBulkAdd mutation
-    tracing::warn!(discount_id = %id, codes = %input.codes, "Add codes not yet implemented");
+    warn!(discount_id = %id, codes = %input.codes, "Add codes not yet implemented");
     (StatusCode::OK, Html("Codes added")).into_response()
 }

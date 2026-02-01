@@ -59,7 +59,7 @@ struct RichTextNode {
     #[serde(rename = "type")]
     node_type: String,
     #[serde(default)]
-    children: Vec<RichTextNode>,
+    children: Vec<Self>,
     #[serde(default)]
     value: Option<String>,
     #[serde(default)]
@@ -83,7 +83,6 @@ fn parse_rich_text_metafield(json_str: &str) -> Option<String> {
 /// Recursively render a rich text node to HTML.
 fn render_rich_text_node(node: &RichTextNode) -> String {
     match node.node_type.as_str() {
-        "root" => node.children.iter().map(render_rich_text_node).collect(),
         "paragraph" => {
             let content: String = node.children.iter().map(render_rich_text_node).collect();
             format!("<p>{content}</p>")
@@ -121,6 +120,7 @@ fn render_rich_text_node(node: &RichTextNode) -> String {
             }
             text
         }
+        // "root" and unknown types: render children
         _ => node.children.iter().map(render_rich_text_node).collect(),
     }
 }

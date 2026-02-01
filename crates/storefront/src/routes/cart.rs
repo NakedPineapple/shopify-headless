@@ -13,7 +13,7 @@ use axum::{
 };
 use serde::Deserialize;
 use tower_sessions::Session;
-use tracing::instrument;
+use tracing::{debug, info, instrument, warn};
 
 use crate::config::AnalyticsConfig;
 use crate::filters;
@@ -174,19 +174,30 @@ pub async fn show(
     session: Session,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> impl IntoResponse {
+    debug!("Displaying cart page");
+
     // Get cart ID from session
-    let cart = match get_cart_id(&session).await {
-        Some(cart_id) => {
-            // Fetch cart from Shopify
-            match state.storefront().get_cart(&cart_id).await {
-                Ok(shopify_cart) => CartView::from(&shopify_cart),
-                Err(e) => {
-                    tracing::warn!("Failed to fetch cart {cart_id}: {e}");
-                    CartView::empty()
-                }
+    let cart = if let Some(cart_id) = get_cart_id(&session).await {
+        debug!(cart_id = %cart_id, "Found existing cart in session");
+        // Fetch cart from Shopify
+        match state.storefront().get_cart(&cart_id).await {
+            Ok(shopify_cart) => {
+                let cart_view = CartView::from(&shopify_cart);
+                info!(
+                    cart_id = %cart_id,
+                    item_count = cart_view.item_count,
+                    "Successfully loaded cart"
+                );
+                cart_view
+            }
+            Err(e) => {
+                warn!(cart_id = %cart_id, error = %e, "Failed to fetch cart from Shopify");
+                CartView::empty()
             }
         }
-        None => CartView::empty(),
+    } else {
+        debug!("No cart found in session, displaying empty cart");
+        CartView::empty()
     };
 
     CartShowTemplate {
@@ -200,13 +211,16 @@ pub async fn show(
 ///
 /// Creates a new cart if one doesn't exist, or adds to existing cart.
 /// Returns an HTMX trigger to update the cart count badge.
-#[instrument(skip(state, session))]
+#[instrument(skip(state, session), fields(variant_id = %form.variant_id, quantity = form.quantity))]
 pub async fn add(
     State(state): State<AppState>,
     session: Session,
     Form(form): Form<AddToCartForm>,
 ) -> Response {
+    debug!("Adding item to cart");
+
     let quantity = i64::from(form.quantity.unwrap_or(1));
+    let variant_id = form.variant_id.clone();
     let line = CartLineInput {
         merchandise_id: form.variant_id,
         quantity,
@@ -214,25 +228,31 @@ pub async fn add(
         selling_plan_id: None,
     };
 
-    let result = match get_cart_id(&session).await {
-        Some(cart_id) => {
-            // Add to existing cart
-            state.storefront().add_to_cart(&cart_id, vec![line]).await
-        }
-        None => {
-            // Create new cart with this item
-            state.storefront().create_cart(Some(vec![line]), None).await
-        }
+    let result = if let Some(cart_id) = get_cart_id(&session).await {
+        debug!(cart_id = %cart_id, "Adding to existing cart");
+        // Add to existing cart
+        state.storefront().add_to_cart(&cart_id, vec![line]).await
+    } else {
+        debug!("Creating new cart with item");
+        // Create new cart with this item
+        state.storefront().create_cart(Some(vec![line]), None).await
     };
 
     match result {
         Ok(cart) => {
             // Save cart ID to session
             if let Err(e) = set_cart_id(&session, &cart.id).await {
-                tracing::error!("Failed to save cart ID to session: {e}");
+                tracing::error!(cart_id = %cart.id, error = %e, "Failed to save cart ID to session");
             }
 
             let count = u32::try_from(cart.total_quantity).unwrap_or(0);
+            info!(
+                cart_id = %cart.id,
+                variant_id = %variant_id,
+                quantity = quantity,
+                total_items = count,
+                "Successfully added item to cart"
+            );
 
             // Return cart count with HTMX trigger to update other elements
             (
@@ -242,7 +262,7 @@ pub async fn add(
                 .into_response()
         }
         Err(e) => {
-            tracing::error!("Failed to add item to cart: {e}");
+            tracing::error!(variant_id = %variant_id, error = %e, "Failed to add item to cart");
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Html("<span class=\"text-red-500\">Error adding to cart</span>"),
@@ -253,19 +273,24 @@ pub async fn add(
 }
 
 /// Update cart item quantity (HTMX).
-#[instrument(skip(state, session))]
+#[instrument(skip(state, session), fields(line_id = %form.line_id, quantity = form.quantity))]
 pub async fn update(
     State(state): State<AppState>,
     session: Session,
     Form(form): Form<UpdateCartForm>,
 ) -> Response {
+    debug!("Updating cart item quantity");
+
     let Some(cart_id) = get_cart_id(&session).await else {
+        warn!("Attempted to update cart but no cart found in session");
         return CartItemsTemplate {
             cart: CartView::empty(),
         }
         .into_response();
     };
 
+    let line_id = form.line_id.clone();
+    let new_quantity = form.quantity;
     let line_update = CartLineUpdateInput {
         id: form.line_id,
         quantity: Some(i64::from(form.quantity)),
@@ -281,6 +306,13 @@ pub async fn update(
     {
         Ok(shopify_cart) => {
             let cart = CartView::from(&shopify_cart);
+            info!(
+                cart_id = %cart_id,
+                line_id = %line_id,
+                new_quantity = new_quantity,
+                total_items = cart.item_count,
+                "Successfully updated cart item quantity"
+            );
             (
                 AppendHeaders([("HX-Trigger", "cart-updated")]),
                 CartItemsTemplate { cart },
@@ -288,7 +320,7 @@ pub async fn update(
                 .into_response()
         }
         Err(e) => {
-            tracing::error!("Failed to update cart: {e}");
+            tracing::error!(cart_id = %cart_id, line_id = %line_id, error = %e, "Failed to update cart");
             CartItemsTemplate {
                 cart: CartView::empty(),
             }
@@ -298,18 +330,23 @@ pub async fn update(
 }
 
 /// Remove item from cart (HTMX).
-#[instrument(skip(state, session))]
+#[instrument(skip(state, session), fields(line_id = %form.line_id))]
 pub async fn remove(
     State(state): State<AppState>,
     session: Session,
     Form(form): Form<RemoveFromCartForm>,
 ) -> Response {
+    debug!("Removing item from cart");
+
     let Some(cart_id) = get_cart_id(&session).await else {
+        warn!("Attempted to remove from cart but no cart found in session");
         return CartItemsTemplate {
             cart: CartView::empty(),
         }
         .into_response();
     };
+
+    let line_id = form.line_id.clone();
 
     match state
         .storefront()
@@ -318,6 +355,12 @@ pub async fn remove(
     {
         Ok(shopify_cart) => {
             let cart = CartView::from(&shopify_cart);
+            info!(
+                cart_id = %cart_id,
+                line_id = %line_id,
+                remaining_items = cart.item_count,
+                "Successfully removed item from cart"
+            );
             (
                 AppendHeaders([("HX-Trigger", "cart-updated")]),
                 CartItemsTemplate { cart },
@@ -325,7 +368,7 @@ pub async fn remove(
                 .into_response()
         }
         Err(e) => {
-            tracing::error!("Failed to remove from cart: {e}");
+            tracing::error!(cart_id = %cart_id, line_id = %line_id, error = %e, "Failed to remove from cart");
             CartItemsTemplate {
                 cart: CartView::empty(),
             }
@@ -337,14 +380,24 @@ pub async fn remove(
 /// Get cart count badge (HTMX).
 #[instrument(skip(state, session))]
 pub async fn count(State(state): State<AppState>, session: Session) -> impl IntoResponse {
-    let count = match get_cart_id(&session).await {
-        Some(cart_id) => state
-            .storefront()
-            .get_cart(&cart_id)
-            .await
-            .map(|cart| u32::try_from(cart.total_quantity).unwrap_or(0))
-            .unwrap_or(0),
-        None => 0,
+    debug!("Fetching cart count for badge");
+
+    let count = if let Some(cart_id) = get_cart_id(&session).await {
+        debug!(cart_id = %cart_id, "Fetching count for existing cart");
+        match state.storefront().get_cart(&cart_id).await {
+            Ok(cart) => {
+                let count = u32::try_from(cart.total_quantity).unwrap_or(0);
+                debug!(cart_id = %cart_id, count = count, "Retrieved cart count");
+                count
+            }
+            Err(e) => {
+                warn!(cart_id = %cart_id, error = %e, "Failed to fetch cart for count");
+                0
+            }
+        }
+    } else {
+        debug!("No cart in session, returning count of 0");
+        0
     };
 
     CartCountTemplate { count }
@@ -353,15 +406,21 @@ pub async fn count(State(state): State<AppState>, session: Session) -> impl Into
 /// Redirect to Shopify checkout.
 #[instrument(skip(state, session))]
 pub async fn checkout(State(state): State<AppState>, session: Session) -> Response {
+    debug!("Initiating checkout redirect");
+
     let Some(cart_id) = get_cart_id(&session).await else {
+        warn!("Attempted checkout but no cart found in session");
         // No cart, redirect to cart page
         return Redirect::to("/cart").into_response();
     };
 
     match state.storefront().get_cart(&cart_id).await {
-        Ok(cart) => Redirect::to(&cart.checkout_url).into_response(),
+        Ok(cart) => {
+            info!(cart_id = %cart_id, "Redirecting to Shopify checkout");
+            Redirect::to(&cart.checkout_url).into_response()
+        }
         Err(e) => {
-            tracing::error!("Failed to get cart for checkout: {e}");
+            tracing::error!(cart_id = %cart_id, error = %e, "Failed to get cart for checkout");
             Redirect::to("/cart").into_response()
         }
     }
