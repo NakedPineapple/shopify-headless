@@ -45,11 +45,14 @@
             </ol>
         </nav>
 
-        <div class="grid lg:grid-cols-2 gap-8 lg:gap-12">
-            <!-- Product Images -->
-            <div class="space-y-4">
+        <!-- ═══════════════════════════════════════════════════════════════════
+             ZONE 1: Hero Product Zone - Asymmetric 7/5 Grid with Sticky Panel
+             ═══════════════════════════════════════════════════════════════════ -->
+        <div class="grid lg:grid-cols-12 gap-6 lg:gap-10">
+            <!-- Product Images - 7 columns on desktop -->
+            <div class="lg:col-span-7 space-y-4">
                 <!-- Main Image -->
-                <div class="aspect-square rounded-lg overflow-hidden bg-muted">
+                <div class="aspect-[4/5] rounded-2xl overflow-hidden bg-muted shadow-lg">
                     {% if let Some(image) = product.featured_image %}
                     <img src="{{ image.url }}"
                          alt="{{ image.alt }}"
@@ -67,7 +70,7 @@
                 <div class="flex gap-3 overflow-x-auto pb-2">
                     {% for image in product.images %}
                     <button type="button"
-                            class="shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 border-transparent hover:border-primary transition-colors focus:border-primary"
+                            class="shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 border-transparent hover:border-primary transition-colors focus:border-primary {% if loop.first %}border-primary{% endif %}"
                             data-action="select-thumbnail"
                             data-image-url="{{ image.url }}">
                         <img src="{{ image.url }}"
@@ -79,341 +82,340 @@
                 {% endif %}
             </div>
 
-            <!-- Product Info -->
-            <div class="space-y-6">
-                <div>
-                    <h1 class="font-display text-3xl md:text-4xl font-semibold text-foreground mb-4">
+            <!-- Purchase Panel - 5 columns, sticky on desktop -->
+            <div class="lg:col-span-5">
+                <div class="lg:sticky lg:top-28 space-y-5">
+                    <!-- Title -->
+                    <h1 class="font-display text-2xl lg:text-3xl font-semibold text-foreground leading-tight uppercase tracking-wide">
                         {{ product.title }}
                     </h1>
 
-                    <!-- Price -->
-                    <div class="flex items-center gap-3 mb-4">
-                        {% if let Some(compare_price) = product.compare_at_price %}
-                        <span class="text-2xl font-semibold text-primary">{{ product.price }}</span>
-                        <span class="text-lg text-muted-foreground line-through">{{ compare_price }}</span>
-                        <span class="px-2 py-1 text-xs font-semibold bg-primary/10 text-primary rounded">Sale</span>
-                        {% else %}
-                        <span class="text-2xl font-semibold text-foreground">{{ product.price }}</span>
-                        {% endif %}
-                    </div>
-
-                    <!-- Rating -->
-                    {% if let Some(rating) = product.rating %}
-                    <div class="flex items-center gap-2 text-sm text-muted-foreground">
-                        <div class="flex text-secondary">
-                            {% for _ in 0..rating.full_stars %}
-                            <i class="ph-fill ph-star"></i>
-                            {% endfor %}
-                            {% if rating.has_half_star %}
-                            <i class="ph-fill ph-star-half"></i>
+                    <!-- Price + Rating Row -->
+                    <div class="flex items-center justify-between flex-wrap gap-3">
+                        <!-- Price -->
+                        <div class="flex items-center gap-3">
+                            {% if let Some(compare_price) = product.compare_at_price %}
+                            <span class="text-2xl font-semibold text-primary">{{ product.price }}</span>
+                            <span class="text-base text-muted-foreground line-through">{{ compare_price }}</span>
+                            <span class="px-2 py-0.5 text-xs font-semibold bg-primary/10 text-primary rounded">Sale</span>
+                            {% else %}
+                            <span class="text-2xl font-semibold text-foreground">{{ product.price }}</span>
                             {% endif %}
-                            {% for _ in 0..rating.empty_stars %}
-                            <i class="ph ph-star"></i>
-                            {% endfor %}
                         </div>
-                        <span>{{ rating.value|fmt("{:.1}") }} ({{ rating.count }} {% if rating.count == 1 %}review{% else %}reviews{% endif %})</span>
+
+                        <!-- Rating -->
+                        {% if let Some(rating) = product.rating %}
+                        <div class="flex items-center gap-1.5 text-sm">
+                            <div class="flex text-secondary">
+                                {% for _ in 0..rating.full_stars %}
+                                <i class="ph-fill ph-star"></i>
+                                {% endfor %}
+                                {% if rating.has_half_star %}
+                                <i class="ph-fill ph-star-half"></i>
+                                {% endif %}
+                                {% for _ in 0..rating.empty_stars %}
+                                <i class="ph ph-star"></i>
+                                {% endfor %}
+                            </div>
+                            <span class="text-muted-foreground">({{ rating.count }})</span>
+                        </div>
+                        {% endif %}
                     </div>
-                    {% endif %}
 
-                    <!-- Shipping & Payment Info -->
-                    <div class="space-y-2 text-sm text-muted-foreground mt-4">
-                        <!-- Shipping -->
-                        <p><a href="/shipping" class="underline hover:text-primary transition-colors">Shipping</a> calculated at checkout.</p>
-
-                        <!-- Shop Pay Installments -->
-                        {% if let Some(first_variant) = product.variants.first() %}
-                        {% if let Some(installments) = first_variant.shop_pay_installments %}
-                        {% if installments.eligible %}
-                        {% if let Some(count) = installments.installments_count %}
-                        {% if let Some(price_per_term) = installments.price_per_term %}
-                        <p class="flex items-center flex-wrap gap-1">
-                            <span>Pay in {{ count }} interest-free installments of</span>
-                            <strong class="text-foreground">{{ price_per_term }}</strong>
-                            <span>with</span>
-                            <img src="/static/images/original/payment/shop-pay.svg" alt="Shop Pay" class="h-5 inline-block">
-                        </p>
-                        {% endif %}
-                        {% endif %}
-                        {% endif %}
-                        {% endif %}
-                        {% endif %}
-
-                        <!-- Stock Status -->
+                    <!-- Shipping + Stock (subtle one-liner) -->
+                    <div class="flex items-center flex-wrap gap-x-3 gap-y-1 text-sm text-muted-foreground">
+                        <span>Free shipping on orders $50+</span>
                         {% if let Some(first_variant) = product.variants.first() %}
                         {% if let Some(qty) = first_variant.quantity_available %}
+                        <span class="text-border">|</span>
                         {% if *qty > 5 %}
-                        <p class="text-green-600 dark:text-green-400">
-                            <i class="ph ph-check-circle mr-1"></i>
-                            {{ qty }} in stock
-                        </p>
+                        <span class="text-green-600 dark:text-green-400">In stock</span>
                         {% else if *qty > 0 %}
-                        <p class="text-amber-600 dark:text-amber-400 font-medium">
-                            <i class="ph ph-warning-circle mr-1"></i>
-                            Only {{ qty }} left in stock!
-                        </p>
+                        <span class="text-amber-600 dark:text-amber-400">Only {{ qty }} left</span>
                         {% else %}
-                        <p class="text-red-600 dark:text-red-400 font-medium">
-                            <i class="ph ph-x-circle mr-1"></i>
-                            Out of stock
-                        </p>
+                        <span class="text-red-600 dark:text-red-400">Out of stock</span>
                         {% endif %}
                         {% endif %}
                         {% endif %}
                     </div>
-                </div>
 
-                <!-- Variant Selector -->
-                {% if product.variants.len() > 1 %}
-                <div class="space-y-3">
-                    <label class="font-medium text-foreground">Options</label>
-                    <div class="flex flex-wrap gap-2">
-                        {% for variant in product.variants %}
-                        <button type="button"
-                                class="px-4 py-2 border border-border rounded-lg hover:border-primary transition-colors focus:border-primary {% if loop.first %}border-primary bg-primary/5{% endif %}"
-                                data-action="select-variant"
-                                data-variant-id="{{ variant.id }}"
-                                data-variant-price="{{ variant.price }}">
-                            {{ variant.title }}
-                        </button>
-                        {% endfor %}
+                    <!-- Shop Pay Installments -->
+                    {% if let Some(first_variant) = product.variants.first() %}
+                    {% if let Some(installments) = first_variant.shop_pay_installments %}
+                    {% if installments.eligible %}
+                    {% if let Some(count) = installments.installments_count %}
+                    {% if let Some(price_per_term) = installments.price_per_term %}
+                    <p class="flex items-center flex-wrap gap-1 text-sm text-muted-foreground">
+                        <span>or {{ count }} payments of</span>
+                        <strong class="text-foreground">{{ price_per_term }}</strong>
+                        <span>with</span>
+                        <img src="/static/images/original/payment/shop-pay.svg" alt="Shop Pay" class="h-4 inline-block">
+                    </p>
+                    {% endif %}
+                    {% endif %}
+                    {% endif %}
+                    {% endif %}
+                    {% endif %}
+
+                    <!-- Variant Selector -->
+                    {% if product.variants.len() > 1 %}
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium text-foreground">Options</label>
+                        <div class="flex flex-wrap gap-2">
+                            {% for variant in product.variants %}
+                            <button type="button"
+                                    class="px-4 py-2 text-sm border border-border rounded-lg hover:border-primary transition-colors focus:border-primary {% if loop.first %}border-primary bg-primary/5{% endif %}"
+                                    data-action="select-variant"
+                                    data-variant-id="{{ variant.id }}"
+                                    data-variant-price="{{ variant.price }}">
+                                {{ variant.title }}
+                            </button>
+                            {% endfor %}
+                        </div>
+                        {% if let Some(first_variant) = product.variants.first() %}
+                        <input type="hidden" id="selected-variant" value="{{ first_variant.id }}">
+                        {% endif %}
                     </div>
+                    {% else %}
                     {% if let Some(first_variant) = product.variants.first() %}
                     <input type="hidden" id="selected-variant" value="{{ first_variant.id }}">
                     {% endif %}
-                </div>
-                {% else %}
-                {% if let Some(first_variant) = product.variants.first() %}
-                <input type="hidden" id="selected-variant" value="{{ first_variant.id }}">
-                {% endif %}
-                {% endif %}
+                    {% endif %}
 
-                <!-- Subscription Options -->
-                {% if !product.selling_plan_groups.is_empty() %}
-                <div class="space-y-3">
-                    <label class="font-medium text-foreground">Purchase Options</label>
-                    <div class="space-y-2">
-                        <!-- One-time purchase option -->
-                        {% if !product.requires_selling_plan %}
-                        <label class="flex items-center gap-3 p-4 border-2 border-primary rounded-lg cursor-pointer bg-primary/5 purchase-option selected"
-                               data-purchase-type="one-time">
-                            <input type="radio" name="purchase_type" value="one-time" checked
-                                   class="w-5 h-5 text-primary accent-primary">
-                            <div class="flex-1">
-                                <span class="font-medium text-foreground">One-time purchase</span>
-                                <p class="text-sm text-muted-foreground">{{ product.price }}</p>
-                            </div>
-                        </label>
-                        {% endif %}
-
-                        <!-- Subscription options -->
-                        {% for group in product.selling_plan_groups %}
-                        <div class="border-2 border-border rounded-lg purchase-option {% if product.requires_selling_plan && loop.first %}border-primary bg-primary/5 selected{% endif %}"
-                             data-purchase-type="subscription">
-                            <label class="flex items-center gap-3 p-4 cursor-pointer">
-                                <input type="radio" name="purchase_type" value="subscription"
-                                       {% if product.requires_selling_plan && loop.first %}checked{% endif %}
-                                       class="w-5 h-5 text-primary accent-primary">
+                    <!-- Subscription Options -->
+                    {% if !product.selling_plan_groups.is_empty() %}
+                    <div class="space-y-3">
+                        <label class="text-sm font-medium text-foreground">Purchase Options</label>
+                        <div class="space-y-2">
+                            <!-- One-time purchase option -->
+                            {% if !product.requires_selling_plan %}
+                            <label class="flex items-center gap-3 p-3 border-2 border-primary rounded-lg cursor-pointer bg-primary/5 purchase-option selected"
+                                   data-purchase-type="one-time">
+                                <input type="radio" name="purchase_type" value="one-time" checked
+                                       class="w-4 h-4 text-primary accent-primary">
                                 <div class="flex-1">
-                                    <div class="flex items-center gap-2">
-                                        <span class="font-medium text-foreground">{{ group.name }}</span>
-                                    </div>
-                                    <p class="text-sm text-muted-foreground">Free shipping on subscription orders</p>
+                                    <span class="text-sm font-medium text-foreground">One-time purchase</span>
+                                    <span class="text-sm text-muted-foreground ml-2">{{ product.price }}</span>
                                 </div>
                             </label>
+                            {% endif %}
 
-                            <!-- Delivery frequency selector with discounts -->
-                            <div class="px-4 pb-4 subscription-details {% if !product.requires_selling_plan %}hidden{% endif %}">
-                                <div class="selling-plan-dropdown relative" id="selling-plan-dropdown">
-                                    <!-- Hidden input for form value -->
-                                    <input type="hidden" id="selling-plan-select"
-                                           value="{% if let Some(plan) = group.selling_plans.first() %}{{ plan.id }}{% endif %}">
+                            <!-- Subscription options -->
+                            {% for group in product.selling_plan_groups %}
+                            <div class="border-2 border-border rounded-lg purchase-option {% if product.requires_selling_plan && loop.first %}border-primary bg-primary/5 selected{% endif %}"
+                                 data-purchase-type="subscription">
+                                <label class="flex items-center gap-3 p-3 cursor-pointer">
+                                    <input type="radio" name="purchase_type" value="subscription"
+                                           {% if product.requires_selling_plan && loop.first %}checked{% endif %}
+                                           class="w-4 h-4 text-primary accent-primary">
+                                    <div class="flex-1">
+                                        <span class="text-sm font-medium text-foreground">{{ group.name }}</span>
+                                        <span class="text-xs text-muted-foreground block">Free shipping on subscriptions</span>
+                                    </div>
+                                </label>
 
-                                    <!-- Dropdown trigger button -->
-                                    <button type="button"
-                                            class="selling-plan-trigger w-full flex items-center justify-between px-4 py-3 bg-muted/50 border border-border rounded-lg text-left hover:border-primary focus:border-primary focus:outline-none transition-colors"
-                                            data-action="toggle-selling-plan-dropdown"
-                                            aria-expanded="false"
-                                            aria-haspopup="listbox">
-                                        <span class="selling-plan-selected flex items-center gap-2">
-                                            {% if let Some(plan) = group.selling_plans.first() %}
-                                            <span class="text-foreground">{{ plan.name }}</span>
-                                            {% if let Some(discount_text) = plan.discount_text %}
-                                            <span class="px-2 py-0.5 text-xs font-semibold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded">{{ discount_text }}</span>
-                                            {% endif %}
-                                            {% endif %}
-                                        </span>
-                                        <i class="ph ph-caret-down text-muted-foreground transition-transform duration-200"></i>
-                                    </button>
-
-                                    <!-- Dropdown options -->
-                                    <div class="selling-plan-options absolute z-10 w-full mt-2 py-1 bg-background border border-border rounded-lg shadow-lg hidden"
-                                         role="listbox">
-                                        {% for plan in group.selling_plans %}
+                                <!-- Delivery frequency selector -->
+                                <div class="px-3 pb-3 subscription-details {% if !product.requires_selling_plan %}hidden{% endif %}">
+                                    <div class="selling-plan-dropdown relative" id="selling-plan-dropdown">
+                                        <input type="hidden" id="selling-plan-select"
+                                               value="{% if let Some(plan) = group.selling_plans.first() %}{{ plan.id }}{% endif %}">
                                         <button type="button"
-                                                class="selling-plan-option w-full flex items-center justify-between px-4 py-3 text-left hover:bg-primary/5 transition-colors {% if loop.first %}bg-primary/5{% endif %}"
-                                                data-action="select-selling-plan"
-                                                data-value="{{ plan.id }}"
-                                                data-name="{{ plan.name }}"
-                                                data-discount="{% if let Some(discount_text) = plan.discount_text %}{{ discount_text }}{% endif %}"
-                                                role="option"
-                                                {% if loop.first %}aria-selected="true"{% endif %}>
-                                            <span class="text-foreground">{{ plan.name }}</span>
-                                            {% if let Some(discount_text) = plan.discount_text %}
-                                            <span class="px-2 py-0.5 text-xs font-semibold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded">{{ discount_text }}</span>
-                                            {% endif %}
+                                                class="selling-plan-trigger w-full flex items-center justify-between px-3 py-2 bg-muted/50 border border-border rounded-lg text-left text-sm hover:border-primary focus:border-primary focus:outline-none transition-colors"
+                                                data-action="toggle-selling-plan-dropdown"
+                                                aria-expanded="false"
+                                                aria-haspopup="listbox">
+                                            <span class="selling-plan-selected flex items-center gap-2">
+                                                {% if let Some(plan) = group.selling_plans.first() %}
+                                                <span class="text-foreground">{{ plan.name }}</span>
+                                                {% if let Some(discount_text) = plan.discount_text %}
+                                                <span class="px-1.5 py-0.5 text-xs font-semibold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded">{{ discount_text }}</span>
+                                                {% endif %}
+                                                {% endif %}
+                                            </span>
+                                            <i class="ph ph-caret-down text-muted-foreground transition-transform duration-200"></i>
                                         </button>
-                                        {% endfor %}
+                                        <div class="selling-plan-options absolute z-10 w-full mt-1 py-1 bg-background border border-border rounded-lg shadow-lg hidden"
+                                             role="listbox">
+                                            {% for plan in group.selling_plans %}
+                                            <button type="button"
+                                                    class="selling-plan-option w-full flex items-center justify-between px-3 py-2 text-sm text-left hover:bg-primary/5 transition-colors {% if loop.first %}bg-primary/5{% endif %}"
+                                                    data-action="select-selling-plan"
+                                                    data-value="{{ plan.id }}"
+                                                    data-name="{{ plan.name }}"
+                                                    data-discount="{% if let Some(discount_text) = plan.discount_text %}{{ discount_text }}{% endif %}"
+                                                    role="option"
+                                                    {% if loop.first %}aria-selected="true"{% endif %}>
+                                                <span class="text-foreground">{{ plan.name }}</span>
+                                                {% if let Some(discount_text) = plan.discount_text %}
+                                                <span class="px-1.5 py-0.5 text-xs font-semibold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded">{{ discount_text }}</span>
+                                                {% endif %}
+                                            </button>
+                                            {% endfor %}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
+                            {% endfor %}
                         </div>
-                        {% endfor %}
                     </div>
-                </div>
-                <input type="hidden" id="selected-selling-plan" value="">
-                {% endif %}
+                    <input type="hidden" id="selected-selling-plan" value="">
+                    {% endif %}
 
-                <!-- Add to Cart -->
-                <div class="space-y-3">
-                    {% if !product.variants.is_empty() %}
-                    {% if let Some(first_variant) = product.variants.first() %}
-                    {% if first_variant.available_for_sale %}
-                    <div class="flex items-center gap-3">
-                        <!-- Quantity Selector - Pill shaped -->
-                        <div class="quantity-selector inline-flex items-center border-2 border-border rounded-full flex-shrink-0">
+                    <!-- Add to Cart Section -->
+                    <div class="space-y-3 pt-2">
+                        {% if !product.variants.is_empty() %}
+                        {% if let Some(first_variant) = product.variants.first() %}
+                        {% if first_variant.available_for_sale %}
+                        <div class="flex items-center gap-3">
+                            <!-- Quantity Selector -->
+                            <div class="quantity-selector inline-flex items-center border-2 border-border rounded-full flex-shrink-0">
+                                <button type="button"
+                                        class="quantity-btn w-10 h-10 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors rounded-l-full hover:bg-muted"
+                                        data-action="decrease"
+                                        aria-label="Decrease quantity">
+                                    <i class="ph ph-minus text-sm"></i>
+                                </button>
+                                <input type="number"
+                                       class="quantity-input w-8 h-10 text-center border-0 bg-transparent focus:outline-none text-sm font-medium [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                       value="1"
+                                       min="1"
+                                       max="99"
+                                       id="product-quantity"
+                                       aria-label="Quantity">
+                                <button type="button"
+                                        class="quantity-btn w-10 h-10 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors rounded-r-full hover:bg-muted"
+                                        data-action="increase"
+                                        aria-label="Increase quantity">
+                                    <i class="ph ph-plus text-sm"></i>
+                                </button>
+                            </div>
+
+                            <!-- Add to Cart Button -->
                             <button type="button"
-                                    class="quantity-btn w-11 h-11 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors rounded-l-full hover:bg-muted"
-                                    data-action="decrease"
-                                    aria-label="Decrease quantity">
-                                <i class="ph ph-minus text-sm"></i>
-                            </button>
-                            <input type="number"
-                                   class="quantity-input w-10 h-11 text-center border-0 bg-transparent focus:outline-none text-sm font-medium [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                   value="1"
-                                   min="1"
-                                   max="99"
-                                   id="product-quantity"
-                                   aria-label="Quantity">
-                            <button type="button"
-                                    class="quantity-btn w-11 h-11 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors rounded-r-full hover:bg-muted"
-                                    data-action="increase"
-                                    aria-label="Increase quantity">
-                                <i class="ph ph-plus text-sm"></i>
+                                    class="btn btn-primary flex-1 justify-center"
+                                    id="add-to-cart-btn"
+                                    hx-post="/cart/add"
+                                    hx-vals='js:{
+                                        "variant_id": document.getElementById("selected-variant")?.value || "",
+                                        "quantity": parseInt(document.getElementById("product-quantity")?.value || 1),
+                                        "selling_plan_id": document.getElementById("selected-selling-plan")?.value || ""
+                                    }'
+                                    hx-swap="none"
+                                    hx-on::after-request="htmx.trigger(document.body, 'cartUpdated');">
+                                <i class="ph ph-tote"></i>
+                                {% if product.requires_selling_plan %}Subscribe{% else %}Add to Cart{% endif %}
                             </button>
                         </div>
 
-                        <!-- Add to Cart Button -->
+                        <!-- Shop Pay Button -->
+                        <a href="https://{{ store_url }}/cart/{{ first_variant.id }}:1?payment=shop_pay"
+                           class="block w-full h-11 rounded-full overflow-hidden transition-all hover:opacity-90 active:scale-[0.98]"
+                           id="shop-pay-btn"
+                           data-base-url="https://{{ store_url }}/cart/"
+                           data-variant-id="{{ first_variant.id }}">
+                            {{ img::picture(path="/static/images/original/payment/Dynamic Checkout Black@3x.png", alt="Buy with Shop Pay", sizes="400px", class="w-full h-full object-cover object-center", picture_class="block h-full", loading="eager") }}
+                        </a>
+
+                        <!-- More Payment Options -->
+                        <a href="https://{{ store_url }}/cart/{{ first_variant.id }}:1"
+                           class="block w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2"
+                           id="more-payments-link"
+                           data-base-url="https://{{ store_url }}/cart/"
+                           data-variant-id="{{ first_variant.id }}">
+                            More payment options
+                        </a>
+                        {% else %}
                         <button type="button"
-                                class="btn btn-primary flex-1 justify-center"
-                                id="add-to-cart-btn"
-                                hx-post="/cart/add"
-                                hx-vals='js:{
-                                    "variant_id": document.getElementById("selected-variant")?.value || "",
-                                    "quantity": parseInt(document.getElementById("product-quantity")?.value || 1),
-                                    "selling_plan_id": document.getElementById("selected-selling-plan")?.value || ""
-                                }'
-                                hx-swap="none"
-                                hx-on::after-request="htmx.trigger(document.body, 'cartUpdated');">
-                            <i class="ph ph-tote mr-2"></i>
-                            {% if product.requires_selling_plan %}Subscribe{% else %}Add to Cart{% endif %}
+                                class="btn btn-primary w-full justify-center opacity-50 cursor-not-allowed"
+                                disabled>
+                            <i class="ph ph-tote"></i>
+                            Out of Stock
                         </button>
+                        {% endif %}
+                        {% endif %}
+                        {% else %}
+                        <button type="button"
+                                class="btn btn-primary w-full justify-center opacity-50 cursor-not-allowed"
+                                disabled>
+                            <i class="ph ph-tote"></i>
+                            Out of Stock
+                        </button>
+                        {% endif %}
                     </div>
 
-                    <!-- Shop Pay Button -->
-                    <a href="https://{{ store_url }}/cart/{{ first_variant.id }}:1?payment=shop_pay"
-                       class="block w-full h-12 rounded-full overflow-hidden transition-all hover:opacity-90 active:scale-[0.98]"
-                       id="shop-pay-btn"
-                       data-base-url="https://{{ store_url }}/cart/"
-                       data-variant-id="{{ first_variant.id }}">
-                        {{ img::picture(path="/static/images/original/payment/Dynamic Checkout Black@3x.png", alt="Buy with Shop Pay", sizes="400px", class="w-full h-full object-cover object-center", picture_class="block h-full", loading="eager") }}
-                    </a>
-
-                    <!-- More Payment Options -->
-                    <a href="https://{{ store_url }}/cart/{{ first_variant.id }}:1"
-                       class="block w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2"
-                       id="more-payments-link"
-                       data-base-url="https://{{ store_url }}/cart/"
-                       data-variant-id="{{ first_variant.id }}">
-                        More payment options
-                    </a>
-
-                    <!-- Share & Ask Buttons -->
-                    <div class="flex items-center justify-center gap-6">
+                    <!-- Share & Ask - Text links -->
+                    <div class="flex items-center justify-center gap-4 pt-2 text-sm" id="share-ask-container">
                         <!-- Share Button -->
                         <div class="relative" id="share-container">
                             <button type="button"
-                                    class="flex items-center justify-center gap-2 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                                    class="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"
                                     data-action="toggle-share-popup"
                                     aria-label="Share this product">
                                 <i class="ph ph-share-network"></i>
                                 <span>Share</span>
                             </button>
 
-                        <!-- Share Popup -->
-                        <div class="share-popup absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-4 bg-background border border-border rounded-lg shadow-lg hidden z-20 w-80"
-                             id="share-popup">
-                            <p class="text-sm font-medium text-foreground mb-3">Share this product</p>
-
-                            <!-- Social Icons -->
-                            <div class="flex items-center justify-center gap-2 mb-3">
-                                <a href="https://www.facebook.com/sharer/sharer.php?u={{ base_url }}/products/{{ product.handle }}"
-                                   target="_blank"
-                                   rel="noopener noreferrer"
-                                   class="flex items-center justify-center w-10 h-10 rounded-full hover:bg-muted transition-colors"
-                                   title="Facebook"
-                                   aria-label="Share on Facebook">
-                                    <i class="ph ph-facebook-logo text-xl"></i>
-                                </a>
-                                <a href="https://twitter.com/intent/tweet?url={{ base_url }}/products/{{ product.handle }}&text={{ product.title }}"
-                                   target="_blank"
-                                   rel="noopener noreferrer"
-                                   class="flex items-center justify-center w-10 h-10 rounded-full hover:bg-muted transition-colors"
-                                   title="X"
-                                   aria-label="Share on X">
-                                    <i class="ph ph-x-logo text-xl"></i>
-                                </a>
-                                <a href="https://pinterest.com/pin/create/button/?url={{ base_url }}/products/{{ product.handle }}&description={{ product.title }}"
-                                   target="_blank"
-                                   rel="noopener noreferrer"
-                                   class="flex items-center justify-center w-10 h-10 rounded-full hover:bg-muted transition-colors"
-                                   title="Pinterest"
-                                   aria-label="Share on Pinterest">
-                                    <i class="ph ph-pinterest-logo text-xl"></i>
-                                </a>
-                                <a href="mailto:?subject={{ product.title }}&body=Check out {{ product.title }}: {{ base_url }}/products/{{ product.handle }}"
-                                   class="flex items-center justify-center w-10 h-10 rounded-full hover:bg-muted transition-colors"
-                                   title="Email"
-                                   aria-label="Share via Email">
-                                    <i class="ph ph-envelope text-xl"></i>
-                                </a>
+                            <!-- Share Popup -->
+                            <div class="share-popup absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-4 bg-background border border-border rounded-lg shadow-lg hidden z-20 w-72"
+                                 id="share-popup">
+                                <p class="text-sm font-medium text-foreground mb-3 text-center">Share this product</p>
+                                <div class="flex items-center justify-center gap-2 mb-3">
+                                    <a href="https://www.facebook.com/sharer/sharer.php?u={{ base_url }}/products/{{ product.handle }}"
+                                       target="_blank"
+                                       rel="noopener noreferrer"
+                                       class="flex items-center justify-center w-9 h-9 rounded-full hover:bg-muted transition-colors"
+                                       title="Facebook"
+                                       aria-label="Share on Facebook">
+                                        <i class="ph ph-facebook-logo text-lg"></i>
+                                    </a>
+                                    <a href="https://twitter.com/intent/tweet?url={{ base_url }}/products/{{ product.handle }}&text={{ product.title }}"
+                                       target="_blank"
+                                       rel="noopener noreferrer"
+                                       class="flex items-center justify-center w-9 h-9 rounded-full hover:bg-muted transition-colors"
+                                       title="X"
+                                       aria-label="Share on X">
+                                        <i class="ph ph-x-logo text-lg"></i>
+                                    </a>
+                                    <a href="https://pinterest.com/pin/create/button/?url={{ base_url }}/products/{{ product.handle }}&description={{ product.title }}"
+                                       target="_blank"
+                                       rel="noopener noreferrer"
+                                       class="flex items-center justify-center w-9 h-9 rounded-full hover:bg-muted transition-colors"
+                                       title="Pinterest"
+                                       aria-label="Share on Pinterest">
+                                        <i class="ph ph-pinterest-logo text-lg"></i>
+                                    </a>
+                                    <a href="mailto:?subject={{ product.title }}&body=Check out {{ product.title }}: {{ base_url }}/products/{{ product.handle }}"
+                                       class="flex items-center justify-center w-9 h-9 rounded-full hover:bg-muted transition-colors"
+                                       title="Email"
+                                       aria-label="Share via Email">
+                                        <i class="ph ph-envelope text-lg"></i>
+                                    </a>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <input type="text"
+                                           readonly
+                                           class="flex-1 px-3 py-2 text-xs bg-muted border border-border rounded text-muted-foreground select-all"
+                                           id="share-permalink"
+                                           value="{{ base_url }}/products/{{ product.handle }}">
+                                    <button type="button"
+                                            class="flex items-center justify-center w-8 h-8 rounded border border-border hover:bg-muted transition-colors flex-shrink-0"
+                                            data-action="copy-product-link"
+                                            title="Copy link"
+                                            aria-label="Copy link">
+                                        <i class="ph ph-copy text-sm"></i>
+                                    </button>
+                                </div>
+                                <div class="absolute left-1/2 -translate-x-1/2 -bottom-2 w-0 h-0 border-l-8 border-r-8 border-t-8 border-l-transparent border-r-transparent border-t-border"></div>
+                                <div class="absolute left-1/2 -translate-x-1/2 -bottom-[7px] w-0 h-0 border-l-[7px] border-r-[7px] border-t-[7px] border-l-transparent border-r-transparent border-t-background"></div>
                             </div>
-
-                            <!-- Copyable Permalink -->
-                            <div class="flex items-center gap-2">
-                                <input type="text"
-                                       readonly
-                                       class="flex-1 px-3 py-2 text-xs bg-muted border border-border rounded text-muted-foreground select-all"
-                                       id="share-permalink"
-                                       value="{{ base_url }}/products/{{ product.handle }}">
-                                <button type="button"
-                                        class="flex items-center justify-center w-9 h-9 rounded border border-border hover:bg-muted transition-colors flex-shrink-0"
-                                        data-action="copy-product-link"
-                                        title="Copy link"
-                                        aria-label="Copy link">
-                                    <i class="ph ph-copy text-sm"></i>
-                                </button>
-                            </div>
-
-                            <!-- Arrow pointing down -->
-                            <div class="absolute left-1/2 -translate-x-1/2 -bottom-2 w-0 h-0 border-l-8 border-r-8 border-t-8 border-l-transparent border-r-transparent border-t-border"></div>
-                            <div class="absolute left-1/2 -translate-x-1/2 -bottom-[7px] w-0 h-0 border-l-[7px] border-r-[7px] border-t-[7px] border-l-transparent border-r-transparent border-t-background"></div>
                         </div>
-                    </div>
+
+                        <span class="text-border">|</span>
 
                         <!-- Ask a Question Button -->
                         <div class="relative" id="ask-question-container">
                             <button type="button"
-                                    class="flex items-center justify-center gap-2 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                                    class="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"
                                     data-action="toggle-ask-popup"
                                     aria-label="Ask a question">
                                 <i class="ph ph-question"></i>
@@ -421,13 +423,11 @@
                             </button>
 
                             <!-- Ask Question Popup -->
-                            <div class="ask-popup absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-4 bg-background border border-border rounded-lg shadow-lg hidden z-20 w-80"
+                            <div class="ask-popup absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-4 bg-background border border-border rounded-lg shadow-lg hidden z-20 w-72"
                                  id="ask-popup">
                                 <p class="text-sm font-medium text-foreground mb-4 text-center">Ask a question</p>
-
                                 <form id="ask-question-form" class="space-y-3">
                                     <input type="hidden" name="product" value="{{ product.title }}">
-
                                     <div>
                                         <label for="ask-name" class="sr-only">Your name</label>
                                         <input type="text"
@@ -437,7 +437,6 @@
                                                placeholder="Your name *"
                                                class="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg focus:border-primary focus:outline-none transition-colors">
                                     </div>
-
                                     <div>
                                         <label for="ask-email" class="sr-only">Your email</label>
                                         <input type="email"
@@ -447,7 +446,6 @@
                                                placeholder="Your email *"
                                                class="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg focus:border-primary focus:outline-none transition-colors">
                                     </div>
-
                                     <div>
                                         <label for="ask-phone" class="sr-only">Your phone</label>
                                         <input type="tel"
@@ -456,7 +454,6 @@
                                                placeholder="Your phone"
                                                class="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg focus:border-primary focus:outline-none transition-colors">
                                     </div>
-
                                     <div>
                                         <label for="ask-message" class="sr-only">Your message</label>
                                         <textarea id="ask-message"
@@ -466,158 +463,208 @@
                                                   placeholder="Your message *"
                                                   class="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg focus:border-primary focus:outline-none transition-colors resize-none"></textarea>
                                     </div>
-
                                     <p class="text-xs text-muted-foreground">
                                         <em>Fields marked * are required.</em>
                                     </p>
-
-                                    <button type="submit"
-                                            class="btn btn-primary w-full justify-center">
+                                    <button type="submit" class="btn btn-primary w-full justify-center text-sm">
                                         Send question
                                     </button>
                                 </form>
-
-                                <!-- Arrow pointing down -->
                                 <div class="absolute left-1/2 -translate-x-1/2 -bottom-2 w-0 h-0 border-l-8 border-r-8 border-t-8 border-l-transparent border-r-transparent border-t-border"></div>
                                 <div class="absolute left-1/2 -translate-x-1/2 -bottom-[7px] w-0 h-0 border-l-[7px] border-r-[7px] border-t-[7px] border-l-transparent border-r-transparent border-t-background"></div>
                             </div>
                         </div>
                     </div>
-                    {% else %}
-                    <button type="button"
-                            class="btn btn-primary w-full justify-center opacity-50 cursor-not-allowed"
-                            disabled>
-                        <i class="ph ph-tote mr-2"></i>
-                        Out of Stock
-                    </button>
-                    {% endif %}
-                    {% endif %}
-                    {% else %}
-                    <button type="button"
-                            class="btn btn-primary w-full justify-center opacity-50 cursor-not-allowed"
-                            disabled>
-                        <i class="ph ph-tote mr-2"></i>
-                        Out of Stock
-                    </button>
-                    {% endif %}
-                </div>
-
-                <!-- Product Description -->
-                <div class="pt-6 border-t border-border">
-                    <details class="group" open>
-                        <summary class="flex items-center justify-between cursor-pointer font-medium text-foreground py-3">
-                            Description
-                            <i class="ph ph-caret-down transition-transform group-open:rotate-180"></i>
-                        </summary>
-                        <div class="prose prose-sm text-muted-foreground pb-4">
-                            {{ product.description|safe }}
-                        </div>
-                    </details>
-
-                    {% if let Some(ingredients) = product.ingredients %}
-                    <details class="group border-t border-border">
-                        <summary class="flex items-center justify-between cursor-pointer font-medium text-foreground py-3">
-                            Ingredients
-                            <i class="ph ph-caret-down transition-transform group-open:rotate-180"></i>
-                        </summary>
-                        <div class="prose prose-sm text-muted-foreground pb-4">
-                            {{ ingredients|safe }}
-                        </div>
-                    </details>
-                    {% endif %}
-
-                    {% if let Some(directions) = product.directions %}
-                    <details class="group border-t border-border">
-                        <summary class="flex items-center justify-between cursor-pointer font-medium text-foreground py-3">
-                            How to Use
-                            <i class="ph ph-caret-down transition-transform group-open:rotate-180"></i>
-                        </summary>
-                        <div class="prose prose-sm text-muted-foreground pb-4">
-                            {{ directions|safe }}
-                        </div>
-                    </details>
-                    {% endif %}
-
-                    {% if let Some(benefits) = product.benefits %}
-                    <details class="group border-t border-border">
-                        <summary class="flex items-center justify-between cursor-pointer font-medium text-foreground py-3">
-                            Benefits
-                            <i class="ph ph-caret-down transition-transform group-open:rotate-180"></i>
-                        </summary>
-                        <div class="prose prose-sm text-muted-foreground pb-4">
-                            {{ benefits|safe }}
-                        </div>
-                    </details>
-                    {% endif %}
-
-                    {% if !product.promotes.is_empty() %}
-                    <details class="group border-t border-border">
-                        <summary class="flex items-center justify-between cursor-pointer font-medium text-foreground py-3">
-                            Promotes
-                            <i class="ph ph-caret-down transition-transform group-open:rotate-180"></i>
-                        </summary>
-                        <div class="pb-4">
-                            <ul class="flex flex-wrap gap-2">
-                                {% for item in product.promotes %}
-                                <li class="px-3 py-1 text-sm bg-primary/10 text-primary rounded-full">{{ item }}</li>
-                                {% endfor %}
-                            </ul>
-                        </div>
-                    </details>
-                    {% endif %}
-
-                    {% if !product.free_from.is_empty() %}
-                    <details class="group border-t border-border">
-                        <summary class="flex items-center justify-between cursor-pointer font-medium text-foreground py-3">
-                            Free From
-                            <i class="ph ph-caret-down transition-transform group-open:rotate-180"></i>
-                        </summary>
-                        <div class="pb-4">
-                            <ul class="flex flex-wrap gap-2">
-                                {% for item in product.free_from %}
-                                <li class="px-3 py-1 text-sm bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded-full">{{ item }}</li>
-                                {% endfor %}
-                            </ul>
-                        </div>
-                    </details>
-                    {% endif %}
-
-                    {% if let Some(warning) = product.warning %}
-                    <details class="group border-t border-border">
-                        <summary class="flex items-center justify-between cursor-pointer font-medium text-foreground py-3">
-                            <span class="flex items-center gap-2">
-                                <i class="ph ph-warning text-amber-500"></i>
-                                Warning
-                            </span>
-                            <i class="ph ph-caret-down transition-transform group-open:rotate-180"></i>
-                        </summary>
-                        <div class="prose prose-sm text-muted-foreground pb-4">
-                            {{ warning|safe }}
-                        </div>
-                    </details>
-                    {% endif %}
-
-                    <details class="group border-t border-border">
-                        <summary class="flex items-center justify-between cursor-pointer font-medium text-foreground py-3">
-                            Shipping & Returns
-                            <i class="ph ph-caret-down transition-transform group-open:rotate-180"></i>
-                        </summary>
-                        <div class="prose prose-sm text-muted-foreground pb-4">
-                            <p>Free shipping on orders over $50. Standard shipping 3-5 business days.</p>
-                            {% if product.product_type == "Merch" %}
-                            <p>30-day hassle-free returns on all products.</p>
-                            {% else %}
-                            <p>30-day hassle-free returns on all unopened products.</p>
-                            {% endif %}
-                        </div>
-                    </details>
                 </div>
             </div>
         </div>
+    </div>
 
-        <!-- Related Products -->
-        {% if !related_products.is_empty() %}
-        <section class="mt-16 pt-16 border-t border-border">
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         ZONE 2: Product Story Zone - Full-width Description & Benefits
+         ═══════════════════════════════════════════════════════════════════════ -->
+    <section class="py-12 md:py-16 mt-8 border-t border-border">
+        <div class="page-width">
+            <div class="max-w-3xl mx-auto">
+                <!-- Eyebrow -->
+                <p class="text-xs uppercase tracking-[0.2em] text-primary font-medium mb-4">
+                    About This Product
+                </p>
+
+                <!-- Description - Always visible -->
+                <div class="text-muted-foreground leading-relaxed space-y-4
+                            [&_h1]:font-display [&_h1]:text-xl [&_h1]:font-medium [&_h1]:text-foreground [&_h1]:mt-6 [&_h1]:mb-3
+                            [&_h2]:font-display [&_h2]:text-lg [&_h2]:font-medium [&_h2]:text-foreground [&_h2]:mt-6 [&_h2]:mb-3
+                            [&_h3]:font-display [&_h3]:text-base [&_h3]:font-medium [&_h3]:text-foreground [&_h3]:mt-5 [&_h3]:mb-2
+                            [&_strong]:text-foreground [&_strong]:font-medium
+                            [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1.5
+                            [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:space-y-1.5
+                            [&_li]:text-muted-foreground
+                            [&_a]:text-primary [&_a]:underline [&_a]:underline-offset-2 hover:[&_a]:text-primary/80">
+                    {{ product.description|safe }}
+                </div>
+
+                <!-- Benefits -->
+                {% if let Some(benefits) = product.benefits %}
+                <div class="mt-10 pt-8 border-t border-border">
+                    <h3 class="font-display text-lg font-medium text-foreground mb-4">Benefits</h3>
+                    <div class="text-sm text-muted-foreground leading-relaxed space-y-3
+                                [&_strong]:text-foreground [&_strong]:font-medium
+                                [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1.5
+                                [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:space-y-1.5
+                                [&_li]:text-muted-foreground">
+                        {{ benefits|safe }}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Promotes -->
+                {% if !product.promotes.is_empty() %}
+                <div class="mt-8">
+                    <h4 class="text-sm font-medium text-foreground mb-3">Promotes</h4>
+                    <div class="flex flex-wrap gap-2">
+                        {% for item in product.promotes %}
+                        <span class="px-3 py-1.5 text-sm bg-secondary/15 text-secondary-foreground rounded-full">
+                            {{ item }}
+                        </span>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Free From -->
+                {% if !product.free_from.is_empty() %}
+                <div class="mt-6">
+                    <h4 class="text-sm font-medium text-foreground mb-3">Free From</h4>
+                    <div class="flex flex-wrap gap-2">
+                        {% for item in product.free_from %}
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-muted text-muted-foreground rounded-full">
+                            <i class="ph ph-prohibit text-xs"></i>
+                            {{ item }}
+                        </span>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         ZONE 3: Product Details Zone - Tabbed Interface
+         ═══════════════════════════════════════════════════════════════════════ -->
+    {% if product.ingredients.is_some() || product.directions.is_some() %}
+    <section class="py-12 md:py-16 bg-muted/30">
+        <div class="page-width">
+            <div class="max-w-4xl mx-auto" id="product-details-tabs">
+                <!-- Tab Navigation -->
+                <div class="flex border-b border-border overflow-x-auto" role="tablist">
+                    {% if product.ingredients.is_some() %}
+                    <button class="px-6 py-3 text-sm font-medium border-b-2 border-primary text-foreground whitespace-nowrap"
+                            role="tab"
+                            aria-selected="true"
+                            data-tab="ingredients">
+                        Ingredients
+                    </button>
+                    {% endif %}
+                    {% if product.directions.is_some() %}
+                    <button class="px-6 py-3 text-sm font-medium border-b-2 {% if product.ingredients.is_none() %}border-primary text-foreground{% else %}border-transparent text-muted-foreground hover:text-foreground{% endif %} whitespace-nowrap transition-colors"
+                            role="tab"
+                            aria-selected="{% if product.ingredients.is_none() %}true{% else %}false{% endif %}"
+                            data-tab="directions">
+                        How to Use
+                    </button>
+                    {% endif %}
+                    <button class="px-6 py-3 text-sm font-medium border-b-2 border-transparent text-muted-foreground hover:text-foreground whitespace-nowrap transition-colors"
+                            role="tab"
+                            aria-selected="false"
+                            data-tab="shipping">
+                        Shipping & Returns
+                    </button>
+                </div>
+
+                <!-- Tab Panels -->
+                <div class="pt-6">
+                    {% if let Some(ingredients) = product.ingredients %}
+                    <div class="prose prose-sm text-muted-foreground leading-relaxed max-w-none
+                                prose-strong:text-foreground"
+                         role="tabpanel"
+                         id="panel-ingredients">
+                        {{ ingredients|safe }}
+
+                        <!-- Warning as subtle note -->
+                        {% if let Some(warning) = product.warning %}
+                        <p class="mt-8 pt-4 border-t border-border/50 text-sm text-terracotta">
+                            <span class="font-medium">Note:</span> {{ warning|safe }}
+                        </p>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
+                    {% if let Some(directions) = product.directions %}
+                    <div class="prose prose-sm text-muted-foreground leading-relaxed max-w-none {% if product.ingredients.is_some() %}hidden{% endif %}
+                                prose-strong:text-foreground"
+                         role="tabpanel"
+                         id="panel-directions">
+                        {{ directions|safe }}
+
+                        <!-- Warning as subtle note if no ingredients tab -->
+                        {% if product.ingredients.is_none() %}
+                        {% if let Some(warning) = product.warning %}
+                        <p class="mt-8 pt-4 border-t border-border/50 text-sm text-terracotta">
+                            <span class="font-medium">Note:</span> {{ warning|safe }}
+                        </p>
+                        {% endif %}
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
+                    <div class="prose prose-sm text-muted-foreground leading-relaxed max-w-none hidden
+                                prose-strong:text-foreground"
+                         role="tabpanel"
+                         id="panel-shipping">
+                        <p>Free shipping on orders over $50. Standard shipping 3-5 business days.</p>
+                        {% if product.product_type == "Merch" %}
+                        <p>30-day hassle-free returns on all products.</p>
+                        {% else %}
+                        <p>30-day hassle-free returns on all unopened products.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    {% else %}
+    <!-- Shipping only section when no ingredients/directions -->
+    <section class="py-12 md:py-16 bg-muted/30">
+        <div class="page-width">
+            <div class="max-w-3xl mx-auto">
+                <h3 class="font-display text-xl font-medium text-foreground mb-4">Shipping & Returns</h3>
+                <div class="prose prose-sm text-muted-foreground leading-relaxed max-w-none">
+                    <p>Free shipping on orders over $50. Standard shipping 3-5 business days.</p>
+                    {% if product.product_type == "Merch" %}
+                    <p>30-day hassle-free returns on all products.</p>
+                    {% else %}
+                    <p>30-day hassle-free returns on all unopened products.</p>
+                    {% endif %}
+                </div>
+
+                {% if let Some(warning) = product.warning %}
+                <p class="mt-6 text-sm text-terracotta">
+                    <span class="font-medium">Note:</span> {{ warning|safe }}
+                </p>
+                {% endif %}
+            </div>
+        </div>
+    </section>
+    {% endif %}
+
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         ZONE 4: Related Products
+         ═══════════════════════════════════════════════════════════════════════ -->
+    {% if !related_products.is_empty() %}
+    <section class="py-12 md:py-16">
+        <div class="page-width">
             <h2 class="font-display text-2xl font-semibold text-foreground mb-8">
                 You Might Also Like
             </h2>
@@ -626,9 +673,9 @@
                 {% include "partials/product_card.html" %}
                 {% endfor %}
             </div>
-        </section>
-        {% endif %}
-    </div>
+        </div>
+    </section>
+    {% endif %}
 </div>
 
 {% block scripts %}
@@ -636,11 +683,13 @@
 (function() {
     'use strict';
 
-    // Guard against double-initialization (can happen with HTMX navigation)
+    // Guard against double-initialization
     if (window._productShowInitialized) return;
     window._productShowInitialized = true;
 
-    // Variant selection (called from base.html data-action handler)
+    // ═══════════════════════════════════════════════════════════════════════
+    // Variant Selection
+    // ═══════════════════════════════════════════════════════════════════════
     window.selectVariant = function(button, variantId) {
         var input = document.getElementById('selected-variant');
         if (input) input.value = variantId;
@@ -653,12 +702,13 @@
         }
         button.classList.add('border-primary', 'bg-primary/5');
 
-        // Update checkout URLs and share permalink with new variant
         updateCheckoutUrls();
         updateSharePermalink();
     };
 
-    // Update Shop Pay and More Payments URLs based on current variant and quantity
+    // ═══════════════════════════════════════════════════════════════════════
+    // Checkout URL Updates
+    // ═══════════════════════════════════════════════════════════════════════
     function updateCheckoutUrls() {
         var variantId = document.getElementById('selected-variant')?.value;
         var quantity = document.getElementById('product-quantity')?.value || 1;
@@ -678,14 +728,15 @@
         }
     }
 
-    // Listen for quantity changes
     var quantityInput = document.getElementById('product-quantity');
     if (quantityInput) {
         quantityInput.addEventListener('change', updateCheckoutUrls);
         quantityInput.addEventListener('input', updateCheckoutUrls);
     }
 
-    // Close the selling plan dropdown
+    // ═══════════════════════════════════════════════════════════════════════
+    // Selling Plan Dropdown
+    // ═══════════════════════════════════════════════════════════════════════
     function closeSellingPlanDropdown() {
         var dropdown = document.getElementById('selling-plan-dropdown');
         if (!dropdown) return;
@@ -699,7 +750,6 @@
         if (trigger) trigger.setAttribute('aria-expanded', 'false');
     }
 
-    // Toggle the selling plan dropdown open/closed
     function toggleSellingPlanDropdown() {
         var dropdown = document.getElementById('selling-plan-dropdown');
         if (!dropdown) return;
@@ -718,7 +768,6 @@
         }
     }
 
-    // Select a selling plan option
     function selectSellingPlan(btn) {
         var dropdown = document.getElementById('selling-plan-dropdown');
         if (!dropdown) return;
@@ -727,23 +776,20 @@
         var name = btn.dataset.name;
         var discount = btn.dataset.discount;
 
-        // Update hidden inputs
         var hiddenInput = document.getElementById('selling-plan-select');
         var sellingPlanInput = document.getElementById('selected-selling-plan');
         if (hiddenInput) hiddenInput.value = value;
         if (sellingPlanInput) sellingPlanInput.value = value;
 
-        // Update displayed selection
         var selectedDisplay = dropdown.querySelector('.selling-plan-selected');
         if (selectedDisplay) {
             var html = '<span class="text-foreground">' + name + '</span>';
             if (discount) {
-                html += ' <span class="px-2 py-0.5 text-xs font-semibold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded">' + discount + '</span>';
+                html += ' <span class="px-1.5 py-0.5 text-xs font-semibold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded">' + discount + '</span>';
             }
             selectedDisplay.innerHTML = html;
         }
 
-        // Update aria-selected state
         dropdown.querySelectorAll('.selling-plan-option').forEach(function(opt) {
             opt.classList.remove('bg-primary/5');
             opt.removeAttribute('aria-selected');
@@ -754,35 +800,20 @@
         closeSellingPlanDropdown();
     }
 
-    // Close share popup
+    // ═══════════════════════════════════════════════════════════════════════
+    // Share Popup
+    // ═══════════════════════════════════════════════════════════════════════
     function closeSharePopup() {
         var popup = document.getElementById('share-popup');
         if (popup) popup.classList.add('hidden');
     }
 
-    // Toggle share popup
     function toggleSharePopup() {
         var popup = document.getElementById('share-popup');
         if (popup) popup.classList.toggle('hidden');
-        // Close ask popup if open
         closeAskPopup();
     }
 
-    // Close ask popup
-    function closeAskPopup() {
-        var popup = document.getElementById('ask-popup');
-        if (popup) popup.classList.add('hidden');
-    }
-
-    // Toggle ask popup
-    function toggleAskPopup() {
-        var popup = document.getElementById('ask-popup');
-        if (popup) popup.classList.toggle('hidden');
-        // Close share popup if open
-        closeSharePopup();
-    }
-
-    // Update share permalink with current variant
     function updateSharePermalink() {
         var input = document.getElementById('share-permalink');
         if (!input) return;
@@ -797,7 +828,6 @@
         }
     }
 
-    // Copy product link to clipboard
     function copyProductLink() {
         var input = document.getElementById('share-permalink');
         var url = input ? input.value : window.location.href;
@@ -818,7 +848,60 @@
         });
     }
 
-    // Event delegation for actions
+    // ═══════════════════════════════════════════════════════════════════════
+    // Ask Question Popup
+    // ═══════════════════════════════════════════════════════════════════════
+    function closeAskPopup() {
+        var popup = document.getElementById('ask-popup');
+        if (popup) popup.classList.add('hidden');
+    }
+
+    function toggleAskPopup() {
+        var popup = document.getElementById('ask-popup');
+        if (popup) popup.classList.toggle('hidden');
+        closeSharePopup();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // Product Details Tabs
+    // ═══════════════════════════════════════════════════════════════════════
+    function initProductTabs() {
+        var tabContainer = document.getElementById('product-details-tabs');
+        if (!tabContainer) return;
+
+        var tabs = tabContainer.querySelectorAll('[role="tab"]');
+        var panels = tabContainer.querySelectorAll('[role="tabpanel"]');
+
+        tabs.forEach(function(tab) {
+            tab.addEventListener('click', function() {
+                // Deactivate all tabs
+                tabs.forEach(function(t) {
+                    t.setAttribute('aria-selected', 'false');
+                    t.classList.remove('border-primary', 'text-foreground');
+                    t.classList.add('border-transparent', 'text-muted-foreground');
+                });
+
+                // Hide all panels
+                panels.forEach(function(p) {
+                    p.classList.add('hidden');
+                });
+
+                // Activate clicked tab
+                tab.setAttribute('aria-selected', 'true');
+                tab.classList.add('border-primary', 'text-foreground');
+                tab.classList.remove('border-transparent', 'text-muted-foreground');
+
+                // Show corresponding panel
+                var panelId = 'panel-' + tab.dataset.tab;
+                var panel = document.getElementById(panelId);
+                if (panel) panel.classList.remove('hidden');
+            });
+        });
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // Event Delegation
+    // ═══════════════════════════════════════════════════════════════════════
     document.addEventListener('click', function(e) {
         var target = e.target.closest('[data-action]');
 
@@ -868,7 +951,9 @@
         }
     });
 
-    // Handle ask question form submission
+    // ═══════════════════════════════════════════════════════════════════════
+    // Ask Question Form
+    // ═══════════════════════════════════════════════════════════════════════
     var askForm = document.getElementById('ask-question-form');
     if (askForm) {
         askForm.addEventListener('submit', function(e) {
@@ -877,7 +962,7 @@
             var submitBtn = askForm.querySelector('button[type="submit"]');
             var originalText = submitBtn.innerHTML;
             submitBtn.disabled = true;
-            submitBtn.innerHTML = '<i class="ph ph-spinner animate-spin mr-2"></i>Sending...';
+            submitBtn.innerHTML = '<i class="ph ph-spinner animate-spin"></i> Sending...';
 
             var formData = new FormData(askForm);
             var data = {
@@ -914,7 +999,9 @@
         });
     }
 
-    // Purchase option toggling (one-time vs subscription)
+    // ═══════════════════════════════════════════════════════════════════════
+    // Purchase Options (One-time vs Subscription)
+    // ═══════════════════════════════════════════════════════════════════════
     function initPurchaseOptions() {
         var purchaseOptions = document.querySelectorAll('.purchase-option');
         var sellingPlanInput = document.getElementById('selected-selling-plan');
@@ -949,12 +1036,12 @@
                 if (isSubscription && sellingPlanSelect && sellingPlanInput) {
                     sellingPlanInput.value = sellingPlanSelect.value;
                     if (addToCartBtn) {
-                        addToCartBtn.innerHTML = '<i class="ph ph-tote mr-2"></i>Subscribe';
+                        addToCartBtn.innerHTML = '<i class="ph ph-tote"></i> Subscribe';
                     }
                 } else {
                     if (sellingPlanInput) sellingPlanInput.value = '';
                     if (addToCartBtn) {
-                        addToCartBtn.innerHTML = '<i class="ph ph-tote mr-2"></i>Add to Cart';
+                        addToCartBtn.innerHTML = '<i class="ph ph-tote"></i> Add to Cart';
                     }
                 }
             });
@@ -967,11 +1054,18 @@
         }
     }
 
-    // Initialize on DOM ready
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initPurchaseOptions);
-    } else {
+    // ═══════════════════════════════════════════════════════════════════════
+    // Initialize
+    // ═══════════════════════════════════════════════════════════════════════
+    function init() {
         initPurchaseOptions();
+        initProductTabs();
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
     }
 })();
 </script>

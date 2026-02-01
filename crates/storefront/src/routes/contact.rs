@@ -2,12 +2,7 @@
 //!
 //! Handles product question submissions via Klaviyo event tracking.
 
-use axum::{
-    Json,
-    extract::State,
-    http::StatusCode,
-    response::IntoResponse,
-};
+use axum::{Json, extract::State, http::StatusCode, response::IntoResponse};
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
 

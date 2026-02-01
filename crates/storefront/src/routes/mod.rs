@@ -205,8 +205,5 @@ pub fn routes() -> Router<AppState> {
             get(newsletter::unsubscribe_page).post(newsletter::unsubscribe),
         )
         // Contact routes
-        .route(
-            "/contact/product-question",
-            post(contact::product_question),
-        )
+        .route("/contact/product-question", post(contact::product_question))
 }
