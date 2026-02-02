@@ -7,7 +7,9 @@ use crate::shopify::types::{
     SellingPlanPriceAdjustmentValue, Seo, ShopPayInstallmentsPricing,
 };
 
-use super::super::queries::{get_product_by_handle, get_product_recommendations, get_products};
+use super::super::queries::{
+    get_product_by_handle, get_product_by_id, get_product_recommendations, get_products,
+};
 
 /// JSON structure for the rating metafield value from Judge.me.
 #[derive(Debug, serde::Deserialize)]
@@ -714,5 +716,287 @@ fn convert_variant_rec(v: get_product_recommendations::ProductVariantFields) -> 
         shop_pay_installments: v
             .shop_pay_installments_pricing
             .map(convert_shop_pay_installments_rec),
+    }
+}
+
+// =============================================================================
+// get_product_by_id conversions
+// =============================================================================
+
+/// Parse rating metafields for `get_product_by_id` query.
+fn parse_rating_metafields_by_id(
+    rating: Option<get_product_by_id::GetProductByIdProductRating>,
+    rating_count: Option<get_product_by_id::GetProductByIdProductRatingCount>,
+) -> Option<ProductRating> {
+    let rating_data = rating?;
+    let count_data = rating_count?;
+
+    let rating_parsed: RatingMetafieldValue = serde_json::from_str(&rating_data.value).ok()?;
+    let count: i64 = count_data.value.parse().ok()?;
+
+    if count == 0 {
+        return None;
+    }
+
+    Some(ProductRating {
+        value: rating_parsed.value.parse().ok()?,
+        scale_min: rating_parsed.scale_min.parse().ok()?,
+        scale_max: rating_parsed.scale_max.parse().ok()?,
+        count,
+    })
+}
+
+/// Convert selling plan groups for `get_product_by_id` query.
+fn convert_selling_plan_groups_by_id(
+    groups: get_product_by_id::GetProductByIdProductSellingPlanGroups,
+) -> Vec<SellingPlanGroup> {
+    groups
+        .edges
+        .into_iter()
+        .map(|edge| {
+            let group = edge.node;
+            SellingPlanGroup {
+                name: group.name,
+                options: group
+                    .options
+                    .into_iter()
+                    .map(|opt| SellingPlanGroupOption {
+                        name: opt.name,
+                        values: opt.values,
+                    })
+                    .collect(),
+                selling_plans: group
+                    .selling_plans
+                    .edges
+                    .into_iter()
+                    .map(|sp_edge| {
+                        let sp = sp_edge.node;
+                        SellingPlan {
+                            id: sp.id,
+                            name: sp.name,
+                            description: sp.description,
+                            options: sp
+                                .options
+                                .into_iter()
+                                .map(|opt| SellingPlanOption {
+                                    name: opt.name.unwrap_or_default(),
+                                    value: opt.value.unwrap_or_default(),
+                                })
+                                .collect(),
+                            price_adjustments: sp
+                                .price_adjustments
+                                .into_iter()
+                                .map(convert_price_adjustment_by_id)
+                                .collect(),
+                            recurring_deliveries: sp.recurring_deliveries,
+                        }
+                    })
+                    .collect(),
+            }
+        })
+        .collect()
+}
+
+fn convert_price_adjustment_by_id(
+    adj: get_product_by_id::SellingPlanPriceAdjustmentFields,
+) -> SellingPlanPriceAdjustment {
+    use get_product_by_id::SellingPlanPriceAdjustmentFieldsAdjustmentValue as AdjValue;
+
+    let adjustment_value = match adj.adjustment_value {
+        AdjValue::SellingPlanPercentagePriceAdjustment(p) => {
+            SellingPlanPriceAdjustmentValue::Percentage(p.adjustment_percentage)
+        }
+        AdjValue::SellingPlanFixedAmountPriceAdjustment(f) => {
+            SellingPlanPriceAdjustmentValue::FixedAmount(Money {
+                amount: f.adjustment_amount.amount,
+                currency_code: currency_code_to_string(f.adjustment_amount.currency_code),
+            })
+        }
+        AdjValue::SellingPlanFixedPriceAdjustment(f) => {
+            SellingPlanPriceAdjustmentValue::FixedPrice(Money {
+                amount: f.price.amount,
+                currency_code: currency_code_to_string(f.price.currency_code),
+            })
+        }
+    };
+
+    SellingPlanPriceAdjustment {
+        adjustment_value,
+        order_count: adj.order_count,
+    }
+}
+
+pub fn convert_product_by_id(product: get_product_by_id::GetProductByIdProduct) -> Product {
+    let fields = product.product_fields;
+
+    // Parse metafields
+    let rating = parse_rating_metafields_by_id(product.rating, product.rating_count);
+    let selling_plan_groups = convert_selling_plan_groups_by_id(product.selling_plan_groups);
+    let ingredients = product
+        .ingredients
+        .and_then(|m| parse_rich_text_metafield(&m.value));
+    let directions = product
+        .directions
+        .and_then(|m| parse_rich_text_metafield(&m.value));
+    let warning = product
+        .warning
+        .and_then(|m| parse_rich_text_metafield(&m.value));
+    let promotes = product
+        .promotes
+        .and_then(|m| serde_json::from_str::<Vec<String>>(&m.value).ok())
+        .unwrap_or_default();
+    let benefits = product
+        .benefits
+        .and_then(|m| parse_rich_text_metafield(&m.value));
+    let free_from = product
+        .free_from
+        .and_then(|m| serde_json::from_str::<Vec<String>>(&m.value).ok())
+        .unwrap_or_default();
+
+    Product {
+        id: fields.id,
+        handle: fields.handle,
+        title: fields.title,
+        description: fields.description,
+        description_html: fields.description_html,
+        available_for_sale: fields.available_for_sale,
+        kind: fields.product_type,
+        vendor: fields.vendor,
+        tags: fields.tags,
+        created_at: Some(fields.created_at),
+        updated_at: Some(fields.updated_at),
+        online_store_url: fields.online_store_url,
+        seo: Some(Seo {
+            title: fields.seo.title,
+            description: fields.seo.description,
+        }),
+        price_range: convert_price_range_by_id(fields.price_range),
+        compare_at_price_range: Some(convert_compare_at_price_range_by_id(
+            fields.compare_at_price_range,
+        )),
+        featured_image: fields.featured_image.map(convert_image_by_id),
+        images: product
+            .images
+            .edges
+            .into_iter()
+            .map(|e| convert_image_by_id(e.node))
+            .collect(),
+        options: fields
+            .options
+            .into_iter()
+            .map(convert_option_by_id)
+            .collect(),
+        variants: product
+            .variants
+            .edges
+            .into_iter()
+            .map(|e| convert_variant_by_id(e.node))
+            .collect(),
+        rating,
+        ingredients,
+        directions,
+        warning,
+        promotes,
+        benefits,
+        free_from,
+        requires_selling_plan: product.requires_selling_plan,
+        selling_plan_groups,
+    }
+}
+
+fn convert_image_by_id(i: get_product_by_id::ImageFields) -> Image {
+    Image {
+        id: i.id,
+        url: i.url,
+        alt_text: i.alt_text,
+        width: i.width,
+        height: i.height,
+    }
+}
+
+fn convert_money_by_id(m: get_product_by_id::MoneyFields) -> Money {
+    Money {
+        amount: m.amount,
+        currency_code: currency_code_to_string(m.currency_code),
+    }
+}
+
+fn convert_price_range_by_id(r: get_product_by_id::ProductFieldsPriceRange) -> PriceRange {
+    PriceRange {
+        min_variant_price: convert_money_by_id(r.min_variant_price),
+        max_variant_price: convert_money_by_id(r.max_variant_price),
+    }
+}
+
+fn convert_compare_at_price_range_by_id(
+    r: get_product_by_id::ProductFieldsCompareAtPriceRange,
+) -> PriceRange {
+    PriceRange {
+        min_variant_price: Money {
+            amount: r.min_variant_price.amount,
+            currency_code: currency_code_to_string(r.min_variant_price.currency_code),
+        },
+        max_variant_price: Money {
+            amount: r.max_variant_price.amount,
+            currency_code: currency_code_to_string(r.max_variant_price.currency_code),
+        },
+    }
+}
+
+fn convert_option_by_id(o: get_product_by_id::ProductFieldsOptions) -> ProductOption {
+    ProductOption {
+        id: o.id,
+        name: o.name,
+        values: o.option_values.into_iter().map(|v| v.name).collect(),
+    }
+}
+
+fn convert_shop_pay_installments_by_id(
+    pricing: get_product_by_id::ShopPayInstallmentsFields,
+) -> ShopPayInstallmentsPricing {
+    ShopPayInstallmentsPricing {
+        eligible: pricing.eligible,
+        price_per_term: Some(convert_money_by_id(pricing.price_per_term)),
+        installments_count: pricing
+            .installments_count
+            .map(|c| InstallmentsCount { count: c.count }),
+        full_price: Some(convert_money_by_id(pricing.full_price)),
+    }
+}
+
+fn convert_variant_by_id(v: get_product_by_id::ProductVariantFields) -> ProductVariant {
+    ProductVariant {
+        id: v.id,
+        title: v.title,
+        available_for_sale: v.available_for_sale,
+        quantity_available: v.quantity_available,
+        sku: v.sku,
+        barcode: v.barcode,
+        price: Money {
+            amount: v.price.amount,
+            currency_code: currency_code_to_string(v.price.currency_code),
+        },
+        compare_at_price: v.compare_at_price.map(|p| Money {
+            amount: p.amount,
+            currency_code: currency_code_to_string(p.currency_code),
+        }),
+        selected_options: v
+            .selected_options
+            .into_iter()
+            .map(|o| SelectedOption {
+                name: o.name,
+                value: o.value,
+            })
+            .collect(),
+        image: v.image.map(|i| Image {
+            id: i.id,
+            url: i.url,
+            alt_text: i.alt_text,
+            width: i.width,
+            height: i.height,
+        }),
+        shop_pay_installments: v
+            .shop_pay_installments_pricing
+            .map(convert_shop_pay_installments_by_id),
     }
 }

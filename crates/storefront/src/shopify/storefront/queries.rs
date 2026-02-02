@@ -53,6 +53,14 @@ pub struct GetProductRecommendations;
 )]
 pub struct GetProductTitleById;
 
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/storefront/schema.json",
+    query_path = "graphql/storefront/queries/products.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct GetProductById;
+
 // Collection queries
 #[derive(GraphQLQuery)]
 #[graphql(

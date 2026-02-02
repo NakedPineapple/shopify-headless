@@ -68,6 +68,8 @@ pub struct ProductView {
     pub featured_image: Option<ImageView>,
     pub images: Vec<ImageView>,
     pub variants: Vec<VariantView>,
+    /// The first available variant ID (for quick add to cart).
+    pub first_variant_id: String,
     pub ingredients: Option<String>,
     pub directions: Option<String>,
     pub warning: Option<String>,
@@ -199,6 +201,14 @@ fn build_selling_plan_groups(
 
 impl From<&ShopifyProduct> for ProductView {
     fn from(product: &ShopifyProduct) -> Self {
+        // Find first available variant for quick add
+        let first_variant_id = product
+            .variants
+            .iter()
+            .find(|v| v.available_for_sale)
+            .map(|v| v.id.clone())
+            .unwrap_or_default();
+
         Self {
             handle: product.handle.clone(),
             title: product.title.clone(),
@@ -244,13 +254,19 @@ impl From<&ShopifyProduct> for ProductView {
                     }),
                 })
                 .collect(),
+            first_variant_id,
             ingredients: product.ingredients.clone(),
             directions: product.directions.clone(),
             warning: product.warning.clone(),
             promotes: product.promotes.clone(),
             benefits: product.benefits.clone(),
             free_from: product.free_from.clone(),
-            rating: product.rating.as_ref().map(build_rating_view),
+            // Only show ratings of 4.0 or higher (hide low ratings for conversion)
+            rating: product
+                .rating
+                .as_ref()
+                .filter(|r| r.value >= 4.0)
+                .map(build_rating_view),
             requires_selling_plan: product.requires_selling_plan,
             selling_plan_groups: build_selling_plan_groups(&product.selling_plan_groups),
         }
@@ -383,6 +399,7 @@ fn build_error_product_template(
                 featured_image: None,
                 images: Vec::new(),
                 variants: Vec::new(),
+                first_variant_id: String::new(),
                 ingredients: None,
                 directions: None,
                 warning: None,
@@ -517,6 +534,7 @@ pub async fn quick_view(State(state): State<AppState>, Path(handle): Path<String
                 featured_image: None,
                 images: Vec::new(),
                 variants: Vec::new(),
+                first_variant_id: String::new(),
                 ingredients: None,
                 directions: None,
                 warning: None,

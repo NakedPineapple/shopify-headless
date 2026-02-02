@@ -294,3 +294,56 @@ query GetProductTitleById($id: ID!) {
     title
   }
 }
+
+# Get full product by ID (for recommendation display)
+query GetProductById($id: ID!, $imageCount: Int = 1, $variantCount: Int = 1) {
+  product(id: $id) {
+    ...ProductFields
+    requiresSellingPlan
+    rating: metafield(namespace: "reviews", key: "rating") {
+      ...MetafieldFields
+    }
+    ratingCount: metafield(namespace: "reviews", key: "rating_count") {
+      ...MetafieldFields
+    }
+    ingredients: metafield(namespace: "custom", key: "ingredients") {
+      ...MetafieldFields
+    }
+    directions: metafield(namespace: "custom", key: "directions") {
+      ...MetafieldFields
+    }
+    warning: metafield(namespace: "custom", key: "warning") {
+      ...MetafieldFields
+    }
+    promotes: metafield(namespace: "custom", key: "promotes") {
+      ...MetafieldFields
+    }
+    benefits: metafield(namespace: "custom", key: "benefits") {
+      ...MetafieldFields
+    }
+    freeFrom: metafield(namespace: "custom", key: "free_from") {
+      ...MetafieldFields
+    }
+    images(first: $imageCount) {
+      edges {
+        node {
+          ...ImageFields
+        }
+      }
+    }
+    variants(first: $variantCount) {
+      edges {
+        node {
+          ...ProductVariantFields
+        }
+      }
+    }
+    sellingPlanGroups(first: 5) {
+      edges {
+        node {
+          ...SellingPlanGroupFields
+        }
+      }
+    }
+  }
+}

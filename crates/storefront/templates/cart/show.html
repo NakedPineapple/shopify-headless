@@ -128,6 +128,64 @@
                         </div>
                     </details>
 
+                    <!-- Recommended Product - Above the fold, before checkout -->
+                    {% if let Some(product) = recommended_products.first() %}
+                    <div class="mb-6 p-4 rounded-xl bg-gradient-to-br from-honey/10 via-transparent to-primary/5 border border-honey/25 relative overflow-hidden">
+                        <!-- Subtle sparkle accent -->
+                        <div class="absolute top-2 right-2 text-honey/60">
+                            <i class="ph-fill ph-star-four text-sm"></i>
+                        </div>
+
+                        <!-- Eyebrow -->
+                        <p class="text-[10px] font-bold uppercase tracking-wider text-primary mb-2">
+                            Complete Your Ritual
+                        </p>
+
+                        <div class="flex gap-3">
+                            <!-- Product Image -->
+                            <a href="/products/{{ product.handle }}" class="shrink-0 w-20 h-20 rounded-lg overflow-hidden bg-muted block group">
+                                {% if let Some(image) = product.featured_image %}
+                                <img src="{{ image.url }}"
+                                     alt="{{ image.alt }}"
+                                     class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                     loading="lazy">
+                                {% else %}
+                                <div class="w-full h-full flex items-center justify-center text-muted-foreground">
+                                    <i class="ph ph-image text-xl"></i>
+                                </div>
+                                {% endif %}
+                            </a>
+
+                            <!-- Product Info -->
+                            <div class="flex-1 min-w-0">
+                                <h3 class="font-medium text-sm text-foreground leading-tight mb-1 line-clamp-2">
+                                    <a href="/products/{{ product.handle }}" class="hover:text-primary transition-colors">
+                                        {{ product.title }}
+                                    </a>
+                                </h3>
+                                <div class="flex items-baseline gap-2 mb-2">
+                                    {% if let Some(compare_price) = product.compare_at_price %}
+                                    <span class="text-sm font-semibold text-primary">{{ product.price }}</span>
+                                    <span class="text-xs text-muted-foreground line-through">{{ compare_price }}</span>
+                                    {% else %}
+                                    <span class="text-sm font-semibold text-foreground">{{ product.price }}</span>
+                                    {% endif %}
+                                </div>
+                                <button type="button"
+                                        class="w-full py-2 px-3 bg-foreground text-background text-xs font-medium rounded-full hover:bg-foreground/90 transition-all flex items-center justify-center gap-1.5 group"
+                                        hx-post="/cart/add"
+                                        hx-vals='{"variant_id": "{{ product.first_variant_id }}", "quantity": 1}'
+                                        hx-target="#cart-count"
+                                        hx-swap="innerHTML"
+                                        {% if product.first_variant_id.is_empty() %}disabled{% endif %}>
+                                    <i class="ph ph-plus-circle"></i>
+                                    Add to Cart
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
                     <!-- Checkout Button -->
                     {% if has_pending_gwp_selection %}
                     <button type="button"
@@ -171,23 +229,141 @@
             </div>
         </div>
 
-        <!-- Product Recommendations -->
-        {% if !recommended_products.is_empty() %}
-        <section class="mt-16 animate-slide-up" style="opacity: 0; animation-delay: 450ms;">
-            <div class="flex items-center justify-between mb-8">
+        <!-- Detailed Product Recommendation - Below the fold -->
+        {% if let Some(product) = recommended_products.first() %}
+        <section class="mt-16 md:mt-20 animate-slide-up" style="opacity: 0; animation-delay: 500ms;">
+            <!-- Section Header -->
+            <div class="text-center mb-10">
+                <p class="text-xs uppercase tracking-[0.2em] text-primary font-medium mb-2">
+                    Curated for Your Cart
+                </p>
                 <h2 class="font-display text-2xl md:text-3xl font-semibold text-foreground">
-                    You Might Also Like
+                    Complete Your <span class="text-gradient">Ritual</span>
                 </h2>
-                <a href="/products" class="text-sm font-medium text-primary hover:underline flex items-center gap-1 group">
-                    View All
-                    <i class="ph ph-arrow-right transition-transform group-hover:translate-x-1"></i>
-                </a>
             </div>
 
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-                {% for product in recommended_products %}
-                {% include "partials/product_card.html" %}
-                {% endfor %}
+            <!-- Spotlight Card -->
+            <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-sand via-card to-sand border border-honey/20 shadow-lg">
+                <!-- Decorative Elements -->
+                <div class="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-honey/15 to-transparent rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 pointer-events-none"></div>
+                <div class="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-primary/10 to-transparent rounded-full blur-2xl translate-y-1/3 -translate-x-1/4 pointer-events-none"></div>
+
+                <!-- Content Grid -->
+                <div class="relative grid md:grid-cols-2 gap-0">
+                    <!-- Product Image -->
+                    <a href="/products/{{ product.handle }}" class="group block aspect-square md:aspect-[4/5] overflow-hidden bg-muted">
+                        {% if let Some(image) = product.featured_image %}
+                        <img src="{{ image.url }}"
+                             alt="{{ image.alt }}"
+                             class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                             loading="lazy">
+                        {% else %}
+                        <div class="w-full h-full flex items-center justify-center text-muted-foreground">
+                            <i class="ph ph-image text-6xl"></i>
+                        </div>
+                        {% endif %}
+                    </a>
+
+                    <!-- Product Details -->
+                    <div class="flex flex-col justify-center p-6 md:p-10 lg:p-12">
+                        <!-- Eyebrow with Rating -->
+                        <div class="flex items-center justify-between gap-4 mb-3">
+                            <span class="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-primary">
+                                <i class="ph-fill ph-star-four text-honey"></i>
+                                Perfect Pairing
+                            </span>
+                            {% if let Some(rating) = product.rating %}
+                            <div class="flex items-center gap-1 text-sm">
+                                <div class="flex text-honey">
+                                    {% for _ in 0..rating.full_stars %}
+                                    <i class="ph-fill ph-star text-xs"></i>
+                                    {% endfor %}
+                                    {% if rating.has_half_star %}
+                                    <i class="ph-fill ph-star-half text-xs"></i>
+                                    {% endif %}
+                                </div>
+                                <span class="text-xs text-muted-foreground">({{ rating.count }})</span>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Title -->
+                        <h3 class="font-display text-2xl md:text-3xl font-semibold text-foreground mb-2 leading-tight">
+                            <a href="/products/{{ product.handle }}" class="hover:text-primary transition-colors">
+                                {{ product.title }}
+                            </a>
+                        </h3>
+
+                        <!-- Price -->
+                        <div class="flex items-baseline gap-3 mb-4">
+                            {% if let Some(compare_price) = product.compare_at_price %}
+                            <span class="text-2xl font-semibold text-primary">{{ product.price }}</span>
+                            <span class="text-base text-muted-foreground line-through">{{ compare_price }}</span>
+                            <span class="text-xs font-medium text-leaf bg-leaf/15 px-2.5 py-1 rounded-full">Save</span>
+                            {% else %}
+                            <span class="text-2xl font-semibold text-foreground">{{ product.price }}</span>
+                            {% endif %}
+                        </div>
+
+                        <!-- Benefits Preview -->
+                        {% if let Some(benefits) = product.benefits %}
+                        <div class="mb-5 text-sm text-muted-foreground leading-relaxed line-clamp-3
+                                    [&_strong]:text-foreground [&_strong]:font-medium
+                                    [&_ul]:list-none [&_ul]:p-0 [&_ul]:m-0
+                                    [&_li]:before:content-['✓_'] [&_li]:before:text-leaf">
+                            {{ benefits|sanitize_html|safe }}
+                        </div>
+                        {% endif %}
+
+                        <!-- Promotes Tags -->
+                        {% if !product.promotes.is_empty() %}
+                        <div class="flex flex-wrap gap-2 mb-5">
+                            {% for item in product.promotes %}
+                            <span class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium bg-primary/10 text-primary rounded-full">
+                                <i class="ph ph-check-circle text-[10px]"></i>
+                                {{ item }}
+                            </span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+
+                        <!-- Free-From Badges -->
+                        {% if !product.free_from.is_empty() %}
+                        <div class="flex flex-wrap gap-2 mb-6">
+                            {% for item in product.free_from %}
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium bg-leaf/10 text-leaf rounded-full">
+                                <i class="ph ph-leaf text-[9px]"></i>
+                                {{ item }}-Free
+                            </span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+
+                        <!-- CTA Buttons -->
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            <button type="button"
+                                    class="btn btn-primary flex-1 justify-center group"
+                                    hx-post="/cart/add"
+                                    hx-vals='{"variant_id": "{{ product.first_variant_id }}", "quantity": 1}'
+                                    hx-target="#cart-count"
+                                    hx-swap="innerHTML"
+                                    {% if product.first_variant_id.is_empty() %}disabled{% endif %}>
+                                <i class="ph ph-plus-circle"></i>
+                                Add to Cart
+                                <i class="ph ph-arrow-right ml-1 transition-transform group-hover:translate-x-1"></i>
+                            </button>
+                            <a href="/products/{{ product.handle }}" class="btn btn-outline justify-center">
+                                View Full Details
+                            </a>
+                        </div>
+
+                        <!-- Trust Signal -->
+                        <p class="mt-5 text-xs text-muted-foreground flex items-center gap-2">
+                            <i class="ph ph-heart-fill text-primary"></i>
+                            Loved by the Naked Pineapple Tribe
+                        </p>
+                    </div>
+                </div>
             </div>
         </section>
         {% endif %}

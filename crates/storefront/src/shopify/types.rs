@@ -1074,3 +1074,36 @@ pub struct GiftProduct {
     /// Shopify variant GID (for cart add operations).
     pub variant_id: String,
 }
+
+// =============================================================================
+// Cart Recommendations (from shop metafield)
+// =============================================================================
+
+/// Cart recommendations configuration from shop metafield.
+///
+/// This is stored in the `custom.cart_recommendations` shop metafield as JSON.
+/// Structure matches the admin schema in `crates/admin/schemas/cart_recommendations.json`.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct CartRecommendations {
+    /// Product relations defining which products to recommend for each source product.
+    #[serde(default)]
+    pub product_relations: Vec<ProductRelation>,
+}
+
+/// A relation between a source product and its recommended products.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProductRelation {
+    /// The source product GID (the product in the cart).
+    pub product_id: String,
+    /// Products to recommend when the source product is in the cart.
+    pub related_products: Vec<RelatedProduct>,
+}
+
+/// A product recommended when another product is in the cart.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RelatedProduct {
+    /// The recommended product GID.
+    pub product_id: String,
+    /// The variant GID (for add-to-cart functionality).
+    pub variant_id: String,
+}

@@ -36,14 +36,14 @@ use tracing::{debug, instrument, warn};
 use crate::config::ShopifyStorefrontConfig;
 use crate::shopify::ShopifyError;
 use crate::shopify::types::{
-    ActivePromotions, Cart, CartLineInput, CartLineUpdateInput, CartUserError, Collection,
-    CollectionConnection, Product, ProductConnection, ProductRecommendationIntent,
+    ActivePromotions, Cart, CartLineInput, CartLineUpdateInput, CartRecommendations, CartUserError,
+    Collection, CollectionConnection, Product, ProductConnection, ProductRecommendationIntent,
 };
 
 use cache::CacheValue;
 use conversions::{
     convert_add_user_error, convert_cart, convert_collection, convert_collection_connection,
-    convert_discount_user_error, convert_note_user_error, convert_product,
+    convert_discount_user_error, convert_note_user_error, convert_product, convert_product_by_id,
     convert_product_connection, convert_product_recommendation, convert_remove_user_error,
     convert_update_user_error, convert_user_error,
 };
@@ -307,6 +307,46 @@ impl StorefrontClient {
         data.product
             .map(|p| p.title)
             .ok_or_else(|| ShopifyError::NotFound(format!("Product not found: {id}")))
+    }
+
+    /// Get a product by its ID.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the product is not found or the API request fails.
+    #[instrument(skip(self), fields(id = %id))]
+    pub async fn get_product_by_id(&self, id: &str) -> Result<Product, ShopifyError> {
+        use queries::{GetProductById, get_product_by_id::Variables};
+
+        let cache_key = format!("product_id:{id}");
+
+        // Check cache
+        if let Some(CacheValue::Product(product)) = self.inner.cache.get(&cache_key).await {
+            debug!("Cache hit for product by ID");
+            return Ok(*product);
+        }
+
+        let variables = Variables {
+            id: id.to_string(),
+            image_count: Some(1),
+            variant_count: Some(1),
+        };
+
+        let data = self.execute::<GetProductById>(variables).await?;
+
+        let product_data = data
+            .product
+            .ok_or_else(|| ShopifyError::NotFound(format!("Product not found: {id}")))?;
+
+        let product = convert_product_by_id(product_data);
+
+        // Cache the result
+        self.inner
+            .cache
+            .insert(cache_key, CacheValue::Product(Box::new(product.clone())))
+            .await;
+
+        Ok(product)
     }
 
     /// Get a paginated list of products.
@@ -614,6 +654,71 @@ impl StorefrontClient {
             .await;
 
         Ok(filtered_promotions)
+    }
+
+    /// Get cart recommendations from shop metafield.
+    ///
+    /// Fetches the `custom.cart_recommendations` metafield and parses it as JSON.
+    /// Returns an empty `CartRecommendations` if the metafield doesn't exist or is invalid.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails. Invalid JSON or schema validation
+    /// failures are handled gracefully by returning default empty recommendations.
+    #[instrument(skip(self))]
+    pub async fn get_cart_recommendations(&self) -> Result<CartRecommendations, ShopifyError> {
+        let cache_key = "shop:cart_recommendations".to_string();
+
+        // Check cache
+        if let Some(CacheValue::CartRecommendations(recommendations)) =
+            self.inner.cache.get(&cache_key).await
+        {
+            debug!("Cache hit for cart recommendations");
+            return Ok(recommendations);
+        }
+
+        let variables = get_shop_metafield::Variables {
+            namespace: "custom".to_string(),
+            key: "cart_recommendations".to_string(),
+        };
+
+        let data = self.execute::<GetShopMetafield>(variables).await?;
+
+        let recommendations = if let Some(m) = data.shop.metafield {
+            debug!(raw_value = %m.value, "Got cart_recommendations metafield");
+
+            // Validate against schema before parsing
+            if let Err(e) = schema_validation::validate_cart_recommendations_str(&m.value) {
+                warn!(error = %e, value = %m.value, "Cart recommendations metafield failed schema validation");
+                CartRecommendations::default()
+            } else {
+                serde_json::from_str::<CartRecommendations>(&m.value)
+                    .inspect_err(|e| {
+                        warn!(error = %e, value = %m.value, "Failed to parse cart_recommendations metafield JSON");
+                    })
+                    .ok()
+                    .unwrap_or_default()
+            }
+        } else {
+            debug!("No cart_recommendations metafield found");
+            CartRecommendations::default()
+        };
+
+        debug!(
+            product_relations = recommendations.product_relations.len(),
+            "Loaded cart recommendations from metafield"
+        );
+
+        // Cache the result
+        self.inner
+            .cache
+            .insert(
+                cache_key,
+                CacheValue::CartRecommendations(recommendations.clone()),
+            )
+            .await;
+
+        Ok(recommendations)
     }
 
     // =========================================================================

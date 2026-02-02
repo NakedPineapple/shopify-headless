@@ -48,9 +48,10 @@ pub mod types;
 
 pub use admin::{
     ActivePromotions, ActivePromotionsWithDigest, AdminClient, AutomaticDiscount,
-    AutomaticDiscountType, DiscountCreateInput, DiscountUpdateInput, ExtractedRuleData,
-    MinimumRequirement, MinimumRequirementType, OAuthToken, ProductUpdateInput, ProgressTracking,
-    PromotionBanner, QualifyingRule, QualifyingRuleType,
+    AutomaticDiscountType, CartRecommendations, CartRecommendationsWithDigest, DiscountCreateInput,
+    DiscountUpdateInput, ExtractedRuleData, MinimumRequirement, MinimumRequirementType, OAuthToken,
+    ProductRelation, ProductUpdateInput, ProgressTracking, PromotionBanner, QualifyingRule,
+    QualifyingRuleType, RelatedProduct, ShopifyRecommendation,
 };
 pub use types::*;
 

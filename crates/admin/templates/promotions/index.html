@@ -10,6 +10,22 @@
 
 {% block content %}
 <div class="space-y-6">
+    <!-- Tab Navigation -->
+    <div class="flex items-center gap-1 border-b border-border">
+        <a href="/promotions?tab=banners"
+           class="px-4 py-2 text-sm font-medium border-b-2 transition-colors {% if active_tab == "banners" %}text-primary border-primary{% else %}text-muted-foreground border-transparent hover:text-foreground hover:border-border{% endif %}">
+            <i class="ph ph-megaphone mr-1.5"></i>
+            Promotion Banners
+        </a>
+        <a href="/promotions?tab=products"
+           class="px-4 py-2 text-sm font-medium border-b-2 transition-colors {% if active_tab == "products" %}text-primary border-primary{% else %}text-muted-foreground border-transparent hover:text-foreground hover:border-border{% endif %}">
+            <i class="ph ph-sparkle mr-1.5"></i>
+            Related Products
+        </a>
+    </div>
+
+    {% if active_tab == "banners" %}
+    <!-- Promotion Banners Tab Content -->
     <!-- Info Banner -->
     <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
         <div class="flex items-start gap-3">
@@ -198,6 +214,119 @@
             </div>
             {% endif %}
         </div>
+    </div>
+    {% endif %}
+
+    {% else %}
+    <!-- Related Products Tab Content -->
+    <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+        <div class="flex items-start gap-3">
+            <i class="ph ph-info text-blue-500 text-xl mt-0.5"></i>
+            <div>
+                <h3 class="text-sm font-medium text-blue-800 dark:text-blue-200">About Related Products</h3>
+                <p class="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                    Configure related product recommendations for the cart page. These are shown when a product is in the cart to encourage additional purchases.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-card rounded-xl border border-border overflow-hidden">
+        <div class="px-6 py-4 border-b border-border">
+            <h2 class="text-lg font-semibold text-foreground">Product Relations</h2>
+            <p class="text-sm text-muted-foreground mt-1">Configure which products to recommend when each product is in the cart</p>
+        </div>
+
+        {% if products.is_empty() %}
+        <div class="px-6 py-12 text-center">
+            <i class="ph ph-package text-4xl text-muted-foreground mb-3"></i>
+            <p class="text-muted-foreground">No products found</p>
+            <p class="text-sm text-muted-foreground mt-1">
+                Products will appear here once they are added to your Shopify store.
+            </p>
+        </div>
+        {% else %}
+        <div class="divide-y divide-border">
+            {% for product in products %}
+            <div class="px-6 py-4 hover:bg-accent/50 transition-colors">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-4">
+                        <!-- Product Image -->
+                        {% if let Some(image_url) = product.image_url %}
+                        <img src="{{ image_url }}" alt="{{ product.title }}" class="w-12 h-12 rounded-lg object-cover bg-muted">
+                        {% else %}
+                        <div class="w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
+                            <i class="ph ph-package text-muted-foreground text-xl"></i>
+                        </div>
+                        {% endif %}
+
+                        <!-- Product Info -->
+                        <div>
+                            <h3 class="font-medium text-foreground">{{ product.title }}</h3>
+                            <div class="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
+                                {% if product.related_count > 0 %}
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary rounded text-xs font-medium">
+                                    <i class="ph ph-link text-xs"></i>
+                                    {{ product.related_count }} related
+                                </span>
+                                {% else %}
+                                <span class="text-muted-foreground">No related products</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="flex items-center gap-2">
+                        {% if product.related_count > 0 %}
+                        <button type="button"
+                                hx-delete="/promotions/products/{{ product.short_id }}/related"
+                                hx-confirm="Remove all related products for {{ product.title }}?"
+                                hx-swap="none"
+                                hx-on::after-request="if(event.detail.successful) window.location.reload()"
+                                class="p-2 text-muted-foreground hover:text-destructive transition-colors"
+                                title="Remove all related products">
+                            <i class="ph ph-trash text-lg"></i>
+                        </button>
+                        {% endif %}
+                        <a href="/promotions/products/{{ product.short_id }}/edit"
+                           class="inline-flex items-center gap-2 px-3 py-2 bg-muted text-foreground rounded-lg text-sm hover:bg-accent transition-colors">
+                            <i class="ph ph-pencil"></i>
+                            Edit
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Show related products preview if configured -->
+                {% if product.related_count > 0 %}
+                <div class="mt-3 pl-16">
+                    <div class="flex flex-wrap gap-2">
+                        {% for related in product.related_products %}
+                        <span class="inline-flex items-center gap-1.5 px-2 py-1 bg-muted rounded text-xs text-muted-foreground">
+                            {% if let Some(url) = related.image_url %}
+                            <img src="{{ url }}" alt="{{ related.title }}" class="w-5 h-5 rounded object-cover">
+                            {% else %}
+                            <i class="ph ph-arrow-right text-xs"></i>
+                            {% endif %}
+                            {{ related.title }}
+                        </span>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+
+        {% if has_more_products %}
+        <div class="px-6 py-4 border-t border-border text-center">
+            <p class="text-sm text-muted-foreground">
+                Showing first {{ products.len() }} products.
+                <a href="/products" class="text-primary hover:underline">View all products</a>
+            </p>
+        </div>
+        {% endif %}
+        {% endif %}
     </div>
     {% endif %}
 </div>

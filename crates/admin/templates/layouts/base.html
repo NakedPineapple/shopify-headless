@@ -98,6 +98,11 @@
                         <i class="ph ph-tag text-xl"></i>
                         <span class="sidebar-text">Discounts</span>
                     </a>
+                    <a href="/promotions"
+                       class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors {% if current_path.starts_with("/promotions") %}bg-coral text-white{% else %}text-sidebar-foreground hover:bg-sidebar-accent hover:text-white{% endif %}">
+                        <i class="ph ph-sparkle text-xl"></i>
+                        <span class="sidebar-text">Promotions</span>
+                    </a>
                     <a href="/gift-cards"
                        class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors {% if current_path.starts_with("/gift-cards") %}bg-coral text-white{% else %}text-sidebar-foreground hover:bg-sidebar-accent hover:text-white{% endif %}">
                         <i class="ph ph-gift text-xl"></i>

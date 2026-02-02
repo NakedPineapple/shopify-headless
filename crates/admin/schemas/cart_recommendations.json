@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Cart Recommendations",
+  "description": "Per-product related products configuration for cart page recommendations",
+  "type": "object",
+  "properties": {
+    "product_relations": {
+      "type": "array",
+      "description": "Mapping of products to their related products",
+      "items": {
+        "type": "object",
+        "required": ["product_id", "related_products"],
+        "properties": {
+          "product_id": {
+            "type": "string",
+            "description": "Shopify product GID (e.g., gid://shopify/Product/123)"
+          },
+          "related_products": {
+            "type": "array",
+            "description": "Related products to recommend when this product is in cart",
+            "items": {
+              "type": "object",
+              "required": ["product_id", "variant_id"],
+              "properties": {
+                "product_id": {
+                  "type": "string",
+                  "description": "Shopify product GID (e.g., gid://shopify/Product/456)"
+                },
+                "variant_id": {
+                  "type": "string",
+                  "description": "Shopify variant GID for add-to-cart (e.g., gid://shopify/ProductVariant/789)"
+                }
+              }
+            },
+            "minItems": 1,
+            "maxItems": 10
+          }
+        }
+      }
+    }
+  }
+}

@@ -10,4 +10,7 @@ pub use cart::{
     convert_user_error,
 };
 pub use collections::{convert_collection, convert_collection_connection};
-pub use products::{convert_product, convert_product_connection, convert_product_recommendation};
+pub use products::{
+    convert_product, convert_product_by_id, convert_product_connection,
+    convert_product_recommendation,
+};

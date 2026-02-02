@@ -1,0 +1,33 @@
+# Storefront access token queries for accessing Storefront API from admin
+
+# Get existing storefront access tokens
+query GetStorefrontAccessTokens {
+  shop {
+    storefrontAccessTokens(first: 10) {
+      edges {
+        node {
+          id
+          title
+          accessToken
+          createdAt
+        }
+      }
+    }
+  }
+}
+
+# Create a new storefront access token
+mutation CreateStorefrontAccessToken($input: StorefrontAccessTokenInput!) {
+  storefrontAccessTokenCreate(input: $input) {
+    storefrontAccessToken {
+      id
+      title
+      accessToken
+      createdAt
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}

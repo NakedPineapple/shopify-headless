@@ -32,13 +32,19 @@ mod orders;
 mod products;
 mod promotions;
 pub mod queries;
+mod recommendations;
 pub mod schema_validation;
+mod storefront_recommendations;
 
 pub use promotions::{
     ActivePromotions, ActivePromotionsWithDigest, AutomaticDiscount, AutomaticDiscountType,
     ExtractedRuleData, MinimumRequirement, MinimumRequirementType, ProgressTracking,
     PromotionBanner, QualifyingRule, QualifyingRuleType,
 };
+pub use recommendations::{
+    CartRecommendations, CartRecommendationsWithDigest, ProductRelation, RelatedProduct,
+};
+pub use storefront_recommendations::ShopifyRecommendation;
 
 /// OAuth token for Admin API access.
 #[derive(Debug, Clone, Serialize, Deserialize)]

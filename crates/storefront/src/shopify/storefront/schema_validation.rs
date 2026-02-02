@@ -1,7 +1,7 @@
-//! JSON Schema validation for active promotions.
+//! JSON Schema validation for shop metafields.
 //!
-//! Validates the `custom.active_promotions` shop metafield JSON against
-//! the schema defined in `crates/admin/schemas/active_promotions.json`.
+//! Validates the `custom.active_promotions` and `custom.cart_recommendations`
+//! shop metafield JSON against their schemas defined in `crates/admin/schemas/`.
 
 use std::sync::LazyLock;
 
@@ -10,14 +10,25 @@ use serde_json::Value;
 use thiserror::Error;
 
 /// The JSON schema for `active_promotions`, embedded at compile time.
-/// The schema is shared with the admin crate.
-const SCHEMA_JSON: &str = include_str!("../../../../admin/schemas/active_promotions.json");
+const ACTIVE_PROMOTIONS_SCHEMA: &str =
+    include_str!("../../../../admin/schemas/active_promotions.json");
 
-/// Lazily compiled schema validator.
-static VALIDATOR: LazyLock<Validator> = LazyLock::new(|| {
-    let schema: Value =
-        serde_json::from_str(SCHEMA_JSON).expect("active_promotions.json schema is valid JSON");
+/// The JSON schema for `cart_recommendations`, embedded at compile time.
+const CART_RECOMMENDATIONS_SCHEMA: &str =
+    include_str!("../../../../admin/schemas/cart_recommendations.json");
+
+/// Lazily compiled schema validator for active promotions.
+static ACTIVE_PROMOTIONS_VALIDATOR: LazyLock<Validator> = LazyLock::new(|| {
+    let schema: Value = serde_json::from_str(ACTIVE_PROMOTIONS_SCHEMA)
+        .expect("active_promotions.json schema is valid JSON");
     Validator::new(&schema).expect("active_promotions.json is a valid JSON Schema")
+});
+
+/// Lazily compiled schema validator for cart recommendations.
+static CART_RECOMMENDATIONS_VALIDATOR: LazyLock<Validator> = LazyLock::new(|| {
+    let schema: Value = serde_json::from_str(CART_RECOMMENDATIONS_SCHEMA)
+        .expect("cart_recommendations.json schema is valid JSON");
+    Validator::new(&schema).expect("cart_recommendations.json is a valid JSON Schema")
 });
 
 /// Validation errors for active promotions.
@@ -38,7 +49,7 @@ pub enum ValidationError {
 ///
 /// Returns `ValidationError::SchemaValidation` if the JSON does not conform to the schema.
 pub fn validate(value: &Value) -> Result<(), ValidationError> {
-    let errors: Vec<String> = VALIDATOR
+    let errors: Vec<String> = ACTIVE_PROMOTIONS_VALIDATOR
         .iter_errors(value)
         .map(|e| format!("{} at {}", e, e.instance_path()))
         .collect();
@@ -61,6 +72,37 @@ pub fn validate(value: &Value) -> Result<(), ValidationError> {
 pub fn validate_str(json: &str) -> Result<(), ValidationError> {
     let value: Value = serde_json::from_str(json)?;
     validate(&value)
+}
+
+/// Validate a JSON value against the `cart_recommendations` schema.
+///
+/// # Errors
+///
+/// Returns `ValidationError::SchemaValidation` if the JSON does not conform to the schema.
+pub fn validate_cart_recommendations(value: &Value) -> Result<(), ValidationError> {
+    let errors: Vec<String> = CART_RECOMMENDATIONS_VALIDATOR
+        .iter_errors(value)
+        .map(|e| format!("{} at {}", e, e.instance_path()))
+        .collect();
+
+    if !errors.is_empty() {
+        return Err(ValidationError::SchemaValidation {
+            errors: errors.join("; "),
+        });
+    }
+
+    Ok(())
+}
+
+/// Validate a JSON string against the `cart_recommendations` schema.
+///
+/// # Errors
+///
+/// Returns `ValidationError::InvalidJson` if the string is not valid JSON.
+/// Returns `ValidationError::SchemaValidation` if the JSON does not conform to the schema.
+pub fn validate_cart_recommendations_str(json: &str) -> Result<(), ValidationError> {
+    let value: Value = serde_json::from_str(json)?;
+    validate_cart_recommendations(&value)
 }
 
 #[cfg(test)]

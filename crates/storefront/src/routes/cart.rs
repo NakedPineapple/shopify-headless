@@ -1032,23 +1032,84 @@ fn has_unclaimed_gwp_selection(cart: &CartView, suggestions: &[DiscountSuggestio
 
 /// Fetch and aggregate product recommendations for all cart items.
 ///
-/// Fetches complementary product recommendations for each cart item concurrently,
-/// then scores and ranks them. Products recommended by multiple cart items rank
-/// higher. Filters out products already in the cart.
+/// First checks the `custom.cart_recommendations` metafield for manually configured
+/// recommendations. Falls back to Shopify's ML recommendations for products without
+/// manual config. Products recommended by multiple cart items rank higher.
+/// Filters out products already in the cart.
 async fn fetch_cart_recommendations(state: &AppState, cart: &CartView) -> Vec<ProductView> {
     if cart.items.is_empty() {
         return Vec::new();
     }
 
-    // Collect product IDs from cart items
     let cart_product_ids: HashSet<_> = cart.items.iter().map(|i| i.product_id.as_str()).collect();
+    let manual_recommendations = state
+        .storefront()
+        .get_cart_recommendations()
+        .await
+        .unwrap_or_default();
 
-    // Fetch recommendations for all cart products concurrently
-    let futures: Vec<_> = cart
-        .items
+    // Build lookup and collect manual/ML products
+    let manual_lookup: HashMap<&str, &[crate::shopify::types::RelatedProduct]> =
+        manual_recommendations
+            .product_relations
+            .iter()
+            .map(|r| (r.product_id.as_str(), r.related_products.as_slice()))
+            .collect();
+
+    let (manual_product_ids, products_needing_ml) =
+        collect_recommendation_sources(&cart.items, &manual_lookup);
+
+    // Fetch ML recommendations for products without manual config
+    let ml_results = fetch_ml_recommendations(state, &products_needing_ml).await;
+
+    // Score and sort recommendations
+    let recommendation_scores =
+        score_recommendations(&cart_product_ids, &manual_product_ids, ml_results);
+
+    let mut sorted: Vec<_> = recommendation_scores.into_iter().collect();
+    sorted.sort_by(|a, b| b.1.1.cmp(&a.1.1));
+
+    // Get the single best recommendation
+    let Some((product_id, _)) = sorted.into_iter().next() else {
+        return Vec::new();
+    };
+
+    // Always fetch full product details to get metafields (rating, benefits, etc.)
+    state
+        .storefront()
+        .get_product_by_id(&product_id)
+        .await
+        .map_or_else(|_| Vec::new(), |product| vec![ProductView::from(&product)])
+}
+
+/// Collect product IDs from manual config and identify products needing ML fallback.
+fn collect_recommendation_sources(
+    items: &[CartItemView],
+    manual_lookup: &HashMap<&str, &[crate::shopify::types::RelatedProduct]>,
+) -> (Vec<String>, Vec<String>) {
+    let mut manual_product_ids = Vec::new();
+    let mut products_needing_ml = Vec::new();
+
+    for item in items {
+        if let Some(related) = manual_lookup.get(item.product_id.as_str()) {
+            manual_product_ids.extend(related.iter().map(|rp| rp.product_id.clone()));
+        } else {
+            products_needing_ml.push(item.product_id.clone());
+        }
+    }
+
+    (manual_product_ids, products_needing_ml)
+}
+
+/// Fetch ML recommendations for products without manual config.
+async fn fetch_ml_recommendations(
+    state: &AppState,
+    product_ids: &[String],
+) -> Vec<Vec<crate::shopify::types::Product>> {
+    let ml_futures: Vec<_> = product_ids
         .iter()
-        .map(|item| {
-            let product_id = item.product_id.clone();
+        .map(|product_id| {
+            let product_id = product_id.clone();
             let storefront = state.storefront().clone();
             async move {
                 storefront
@@ -1062,43 +1123,45 @@ async fn fetch_cart_recommendations(state: &AppState, cart: &CartView) -> Vec<Pr
         })
         .collect();
 
-    let results = future::join_all(futures).await;
+    future::join_all(ml_futures).await
+}
 
-    // Aggregate and score recommendations
-    // Products recommended by multiple cart items get higher scores
-    let mut recommendation_scores: HashMap<String, (crate::shopify::types::Product, u32)> =
-        HashMap::new();
+/// Score recommendations: manual config gets higher score than ML.
+fn score_recommendations(
+    cart_product_ids: &HashSet<&str>,
+    manual_product_ids: &[String],
+    ml_results: Vec<Vec<crate::shopify::types::Product>>,
+) -> HashMap<String, (Option<crate::shopify::types::Product>, u32)> {
+    let mut scores: HashMap<String, (Option<crate::shopify::types::Product>, u32)> = HashMap::new();
 
-    for products in results {
-        for product in products {
-            // Skip products already in cart
-            if cart_product_ids.contains(product.id.as_str()) {
-                continue;
-            }
-
-            recommendation_scores
-                .entry(product.id.clone())
-                .and_modify(|(_, score)| *score += 1)
-                .or_insert((product, 1));
+    // Manual recommendations get bonus score (10 points)
+    for product_id in manual_product_ids {
+        if !cart_product_ids.contains(product_id.as_str()) {
+            scores
+                .entry(product_id.clone())
+                .and_modify(|(_, score)| *score += 10)
+                .or_insert((None, 10));
         }
     }
 
-    // Sort by score (higher is better) and take top 4
-    let mut sorted: Vec<_> = recommendation_scores.into_values().collect();
-    sorted.sort_by(|a, b| b.1.cmp(&a.1));
+    // ML recommendations get 1 point each
+    for products in ml_results {
+        for product in products {
+            if !cart_product_ids.contains(product.id.as_str()) {
+                scores
+                    .entry(product.id.clone())
+                    .and_modify(|(existing, score)| {
+                        *score += 1;
+                        if existing.is_none() {
+                            *existing = Some(product.clone());
+                        }
+                    })
+                    .or_insert((Some(product), 1));
+            }
+        }
+    }
 
-    let recommended: Vec<ProductView> = sorted
-        .into_iter()
-        .take(4)
-        .map(|(product, _)| ProductView::from(&product))
-        .collect();
-
-    debug!(
-        recommendation_count = recommended.len(),
-        "Fetched cart recommendations"
-    );
-
-    recommended
+    scores
 }
 
 // =============================================================================

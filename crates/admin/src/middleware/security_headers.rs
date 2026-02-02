@@ -6,9 +6,7 @@ use axum::{
     extract::Request,
     http::{
         HeaderName, HeaderValue,
-        header::{
-            CONTENT_SECURITY_POLICY, REFERRER_POLICY, X_CONTENT_TYPE_OPTIONS, X_FRAME_OPTIONS,
-        },
+        header::{REFERRER_POLICY, X_CONTENT_TYPE_OPTIONS, X_FRAME_OPTIONS},
     },
     middleware::Next,
     response::Response,
@@ -21,7 +19,9 @@ use axum::{
 /// - `X-Content-Type-Options: nosniff` - Prevent MIME sniffing
 /// - `Referrer-Policy: no-referrer` - Zero referrer leakage
 /// - `Strict-Transport-Security` - Enforce HTTPS
-/// - `Content-Security-Policy` - Restrictive CSP for admin
+/// - `Cache-Control: no-store` - Prevent caching of sensitive data
+///
+/// Note: No CSP is applied because the admin panel runs behind Tailscale VPN.
 pub async fn security_headers_middleware(request: Request, next: Next) -> Response {
     let mut response = next.run(request).await;
     let headers = response.headers_mut();
@@ -42,24 +42,9 @@ pub async fn security_headers_middleware(request: Request, next: Next) -> Respon
         HeaderValue::from_static("max-age=31536000; includeSubDomains; preload"),
     );
 
-    // Restrictive CSP for admin panel
-    // Admin uses HTMX and Phosphor Icons, no external analytics
-    headers.insert(
-        CONTENT_SECURITY_POLICY,
-        HeaderValue::from_static(
-            "default-src 'self'; \
-             script-src 'self' 'unsafe-eval'; \
-             style-src 'self' 'unsafe-inline'; \
-             font-src 'self' data:; \
-             img-src 'self' data: https://cdn.shopify.com https://images.nakedpineapple.co; \
-             connect-src 'self'; \
-             frame-src 'none'; \
-             object-src 'none'; \
-             base-uri 'self'; \
-             form-action 'self'; \
-             frame-ancestors 'none'",
-        ),
-    );
+    // No CSP for admin panel - it runs behind Tailscale VPN with MDM verification.
+    // Network-level security makes CSP redundant, and it interferes with inline
+    // scripts needed for admin UI functionality.
 
     // Prevent caching of sensitive admin responses
     headers.insert(

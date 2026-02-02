@@ -1221,3 +1221,23 @@ pub struct SetShopMetafield;
     response_derives = "Debug, Clone"
 )]
 pub struct GetActiveAutomaticDiscounts;
+
+// =============================================================================
+// Storefront Access Token queries
+// =============================================================================
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/storefront_tokens.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct GetStorefrontAccessTokens;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/storefront_tokens.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct CreateStorefrontAccessToken;
