@@ -635,7 +635,17 @@ fn uuid_from_shopify_customer_id(customer_id: &str) -> Uuid {
     Uuid::from_bytes(uuid_bytes)
 }
 
-/// Validate password meets requirements.
+/// Maximum password length to prevent denial of service via hashing.
+const MAX_PASSWORD_LENGTH: usize = 128;
+
+/// Validate password meets security requirements.
+///
+/// Requirements:
+/// - At least 8 characters
+/// - At most 128 characters
+/// - At least one uppercase letter
+/// - At least one lowercase letter
+/// - At least one digit
 fn validate_password(password: &str) -> Result<(), AuthError> {
     if password.len() < MIN_PASSWORD_LENGTH {
         return Err(AuthError::WeakPassword(format!(
@@ -643,7 +653,32 @@ fn validate_password(password: &str) -> Result<(), AuthError> {
         )));
     }
 
-    // Add more validation as needed (uppercase, numbers, symbols, etc.)
+    if password.len() > MAX_PASSWORD_LENGTH {
+        return Err(AuthError::WeakPassword(format!(
+            "password must be {MAX_PASSWORD_LENGTH} characters or less"
+        )));
+    }
+
+    // Check for at least one uppercase letter
+    if !password.chars().any(|c| c.is_ascii_uppercase()) {
+        return Err(AuthError::WeakPassword(
+            "password must contain at least one uppercase letter".to_string(),
+        ));
+    }
+
+    // Check for at least one lowercase letter
+    if !password.chars().any(|c| c.is_ascii_lowercase()) {
+        return Err(AuthError::WeakPassword(
+            "password must contain at least one lowercase letter".to_string(),
+        ));
+    }
+
+    // Check for at least one digit
+    if !password.chars().any(|c| c.is_ascii_digit()) {
+        return Err(AuthError::WeakPassword(
+            "password must contain at least one number".to_string(),
+        ));
+    }
 
     Ok(())
 }

@@ -184,6 +184,13 @@ pub async fn security_headers_middleware(request: Request, next: Next) -> Respon
         HeaderValue::from_static("off"),
     );
 
+    // HSTS: Enforce HTTPS for 1 year, including subdomains
+    // Browsers ignore this header on HTTP connections, so it's safe to always include
+    headers.insert(
+        HeaderName::from_static("strict-transport-security"),
+        HeaderValue::from_static("max-age=31536000; includeSubDomains; preload"),
+    );
+
     response
 }
 

@@ -98,6 +98,9 @@ impl From<&ShopifyCart> for CartView {
 /// The attribute key used to mark GWP items.
 const GWP_RULE_ID_ATTR: &str = "_gwp_rule_id";
 
+/// Maximum quantity per cart line to prevent abuse.
+const MAX_QUANTITY_PER_LINE: u32 = 999;
+
 impl From<&crate::shopify::types::CartLine> for CartItemView {
     fn from(line: &crate::shopify::types::CartLine) -> Self {
         // Check if this line is a GWP by looking for the special attribute
@@ -484,7 +487,19 @@ pub async fn add(
 ) -> Response {
     debug!("Adding item to cart");
 
-    let quantity = i64::from(form.quantity.unwrap_or(1));
+    let raw_quantity = form.quantity.unwrap_or(1);
+    if raw_quantity == 0 || raw_quantity > MAX_QUANTITY_PER_LINE {
+        warn!(
+            quantity = raw_quantity,
+            "Invalid quantity in add-to-cart request"
+        );
+        return (
+            StatusCode::BAD_REQUEST,
+            Html("<span class=\"text-red-500\">Quantity must be between 1 and 999</span>"),
+        )
+            .into_response();
+    }
+    let quantity = i64::from(raw_quantity);
     let variant_id = form.variant_id.clone();
     let line = CartLineInput {
         merchandise_id: form.variant_id,
@@ -553,6 +568,18 @@ pub async fn update(
         }
         .into_response();
     };
+
+    if form.quantity > MAX_QUANTITY_PER_LINE {
+        warn!(
+            quantity = form.quantity,
+            "Invalid quantity in update-cart request"
+        );
+        return (
+            StatusCode::BAD_REQUEST,
+            Html("<span class=\"text-red-500\">Quantity must be 999 or less</span>"),
+        )
+            .into_response();
+    }
 
     let line_id = form.line_id.clone();
     let new_quantity = form.quantity;
@@ -781,6 +808,109 @@ pub async fn checkout(State(state): State<AppState>, session: Session) -> Respon
     }
 }
 
+/// Validate that a GWP claim is legitimate.
+///
+/// Checks that:
+/// 1. The rule ID format is valid (Shopify GID format)
+/// 2. The customer qualifies for the rule
+/// 3. The variant being claimed is valid for the GWP action
+fn validate_gwp_claim(suggestions: &[DiscountSuggestion], rule_id: &str, variant_id: &str) -> bool {
+    // Find the suggestion for this rule
+    suggestions.iter().any(|s| {
+        s.rule_id == rule_id
+            && s.is_qualified
+            && s.gwp_action.as_ref().is_some_and(|action| {
+                // Check if the variant is valid for this GWP
+                match action {
+                    GwpAction::AutoAdd {
+                        variant_id: gwp_variant,
+                        ..
+                    } => gwp_variant == variant_id,
+                    GwpAction::PromptSelection { product_ids } => {
+                        // For prompt selection, the variant should belong to one of the products
+                        // We can't verify this precisely without fetching variant data, but we can
+                        // at least check that the variant looks like a Shopify GID
+                        variant_id.starts_with("gid://shopify/ProductVariant/")
+                            && !product_ids.is_empty()
+                    }
+                    GwpAction::BrowseCollection { .. } => {
+                        // For browse collection, we allow any variant that looks valid
+                        // The actual validation happens when Shopify applies the discount
+                        variant_id.starts_with("gid://shopify/ProductVariant/")
+                    }
+                }
+            })
+    })
+}
+
+/// Validate a GWP claim and return an error response if validation fails.
+async fn validate_gwp_claim_request(
+    state: &AppState,
+    cart_id: &str,
+    rule_id: &str,
+    variant_id: &str,
+) -> Result<(), Response> {
+    // Validate rule_id format (must not be empty)
+    if rule_id.is_empty() {
+        warn!(rule_id = %rule_id, "Invalid GWP rule ID format");
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Html("<p class=\"text-sm text-destructive\">Invalid promotion</p>"),
+        )
+            .into_response());
+    }
+
+    // Fetch current cart
+    let shopify_cart = state.storefront().get_cart(cart_id).await.map_err(|e| {
+        tracing::error!(error = %e, "Failed to fetch cart for GWP validation");
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Html("<p class=\"text-sm text-destructive\">Failed to validate promotion</p>"),
+        )
+            .into_response()
+    })?;
+
+    let cart = CartView::from(&shopify_cart);
+
+    // Get active promotions
+    let promotions = state
+        .storefront()
+        .get_active_promotions()
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "Failed to fetch promotions for GWP validation");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Html("<p class=\"text-sm text-destructive\">Failed to validate promotion</p>"),
+            )
+                .into_response()
+        })?;
+
+    // Evaluate which rules the cart qualifies for
+    let match_result = discount_matcher::match_qualifying_rules(
+        &cart.items,
+        &cart.subtotal,
+        &promotions.progress_tracking,
+        &promotions.qualifying_rules,
+    );
+
+    // Validate this specific claim
+    if !validate_gwp_claim(&match_result.suggestions, rule_id, variant_id) {
+        warn!(
+            rule_id = %rule_id,
+            variant_id = %variant_id,
+            "GWP claim failed validation - customer may not qualify"
+        );
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Html("<p class=\"text-sm text-destructive\">You don't qualify for this promotion</p>"),
+        )
+            .into_response());
+    }
+
+    Ok(())
+}
+
 /// Claim a gift-with-purchase item (HTMX).
 ///
 /// Adds the free item to the cart with a special attribute marking it as a GWP.
@@ -802,7 +932,14 @@ pub async fn claim_gwp(
             .into_response();
     };
 
-    // Add the GWP item with a special attribute to track it
+    // Validate the GWP claim
+    if let Err(err_response) =
+        validate_gwp_claim_request(&state, &cart_id, &form.rule_id, &form.variant_id).await
+    {
+        return err_response;
+    }
+
+    // Add the validated GWP item with a special attribute to track it
     let line = CartLineInput {
         merchandise_id: form.variant_id.clone(),
         quantity: 1,

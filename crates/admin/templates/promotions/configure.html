@@ -95,6 +95,16 @@
                 </label>
 
                 <div id="banner-fields" class="space-y-4 {% if banner.is_none() %}hidden{% endif %}">
+                    <!-- Info box about automatic rule extraction -->
+                    <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+                        <div class="flex items-start gap-2">
+                            <i class="ph ph-info text-blue-500 mt-0.5"></i>
+                            <p class="text-xs text-blue-700 dark:text-blue-300">
+                                Qualifying rules (requirements, amounts, products) are automatically extracted from Shopify when you save. Configure display options below.
+                            </p>
+                        </div>
+                    </div>
+
                     <!-- Title -->
                     <div>
                         <label for="banner_title" class="block text-sm font-medium text-foreground mb-1">Title</label>

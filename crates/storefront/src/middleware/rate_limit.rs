@@ -130,3 +130,24 @@ pub fn api_rate_limiter() -> RateLimiterLayer {
         .expect("rate limiter config with per_second(1) and burst_size(50) is valid");
     GovernorLayer::new(Arc::new(config))
 }
+
+/// Create rate limiter for GWP claims: ~5 requests per minute per IP.
+///
+/// Configuration: 1 request every 12 seconds (replenish), burst of 3.
+/// This is stricter than the general API rate limit to prevent GWP abuse.
+///
+/// # Panics
+///
+/// This function will not panic. The configuration uses only valid positive
+/// integers (`per_second(12)` and `burst_size(3)`), which are always accepted
+/// by `GovernorConfigBuilder`.
+#[must_use]
+pub fn gwp_rate_limiter() -> RateLimiterLayer {
+    let config = GovernorConfigBuilder::default()
+        .key_extractor(CloudflareIpKeyExtractor)
+        .per_second(12) // Replenish 1 token every 12 seconds (~5/minute)
+        .burst_size(3) // Allow small burst of 3 requests
+        .finish()
+        .expect("rate limiter config with per_second(12) and burst_size(3) is valid");
+    GovernorLayer::new(Arc::new(config))
+}

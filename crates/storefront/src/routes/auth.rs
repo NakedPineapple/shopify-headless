@@ -22,6 +22,48 @@ use crate::models::CurrentCustomer;
 use crate::state::AppState;
 
 // =============================================================================
+// Password Validation
+// =============================================================================
+
+/// Minimum password length.
+const MIN_PASSWORD_LENGTH: usize = 8;
+
+/// Maximum password length to prevent denial of service via hashing.
+const MAX_PASSWORD_LENGTH: usize = 128;
+
+/// Validate password meets security requirements.
+///
+/// Requirements:
+/// - At least 8 characters
+/// - At most 128 characters
+/// - At least one uppercase letter
+/// - At least one lowercase letter
+/// - At least one digit
+fn validate_password_complexity(password: &str) -> Result<(), &'static str> {
+    if password.len() < MIN_PASSWORD_LENGTH {
+        return Err("password_too_short");
+    }
+
+    if password.len() > MAX_PASSWORD_LENGTH {
+        return Err("password_too_long");
+    }
+
+    if !password.chars().any(|c| c.is_ascii_uppercase()) {
+        return Err("password_needs_uppercase");
+    }
+
+    if !password.chars().any(|c| c.is_ascii_lowercase()) {
+        return Err("password_needs_lowercase");
+    }
+
+    if !password.chars().any(|c| c.is_ascii_digit()) {
+        return Err("password_needs_number");
+    }
+
+    Ok(())
+}
+
+// =============================================================================
 // Form Types
 // =============================================================================
 
@@ -197,6 +239,12 @@ pub async fn login(
                         token.expires_at,
                     );
 
+                    // Regenerate session ID to prevent session fixation attacks
+                    if let Err(e) = session.cycle_id().await {
+                        tracing::error!("Failed to regenerate session ID: {}", e);
+                        return Redirect::to("/auth/login?error=session").into_response();
+                    }
+
                     if let Err(e) = set_current_customer(&session, &current_customer).await {
                         tracing::error!("Failed to set session: {}", e);
                         return Redirect::to("/auth/login?error=session").into_response();
@@ -254,10 +302,14 @@ pub async fn register(
         return Redirect::to("/auth/register?error=password_mismatch").into_response();
     }
 
-    // Validate password length
-    if form.password.len() < 8 {
-        warn!("Registration failed: password too short");
-        return Redirect::to("/auth/register?error=password_too_short").into_response();
+    // Validate password complexity
+    if let Err(msg) = validate_password_complexity(&form.password) {
+        warn!("Registration failed: {}", msg);
+        return Redirect::to(&format!(
+            "/auth/register?error={}",
+            urlencoding::encode(msg)
+        ))
+        .into_response();
     }
 
     debug!("Calling Shopify API to create customer");
@@ -286,14 +338,19 @@ pub async fn register(
             .into_response()
         }
         Err(e) => {
+            // Log the actual error for debugging, but don't reveal to user
             warn!("Registration failed: {}", e);
-            // Check for specific error types
-            let error_msg = e.to_string();
-            if error_msg.contains("taken") || error_msg.contains("already") {
-                Redirect::to("/auth/register?error=email_taken").into_response()
-            } else {
-                Redirect::to("/auth/register?error=failed").into_response()
+
+            // Always show success page to prevent email enumeration
+            // If email exists, Shopify won't create duplicate, but user sees same message
+            // Users can use password reset if they forgot they had an account
+            info!(email = %form.email, "Registration attempt (may be duplicate)");
+            RegisterSuccessTemplate {
+                email: form.email.clone(),
+                analytics: state.config().analytics.clone(),
+                nonce,
             }
+            .into_response()
         }
     }
 }
@@ -353,6 +410,17 @@ pub async fn activate(
         return Redirect::to(&redirect_url).into_response();
     }
 
+    // Validate password complexity
+    if let Err(msg) = validate_password_complexity(&form.password) {
+        warn!("Account activation failed: {}", msg);
+        let redirect_url = format!(
+            "/auth/activate?url={}&error={}",
+            urlencoding::encode(&activation_url),
+            urlencoding::encode(msg)
+        );
+        return Redirect::to(&redirect_url).into_response();
+    }
+
     debug!("Calling Shopify API to activate customer");
     // Call Shopify Storefront API to activate customer
     match state
@@ -369,6 +437,12 @@ pub async fn activate(
                 SecretString::from(token.access_token),
                 token.expires_at,
             );
+
+            // Regenerate session ID to prevent session fixation attacks
+            if let Err(e) = session.cycle_id().await {
+                tracing::error!("Failed to regenerate session ID after activation: {}", e);
+                return Redirect::to("/auth/login?error=session").into_response();
+            }
 
             if let Err(e) = set_current_customer(&session, &current_customer).await {
                 tracing::error!("Failed to set session after activation: {}", e);
@@ -482,6 +556,17 @@ pub async fn reset_password(
         return Redirect::to(&redirect_url).into_response();
     }
 
+    // Validate password complexity
+    if let Err(msg) = validate_password_complexity(&form.password) {
+        warn!("Password reset failed: {}", msg);
+        let redirect_url = format!(
+            "/auth/reset-password?url={}&error={}",
+            urlencoding::encode(&reset_url),
+            urlencoding::encode(msg)
+        );
+        return Redirect::to(&redirect_url).into_response();
+    }
+
     debug!("Calling Shopify API to reset password");
     // Call Shopify Storefront API to reset password
     match state
@@ -498,6 +583,15 @@ pub async fn reset_password(
                 SecretString::from(token.access_token),
                 token.expires_at,
             );
+
+            // Regenerate session ID to prevent session fixation attacks
+            if let Err(e) = session.cycle_id().await {
+                tracing::error!(
+                    "Failed to regenerate session ID after password reset: {}",
+                    e
+                );
+                return Redirect::to("/auth/login?error=session").into_response();
+            }
 
             if let Err(e) = set_current_customer(&session, &current_customer).await {
                 tracing::error!("Failed to set session after password reset: {}", e);

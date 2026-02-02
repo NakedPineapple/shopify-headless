@@ -80,6 +80,7 @@ tower_governor = "0.8"
 
 # Security
 secrecy = { workspace = true }
+ammonia = "4"
 
 # Async utilities
 futures = { workspace = true }

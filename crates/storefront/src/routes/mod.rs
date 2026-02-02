@@ -76,7 +76,7 @@ use axum::{
     routing::{get, post},
 };
 
-use crate::middleware::{api_rate_limiter, auth_rate_limiter};
+use crate::middleware::{api_rate_limiter, auth_rate_limiter, gwp_rate_limiter};
 use crate::state::AppState;
 
 /// Create the auth routes router.
@@ -142,7 +142,14 @@ pub fn collection_routes() -> Router<AppState> {
 /// Create the cart routes router.
 ///
 /// Rate limited to ~100 requests per minute per IP to prevent cart abuse.
+/// The GWP claim endpoint has stricter rate limiting (~5/min) to prevent abuse.
 pub fn cart_routes() -> Router<AppState> {
+    // GWP claim route with stricter rate limiting
+    let gwp_route = Router::new()
+        .route("/claim-gwp", post(cart::claim_gwp))
+        .layer(gwp_rate_limiter());
+
+    // Other cart routes with standard API rate limiting
     Router::new()
         .route("/", get(cart::show))
         .route("/add", post(cart::add))
@@ -150,7 +157,7 @@ pub fn cart_routes() -> Router<AppState> {
         .route("/remove", post(cart::remove))
         .route("/count", get(cart::count))
         .route("/summary", get(cart::summary))
-        .route("/claim-gwp", post(cart::claim_gwp))
+        .merge(gwp_route)
         .layer(api_rate_limiter())
 }
 

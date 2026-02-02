@@ -166,6 +166,9 @@ async fn main() {
         .merge(routes::routes())
         .nest_service("/static", ServeDir::new("crates/admin/static"))
         .layer(session_layer)
+        .layer(axum::middleware::from_fn(
+            middleware::security_headers_middleware,
+        ))
         .layer(
             TraceLayer::new_for_http()
                 .make_span_with(|request: &axum::http::Request<_>| {

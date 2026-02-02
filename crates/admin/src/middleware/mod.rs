@@ -11,10 +11,12 @@
 //! 7. Auth guard (require authentication for most routes)
 
 pub mod auth;
+pub mod security_headers;
 pub mod session;
 
 pub use auth::{
     OptionalAdminAuth, RequireAdminAuth, RequireSuperAdmin, clear_current_admin,
     require_super_admin, set_current_admin,
 };
+pub use security_headers::security_headers_middleware;
 pub use session::create_session_layer;

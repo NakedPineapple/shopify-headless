@@ -888,6 +888,12 @@ pub async fn update_image_alt(
     }
 }
 
+/// Allowed file extensions for product images.
+const ALLOWED_IMAGE_EXTENSIONS: &[&str] = &["jpg", "jpeg", "png", "gif", "webp"];
+
+/// Maximum file size (10 MB).
+const MAX_FILE_SIZE: usize = 10 * 1024 * 1024;
+
 /// Extracted file data from multipart form.
 struct ExtractedFile {
     filename: String,
@@ -896,16 +902,44 @@ struct ExtractedFile {
 }
 
 /// Extract file from multipart form data.
+///
+/// Validates file extension, content type, and size before returning.
 async fn extract_file_from_multipart(
     mut multipart: axum::extract::Multipart,
 ) -> Result<ExtractedFile, &'static str> {
     while let Ok(Some(field)) = multipart.next_field().await {
         if field.name() == Some("file") {
             let filename = field.file_name().unwrap_or("image.jpg").to_string();
+
+            // Validate file extension
+            let extension = filename.rsplit('.').next().unwrap_or("").to_lowercase();
+
+            if !ALLOWED_IMAGE_EXTENSIONS.contains(&extension.as_str()) {
+                return Err("Invalid file type. Allowed: jpg, jpeg, png, gif, webp");
+            }
+
             let content_type = field.content_type().unwrap_or("image/jpeg").to_string();
+
+            // Validate content type matches extension
+            let valid_content_type = match extension.as_str() {
+                "jpg" | "jpeg" => content_type.starts_with("image/jpeg"),
+                "png" => content_type.starts_with("image/png"),
+                "gif" => content_type.starts_with("image/gif"),
+                "webp" => content_type.starts_with("image/webp"),
+                _ => false,
+            };
+
+            if !valid_content_type {
+                return Err("Content type does not match file extension");
+            }
 
             match field.bytes().await {
                 Ok(bytes) => {
+                    // Validate file size
+                    if bytes.len() > MAX_FILE_SIZE {
+                        return Err("File too large. Maximum size is 10 MB");
+                    }
+
                     return Ok(ExtractedFile {
                         filename,
                         content_type,

@@ -502,7 +502,7 @@
                             [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:space-y-1.5
                             [&_li]:text-muted-foreground
                             [&_a]:text-primary [&_a]:underline [&_a]:underline-offset-2 hover:[&_a]:text-primary/80">
-                    {{ product.description|safe }}
+                    {{ product.description|sanitize_html|safe }}
                 </div>
 
                 <!-- Benefits -->
@@ -514,7 +514,7 @@
                                 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1.5
                                 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:space-y-1.5
                                 [&_li]:text-muted-foreground">
-                        {{ benefits|safe }}
+                        {{ benefits|sanitize_html|safe }}
                     </div>
                 </div>
                 {% endif %}
@@ -591,12 +591,12 @@
                                 prose-strong:text-foreground"
                          role="tabpanel"
                          id="panel-ingredients">
-                        {{ ingredients|safe }}
+                        {{ ingredients|sanitize_html|safe }}
 
                         <!-- Warning as subtle note -->
                         {% if let Some(warning) = product.warning %}
                         <p class="mt-8 pt-4 border-t border-border/50 text-sm text-terracotta">
-                            <span class="font-medium">Note:</span> {{ warning|safe }}
+                            <span class="font-medium">Note:</span> {{ warning|sanitize_html|safe }}
                         </p>
                         {% endif %}
                     </div>
@@ -607,13 +607,13 @@
                                 prose-strong:text-foreground"
                          role="tabpanel"
                          id="panel-directions">
-                        {{ directions|safe }}
+                        {{ directions|sanitize_html|safe }}
 
                         <!-- Warning as subtle note if no ingredients tab -->
                         {% if product.ingredients.is_none() %}
                         {% if let Some(warning) = product.warning %}
                         <p class="mt-8 pt-4 border-t border-border/50 text-sm text-terracotta">
-                            <span class="font-medium">Note:</span> {{ warning|safe }}
+                            <span class="font-medium">Note:</span> {{ warning|sanitize_html|safe }}
                         </p>
                         {% endif %}
                         {% endif %}
@@ -652,7 +652,7 @@
 
                 {% if let Some(warning) = product.warning %}
                 <p class="mt-6 text-sm text-terracotta">
-                    <span class="font-medium">Note:</span> {{ warning|safe }}
+                    <span class="font-medium">Note:</span> {{ warning|sanitize_html|safe }}
                 </p>
                 {% endif %}
             </div>

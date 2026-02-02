@@ -163,6 +163,12 @@ pub async fn callback(
         }
     };
 
+    // Regenerate session ID to prevent session fixation attacks
+    if let Err(e) = session.cycle_id().await {
+        error!(error = %e, "Failed to regenerate session ID after OAuth");
+        return Redirect::to("/auth/login?error=session").into_response();
+    }
+
     // Store the customer token in the session
     if let Err(e) = session
         .insert(session_keys::SHOPIFY_CUSTOMER_TOKEN, &token)

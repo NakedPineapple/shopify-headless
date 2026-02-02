@@ -144,7 +144,7 @@
 
                     {# Article body #}
                     <div class="prose prose-lg">
-                        {{ post.content_html|safe }}
+                        {{ post.content_html|sanitize_html|safe }}
                     </div>
 
                     {# Share & Tags #}

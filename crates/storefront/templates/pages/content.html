@@ -19,7 +19,7 @@
             </header>
 
             <div class="prose">
-                {{ content_html|safe }}
+                {{ content_html|sanitize_html|safe }}
             </div>
         </div>
     </div>

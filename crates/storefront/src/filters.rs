@@ -355,3 +355,86 @@ pub fn markdown(value: impl Display, _env: &dyn askama::Values) -> askama::Resul
 
     Ok(result.to_string())
 }
+
+// =============================================================================
+// HTML Sanitization
+// =============================================================================
+
+/// Sanitize HTML content, allowing only safe tags and attributes.
+///
+/// This filter should be used on any HTML content from external sources
+/// (Shopify product descriptions, blog content, etc.) before marking it
+/// as safe in templates.
+///
+/// Allowed tags: p, br, strong, em, b, i, u, ul, ol, li, h1-h6, a, img, span, div,
+///               table, thead, tbody, tr, th, td, blockquote, pre, code, hr
+///
+/// Links automatically get `rel="noopener noreferrer"` for security.
+///
+/// Usage in templates: `{{ product.description|sanitize_html|safe }}`
+///
+/// # Errors
+///
+/// This filter is infallible, however Askama requires filters return `askama::Result`.
+#[allow(clippy::unnecessary_wraps)]
+#[askama::filter_fn]
+pub fn sanitize_html(html: impl Display, _env: &dyn askama::Values) -> askama::Result<String> {
+    use std::collections::HashSet;
+
+    // Define allowed tags for product/content HTML
+    let allowed_tags: HashSet<&str> = [
+        // Text formatting
+        "p",
+        "br",
+        "strong",
+        "em",
+        "b",
+        "i",
+        "u",
+        "s",
+        "mark",
+        "small",
+        "sub",
+        "sup",
+        // Lists
+        "ul",
+        "ol",
+        "li",
+        // Headings
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6",
+        // Links and media
+        "a",
+        "img",
+        // Containers
+        "span",
+        "div",
+        "blockquote",
+        "pre",
+        "code",
+        "hr",
+        // Tables
+        "table",
+        "thead",
+        "tbody",
+        "tfoot",
+        "tr",
+        "th",
+        "td",
+        "caption",
+    ]
+    .into_iter()
+    .collect();
+
+    let sanitized = ammonia::Builder::default()
+        .tags(allowed_tags)
+        .link_rel(Some("noopener noreferrer"))
+        .clean(&html.to_string())
+        .to_string();
+
+    Ok(sanitized)
+}

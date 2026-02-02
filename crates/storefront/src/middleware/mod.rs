@@ -10,9 +10,11 @@
 //! 6. User context (add user info to tracing span)
 //! 7. Security headers (CSP, HSTS, etc.)
 //! 8. Rate limiting (governor)
+//! 9. CSRF protection (double-submit cookie pattern)
 
 pub mod auth;
 pub mod csp;
+pub mod csrf;
 pub mod rate_limit;
 pub mod request_id;
 pub mod security_headers;
@@ -21,7 +23,8 @@ pub mod shopify_customer;
 
 pub use auth::{OptionalAuth, RequireAuth, clear_current_customer, set_current_customer};
 pub use csp::{CspNonce, csp_nonce_middleware};
-pub use rate_limit::{api_rate_limiter, auth_rate_limiter};
+pub use csrf::{CsrfToken, csrf_protection, get_or_create_csrf_token};
+pub use rate_limit::{api_rate_limiter, auth_rate_limiter, gwp_rate_limiter};
 pub use request_id::request_id_middleware;
 pub use security_headers::security_headers_middleware;
 pub use session::create_session_layer;

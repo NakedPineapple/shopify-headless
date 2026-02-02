@@ -72,7 +72,7 @@
         {# Description #}
         {% if !product.description.is_empty() %}
         <div class="prose prose-sm text-muted-foreground border-t border-b border-border py-3">
-            {{ product.description|safe }}
+            {{ product.description|sanitize_html|safe }}
         </div>
         {% endif %}
 
