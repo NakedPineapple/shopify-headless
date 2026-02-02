@@ -647,3 +647,430 @@ pub enum ProductRecommendationIntent {
     /// Complementary products.
     Complementary,
 }
+
+// =============================================================================
+// Promotion Types (from shop metafield)
+// =============================================================================
+
+/// Active promotions configuration from shop metafield.
+///
+/// This is stored in the `custom.active_promotions` shop metafield as JSON.
+/// Structure matches the admin schema in `crates/admin/schemas/active_promotions.json`.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct ActivePromotions {
+    /// Promotion banners to display on cart page (display config only).
+    #[serde(default)]
+    pub banners: Vec<PromotionBanner>,
+    /// Progress tracking display configuration.
+    #[serde(default)]
+    pub progress_tracking: Vec<ProgressTracking>,
+    /// Qualifying rules for discount matching (from Shopify API).
+    #[serde(default)]
+    pub qualifying_rules: Vec<QualifyingRule>,
+}
+
+// =============================================================================
+// Banner Types (display only)
+// =============================================================================
+
+/// A promotion banner to display on the cart page.
+///
+/// Contains only display configuration - scheduling comes from the linked qualifying rule.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PromotionBanner {
+    /// Shopify discount node ID (short form, e.g., "1518395293975").
+    #[serde(rename = "discount_id")]
+    pub id: String,
+    /// Display title (e.g., "Free Bronzer with Any Purchase").
+    pub title: String,
+    /// Optional description.
+    #[serde(default)]
+    pub description: Option<String>,
+    /// Optional badge text (e.g., "LIMITED TIME").
+    #[serde(default)]
+    pub badge_text: Option<String>,
+    /// Icon name (e.g., "gift", "truck").
+    #[serde(default = "default_icon")]
+    pub icon: String,
+    /// Accent color (e.g., "honey", "primary").
+    #[serde(default = "default_accent_color")]
+    pub accent_color: String,
+    /// Optional CTA button text.
+    #[serde(default)]
+    pub cta_text: Option<String>,
+    /// Optional CTA button URL.
+    #[serde(default)]
+    pub cta_url: Option<String>,
+    /// Display priority (lower numbers appear first).
+    #[serde(default)]
+    pub priority: i32,
+}
+
+fn default_icon() -> String {
+    "gift".to_string()
+}
+
+fn default_accent_color() -> String {
+    "honey".to_string()
+}
+
+// =============================================================================
+// Progress Tracking Types (display only)
+// =============================================================================
+
+/// Progress tracking display configuration.
+///
+/// Contains only display configuration - matching logic comes from `QualifyingRule`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProgressTracking {
+    /// Shopify discount node ID (short form, e.g., "1518395293975").
+    #[serde(rename = "discount_id")]
+    pub id: String,
+    /// Icon name (Phosphor icon).
+    #[serde(default = "default_icon")]
+    pub icon: String,
+    /// Accent color.
+    #[serde(default = "default_accent_color")]
+    pub accent_color: String,
+    /// Optional CTA button text.
+    #[serde(default)]
+    pub cta_text: Option<String>,
+    /// Optional CTA button URL.
+    #[serde(default)]
+    pub cta_url: Option<String>,
+    /// Template for suggestion message (use `{needed}` as placeholder).
+    #[serde(default = "default_suggestion_template")]
+    pub suggestion_template: String,
+    /// Optional badge text above suggestion.
+    #[serde(default)]
+    pub suggestion_badge_text: Option<String>,
+    /// Template for qualified message.
+    #[serde(default = "default_qualified_template")]
+    pub qualified_template: String,
+    /// Optional badge text above qualified message.
+    #[serde(default)]
+    pub qualified_badge_text: Option<String>,
+    /// Priority for display ordering (lower = higher priority).
+    #[serde(default)]
+    pub priority: i32,
+    /// Whether to show a progress bar.
+    #[serde(default = "default_true")]
+    pub show_progress_bar: bool,
+    /// Whether to hide when the customer qualifies.
+    #[serde(default)]
+    pub hide_when_qualified: bool,
+}
+
+fn default_suggestion_template() -> String {
+    "Add {needed} more to qualify!".to_string()
+}
+
+fn default_qualified_template() -> String {
+    "You qualify!".to_string()
+}
+
+const fn default_true() -> bool {
+    true
+}
+
+// =============================================================================
+// Qualifying Rule Types (matching logic from Shopify API)
+// =============================================================================
+
+/// A qualifying rule for discount matching.
+///
+/// This data is extracted from the Shopify Admin API and should NOT be
+/// manually edited. The structure mirrors Shopify's discount types.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct QualifyingRule {
+    /// Shopify discount node ID (short form).
+    #[serde(rename = "discount_id")]
+    pub id: String,
+    /// Rule type matching Shopify's discount types.
+    #[serde(rename = "type")]
+    pub rule_type: QualifyingRuleType,
+    /// When the discount starts (from Shopify).
+    #[serde(default)]
+    pub starts_at: Option<String>,
+    /// When the discount ends (from Shopify).
+    #[serde(default)]
+    pub ends_at: Option<String>,
+    /// What discounts this combines with.
+    #[serde(default)]
+    pub combines_with: Option<CombinesWith>,
+    /// Amount off products configuration (for `AMOUNT_OFF_PRODUCTS` type).
+    #[serde(default)]
+    pub amount_off_products: Option<AmountOffProducts>,
+    /// Amount off order configuration (for `AMOUNT_OFF_ORDER` type).
+    #[serde(default)]
+    pub amount_off_order: Option<AmountOffOrder>,
+    /// Buy X Get Y configuration (for `BUY_X_GET_Y` type).
+    #[serde(default)]
+    pub bxgy: Option<Bxgy>,
+    /// Free shipping configuration (for `FREE_SHIPPING` type).
+    #[serde(default)]
+    pub free_shipping: Option<FreeShipping>,
+}
+
+/// Type of qualifying rule (matches Shopify discount types).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum QualifyingRuleType {
+    /// Percentage or fixed amount off specific products.
+    AmountOffProducts,
+    /// Buy X Get Y discount.
+    BuyXGetY,
+    /// Percentage or fixed amount off the entire order.
+    AmountOffOrder,
+    /// Free shipping threshold.
+    FreeShipping,
+}
+
+/// What other discounts this discount combines with.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CombinesWith {
+    /// Combines with product discounts.
+    #[serde(default)]
+    pub product_discounts: bool,
+    /// Combines with order discounts.
+    #[serde(default)]
+    pub order_discounts: bool,
+    /// Combines with shipping discounts.
+    #[serde(default)]
+    pub shipping_discounts: bool,
+}
+
+/// Configuration for amount off products discount.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AmountOffProducts {
+    /// The discount value (percentage or fixed amount).
+    pub discount_value: DiscountValue,
+    /// Which products the discount applies to.
+    #[serde(default)]
+    pub applies_to: Option<AppliesTo>,
+    /// Minimum requirement to qualify.
+    #[serde(default)]
+    pub minimum_requirement: Option<MinimumRequirement>,
+}
+
+/// Configuration for amount off order discount.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AmountOffOrder {
+    /// The discount value (percentage or fixed amount).
+    pub discount_value: DiscountValue,
+    /// Minimum requirement to qualify.
+    #[serde(default)]
+    pub minimum_requirement: Option<MinimumRequirement>,
+}
+
+/// Configuration for Buy X Get Y discount.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Bxgy {
+    /// What the customer must buy to qualify.
+    pub customer_buys: CustomerBuys,
+    /// What the customer gets.
+    pub customer_gets: CustomerGets,
+}
+
+/// Configuration for free shipping discount.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FreeShipping {
+    /// Minimum requirement to qualify.
+    #[serde(default)]
+    pub minimum_requirement: Option<MinimumRequirement>,
+}
+
+/// Discount value (percentage or fixed amount).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DiscountValue {
+    /// Type of discount value.
+    #[serde(rename = "type")]
+    pub value_type: DiscountValueType,
+    /// Percentage (0-100) if type is PERCENTAGE.
+    #[serde(default)]
+    pub percentage: Option<f64>,
+    /// Fixed amount if type is `FIXED_AMOUNT`.
+    #[serde(default)]
+    pub amount: Option<String>,
+}
+
+/// Type of discount value.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum DiscountValueType {
+    /// Percentage off.
+    Percentage,
+    /// Fixed amount off.
+    FixedAmount,
+}
+
+/// Which products a discount applies to.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AppliesTo {
+    /// Type of targeting.
+    #[serde(rename = "type")]
+    pub applies_type: AppliesToType,
+    /// Collection IDs (for `SPECIFIC_COLLECTIONS`).
+    #[serde(default)]
+    pub collection_ids: Option<Vec<String>>,
+    /// Product IDs (for `SPECIFIC_PRODUCTS`).
+    #[serde(default)]
+    pub product_ids: Option<Vec<String>>,
+}
+
+/// Type of product targeting.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum AppliesToType {
+    /// All products.
+    All,
+    /// Specific collections.
+    SpecificCollections,
+    /// Specific products.
+    SpecificProducts,
+}
+
+/// Minimum requirement to qualify for a discount.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MinimumRequirement {
+    /// Requirement type.
+    #[serde(rename = "type")]
+    pub requirement_type: MinimumRequirementType,
+    /// Required subtotal amount.
+    #[serde(default)]
+    pub amount: Option<String>,
+    /// Required quantity.
+    #[serde(default)]
+    pub quantity: Option<u32>,
+}
+
+/// Type of minimum requirement.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum MinimumRequirementType {
+    /// No minimum requirement.
+    None,
+    /// Minimum subtotal amount.
+    Amount,
+    /// Minimum quantity.
+    Quantity,
+}
+
+/// Customer buys requirement for BXGY discounts.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CustomerBuys {
+    /// Requirement type (quantity or amount).
+    #[serde(rename = "type")]
+    pub requirement_type: BuysRequirementType,
+    /// Required quantity (for QUANTITY type).
+    #[serde(default)]
+    pub quantity: Option<u32>,
+    /// Required amount (for AMOUNT type).
+    #[serde(default)]
+    pub amount: Option<String>,
+    /// Which items qualify.
+    #[serde(default)]
+    pub items: Option<DiscountItems>,
+}
+
+/// Requirement type for customer buys.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum BuysRequirementType {
+    /// Quantity-based requirement.
+    Quantity,
+    /// Amount-based requirement.
+    Amount,
+}
+
+/// Which items qualify for a discount.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DiscountItems {
+    /// Type of targeting.
+    #[serde(rename = "type")]
+    pub items_type: DiscountItemsType,
+    /// Product IDs (for `SPECIFIC_PRODUCTS`).
+    #[serde(default)]
+    pub product_ids: Option<Vec<String>>,
+    /// Collection IDs (for `SPECIFIC_COLLECTIONS`).
+    #[serde(default)]
+    pub collection_ids: Option<Vec<String>>,
+}
+
+/// Type of discount items targeting.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum DiscountItemsType {
+    /// Specific products.
+    SpecificProducts,
+    /// Specific collections.
+    SpecificCollections,
+}
+
+/// What the customer gets for BXGY discounts.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CustomerGets {
+    /// Number of items the customer gets.
+    #[serde(default = "default_one")]
+    pub quantity: u32,
+    /// Which items the customer can choose from.
+    #[serde(default)]
+    pub items: Option<CustomerGetsItems>,
+    /// Discount value on the items.
+    #[serde(default)]
+    pub discount_value: Option<CustomerGetsDiscountValue>,
+}
+
+const fn default_one() -> u32 {
+    1
+}
+
+/// Discount value for customer gets.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CustomerGetsDiscountValue {
+    /// Type of discount.
+    #[serde(rename = "type")]
+    pub value_type: CustomerGetsValueType,
+    /// Percentage (0-100) if type is PERCENTAGE.
+    #[serde(default)]
+    pub percentage: Option<f64>,
+    /// Fixed amount if type is `AMOUNT_OFF_EACH`.
+    #[serde(default)]
+    pub amount: Option<String>,
+}
+
+/// Type of customer gets discount value.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum CustomerGetsValueType {
+    /// Percentage off.
+    Percentage,
+    /// Fixed amount off each item.
+    AmountOffEach,
+    /// Free (100% off).
+    Free,
+}
+
+/// Which items the customer can receive for a BXGY discount.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CustomerGetsItems {
+    /// Type of targeting.
+    #[serde(rename = "type")]
+    pub items_type: DiscountItemsType,
+    /// Products eligible as gifts (for `SPECIFIC_PRODUCTS`).
+    /// Each entry includes `product_id` and `variant_id` for auto-add functionality.
+    #[serde(default)]
+    pub products: Option<Vec<GiftProduct>>,
+    /// Collection IDs (for `SPECIFIC_COLLECTIONS`).
+    #[serde(default)]
+    pub collection_ids: Option<Vec<String>>,
+}
+
+/// A product that can be received as a gift in a BXGY discount.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GiftProduct {
+    /// Shopify product GID.
+    pub product_id: String,
+    /// Shopify variant GID (for cart add operations).
+    pub variant_id: String,
+}

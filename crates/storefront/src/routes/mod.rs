@@ -19,6 +19,8 @@
 //! POST /cart/update            - Update quantity (returns cart_items fragment)
 //! POST /cart/remove            - Remove item (returns cart_items fragment)
 //! GET  /cart/count             - Cart count badge (fragment)
+//! GET  /cart/summary           - Order summary with promotions (fragment)
+//! POST /cart/claim-gwp         - Claim gift-with-purchase item
 //!
 //! # Checkout
 //! GET  /checkout               - Redirect to Shopify checkout
@@ -147,6 +149,8 @@ pub fn cart_routes() -> Router<AppState> {
         .route("/update", post(cart::update))
         .route("/remove", post(cart::remove))
         .route("/count", get(cart::count))
+        .route("/summary", get(cart::summary))
+        .route("/claim-gwp", post(cart::claim_gwp))
         .layer(api_rate_limiter())
 }
 

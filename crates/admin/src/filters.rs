@@ -1,18 +1,29 @@
 //! Custom Askama template filters.
 
-#![allow(clippy::unnecessary_wraps)]
-// Allow non_snake_case: The askama::filter_fn macro generates wrapper functions with
-// double underscores (e.g., `with__env`) for multi-argument filters. This is internal
-// to the macro and cannot be changed.
+// The askama::filter_fn macro generates code that triggers these lints:
+// - non_snake_case: wrapper functions with double underscores (e.g., `with__env`)
+// - missing_errors_doc: generated `execute` method lacks doc comments
+// - inline_always: generated `execute` method uses #[inline(always)]
+// - unused_self: generated struct has unused self in execute method
+// - unnecessary_wraps: askama requires Result return but functions are infallible
 #![allow(non_snake_case)]
+#![allow(clippy::missing_errors_doc)]
+#![allow(clippy::inline_always)]
+#![allow(clippy::unused_self)]
+#![allow(clippy::unnecessary_wraps)]
 
 use std::fmt::Display;
 
 use chrono::{DateTime, Utc};
+use chrono_tz::{America::Denver, Etc::GMTPlus12};
 
 /// Returns the current year.
 ///
 /// Usage in templates: `{{ ""|current_year }}`
+///
+/// # Errors
+///
+/// This filter is infallible, however Askama requires filters return `askama::Result`.
 #[allow(clippy::unnecessary_wraps)]
 #[askama::filter_fn]
 pub fn current_year(_value: impl Display, _env: &dyn askama::Values) -> askama::Result<i32> {
@@ -23,6 +34,11 @@ pub fn current_year(_value: impl Display, _env: &dyn askama::Values) -> askama::
 /// Humanize a datetime to a relative or absolute format.
 ///
 /// Usage in templates: `{{ some_datetime|humanize_datetime }}`
+///
+/// # Errors
+///
+/// This filter is infallible, however Askama requires filters return `askama::Result`.
+#[allow(clippy::unnecessary_wraps)]
 #[askama::filter_fn]
 pub fn humanize_datetime(dt: &DateTime<Utc>, _env: &dyn askama::Values) -> askama::Result<String> {
     let now = Utc::now();
@@ -64,6 +80,11 @@ pub fn humanize_datetime(dt: &DateTime<Utc>, _env: &dyn askama::Values) -> askam
 /// Humanize a datetime string (ISO 8601) to a relative or absolute format.
 ///
 /// Usage in templates: `{{ some_datetime_string|humanize_datetime_str }}`
+///
+/// # Errors
+///
+/// This filter is infallible, however Askama requires filters return `askama::Result`.
+#[allow(clippy::unnecessary_wraps)]
 #[askama::filter_fn]
 pub fn humanize_datetime_str(dt_str: &str, _env: &dyn askama::Values) -> askama::Result<String> {
     // Parse ISO 8601 datetime string
@@ -116,6 +137,11 @@ pub fn humanize_datetime_str(dt_str: &str, _env: &dyn askama::Values) -> askama:
 /// - `123` -> `123` (already numeric)
 ///
 /// Usage in templates: `{{ id|extract_id }}`
+///
+/// # Errors
+///
+/// This filter is infallible, however Askama requires filters return `askama::Result`.
+#[allow(clippy::unnecessary_wraps)]
 #[askama::filter_fn]
 pub fn extract_id(gid: &str, _env: &dyn askama::Values) -> askama::Result<String> {
     Ok(gid.split('/').next_back().unwrap_or(gid).to_string())
@@ -124,6 +150,11 @@ pub fn extract_id(gid: &str, _env: &dyn askama::Values) -> askama::Result<String
 /// Format datetime as relative time (e.g., "5 minutes ago").
 ///
 /// Usage in templates: `{{ dt|datetime_relative }}`
+///
+/// # Errors
+///
+/// This filter is infallible, however Askama requires filters return `askama::Result`.
+#[allow(clippy::unnecessary_wraps)]
 #[askama::filter_fn]
 pub fn datetime_relative(dt: &DateTime<Utc>, _env: &dyn askama::Values) -> askama::Result<String> {
     let now = Utc::now();
@@ -148,6 +179,11 @@ pub fn datetime_relative(dt: &DateTime<Utc>, _env: &dyn askama::Values) -> askam
 /// Format datetime as short format (e.g., "Jan 15, 2:30 PM").
 ///
 /// Usage in templates: `{{ dt|datetime_short }}`
+///
+/// # Errors
+///
+/// This filter is infallible, however Askama requires filters return `askama::Result`.
+#[allow(clippy::unnecessary_wraps)]
 #[askama::filter_fn]
 pub fn datetime_short(dt: &DateTime<Utc>, _env: &dyn askama::Values) -> askama::Result<String> {
     Ok(dt.format("%b %d, %l:%M %p").to_string())
@@ -156,6 +192,11 @@ pub fn datetime_short(dt: &DateTime<Utc>, _env: &dyn askama::Values) -> askama::
 /// Extract a string from a JSON Value, or return empty string.
 ///
 /// Usage in templates: `{{ value|as_str_or_empty }}`
+///
+/// # Errors
+///
+/// This filter is infallible, however Askama requires filters return `askama::Result`.
+#[allow(clippy::unnecessary_wraps)]
 #[askama::filter_fn]
 pub fn as_str_or_empty(
     value: &serde_json::Value,
@@ -167,6 +208,11 @@ pub fn as_str_or_empty(
 /// Pretty print JSON value.
 ///
 /// Usage in templates: `{{ value|json_pretty }}`
+///
+/// # Errors
+///
+/// This filter is infallible, however Askama requires filters return `askama::Result`.
+#[allow(clippy::unnecessary_wraps)]
 #[askama::filter_fn]
 pub fn json_pretty(value: &serde_json::Value, _env: &dyn askama::Values) -> askama::Result<String> {
     Ok(serde_json::to_string_pretty(value).unwrap_or_else(|_| value.to_string()))
@@ -175,6 +221,11 @@ pub fn json_pretty(value: &serde_json::Value, _env: &dyn askama::Values) -> aska
 /// Extract a boolean from a JSON Value, or return false.
 ///
 /// Usage in templates: `{{ value|as_bool }}`
+///
+/// # Errors
+///
+/// This filter is infallible, however Askama requires filters return `askama::Result`.
+#[allow(clippy::unnecessary_wraps)]
 #[askama::filter_fn]
 pub fn as_bool(value: &serde_json::Value, _env: &dyn askama::Values) -> askama::Result<bool> {
     Ok(value.as_bool().unwrap_or(false))
@@ -183,6 +234,11 @@ pub fn as_bool(value: &serde_json::Value, _env: &dyn askama::Values) -> askama::
 /// Truncate a string to a maximum length.
 ///
 /// Usage in templates: `{{ value|truncate(10) }}`
+///
+/// # Errors
+///
+/// This filter is infallible, however Askama requires filters return `askama::Result`.
+#[allow(clippy::unnecessary_wraps)]
 #[askama::filter_fn]
 pub fn truncate(value: &str, len: usize, _env: &dyn askama::Values) -> askama::Result<String> {
     if value.len() <= len {
@@ -195,6 +251,11 @@ pub fn truncate(value: &str, len: usize, _env: &dyn askama::Values) -> askama::R
 /// Format a datetime string (ISO format) as a short date.
 ///
 /// Usage in templates: `{{ dt_str|format_date }}`
+///
+/// # Errors
+///
+/// This filter is infallible, however Askama requires filters return `askama::Result`.
+#[allow(clippy::unnecessary_wraps)]
 #[askama::filter_fn]
 pub fn format_date(dt_str: &str, _env: &dyn askama::Values) -> askama::Result<String> {
     // Try to parse ISO 8601 datetime string
@@ -207,4 +268,48 @@ pub fn format_date(dt_str: &str, _env: &dyn askama::Values) -> askama::Result<St
     }
     // Return first 10 chars (date portion) as fallback
     Ok(dt_str.chars().take(10).collect())
+}
+
+/// Format a datetime string (ISO format) in MST/MDT timezone.
+///
+/// Uses America/Denver timezone which automatically handles DST transitions.
+///
+/// Usage in templates: `{{ dt_str|format_datetime_mst }}`
+///
+/// # Errors
+///
+/// This filter is infallible, however Askama requires filters return `askama::Result`.
+#[allow(clippy::unnecessary_wraps)]
+#[askama::filter_fn]
+pub fn format_datetime_mst(dt_str: &str, _env: &dyn askama::Values) -> askama::Result<String> {
+    if let Ok(dt) = DateTime::parse_from_rfc3339(dt_str) {
+        let mountain_dt = dt.with_timezone(&Denver);
+        // %Z gives the timezone abbreviation (MST or MDT)
+        return Ok(mountain_dt.format("%b %d, %Y at %l:%M %p %Z").to_string());
+    }
+    // Fallback to original string
+    Ok(dt_str.to_string())
+}
+
+/// Format a datetime string (ISO format) in AOE (Anywhere on Earth) timezone.
+///
+/// AOE is UTC-12, the last timezone to reach any given date. This is useful for
+/// end dates where you want to show when something truly ends worldwide.
+///
+/// Usage in templates: `{{ dt_str|format_datetime_aoe }}`
+///
+/// # Errors
+///
+/// This filter is infallible, however Askama requires filters return `askama::Result`.
+#[allow(clippy::unnecessary_wraps)]
+#[askama::filter_fn]
+pub fn format_datetime_aoe(dt_str: &str, _env: &dyn askama::Values) -> askama::Result<String> {
+    // AOE is UTC-12 (Anywhere on Earth), which is Etc/GMT+12 in tz database
+    // (Etc timezones have inverted signs from POSIX convention)
+    if let Ok(dt) = DateTime::parse_from_rfc3339(dt_str) {
+        let aoe_dt = dt.with_timezone(&GMTPlus12);
+        return Ok(format!("{} AOE", aoe_dt.format("%b %d, %Y at %l:%M %p")));
+    }
+    // Fallback to original string
+    Ok(dt_str.to_string())
 }

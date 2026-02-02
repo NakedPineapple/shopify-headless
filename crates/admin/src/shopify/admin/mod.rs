@@ -30,7 +30,15 @@ mod media;
 mod order_editing;
 mod orders;
 mod products;
+mod promotions;
 pub mod queries;
+pub mod schema_validation;
+
+pub use promotions::{
+    ActivePromotions, ActivePromotionsWithDigest, AutomaticDiscount, AutomaticDiscountType,
+    ExtractedRuleData, MinimumRequirement, MinimumRequirementType, ProgressTracking,
+    PromotionBanner, QualifyingRule, QualifyingRuleType,
+};
 
 /// OAuth token for Admin API access.
 #[derive(Debug, Clone, Serialize, Deserialize)]

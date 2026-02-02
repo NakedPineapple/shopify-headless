@@ -45,6 +45,14 @@ pub struct GetProducts;
 )]
 pub struct GetProductRecommendations;
 
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/storefront/schema.json",
+    query_path = "graphql/storefront/queries/products.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct GetProductTitleById;
+
 // Collection queries
 #[derive(GraphQLQuery)]
 #[graphql(
@@ -184,3 +192,12 @@ pub struct CustomerAccessTokenDelete;
     response_derives = "Debug, Clone"
 )]
 pub struct GetCustomerByToken;
+
+// Shop queries
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/storefront/schema.json",
+    query_path = "graphql/storefront/queries/shop.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct GetShopMetafield;

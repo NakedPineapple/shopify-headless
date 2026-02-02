@@ -51,7 +51,7 @@ pub async fn tool_examples(
 
     // Read and validate YAML before connecting to database
     let content = tokio::fs::read_to_string(path).await?;
-    let config: ToolExamplesConfig = serde_yaml::from_str(&content)?;
+    let config: ToolExamplesConfig = serde_yaml_ng::from_str(&content)?;
 
     info!(tools = config.len(), "Parsed configuration");
 

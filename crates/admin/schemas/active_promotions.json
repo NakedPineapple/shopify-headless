@@ -1,0 +1,269 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "banners": {
+      "type": "array",
+      "description": "Promotional banners displayed in cart sidebar",
+      "items": {
+        "type": "object",
+        "required": ["discount_id", "title"],
+        "properties": {
+          "discount_id": {
+            "type": "string",
+            "description": "Shopify discount node ID (e.g., gid://shopify/DiscountAutomaticNode/123)"
+          },
+          "title": {
+            "type": "string",
+            "description": "Main headline text (e.g., Free Gift with Purchase)"
+          },
+          "description": {
+            "type": "string",
+            "description": "Smaller supporting text below the title"
+          },
+          "badge_text": {
+            "type": "string",
+            "description": "Small uppercase pill/tag above the title (e.g., LIMITED TIME)"
+          },
+          "icon": {
+            "type": "string",
+            "description": "Phosphor icon name (e.g., gift, truck, percent)"
+          },
+          "accent_color": {
+            "type": "string",
+            "description": "CSS color override (e.g., honey, primary, leaf)"
+          },
+          "cta_text": {
+            "type": "string",
+            "description": "Button text (e.g., Shop Skincare)"
+          },
+          "cta_url": { "type": "string", "description": "Button link URL" },
+          "priority": {
+            "type": "integer",
+            "description": "Display order (lower = higher priority)",
+            "default": 0
+          }
+        }
+      }
+    },
+    "progress_tracking": {
+      "type": "array",
+      "description": "Progress indicators for discounts displayed in cart sidebar",
+      "items": {
+        "type": "object",
+        "required": ["discount_id"],
+        "properties": {
+          "discount_id": {
+            "type": "string",
+            "description": "Shopify discount node ID (e.g., gid://shopify/DiscountAutomaticNode/123)"
+          },
+          "icon": {
+            "type": "string",
+            "description": "Phosphor icon name (e.g., gift, truck, percent)"
+          },
+          "accent_color": {
+            "type": "string",
+            "description": "CSS color override (e.g., honey, primary, leaf)"
+          },
+          "cta_text": {
+            "type": "string",
+            "description": "Button text (e.g., Shop Skincare)"
+          },
+          "cta_url": { "type": "string", "description": "Button link URL" },
+          "suggestion_template": {
+            "type": "string",
+            "description": "Use {needed} for remaining amount/quantity"
+          },
+          "suggestion_badge_text": {
+            "type": "string",
+            "description": "Small uppercase pill/tag above the suggestion (e.g., LIMITED TIME)"
+          },
+          "qualified_template": {
+            "type": "string",
+            "description": "Message when qualified (e.g., You qualify for a free gift!)"
+          },
+          "qualified_badge_text": {
+            "type": "string",
+            "description": "Small uppercase pill/tag above the qualified (e.g., LIMITED TIME)"
+          },
+          "priority": {
+            "type": "integer",
+            "description": "Display order (lower = higher priority)",
+            "default": 0
+          },
+          "show_progress_bar": { "type": "boolean", "default": true },
+          "hide_when_qualified": { "type": "boolean", "default": false }
+        }
+      }
+    },
+    "qualifying_rules": {
+      "type": "array",
+      "description": "Matching rules for discounts",
+      "items": {
+        "type": "object",
+        "required": ["discount_id", "type"],
+        "properties": {
+          "discount_id": {
+            "type": "string",
+            "description": "Shopify discount node ID (e.g., gid://shopify/DiscountAutomaticNode/123)"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["AMOUNT_OFF_PRODUCTS", "BUY_X_GET_Y", "AMOUNT_OFF_ORDER", "FREE_SHIPPING"]
+          },
+          "starts_at": { "type": "string", "format": "date-time" },
+          "ends_at": { "type": "string", "format": "date-time" },
+          "combines_with": {
+            "type": "object",
+            "properties": {
+              "product_discounts": { "type": "boolean" },
+              "order_discounts": { "type": "boolean" },
+              "shipping_discounts": { "type": "boolean" }
+            }
+          },
+          "amount_off_products": {
+            "type": "object",
+            "properties": {
+              "discount_value": {
+                "type": "object",
+                "properties": {
+                  "type": { "type": "string", "enum": ["PERCENTAGE", "FIXED_AMOUNT"] },
+                  "percentage": { "type": "number" },
+                  "amount": { "type": "string" }
+                }
+              },
+              "applies_to": {
+                "type": "object",
+                "properties": {
+                  "type": { "type": "string", "enum": ["ALL", "SPECIFIC_COLLECTIONS", "SPECIFIC_PRODUCTS"] },
+                  "collection_ids": {
+                    "type": "array",
+                    "items": { "type": "string" }
+                  },
+                  "product_ids": {
+                    "type": "array",
+                    "items": { "type": "string" }
+                  }
+                }
+              },
+              "minimum_requirement": {
+                "type": "object",
+                "properties": {
+                  "type": { "type": "string", "enum": ["NONE", "AMOUNT", "QUANTITY"] },
+                  "amount": { "type": "string" },
+                  "quantity": { "type": "integer" }
+                }
+              }
+            }
+          },
+          "amount_off_order": {
+            "type": "object",
+            "properties": {
+              "discount_value": {
+                "type": "object",
+                "properties": {
+                  "type": { "type": "string", "enum": ["PERCENTAGE", "FIXED_AMOUNT"] },
+                  "percentage": { "type": "number" },
+                  "amount": { "type": "string" }
+                }
+              },
+              "minimum_requirement": {
+                "type": "object",
+                "properties": {
+                  "type": { "type": "string", "enum": ["NONE", "AMOUNT", "QUANTITY"] },
+                  "amount": { "type": "string" },
+                  "quantity": { "type": "integer" }
+                }
+              }
+            }
+          },
+          "bxgy": {
+            "type": "object",
+            "properties": {
+              "customer_buys": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": ["QUANTITY", "AMOUNT"]
+                  },
+                  "quantity": { "type": "integer" },
+                  "amount": { "type": "string" },
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "type": { "type": "string", "enum": ["SPECIFIC_PRODUCTS", "SPECIFIC_COLLECTIONS"] },
+                      "product_ids": {
+                        "type": "array",
+                        "items": { "type": "string" }
+                      },
+                      "collection_ids": {
+                        "type": "array",
+                        "items": { "type": "string" }
+                      }
+                    }
+                  }
+                }
+              },
+              "customer_gets": {
+                "type": "object",
+                "properties": {
+                  "quantity": { "type": "integer" },
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "type": { "type": "string", "enum": ["SPECIFIC_PRODUCTS", "SPECIFIC_COLLECTIONS"] },
+                      "products": {
+                        "type": "array",
+                        "description": "Products eligible as gifts, with variant IDs for auto-add",
+                        "items": {
+                          "type": "object",
+                          "required": ["product_id", "variant_id"],
+                          "properties": {
+                            "product_id": {
+                              "type": "string",
+                              "description": "Shopify product GID (e.g., gid://shopify/Product/123)"
+                            },
+                            "variant_id": {
+                              "type": "string",
+                              "description": "Shopify variant GID for cart add (e.g., gid://shopify/ProductVariant/456)"
+                            }
+                          }
+                        }
+                      },
+                      "collection_ids": {
+                        "type": "array",
+                        "items": { "type": "string" }
+                      }
+                    }
+                  },
+                  "discount_value": {
+                    "type": "object",
+                    "properties": {
+                      "type": { "type": "string", "enum": ["PERCENTAGE", "AMOUNT_OFF_EACH", "FREE"] },
+                      "percentage": { "type": "number" },
+                      "amount": { "type": "string" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "free_shipping": {
+            "type": "object",
+            "properties": {
+              "minimum_requirement": {
+                "type": "object",
+                "properties": {
+                  "type": { "type": "string", "enum": ["NONE", "AMOUNT", "QUANTITY"] },
+                  "amount": { "type": "string" },
+                  "quantity": { "type": "integer" }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1193,3 +1193,31 @@ pub struct GetMarketingActivities;
     response_derives = "Debug, Clone"
 )]
 pub struct GetMarketingActivity;
+
+// =============================================================================
+// Promotions/Metafield queries
+// =============================================================================
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/promotions.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct GetShopMetafield;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/promotions.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct SetShopMetafield;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/admin/schema.json",
+    query_path = "graphql/admin/queries/promotions.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct GetActiveAutomaticDiscounts;

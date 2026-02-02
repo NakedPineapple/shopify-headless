@@ -61,6 +61,7 @@ pub mod newsletter;
 pub mod orders;
 pub mod payouts;
 pub mod products;
+pub mod promotions;
 pub mod settings;
 pub mod setup;
 pub mod shiphero_settings;
@@ -406,6 +407,8 @@ pub fn routes() -> Router<AppState> {
         .merge(financials::router())
         // Newsletter (Klaviyo)
         .merge(newsletter::router())
+        // Promotions (cart page upsells)
+        .merge(promotions::router())
         // Auth
         .merge(auth::router())
         .merge(setup::router())

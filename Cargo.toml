@@ -74,6 +74,8 @@ reqwest = { version = "0.13", features = ["json", "stream", "form", "multipart"]
 # Auth
 webauthn-rs = { version = "0.5", features = ["danger-allow-state-serialisation", "conditional-ui"] }
 webauthn-rs-proto = "0.5"
+# NOTE: tower-sessions pinned to 0.14 because tower-sessions-sqlx-store 0.15.0
+# depends on tower-sessions-core 0.14.0, causing version conflict with tower-sessions 0.15.0
 tower-sessions = "0.14"
 tower-sessions-sqlx-store = { version = "0.15", features = ["postgres"] }
 
@@ -94,3 +96,9 @@ moka = { version = "0.12", features = ["future"] }
 
 # Security
 secrecy = "0.10"
+
+# Async utilities
+futures = "0.3"
+
+# JSON Schema validation
+jsonschema = "0.40"

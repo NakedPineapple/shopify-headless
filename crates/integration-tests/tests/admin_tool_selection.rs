@@ -264,7 +264,7 @@ cancel_order_low_level_shopify:
     - "Cancel order #1001"
 "#;
 
-    let config: ToolExamplesConfig = serde_yaml::from_str(yaml).expect("Should parse YAML");
+    let config: ToolExamplesConfig = serde_yaml_ng::from_str(yaml).expect("Should parse YAML");
     assert_eq!(config.len(), 2);
 
     let get_orders = config

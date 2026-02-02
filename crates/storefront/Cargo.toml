@@ -58,6 +58,7 @@ tracing-subscriber = { workspace = true }
 # Utilities
 dotenvy = { workspace = true }
 url = { workspace = true }
+rust_decimal = { workspace = true }
 base64 = { workspace = true }
 uuid = { workspace = true }
 chrono = { workspace = true }
@@ -80,12 +81,18 @@ tower_governor = "0.8"
 # Security
 secrecy = { workspace = true }
 
+# Async utilities
+futures = { workspace = true }
+
 # URL encoding
 urlencoding = "2.1"
 
 # Search
 tantivy = "0.25"
-regex = "1.12.2"
+regex = "1.12"
+
+# JSON Schema validation
+jsonschema = { workspace = true }
 
 [build-dependencies]
 sha2 = "0.10"

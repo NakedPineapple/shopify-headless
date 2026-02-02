@@ -87,7 +87,7 @@ pub async fn seed_from_file<P: AsRef<Path>>(
         .await
         .map_err(|e| ToolSelectionError::Io(format!("Failed to read {}: {}", path.display(), e)))?;
 
-    let config: ToolExamplesConfig = serde_yaml::from_str(&content)
+    let config: ToolExamplesConfig = serde_yaml_ng::from_str(&content)
         .map_err(|e| ToolSelectionError::Config(format!("Failed to parse YAML: {e}")))?;
 
     seed_from_config(pool, embeddings, config, clear_existing).await
@@ -286,7 +286,7 @@ cancel_order:
     - "Cancel order #1001"
 "#;
 
-        let config: ToolExamplesConfig = serde_yaml::from_str(yaml).expect("valid YAML");
+        let config: ToolExamplesConfig = serde_yaml_ng::from_str(yaml).expect("valid YAML");
         assert_eq!(config.len(), 2);
         let get_orders = config.get("get_orders").expect("get_orders exists");
         assert_eq!(get_orders.domain, "orders");

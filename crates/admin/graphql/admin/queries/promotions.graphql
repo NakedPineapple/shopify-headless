@@ -1,0 +1,283 @@
+# Promotions management queries and mutations for Shopify Admin API
+#
+# Used for managing the active_promotions shop metafield that controls
+# which automatic discounts are displayed on the storefront cart page.
+
+# =============================================================================
+# Shop Metafield Queries
+# =============================================================================
+
+# Get a shop metafield by namespace and key
+query GetShopMetafield($namespace: String!, $key: String!) {
+  shop {
+    metafield(namespace: $namespace, key: $key) {
+      id
+      namespace
+      key
+      value
+      type
+      compareDigest
+    }
+  }
+}
+
+# =============================================================================
+# Shop Metafield Mutations
+# =============================================================================
+
+# Set or update a shop metafield
+mutation SetShopMetafield($metafields: [MetafieldsSetInput!]!) {
+  metafieldsSet(metafields: $metafields) {
+    metafields {
+      id
+      namespace
+      key
+      value
+      type
+    }
+    userErrors {
+      field
+      message
+      code
+    }
+  }
+}
+
+# =============================================================================
+# Active Automatic Discounts Query
+# =============================================================================
+
+# Query active automatic discounts (only automatic, not code-based)
+# Used to show which discounts can be surfaced on the cart page
+query GetActiveAutomaticDiscounts($first: Int = 50, $query: String) {
+  discountNodes(first: $first, query: $query) {
+    edges {
+      node {
+        id
+        discount {
+          __typename
+          ... on DiscountAutomaticBasic {
+            title
+            status
+            startsAt
+            endsAt
+            asyncUsageCount
+            combinesWith {
+              orderDiscounts
+              productDiscounts
+              shippingDiscounts
+            }
+            customerGets {
+              value {
+                __typename
+                ... on DiscountPercentage {
+                  percentage
+                }
+                ... on DiscountAmount {
+                  amount {
+                    amount
+                    currencyCode
+                  }
+                }
+                ... on DiscountOnQuantity {
+                  quantity {
+                    quantity
+                  }
+                  effect {
+                    __typename
+                    ... on DiscountPercentage {
+                      percentage
+                    }
+                  }
+                }
+              }
+              items {
+                __typename
+                ... on AllDiscountItems {
+                  allItems
+                }
+                ... on DiscountProducts {
+                  products(first: 50) {
+                    edges {
+                      node {
+                        id
+                        title
+                      }
+                    }
+                  }
+                }
+                ... on DiscountCollections {
+                  collections(first: 50) {
+                    edges {
+                      node {
+                        id
+                        title
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            minimumRequirement {
+              __typename
+              ... on DiscountMinimumQuantity {
+                greaterThanOrEqualToQuantity
+              }
+              ... on DiscountMinimumSubtotal {
+                greaterThanOrEqualToSubtotal {
+                  amount
+                  currencyCode
+                }
+              }
+            }
+          }
+          ... on DiscountAutomaticBxgy {
+            title
+            status
+            startsAt
+            endsAt
+            asyncUsageCount
+            combinesWith {
+              orderDiscounts
+              productDiscounts
+              shippingDiscounts
+            }
+            customerBuys {
+              value {
+                __typename
+                ... on DiscountQuantity {
+                  quantity
+                }
+                ... on DiscountPurchaseAmount {
+                  amount
+                }
+              }
+              items {
+                __typename
+                ... on AllDiscountItems {
+                  allItems
+                }
+                ... on DiscountProducts {
+                  products(first: 50) {
+                    edges {
+                      node {
+                        id
+                        title
+                      }
+                    }
+                  }
+                }
+                ... on DiscountCollections {
+                  collections(first: 50) {
+                    edges {
+                      node {
+                        id
+                        title
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            customerGets {
+              value {
+                __typename
+                ... on DiscountPercentage {
+                  percentage
+                }
+                ... on DiscountAmount {
+                  amount {
+                    amount
+                    currencyCode
+                  }
+                }
+                ... on DiscountOnQuantity {
+                  quantity {
+                    quantity
+                  }
+                  effect {
+                    __typename
+                    ... on DiscountPercentage {
+                      percentage
+                    }
+                  }
+                }
+              }
+              items {
+                __typename
+                ... on AllDiscountItems {
+                  allItems
+                }
+                ... on DiscountProducts {
+                  products(first: 50) {
+                    edges {
+                      node {
+                        id
+                        title
+                        handle
+                        featuredMedia {
+                          __typename
+                          preview {
+                            image {
+                              url
+                            }
+                          }
+                        }
+                        variants(first: 1) {
+                          edges {
+                            node {
+                              id
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+                ... on DiscountCollections {
+                  collections(first: 50) {
+                    edges {
+                      node {
+                        id
+                        title
+                        handle
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+          ... on DiscountAutomaticFreeShipping {
+            title
+            status
+            startsAt
+            endsAt
+            asyncUsageCount
+            combinesWith {
+              orderDiscounts
+              productDiscounts
+              shippingDiscounts
+            }
+            minimumRequirement {
+              __typename
+              ... on DiscountMinimumQuantity {
+                greaterThanOrEqualToQuantity
+              }
+              ... on DiscountMinimumSubtotal {
+                greaterThanOrEqualToSubtotal {
+                  amount
+                  currencyCode
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}

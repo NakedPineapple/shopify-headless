@@ -35,6 +35,7 @@ allow = [
     "Unlicense",
     "Zlib",
     "0BSD",  # Zero-Clause BSD - OSI approved, public domain equivalent
+    "MIT-0",  # MIT No Attribution - OSI approved, MIT without attribution requirement
     # Unicode licenses
     "Unicode-3.0",
 ]
@@ -71,6 +72,8 @@ skip = [
     { crate = "base64@0.21", reason = "webauthn-rs depends on base64 0.21" },
     { crate = "nom@7", reason = "webauthn-rs depends on nom 7 via x509-parser" },
     { crate = "foldhash@0.1", reason = "sqlx depends on older foldhash via hashbrown" },
+    { crate = "phf@0.12", reason = "chrono-tz uses phf 0.12 while comrak uses phf 0.13" },
+    { crate = "phf_shared@0.12", reason = "transitive from phf 0.12" },
     { crate = "hashbrown@0.15", reason = "sqlx uses older hashbrown via hashlink" },
     { crate = "hashbrown@0.14", reason = "lettre and governor depend on older hashbrown" },
     { crate = "openssl-probe@0.1", reason = "lettre depends on older openssl-probe via native-tls" },

@@ -38,7 +38,7 @@ askama_web = { workspace = true }
 # Serialization
 serde = { workspace = true }
 serde_json = { workspace = true }
-serde_yaml = "0.9"
+serde_yaml_ng = "0.10"
 
 # GraphQL client
 graphql_client = { workspace = true }
@@ -63,6 +63,7 @@ urlencoding = "2"
 base64 = { workspace = true }
 uuid = { workspace = true }
 chrono = { workspace = true }
+chrono-tz = "0.10"
 time = "0.3"
 rand = { workspace = true }
 thiserror = { workspace = true }
@@ -83,3 +84,6 @@ hex = "0.4"
 # Streaming
 async-stream = "0.3"
 futures = "0.3"
+
+# JSON Schema validation
+jsonschema = { workspace = true }

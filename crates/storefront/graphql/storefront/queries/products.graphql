@@ -286,3 +286,11 @@ query GetProductRecommendations($productId: ID!, $intent: ProductRecommendationI
     }
   }
 }
+
+# Get minimal product info by ID (for GWP auto-add display)
+query GetProductTitleById($id: ID!) {
+  product(id: $id) {
+    id
+    title
+  }
+}

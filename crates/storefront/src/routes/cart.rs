@@ -3,6 +3,8 @@
 //! Cart operations use HTMX for dynamic updates without full page reloads.
 //! Cart IDs are stored in the session and mapped to Shopify carts.
 
+use std::collections::{HashMap, HashSet};
+
 use askama::Template;
 use askama_web::WebTemplate;
 use axum::{
@@ -11,6 +13,7 @@ use axum::{
     http::StatusCode,
     response::{AppendHeaders, Html, IntoResponse, Redirect, Response},
 };
+use futures::future;
 use serde::Deserialize;
 use tower_sessions::Session;
 use tracing::{debug, info, instrument, warn};
@@ -18,13 +21,19 @@ use tracing::{debug, info, instrument, warn};
 use crate::config::AnalyticsConfig;
 use crate::filters;
 use crate::models::session_keys;
-use crate::shopify::types::{Cart as ShopifyCart, CartLineInput, CartLineUpdateInput, Money};
+use crate::routes::products::ProductView;
+use crate::services::discount_matcher::{self, DiscountMatchResult, DiscountSuggestion, GwpAction};
+use crate::shopify::types::{
+    ActivePromotions, AttributeInput, Cart as ShopifyCart, CartLineInput, CartLineUpdateInput,
+    Money, ProductRecommendationIntent, PromotionBanner,
+};
 use crate::state::AppState;
 
 /// Cart item display data for templates.
 #[derive(Clone)]
 pub struct CartItemView {
     pub id: String,
+    pub product_id: String,
     pub handle: String,
     pub title: String,
     pub variant_title: Option<String>,
@@ -32,6 +41,10 @@ pub struct CartItemView {
     pub price: String,
     pub line_price: String,
     pub image: Option<ImageView>,
+    /// Whether this item is a gift-with-purchase (free item from BXGY discount).
+    pub is_gwp: bool,
+    /// The rule ID that granted this GWP (for tracking/removal).
+    pub gwp_rule_id: Option<String>,
 }
 
 /// Image display data for templates.
@@ -82,10 +95,33 @@ impl From<&ShopifyCart> for CartView {
     }
 }
 
+/// The attribute key used to mark GWP items.
+const GWP_RULE_ID_ATTR: &str = "_gwp_rule_id";
+
 impl From<&crate::shopify::types::CartLine> for CartItemView {
     fn from(line: &crate::shopify::types::CartLine) -> Self {
+        // Check if this line is a GWP by looking for the special attribute
+        let gwp_rule_id = line
+            .attributes
+            .iter()
+            .find(|attr| attr.key == GWP_RULE_ID_ATTR)
+            .and_then(|attr| attr.value.clone());
+
+        let is_gwp = gwp_rule_id.is_some();
+
+        // For non-GWP items, use subtotal_amount (before automatic discounts) to show
+        // the actual product price. Shopify's BXGY discounts can get applied to the
+        // wrong line item from our perspective, so we display undiscounted prices
+        // for regular items. GWP items show "FREE" in the template regardless.
+        let line_price = if is_gwp {
+            format_price(&line.cost.total_amount)
+        } else {
+            format_price(&line.cost.subtotal_amount)
+        };
+
         Self {
             id: line.id.clone(),
+            product_id: line.merchandise.product.id.clone(),
             handle: line.merchandise.product.handle.clone(),
             title: line.merchandise.product.title.clone(),
             variant_title: if line.merchandise.title == "Default Title" {
@@ -95,10 +131,12 @@ impl From<&crate::shopify::types::CartLine> for CartItemView {
             },
             quantity: u32::try_from(line.quantity).unwrap_or(1),
             price: format_price(&line.cost.amount_per_quantity),
-            line_price: format_price(&line.cost.total_amount),
+            line_price,
             image: line.merchandise.image.as_ref().map(|img| ImageView {
                 url: img.url.clone(),
             }),
+            is_gwp,
+            gwp_rule_id,
         }
     }
 }
@@ -144,11 +182,26 @@ pub struct RemoveFromCartForm {
     pub line_id: String,
 }
 
+/// Claim GWP (gift-with-purchase) form data.
+#[derive(Debug, Deserialize)]
+pub struct ClaimGwpForm {
+    /// The variant ID to add as the free gift.
+    pub variant_id: String,
+    /// The rule ID that grants this GWP.
+    pub rule_id: String,
+}
+
 /// Cart page template.
 #[derive(Template, WebTemplate)]
 #[template(path = "cart/show.html")]
 pub struct CartShowTemplate {
     pub cart: CartView,
+    pub recommended_products: Vec<ProductView>,
+    pub promotion_banners: Vec<PromotionBanner>,
+    pub discount_suggestions: Vec<DiscountSuggestion>,
+    pub qualifies_for_free_shipping: bool,
+    /// Whether there's a pending GWP selection that blocks checkout.
+    pub has_pending_gwp_selection: bool,
     pub analytics: AnalyticsConfig,
     pub nonce: String,
 }
@@ -167,6 +220,18 @@ pub struct CartCountTemplate {
     pub count: u32,
 }
 
+/// Order summary fragment template (for HTMX).
+#[derive(Template, WebTemplate)]
+#[template(path = "partials/order_summary.html")]
+pub struct OrderSummaryTemplate {
+    pub cart: CartView,
+    pub promotion_banners: Vec<PromotionBanner>,
+    pub discount_suggestions: Vec<DiscountSuggestion>,
+    pub qualifies_for_free_shipping: bool,
+    /// Whether there's a pending GWP selection that blocks checkout.
+    pub has_pending_gwp_selection: bool,
+}
+
 /// Display cart page.
 #[instrument(skip(state, session, nonce))]
 pub async fn show(
@@ -177,31 +242,95 @@ pub async fn show(
     debug!("Displaying cart page");
 
     // Get cart ID from session
-    let cart = if let Some(cart_id) = get_cart_id(&session).await {
-        debug!(cart_id = %cart_id, "Found existing cart in session");
-        // Fetch cart from Shopify
-        match state.storefront().get_cart(&cart_id).await {
-            Ok(shopify_cart) => {
-                let cart_view = CartView::from(&shopify_cart);
-                info!(
-                    cart_id = %cart_id,
-                    item_count = cart_view.item_count,
-                    "Successfully loaded cart"
-                );
-                cart_view
-            }
-            Err(e) => {
-                warn!(cart_id = %cart_id, error = %e, "Failed to fetch cart from Shopify");
-                CartView::empty()
-            }
-        }
-    } else {
+    let Some(cart_id) = get_cart_id(&session).await else {
         debug!("No cart found in session, displaying empty cart");
-        CartView::empty()
+        return render_cart_page(&state, CartView::empty(), nonce).await;
     };
+
+    debug!(cart_id = %cart_id, "Found existing cart in session");
+
+    // Fetch cart from Shopify
+    let shopify_cart = match state.storefront().get_cart(&cart_id).await {
+        Ok(cart) => cart,
+        Err(e) => {
+            warn!(cart_id = %cart_id, error = %e, "Failed to fetch cart from Shopify");
+            return render_cart_page(&state, CartView::empty(), nonce).await;
+        }
+    };
+
+    let cart = CartView::from(&shopify_cart);
+    info!(cart_id = %cart_id, item_count = cart.item_count, "Successfully loaded cart");
+
+    // Fetch promotions to check for auto-add GWPs
+    let promotions = state
+        .storefront()
+        .get_active_promotions()
+        .await
+        .unwrap_or_else(|e| {
+            warn!(error = %e, "Failed to fetch active promotions, using defaults");
+            ActivePromotions::default()
+        });
+
+    // Match cart against qualifying rules
+    let match_result = discount_matcher::match_qualifying_rules(
+        &cart.items,
+        &cart.subtotal,
+        &promotions.progress_tracking,
+        &promotions.qualifying_rules,
+    );
+
+    // Auto-add any unclaimed GWP items
+    let cart =
+        auto_add_gwp_items(&state, &session, &cart_id, cart, &match_result.suggestions).await;
+
+    // Re-match after potential auto-adds (cart may have changed)
+    let DiscountMatchResult {
+        suggestions: discount_suggestions,
+        qualifies_for_free_shipping,
+    } = discount_matcher::match_qualifying_rules(
+        &cart.items,
+        &cart.subtotal,
+        &promotions.progress_tracking,
+        &promotions.qualifying_rules,
+    );
+
+    // Enrich AutoAdd suggestions with product titles
+    let discount_suggestions =
+        enrich_gwp_product_titles(state.storefront(), discount_suggestions).await;
+
+    // Fetch recommendations
+    let recommended_products = fetch_cart_recommendations(&state, &cart).await;
+
+    // Collect IDs of claimed GWPs (to hide their banners)
+    let claimed_gwp_rule_ids: std::collections::HashSet<_> = cart
+        .items
+        .iter()
+        .filter_map(|item| item.gwp_rule_id.as_deref())
+        .collect();
+
+    // Sort banners by priority, filter out claimed GWPs, and take top 3
+    let mut promotion_banners = promotions.banners;
+    promotion_banners.retain(|b| !claimed_gwp_rule_ids.contains(b.id.as_str()));
+    promotion_banners.sort_by_key(|b| b.priority);
+    promotion_banners.truncate(3);
+
+    // Check if there's a pending GWP selection
+    let has_pending_gwp_selection = has_unclaimed_gwp_selection(&cart, &discount_suggestions);
+
+    debug!(
+        suggestions = discount_suggestions.len(),
+        qualifies_for_free_shipping = qualifies_for_free_shipping,
+        has_pending_gwp_selection = has_pending_gwp_selection,
+        "Processed cart promotions"
+    );
 
     let template = CartShowTemplate {
         cart,
+        recommended_products,
+        promotion_banners,
+        discount_suggestions,
+        qualifies_for_free_shipping,
+        has_pending_gwp_selection,
         analytics: state.config().analytics.clone(),
         nonce,
     };
@@ -217,6 +346,130 @@ pub async fn show(
                 .into_response()
         }
     }
+}
+
+/// Render the cart page with an empty or minimal cart (helper for early returns).
+async fn render_cart_page(state: &AppState, cart: CartView, nonce: String) -> Response {
+    let promotions = state
+        .storefront()
+        .get_active_promotions()
+        .await
+        .unwrap_or_default();
+
+    let mut promotion_banners = promotions.banners;
+    promotion_banners.sort_by_key(|b| b.priority);
+    promotion_banners.truncate(3);
+
+    let DiscountMatchResult {
+        suggestions: discount_suggestions,
+        qualifies_for_free_shipping,
+    } = discount_matcher::match_qualifying_rules(
+        &cart.items,
+        &cart.subtotal,
+        &promotions.progress_tracking,
+        &promotions.qualifying_rules,
+    );
+
+    let template = CartShowTemplate {
+        cart,
+        recommended_products: Vec::new(),
+        promotion_banners,
+        discount_suggestions,
+        qualifies_for_free_shipping,
+        has_pending_gwp_selection: false,
+        analytics: state.config().analytics.clone(),
+        nonce,
+    };
+
+    match template.render() {
+        Ok(html) => Html(html).into_response(),
+        Err(e) => {
+            tracing::error!(error = %e, "Failed to render cart/show.html template");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Template rendering failed",
+            )
+                .into_response()
+        }
+    }
+}
+
+/// Auto-add any unclaimed GWP items to the cart.
+///
+/// Checks for `AutoAdd` GWP suggestions where the customer is qualified but hasn't
+/// claimed the gift yet, and automatically adds them to the cart.
+async fn auto_add_gwp_items(
+    state: &AppState,
+    _session: &Session,
+    cart_id: &str,
+    mut cart: CartView,
+    suggestions: &[DiscountSuggestion],
+) -> CartView {
+    for suggestion in suggestions {
+        // Only process qualified AutoAdd suggestions
+        if !suggestion.is_qualified || suggestion.gwp_claimed {
+            continue;
+        }
+
+        let Some(GwpAction::AutoAdd {
+            variant_id,
+            product_id: _,
+            product_title: _,
+        }) = &suggestion.gwp_action
+        else {
+            continue;
+        };
+
+        // Check if already claimed (belt and suspenders with gwp_claimed flag)
+        let already_in_cart = cart
+            .items
+            .iter()
+            .any(|item| item.gwp_rule_id.as_deref() == Some(&suggestion.rule_id));
+
+        if already_in_cart {
+            continue;
+        }
+
+        debug!(
+            rule_id = %suggestion.rule_id,
+            variant_id = %variant_id,
+            "Auto-adding GWP item to cart"
+        );
+
+        // Add the GWP to the cart
+        let line = CartLineInput {
+            merchandise_id: variant_id.clone(),
+            quantity: 1,
+            attributes: Some(vec![AttributeInput {
+                key: GWP_RULE_ID_ATTR.to_string(),
+                value: suggestion.rule_id.clone(),
+            }]),
+            selling_plan_id: None,
+        };
+
+        match state.storefront().add_to_cart(cart_id, vec![line]).await {
+            Ok(updated_cart) => {
+                info!(
+                    cart_id = %cart_id,
+                    rule_id = %suggestion.rule_id,
+                    variant_id = %variant_id,
+                    "Successfully auto-added GWP item"
+                );
+                cart = CartView::from(&updated_cart);
+            }
+            Err(e) => {
+                warn!(
+                    cart_id = %cart_id,
+                    rule_id = %suggestion.rule_id,
+                    variant_id = %variant_id,
+                    error = %e,
+                    "Failed to auto-add GWP item"
+                );
+            }
+        }
+    }
+
+    cart
 }
 
 /// Add item to cart (HTMX).
@@ -426,6 +679,85 @@ pub async fn count(State(state): State<AppState>, session: Session) -> Response 
     }
 }
 
+/// Get order summary fragment (HTMX).
+///
+/// Returns the order summary including subtotal, shipping status, and discount progress.
+#[instrument(skip(state, session))]
+pub async fn summary(State(state): State<AppState>, session: Session) -> Response {
+    debug!("Fetching order summary");
+
+    // Get cart from session
+    let cart = if let Some(cart_id) = get_cart_id(&session).await {
+        match state.storefront().get_cart(&cart_id).await {
+            Ok(shopify_cart) => CartView::from(&shopify_cart),
+            Err(e) => {
+                warn!(cart_id = %cart_id, error = %e, "Failed to fetch cart for summary");
+                CartView::empty()
+            }
+        }
+    } else {
+        CartView::empty()
+    };
+
+    // Fetch promotions
+    let promotions = state
+        .storefront()
+        .get_active_promotions()
+        .await
+        .unwrap_or_default();
+
+    // Match cart against qualifying rules (joins progress_tracking display config with rules)
+    let DiscountMatchResult {
+        suggestions: discount_suggestions,
+        qualifies_for_free_shipping,
+    } = discount_matcher::match_qualifying_rules(
+        &cart.items,
+        &cart.subtotal,
+        &promotions.progress_tracking,
+        &promotions.qualifying_rules,
+    );
+
+    // Enrich AutoAdd suggestions with product titles (fetched from Storefront API)
+    let discount_suggestions =
+        enrich_gwp_product_titles(state.storefront(), discount_suggestions).await;
+
+    // Collect IDs of claimed GWPs (to hide their banners)
+    let claimed_gwp_rule_ids: std::collections::HashSet<_> = cart
+        .items
+        .iter()
+        .filter_map(|item| item.gwp_rule_id.as_deref())
+        .collect();
+
+    // Sort banners by priority, filter out claimed GWPs, and take top 3
+    let mut promotion_banners = promotions.banners;
+    promotion_banners.retain(|b| !claimed_gwp_rule_ids.contains(b.id.as_str()));
+    promotion_banners.sort_by_key(|b| b.priority);
+    promotion_banners.truncate(3);
+
+    // Check if there's a pending GWP selection
+    let has_pending_gwp_selection = has_unclaimed_gwp_selection(&cart, &discount_suggestions);
+
+    let template = OrderSummaryTemplate {
+        cart,
+        promotion_banners,
+        discount_suggestions,
+        qualifies_for_free_shipping,
+        has_pending_gwp_selection,
+    };
+
+    match template.render() {
+        Ok(html) => Html(html).into_response(),
+        Err(e) => {
+            tracing::error!(error = %e, "Failed to render partials/order_summary.html template");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Template rendering failed",
+            )
+                .into_response()
+        }
+    }
+}
+
 /// Redirect to Shopify checkout.
 #[instrument(skip(state, session))]
 pub async fn checkout(State(state): State<AppState>, session: Session) -> Response {
@@ -447,4 +779,252 @@ pub async fn checkout(State(state): State<AppState>, session: Session) -> Respon
             Redirect::to("/cart").into_response()
         }
     }
+}
+
+/// Claim a gift-with-purchase item (HTMX).
+///
+/// Adds the free item to the cart with a special attribute marking it as a GWP.
+/// Returns an HTML fragment confirming the GWP was added.
+#[instrument(skip(state, session), fields(variant_id = %form.variant_id, rule_id = %form.rule_id))]
+pub async fn claim_gwp(
+    State(state): State<AppState>,
+    session: Session,
+    Form(form): Form<ClaimGwpForm>,
+) -> Response {
+    debug!("Claiming GWP item");
+
+    let Some(cart_id) = get_cart_id(&session).await else {
+        warn!("Attempted to claim GWP but no cart found in session");
+        return (
+            StatusCode::BAD_REQUEST,
+            Html("<p class=\"text-sm text-destructive\">No cart found</p>"),
+        )
+            .into_response();
+    };
+
+    // Add the GWP item with a special attribute to track it
+    let line = CartLineInput {
+        merchandise_id: form.variant_id.clone(),
+        quantity: 1,
+        attributes: Some(vec![AttributeInput {
+            key: GWP_RULE_ID_ATTR.to_string(),
+            value: form.rule_id.clone(),
+        }]),
+        selling_plan_id: None,
+    };
+
+    match state.storefront().add_to_cart(&cart_id, vec![line]).await {
+        Ok(_cart) => {
+            info!(
+                cart_id = %cart_id,
+                variant_id = %form.variant_id,
+                rule_id = %form.rule_id,
+                "Successfully claimed GWP item"
+            );
+
+            // Return a confirmation message that replaces the picker
+            // Also trigger cartUpdated to refresh the cart display
+            (
+                AppendHeaders([("HX-Trigger", "cartUpdated")]),
+                Html(
+                    r#"<div class="p-3 bg-leaf/10 border border-leaf/30 rounded-lg">
+                        <div class="flex items-center gap-2">
+                            <i class="ph ph-check-circle text-leaf text-lg"></i>
+                            <p class="text-sm font-medium text-foreground">Free gift added to your cart!</p>
+                        </div>
+                    </div>"#
+                        .to_string(),
+                ),
+            )
+                .into_response()
+        }
+        Err(e) => {
+            tracing::error!(
+                cart_id = %cart_id,
+                variant_id = %form.variant_id,
+                error = %e,
+                "Failed to add GWP to cart"
+            );
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Html("<p class=\"text-sm text-destructive\">Failed to add free gift</p>"),
+            )
+                .into_response()
+        }
+    }
+}
+
+// =============================================================================
+// GWP Helpers
+// =============================================================================
+
+/// Check if there's an unclaimed GWP that requires user selection.
+///
+/// Returns true if there's a qualified BXGY discount with a `PromptSelection` or
+/// `BrowseCollection` action, and the customer hasn't yet claimed that GWP.
+fn has_unclaimed_gwp_selection(cart: &CartView, suggestions: &[DiscountSuggestion]) -> bool {
+    for suggestion in suggestions {
+        if !suggestion.is_qualified {
+            continue;
+        }
+
+        match &suggestion.gwp_action {
+            Some(GwpAction::PromptSelection { .. } | GwpAction::BrowseCollection { .. }) => {
+                // Check if this GWP has already been claimed
+                let already_claimed = cart
+                    .items
+                    .iter()
+                    .any(|item| item.gwp_rule_id.as_deref() == Some(&suggestion.rule_id));
+
+                if !already_claimed {
+                    return true;
+                }
+            }
+            Some(GwpAction::AutoAdd { .. }) | None => {
+                // Auto-add items don't block checkout
+            }
+        }
+    }
+
+    false
+}
+
+// =============================================================================
+// Recommendation Helpers
+// =============================================================================
+
+/// Fetch and aggregate product recommendations for all cart items.
+///
+/// Fetches complementary product recommendations for each cart item concurrently,
+/// then scores and ranks them. Products recommended by multiple cart items rank
+/// higher. Filters out products already in the cart.
+async fn fetch_cart_recommendations(state: &AppState, cart: &CartView) -> Vec<ProductView> {
+    if cart.items.is_empty() {
+        return Vec::new();
+    }
+
+    // Collect product IDs from cart items
+    let cart_product_ids: HashSet<_> = cart.items.iter().map(|i| i.product_id.as_str()).collect();
+
+    // Fetch recommendations for all cart products concurrently
+    let futures: Vec<_> = cart
+        .items
+        .iter()
+        .map(|item| {
+            let product_id = item.product_id.clone();
+            let storefront = state.storefront().clone();
+            async move {
+                storefront
+                    .get_product_recommendations(
+                        &product_id,
+                        Some(ProductRecommendationIntent::Complementary),
+                    )
+                    .await
+                    .unwrap_or_default()
+            }
+        })
+        .collect();
+
+    let results = future::join_all(futures).await;
+
+    // Aggregate and score recommendations
+    // Products recommended by multiple cart items get higher scores
+    let mut recommendation_scores: HashMap<String, (crate::shopify::types::Product, u32)> =
+        HashMap::new();
+
+    for products in results {
+        for product in products {
+            // Skip products already in cart
+            if cart_product_ids.contains(product.id.as_str()) {
+                continue;
+            }
+
+            recommendation_scores
+                .entry(product.id.clone())
+                .and_modify(|(_, score)| *score += 1)
+                .or_insert((product, 1));
+        }
+    }
+
+    // Sort by score (higher is better) and take top 4
+    let mut sorted: Vec<_> = recommendation_scores.into_values().collect();
+    sorted.sort_by(|a, b| b.1.cmp(&a.1));
+
+    let recommended: Vec<ProductView> = sorted
+        .into_iter()
+        .take(4)
+        .map(|(product, _)| ProductView::from(&product))
+        .collect();
+
+    debug!(
+        recommendation_count = recommended.len(),
+        "Fetched cart recommendations"
+    );
+
+    recommended
+}
+
+// =============================================================================
+// GWP Product Title Enrichment
+// =============================================================================
+
+/// Enrich GWP `AutoAdd` suggestions with product titles from the Storefront API.
+///
+/// The discount matcher returns `AutoAdd` suggestions with empty product titles
+/// (to avoid storing titles in the metafield). This function fetches the actual
+/// titles from Shopify for display in the UI.
+async fn enrich_gwp_product_titles(
+    storefront: &crate::shopify::StorefrontClient,
+    mut suggestions: Vec<DiscountSuggestion>,
+) -> Vec<DiscountSuggestion> {
+    use futures::future;
+
+    // Collect product IDs that need title fetching
+    let product_ids_to_fetch: Vec<(usize, String)> = suggestions
+        .iter()
+        .enumerate()
+        .filter_map(|(idx, s)| {
+            if let Some(ref variant_id) = s.gwp_auto_add_variant_id {
+                // Only fetch if title is empty and we have a product ID
+                if s.gwp_auto_add_product_title
+                    .as_ref()
+                    .is_none_or(String::is_empty)
+                {
+                    // Extract product ID from variant ID or use the product_id field
+                    // gwp_auto_add_product_id should be set alongside variant_id
+                    if let Some(ref product_id) = s.gwp_auto_add_product_id {
+                        return Some((idx, product_id.clone()));
+                    }
+                }
+                // If we have a variant but no product ID, we can't fetch
+                let _ = variant_id; // suppress unused warning
+            }
+            None
+        })
+        .collect();
+
+    if product_ids_to_fetch.is_empty() {
+        return suggestions;
+    }
+
+    // Fetch titles concurrently
+    let futures: Vec<_> = product_ids_to_fetch
+        .iter()
+        .map(|(_, product_id)| {
+            let storefront = storefront.clone();
+            let product_id = product_id.clone();
+            async move { storefront.get_product_title_by_id(&product_id).await.ok() }
+        })
+        .collect();
+
+    let titles = future::join_all(futures).await;
+
+    // Update suggestions with fetched titles
+    for ((idx, _), title) in product_ids_to_fetch.into_iter().zip(titles) {
+        if let (Some(suggestion), Some(title)) = (suggestions.get_mut(idx), title) {
+            suggestion.gwp_auto_add_product_title = Some(title);
+        }
+    }
+
+    suggestions
 }

@@ -103,26 +103,11 @@
 
                     <h2 class="font-display text-xl font-semibold mb-6">Order Summary</h2>
 
-                    <div class="space-y-4 mb-6">
-                        <div class="flex justify-between text-sm">
-                            <span class="text-muted-foreground">Subtotal</span>
-                            <span class="text-foreground font-medium">{{ cart.subtotal }}</span>
-                        </div>
-                        <div class="flex justify-between text-sm">
-                            <span class="text-muted-foreground">Shipping</span>
-                            <span class="text-muted-foreground text-xs">Calculated at checkout</span>
-                        </div>
-                        <div class="flex justify-between text-sm">
-                            <span class="text-muted-foreground">Taxes</span>
-                            <span class="text-muted-foreground text-xs">Calculated at checkout</span>
-                        </div>
-                    </div>
-
-                    <div class="border-t border-border pt-4 mb-6">
-                        <div class="flex justify-between items-baseline">
-                            <span class="text-lg font-semibold">Estimated Total</span>
-                            <span class="text-2xl font-display font-semibold text-primary">{{ cart.subtotal }}</span>
-                        </div>
+                    <div id="order-summary"
+                         hx-get="/cart/summary"
+                         hx-trigger="cartUpdated from:body"
+                         hx-swap="innerHTML">
+                        {% include "partials/order_summary.html" %}
                     </div>
 
                     <!-- Promo Code (collapsed by default) -->
@@ -144,10 +129,22 @@
                     </details>
 
                     <!-- Checkout Button -->
+                    {% if has_pending_gwp_selection %}
+                    <button type="button"
+                            onclick="document.querySelector('[id^=gwp-picker-]')?.scrollIntoView({ behavior: 'smooth', block: 'center' })"
+                            class="btn btn-primary w-full justify-center text-lg py-4 opacity-70 cursor-pointer">
+                        <i class="ph ph-gift mr-2"></i>
+                        Select Your Free Gift
+                    </button>
+                    <p class="text-xs text-center text-muted-foreground mt-2">
+                        Choose your free gift above to continue
+                    </p>
+                    {% else %}
                     <a href="/checkout" hx-boost="false" class="btn btn-primary w-full justify-center text-lg py-4 group">
                         Proceed to Checkout
                         <i class="ph ph-arrow-right ml-2 transition-transform group-hover:translate-x-1"></i>
                     </a>
+                    {% endif %}
 
                     <!-- Trust badges -->
                     <div class="mt-6 pt-6 border-t border-border">
@@ -173,6 +170,27 @@
                 </div>
             </div>
         </div>
+
+        <!-- Product Recommendations -->
+        {% if !recommended_products.is_empty() %}
+        <section class="mt-16 animate-slide-up" style="opacity: 0; animation-delay: 450ms;">
+            <div class="flex items-center justify-between mb-8">
+                <h2 class="font-display text-2xl md:text-3xl font-semibold text-foreground">
+                    You Might Also Like
+                </h2>
+                <a href="/products" class="text-sm font-medium text-primary hover:underline flex items-center gap-1 group">
+                    View All
+                    <i class="ph ph-arrow-right transition-transform group-hover:translate-x-1"></i>
+                </a>
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+                {% for product in recommended_products %}
+                {% include "partials/product_card.html" %}
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
         {% endif %}
     </div>
 </div>

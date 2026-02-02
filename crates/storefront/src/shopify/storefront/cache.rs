@@ -1,6 +1,8 @@
 //! Cache types for Storefront API responses.
 
-use crate::shopify::types::{Collection, CollectionConnection, Product, ProductConnection};
+use crate::shopify::types::{
+    ActivePromotions, Collection, CollectionConnection, Product, ProductConnection,
+};
 
 /// Cache key for products and collections.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -18,4 +20,5 @@ pub enum CacheValue {
     Products(ProductConnection),
     Collection(Box<Collection>),
     Collections(CollectionConnection),
+    ActivePromotions(ActivePromotions),
 }

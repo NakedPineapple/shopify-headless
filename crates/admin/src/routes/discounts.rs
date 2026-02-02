@@ -520,8 +520,8 @@ fn build_query_string(query: &DiscountsQuery) -> Option<String> {
 
     if let Some(ref method) = query.method {
         match method.as_str() {
-            "code" => parts.push("discount_type:code_discount".to_string()),
-            "automatic" => parts.push("discount_type:automatic_discount".to_string()),
+            "code" => parts.push("method:code".to_string()),
+            "automatic" => parts.push("method:automatic".to_string()),
             _ => {}
         }
     }

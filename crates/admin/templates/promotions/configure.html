@@ -1,0 +1,370 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Configure Promotion - {{ discount.title }}{% endblock %}
+
+{% block page_title %}Configure Promotion{% endblock %}
+
+{% block page_subtitle %}
+<p class="text-sm text-muted-foreground mt-1">{{ discount.title }}</p>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Back Link -->
+    <a href="/promotions" class="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+        <i class="ph ph-arrow-left"></i>
+        Back to Promotions
+    </a>
+
+    {% if let Some(err) = error %}
+    <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+        <div class="flex items-center gap-2">
+            <i class="ph ph-warning-circle text-red-500"></i>
+            <p class="text-sm text-red-700 dark:text-red-300">{{ err }}</p>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Discount Summary -->
+    <div class="bg-card rounded-xl border border-border p-6">
+        <div class="flex items-center gap-4">
+            <div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                <i class="ph ph-lightning text-2xl text-primary"></i>
+            </div>
+            <div class="flex-1">
+                <div class="flex items-center gap-2">
+                    <h2 class="text-lg font-semibold text-foreground">{{ discount.title }}</h2>
+                    <span class="px-2 py-0.5 text-xs font-medium rounded {{ discount.status_class }}">
+                        {{ discount.status }}
+                    </span>
+                </div>
+                <div class="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
+                    <span>{{ discount.discount_type }}</span>
+                    <span>{{ discount.value_description }}</span>
+                    {% if let Some(min) = discount.minimum_description %}
+                    <span>{{ min }}</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <!-- Discount schedule info from Shopify -->
+        {% if discount.starts_at.is_some() || discount.ends_at.is_some() %}
+        <div class="mt-4 pt-4 border-t border-border">
+            <div class="flex flex-col gap-1 text-sm text-muted-foreground">
+                {% if let Some(start) = discount.starts_at %}
+                <div class="flex items-center gap-2">
+                    <i class="ph ph-calendar-check"></i>
+                    <span>Starts: {{ start|format_datetime_mst }}</span>
+                </div>
+                {% endif %}
+                {% if let Some(end) = discount.ends_at %}
+                <div class="flex items-center gap-2">
+                    <i class="ph ph-calendar-x"></i>
+                    <span>Ends: {{ end|format_datetime_aoe }}</span>
+                </div>
+                {% endif %}
+            </div>
+            <p class="text-xs text-muted-foreground mt-2">Schedule is managed in Shopify Admin</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="grid md:grid-cols-2 gap-6">
+        <!-- Banner Configuration -->
+        <div class="bg-card rounded-xl border border-border overflow-hidden">
+            <div class="px-6 py-4 border-b border-border">
+                <div class="flex items-center gap-2">
+                    <i class="ph ph-megaphone text-honey"></i>
+                    <h3 class="font-semibold text-foreground">Promotion Banner</h3>
+                </div>
+                <p class="text-sm text-muted-foreground mt-1">Display an awareness banner in the cart sidebar</p>
+            </div>
+
+            <form action="/promotions/banner" method="POST" class="p-6 space-y-4">
+                <input type="hidden" name="discount_id" value="{{ discount.short_id }}">
+
+                <!-- Enable Toggle -->
+                <label class="flex items-center gap-3 cursor-pointer">
+                    <input type="checkbox"
+                           name="enable_banner"
+                           value="true"
+                           {% if banner.is_some() %}checked{% endif %}
+                           class="w-5 h-5 rounded border-border text-primary focus:ring-primary"
+                           onchange="document.getElementById('banner-fields').classList.toggle('hidden', !this.checked)">
+                    <span class="font-medium text-foreground">Enable banner</span>
+                </label>
+
+                <div id="banner-fields" class="space-y-4 {% if banner.is_none() %}hidden{% endif %}">
+                    <!-- Title -->
+                    <div>
+                        <label for="banner_title" class="block text-sm font-medium text-foreground mb-1">Title</label>
+                        <input type="text"
+                               id="banner_title"
+                               name="banner_title"
+                               value="{% if let Some(b) = banner %}{{ b.title }}{% endif %}"
+                               placeholder="Free Gift with Purchase"
+                               class="w-full px-3 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring">
+                    </div>
+
+                    <!-- Description -->
+                    <div>
+                        <label for="banner_description" class="block text-sm font-medium text-foreground mb-1">Description (optional)</label>
+                        <input type="text"
+                               id="banner_description"
+                               name="banner_description"
+                               value="{% if let Some(b) = banner %}{% if let Some(d) = b.description %}{{ d }}{% endif %}{% endif %}"
+                               placeholder="Limited time offer"
+                               class="w-full px-3 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring">
+                    </div>
+
+                    <!-- Badge Text -->
+                    <div>
+                        <label for="badge_text" class="block text-sm font-medium text-foreground mb-1">Badge Text (optional)</label>
+                        <input type="text"
+                               id="badge_text"
+                               name="badge_text"
+                               value="{% if let Some(b) = banner %}{% if let Some(bt) = b.badge_text %}{{ bt }}{% endif %}{% endif %}"
+                               placeholder="LIMITED TIME"
+                               class="w-full px-3 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <!-- Icon -->
+                        <div>
+                            <label for="banner_icon" class="block text-sm font-medium text-foreground mb-1">Icon</label>
+                            <select id="banner_icon"
+                                    name="icon"
+                                    class="w-full px-3 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring">
+                                <option value="gift" {% if let Some(b) = banner %}{% if b.icon == "gift" %}selected{% endif %}{% else %}selected{% endif %}>Gift</option>
+                                <option value="truck" {% if let Some(b) = banner %}{% if b.icon == "truck" %}selected{% endif %}{% endif %}>Truck</option>
+                                <option value="tag" {% if let Some(b) = banner %}{% if b.icon == "tag" %}selected{% endif %}{% endif %}>Tag</option>
+                                <option value="percent" {% if let Some(b) = banner %}{% if b.icon == "percent" %}selected{% endif %}{% endif %}>Percent</option>
+                                <option value="sparkle" {% if let Some(b) = banner %}{% if b.icon == "sparkle" %}selected{% endif %}{% endif %}>Sparkle</option>
+                                <option value="heart" {% if let Some(b) = banner %}{% if b.icon == "heart" %}selected{% endif %}{% endif %}>Heart</option>
+                            </select>
+                        </div>
+
+                        <!-- Accent Color -->
+                        <div>
+                            <label for="banner_accent_color" class="block text-sm font-medium text-foreground mb-1">Accent Color</label>
+                            <select id="banner_accent_color"
+                                    name="accent_color"
+                                    class="w-full px-3 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring">
+                                <option value="honey" {% if let Some(b) = banner %}{% if b.accent_color == "honey" %}selected{% endif %}{% else %}selected{% endif %}>Honey</option>
+                                <option value="primary" {% if let Some(b) = banner %}{% if b.accent_color == "primary" %}selected{% endif %}{% endif %}>Primary</option>
+                                <option value="leaf" {% if let Some(b) = banner %}{% if b.accent_color == "leaf" %}selected{% endif %}{% endif %}>Leaf</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- CTA -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label for="cta_text" class="block text-sm font-medium text-foreground mb-1">CTA Text (optional)</label>
+                            <input type="text"
+                                   id="cta_text"
+                                   name="cta_text"
+                                   value="{% if let Some(b) = banner %}{% if let Some(ct) = b.cta_text %}{{ ct }}{% endif %}{% endif %}"
+                                   placeholder="Shop Now"
+                                   class="w-full px-3 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring">
+                        </div>
+                        <div>
+                            <label for="cta_url" class="block text-sm font-medium text-foreground mb-1">CTA URL (optional)</label>
+                            <input type="text"
+                                   id="cta_url"
+                                   name="cta_url"
+                                   value="{% if let Some(b) = banner %}{% if let Some(cu) = b.cta_url %}{{ cu }}{% endif %}{% endif %}"
+                                   placeholder="/collections/sale"
+                                   class="w-full px-3 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring">
+                        </div>
+                    </div>
+
+                    <!-- Priority -->
+                    <div>
+                        <label for="priority" class="block text-sm font-medium text-foreground mb-1">Priority</label>
+                        <input type="number"
+                               id="priority"
+                               name="priority"
+                               value="{% if let Some(b) = banner %}{{ b.priority }}{% else %}0{% endif %}"
+                               class="w-full px-3 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring">
+                        <p class="text-xs text-muted-foreground mt-1">Lower numbers display first</p>
+                    </div>
+                </div>
+
+                <button type="submit" class="w-full px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors">
+                    Save Banner Configuration
+                </button>
+            </form>
+        </div>
+
+        <!-- Progress Tracking Configuration -->
+        <div class="bg-card rounded-xl border border-border overflow-hidden">
+            <div class="px-6 py-4 border-b border-border">
+                <div class="flex items-center gap-2">
+                    <i class="ph ph-target text-primary"></i>
+                    <h3 class="font-semibold text-foreground">Progress Tracking</h3>
+                </div>
+                <p class="text-sm text-muted-foreground mt-1">Show customers their progress toward qualifying</p>
+            </div>
+
+            <form action="/promotions/progress-tracking" method="POST" class="p-6 space-y-4">
+                <input type="hidden" name="discount_id" value="{{ discount.short_id }}">
+
+                <!-- Enable Toggle -->
+                <label class="flex items-center gap-3 cursor-pointer">
+                    <input type="checkbox"
+                           name="enable_progress_tracking"
+                           value="true"
+                           {% if progress_tracking.is_some() %}checked{% endif %}
+                           class="w-5 h-5 rounded border-border text-primary focus:ring-primary"
+                           onchange="document.getElementById('progress-fields').classList.toggle('hidden', !this.checked)">
+                    <span class="font-medium text-foreground">Enable progress tracking</span>
+                </label>
+
+                <div id="progress-fields" class="space-y-4 {% if progress_tracking.is_none() %}hidden{% endif %}">
+                    <!-- Info box about automatic rule extraction -->
+                    <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+                        <div class="flex items-start gap-2">
+                            <i class="ph ph-info text-blue-500 mt-0.5"></i>
+                            <p class="text-xs text-blue-700 dark:text-blue-300">
+                                Qualifying rules (requirements, amounts, products) are automatically extracted from Shopify when you save. Configure display options below.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <!-- Icon -->
+                        <div>
+                            <label for="progress_icon" class="block text-sm font-medium text-foreground mb-1">Icon</label>
+                            <select id="progress_icon"
+                                    name="icon"
+                                    class="w-full px-3 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring">
+                                <option value="gift" {% if let Some(p) = progress_tracking %}{% if p.icon == "gift" %}selected{% endif %}{% else %}selected{% endif %}>Gift</option>
+                                <option value="truck" {% if let Some(p) = progress_tracking %}{% if p.icon == "truck" %}selected{% endif %}{% endif %}>Truck</option>
+                                <option value="tag" {% if let Some(p) = progress_tracking %}{% if p.icon == "tag" %}selected{% endif %}{% endif %}>Tag</option>
+                                <option value="percent" {% if let Some(p) = progress_tracking %}{% if p.icon == "percent" %}selected{% endif %}{% endif %}>Percent</option>
+                            </select>
+                        </div>
+
+                        <!-- Accent Color -->
+                        <div>
+                            <label for="progress_accent_color" class="block text-sm font-medium text-foreground mb-1">Accent Color</label>
+                            <select id="progress_accent_color"
+                                    name="accent_color"
+                                    class="w-full px-3 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring">
+                                <option value="honey" {% if let Some(p) = progress_tracking %}{% if p.accent_color == "honey" %}selected{% endif %}{% else %}selected{% endif %}>Honey</option>
+                                <option value="primary" {% if let Some(p) = progress_tracking %}{% if p.accent_color == "primary" %}selected{% endif %}{% endif %}>Primary</option>
+                                <option value="leaf" {% if let Some(p) = progress_tracking %}{% if p.accent_color == "leaf" %}selected{% endif %}{% endif %}>Leaf</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Options -->
+                    <div class="space-y-2">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox"
+                                   name="show_progress_bar"
+                                   value="true"
+                                   {% if let Some(p) = progress_tracking %}{% if p.show_progress_bar %}checked{% endif %}{% else %}checked{% endif %}
+                                   class="rounded border-border text-primary focus:ring-primary">
+                            <span class="text-sm text-foreground">Show progress bar</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox"
+                                   name="hide_when_qualified"
+                                   value="true"
+                                   {% if let Some(p) = progress_tracking %}{% if p.hide_when_qualified %}checked{% endif %}{% endif %}
+                                   class="rounded border-border text-primary focus:ring-primary">
+                            <span class="text-sm text-foreground">Hide when customer qualifies</span>
+                        </label>
+                    </div>
+
+                    <!-- Suggestion Template -->
+                    <div>
+                        <label for="suggestion_template" class="block text-sm font-medium text-foreground mb-1">Suggestion Message</label>
+                        <input type="text"
+                               id="suggestion_template"
+                               name="suggestion_template"
+                               value="{% if let Some(p) = progress_tracking %}{{ p.suggestion_template }}{% else %}Add {needed} more to qualify!{% endif %}"
+                               placeholder="Add {needed} more to qualify!"
+                               class="w-full px-3 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring">
+                        <p class="text-xs text-muted-foreground mt-1">Use {needed} as placeholder for remaining amount/quantity</p>
+                    </div>
+
+                    <!-- Suggestion Badge Text -->
+                    <div>
+                        <label for="suggestion_badge_text" class="block text-sm font-medium text-foreground mb-1">Suggestion Badge (optional)</label>
+                        <input type="text"
+                               id="suggestion_badge_text"
+                               name="suggestion_badge_text"
+                               value="{% if let Some(p) = progress_tracking %}{% if let Some(sbt) = p.suggestion_badge_text %}{{ sbt }}{% endif %}{% endif %}"
+                               placeholder="LIMITED TIME"
+                               class="w-full px-3 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring">
+                        <p class="text-xs text-muted-foreground mt-1">Small badge displayed above the suggestion message</p>
+                    </div>
+
+                    <!-- Qualified Template -->
+                    <div>
+                        <label for="qualified_template" class="block text-sm font-medium text-foreground mb-1">Qualified Message</label>
+                        <input type="text"
+                               id="qualified_template"
+                               name="qualified_template"
+                               value="{% if let Some(p) = progress_tracking %}{{ p.qualified_template }}{% else %}You qualify!{% endif %}"
+                               placeholder="You qualify!"
+                               class="w-full px-3 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring">
+                    </div>
+
+                    <!-- Qualified Badge Text -->
+                    <div>
+                        <label for="qualified_badge_text" class="block text-sm font-medium text-foreground mb-1">Qualified Badge (optional)</label>
+                        <input type="text"
+                               id="qualified_badge_text"
+                               name="qualified_badge_text"
+                               value="{% if let Some(p) = progress_tracking %}{% if let Some(qbt) = p.qualified_badge_text %}{{ qbt }}{% endif %}{% endif %}"
+                               placeholder="UNLOCKED"
+                               class="w-full px-3 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring">
+                        <p class="text-xs text-muted-foreground mt-1">Small badge displayed above the qualified message</p>
+                    </div>
+
+                    <!-- CTA -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label for="progress_cta_text" class="block text-sm font-medium text-foreground mb-1">CTA Text (optional)</label>
+                            <input type="text"
+                                   id="progress_cta_text"
+                                   name="cta_text"
+                                   value="{% if let Some(p) = progress_tracking %}{% if let Some(ct) = p.cta_text %}{{ ct }}{% endif %}{% endif %}"
+                                   placeholder="Shop Now"
+                                   class="w-full px-3 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring">
+                        </div>
+                        <div>
+                            <label for="progress_cta_url" class="block text-sm font-medium text-foreground mb-1">CTA URL (optional)</label>
+                            <input type="text"
+                                   id="progress_cta_url"
+                                   name="cta_url"
+                                   value="{% if let Some(p) = progress_tracking %}{% if let Some(cu) = p.cta_url %}{{ cu }}{% endif %}{% endif %}"
+                                   placeholder="/collections/sale"
+                                   class="w-full px-3 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring">
+                        </div>
+                    </div>
+
+                    <!-- Priority -->
+                    <div>
+                        <label for="progress_priority" class="block text-sm font-medium text-foreground mb-1">Priority</label>
+                        <input type="number"
+                               id="progress_priority"
+                               name="priority"
+                               value="{% if let Some(p) = progress_tracking %}{{ p.priority }}{% else %}0{% endif %}"
+                               class="w-full px-3 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring">
+                        <p class="text-xs text-muted-foreground mt-1">Lower numbers display first</p>
+                    </div>
+                </div>
+
+                <button type="submit" class="w-full px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors">
+                    Save Progress Tracking Configuration
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

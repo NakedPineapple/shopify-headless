@@ -47,7 +47,10 @@ pub mod admin;
 pub mod types;
 
 pub use admin::{
-    AdminClient, DiscountCreateInput, DiscountUpdateInput, OAuthToken, ProductUpdateInput,
+    ActivePromotions, ActivePromotionsWithDigest, AdminClient, AutomaticDiscount,
+    AutomaticDiscountType, DiscountCreateInput, DiscountUpdateInput, ExtractedRuleData,
+    MinimumRequirement, MinimumRequirementType, OAuthToken, ProductUpdateInput, ProgressTracking,
+    PromotionBanner, QualifyingRule, QualifyingRuleType,
 };
 pub use types::*;
 
@@ -91,6 +94,10 @@ pub enum AdminShopifyError {
     /// No valid access token available (OAuth flow required).
     #[error("No access token - OAuth authorization required")]
     NoAccessToken,
+
+    /// Custom parse error (for metafield JSON, etc.).
+    #[error("Parse error: {0}")]
+    ParseError(String),
 }
 
 /// A GraphQL error returned by the Shopify Admin API.

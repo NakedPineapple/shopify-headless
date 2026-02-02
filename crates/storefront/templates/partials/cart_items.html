@@ -33,17 +33,23 @@
     <!-- Cart Line Items -->
     <div class="space-y-0 divide-y divide-border">
         {% for item in cart.items %}
-        <div class="group flex gap-4 md:gap-6 py-6 first:pt-0 transition-colors hover:bg-muted/30 -mx-2 px-2 rounded-lg">
+        <div class="group flex gap-4 md:gap-6 py-6 first:pt-0 transition-colors hover:bg-muted/30 -mx-2 px-2 rounded-lg {% if item.is_gwp %}bg-leaf/5{% endif %}">
             <!-- Item Image -->
-            <a href="/products/{{ item.handle }}" class="shrink-0 w-20 h-20 md:w-28 md:h-28 rounded-xl overflow-hidden bg-muted shadow-sm group-hover:shadow-md transition-shadow">
+            <a href="/products/{{ item.handle }}" class="relative shrink-0 w-20 h-20 md:w-28 md:h-28 rounded-xl bg-muted shadow-sm group-hover:shadow-md transition-shadow">
                 {% if let Some(image) = item.image %}
                 <img src="{{ image.url }}"
                      alt="{{ item.title }}"
-                     class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105">
+                     class="w-full h-full object-cover rounded-xl overflow-hidden transition-transform duration-500 group-hover:scale-105">
                 {% else %}
-                <div class="w-full h-full flex items-center justify-center">
+                <div class="w-full h-full flex items-center justify-center rounded-xl">
                     <i class="ph ph-image text-2xl text-muted-foreground/40"></i>
                 </div>
+                {% endif %}
+                {% if item.is_gwp %}
+                <!-- GWP Badge -->
+                <span class="absolute -top-1 -right-1 px-1.5 py-0.5 text-[9px] font-bold uppercase bg-leaf text-white rounded-full shadow-sm">
+                    Free
+                </span>
                 {% endif %}
             </a>
 
@@ -59,17 +65,33 @@
                         {% if let Some(variant_title) = item.variant_title %}
                         <p class="text-sm text-muted-foreground mt-0.5">{{ variant_title }}</p>
                         {% endif %}
+                        {% if item.is_gwp %}
+                        <p class="text-xs text-leaf font-medium mt-0.5">
+                            <i class="ph ph-gift"></i> Free Gift
+                        </p>
+                        {% endif %}
                     </div>
+                    {% if item.is_gwp %}
+                    <div class="text-right whitespace-nowrap">
+                        <p class="font-display text-lg font-semibold text-leaf">FREE</p>
+                        <p class="text-xs text-muted-foreground line-through">{{ item.price }}</p>
+                    </div>
+                    {% else %}
                     <p class="font-display text-lg font-semibold text-foreground whitespace-nowrap">{{ item.line_price }}</p>
+                    {% endif %}
                 </div>
 
-                <!-- Unit price if qty > 1 -->
-                {% if item.quantity > 1 %}
+                <!-- Unit price if qty > 1 (not for GWP items) -->
+                {% if item.quantity > 1 && !item.is_gwp %}
                 <p class="text-xs text-muted-foreground mb-2">{{ item.price }} each</p>
                 {% endif %}
 
                 <!-- Quantity & Remove - pushed to bottom -->
                 <div class="flex items-center justify-between mt-auto pt-2">
+                    {% if item.is_gwp %}
+                    <!-- GWP items have fixed quantity of 1 -->
+                    <span class="text-sm text-muted-foreground">Qty: 1</span>
+                    {% else %}
                     <!-- Quantity Selector -->
                     <div class="inline-flex items-center border border-border rounded-full bg-background shadow-sm">
                         <button type="button"
@@ -91,6 +113,7 @@
                             <i class="ph ph-plus text-sm"></i>
                         </button>
                     </div>
+                    {% endif %}
 
                     <!-- Remove Button -->
                     <button type="button"

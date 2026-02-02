@@ -1,0 +1,10 @@
+# Shop queries for Shopify Storefront API
+
+# Query to fetch shop metafield (for active promotions)
+query GetShopMetafield($namespace: String!, $key: String!) {
+  shop {
+    metafield(namespace: $namespace, key: $key) {
+      value
+    }
+  }
+}

@@ -6,6 +6,7 @@
 mod cache;
 mod conversions;
 pub mod queries;
+pub mod schema_validation;
 
 // Scalar types must be declared directly in this module (not just re-exported)
 // so graphql_client can find them as super::TypeName during macro expansion
@@ -35,8 +36,8 @@ use tracing::{debug, instrument, warn};
 use crate::config::ShopifyStorefrontConfig;
 use crate::shopify::ShopifyError;
 use crate::shopify::types::{
-    Cart, CartLineInput, CartLineUpdateInput, CartUserError, Collection, CollectionConnection,
-    Product, ProductConnection, ProductRecommendationIntent,
+    ActivePromotions, Cart, CartLineInput, CartLineUpdateInput, CartUserError, Collection,
+    CollectionConnection, Product, ProductConnection, ProductRecommendationIntent,
 };
 
 use cache::CacheValue;
@@ -50,13 +51,13 @@ use queries::{
     AddToCart, CreateCart, CustomerAccessTokenCreate, CustomerAccessTokenDelete,
     CustomerAccessTokenRenew, CustomerActivateByUrl, CustomerCreate, CustomerRecover,
     CustomerResetByUrl, GetCart, GetCollectionByHandle, GetCollections, GetCustomerByToken,
-    GetProductByHandle, GetProductRecommendations, GetProducts, RemoveFromCart,
+    GetProductByHandle, GetProductRecommendations, GetProducts, GetShopMetafield, RemoveFromCart,
     UpdateCartDiscountCodes, UpdateCartLines, UpdateCartNote, add_to_cart, create_cart,
     customer_access_token_create, customer_access_token_delete, customer_access_token_renew,
     customer_activate_by_url, customer_create, customer_recover, customer_reset_by_url, get_cart,
     get_collection_by_handle, get_collections, get_customer_by_token, get_product_by_handle,
-    get_product_recommendations, get_products, remove_from_cart, update_cart_discount_codes,
-    update_cart_lines, update_cart_note,
+    get_product_recommendations, get_products, get_shop_metafield, remove_from_cart,
+    update_cart_discount_codes, update_cart_lines, update_cart_note,
 };
 
 // =============================================================================
@@ -287,6 +288,25 @@ impl StorefrontClient {
             .await;
 
         Ok(product)
+    }
+
+    /// Get a product's title by its ID.
+    ///
+    /// This is a lightweight query used for GWP auto-add display.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the product is not found or the API request fails.
+    #[instrument(skip(self), fields(id = %id))]
+    pub async fn get_product_title_by_id(&self, id: &str) -> Result<String, ShopifyError> {
+        use queries::{GetProductTitleById, get_product_title_by_id::Variables};
+
+        let variables = Variables { id: id.to_string() };
+        let data = self.execute::<GetProductTitleById>(variables).await?;
+
+        data.product
+            .map(|p| p.title)
+            .ok_or_else(|| ShopifyError::NotFound(format!("Product not found: {id}")))
     }
 
     /// Get a paginated list of products.
@@ -521,6 +541,79 @@ impl StorefrontClient {
         }
 
         Ok(connection)
+    }
+
+    // =========================================================================
+    // Shop Methods
+    // =========================================================================
+
+    /// Get active promotions from shop metafield.
+    ///
+    /// Fetches the `custom.active_promotions` metafield and parses it as JSON.
+    /// Returns an empty `ActivePromotions` if the metafield doesn't exist or is invalid.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails. Invalid JSON or schema validation
+    /// failures are handled gracefully by returning default empty promotions.
+    #[instrument(skip(self))]
+    pub async fn get_active_promotions(&self) -> Result<ActivePromotions, ShopifyError> {
+        let cache_key = "shop:active_promotions".to_string();
+
+        // Check cache
+        if let Some(CacheValue::ActivePromotions(promotions)) =
+            self.inner.cache.get(&cache_key).await
+        {
+            debug!("Cache hit for active promotions");
+            return Ok(promotions);
+        }
+
+        let variables = get_shop_metafield::Variables {
+            namespace: "custom".to_string(),
+            key: "active_promotions".to_string(),
+        };
+
+        let data = self.execute::<GetShopMetafield>(variables).await?;
+
+        let promotions = if let Some(m) = data.shop.metafield {
+            debug!(raw_value = %m.value, "Got active_promotions metafield");
+
+            // Validate against schema before parsing
+            if let Err(e) = schema_validation::validate_str(&m.value) {
+                warn!(error = %e, value = %m.value, "Active promotions metafield failed schema validation");
+                ActivePromotions::default()
+            } else {
+                serde_json::from_str::<ActivePromotions>(&m.value)
+                    .inspect_err(|e| {
+                        warn!(error = %e, value = %m.value, "Failed to parse active_promotions metafield JSON");
+                    })
+                    .ok()
+                    .unwrap_or_default()
+            }
+        } else {
+            debug!("No active_promotions metafield found");
+            ActivePromotions::default()
+        };
+
+        let filtered_promotions = filter_promotions_by_date(promotions);
+
+        debug!(
+            banners = filtered_promotions.banners.len(),
+            progress_tracking = filtered_promotions.progress_tracking.len(),
+            qualifying_rules = filtered_promotions.qualifying_rules.len(),
+            "Loaded active promotions from metafield"
+        );
+
+        // Cache the result
+        self.inner
+            .cache
+            .insert(
+                cache_key,
+                CacheValue::ActivePromotions(filtered_promotions.clone()),
+            )
+            .await;
+
+        Ok(filtered_promotions)
     }
 
     // =========================================================================
@@ -1358,4 +1451,109 @@ pub struct StorefrontAccessToken {
     pub access_token: String,
     /// When the token expires (ISO 8601 format)
     pub expires_at: String,
+}
+
+// =============================================================================
+// Helper Functions
+// =============================================================================
+
+/// Filter promotions to only include those that are currently active.
+///
+/// Filtering is based on `qualifying_rules.starts_at/ends_at`. Banners and
+/// `progress_tracking` entries are filtered to only those with an active rule.
+fn filter_promotions_by_date(promotions: ActivePromotions) -> ActivePromotions {
+    let now = chrono::Utc::now();
+
+    debug!(
+        banners_before_filter = promotions.banners.len(),
+        progress_tracking_before_filter = promotions.progress_tracking.len(),
+        rules_before_filter = promotions.qualifying_rules.len(),
+        "Filtering promotions by date"
+    );
+
+    // First filter qualifying rules by date
+    let active_rules: Vec<_> = promotions
+        .qualifying_rules
+        .into_iter()
+        .filter(|r| {
+            is_promotion_active(
+                r.starts_at.as_ref(),
+                r.ends_at.as_ref(),
+                &now,
+                "Rule",
+                &r.id,
+            )
+        })
+        .collect();
+
+    // Build a set of active rule IDs for efficient lookup
+    let active_rule_ids: std::collections::HashSet<&str> =
+        active_rules.iter().map(|r| r.id.as_str()).collect();
+
+    // Filter banners to only those with an active qualifying rule
+    let banners = promotions
+        .banners
+        .into_iter()
+        .filter(|b| {
+            let active = active_rule_ids.contains(b.id.as_str());
+            if !active {
+                debug!(
+                    id = %b.id,
+                    "Banner filtered out - no active qualifying rule"
+                );
+            }
+            active
+        })
+        .collect();
+
+    // Filter progress tracking to only those with an active qualifying rule
+    let progress_tracking = promotions
+        .progress_tracking
+        .into_iter()
+        .filter(|p| {
+            let active = active_rule_ids.contains(p.id.as_str());
+            if !active {
+                debug!(
+                    id = %p.id,
+                    "Progress tracking filtered out - no active qualifying rule"
+                );
+            }
+            active
+        })
+        .collect();
+
+    ActivePromotions {
+        banners,
+        progress_tracking,
+        qualifying_rules: active_rules,
+    }
+}
+
+/// Check if a promotion is currently active based on its start and end dates.
+fn is_promotion_active(
+    starts_at: Option<&String>,
+    ends_at: Option<&String>,
+    now: &chrono::DateTime<chrono::Utc>,
+    kind: &str,
+    id: &str,
+) -> bool {
+    let started = starts_at
+        .is_none_or(|s| chrono::DateTime::parse_from_rfc3339(s).is_ok_and(|dt| dt <= *now));
+    let not_expired =
+        ends_at.is_none_or(|e| chrono::DateTime::parse_from_rfc3339(e).is_ok_and(|dt| dt > *now));
+    let active = started && not_expired;
+
+    if !active {
+        debug!(
+            kind = kind,
+            id = id,
+            starts_at = ?starts_at,
+            ends_at = ?ends_at,
+            started = started,
+            not_expired = not_expired,
+            "{kind} filtered out by date"
+        );
+    }
+
+    active
 }

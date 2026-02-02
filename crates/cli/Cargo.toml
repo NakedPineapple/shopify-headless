@@ -23,7 +23,7 @@ naked-pineapple-core = { workspace = true, features = ["postgres"] }
 naked-pineapple-admin = { path = "../admin" }
 
 # CLI
-clap = { version = "4", features = ["derive"] }
+clap = { version = "4.5", features = ["derive"] }
 
 # Database
 sqlx = { workspace = true }
@@ -32,7 +32,7 @@ sqlx = { workspace = true }
 tokio = { workspace = true }
 
 # Serialization
-serde_yaml = "0.9"
+serde_yaml_ng = "0.10"
 
 # Security
 secrecy = { workspace = true }

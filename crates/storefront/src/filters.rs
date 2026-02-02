@@ -1,5 +1,10 @@
 //! Custom Askama template filters.
 
+// The askama::filter_fn macro generates code that triggers these lints.
+// The generated code doesn't inherit doc comments or allow attributes from the source.
+#![allow(clippy::missing_errors_doc)]
+#![allow(clippy::inline_always)]
+#![allow(clippy::unused_self)]
 #![allow(clippy::unnecessary_wraps)]
 
 use std::fmt::Display;
@@ -39,6 +44,10 @@ pub fn get_logo_url(base_url: &str) -> String {
 /// Returns the current year.
 ///
 /// Usage in templates: `{{ ""|current_year }}`
+///
+/// # Errors
+///
+/// This filter is infallible, however Askama requires filters return `askama::Result`.
 #[allow(clippy::unnecessary_wraps)]
 #[askama::filter_fn]
 pub fn current_year(_value: impl Display, _env: &dyn askama::Values) -> askama::Result<i32> {
@@ -51,6 +60,10 @@ pub fn current_year(_value: impl Display, _env: &dyn askama::Values) -> askama::
 /// The input should be the base path without extension, e.g., "lifestyle/DSC_1068".
 ///
 /// Usage in templates: `{{ "lifestyle/DSC_1068"|image_hash }}`
+///
+/// # Errors
+///
+/// This filter is infallible, however Askama requires filters return `askama::Result`.
 #[allow(clippy::unnecessary_wraps)]
 #[askama::filter_fn]
 pub fn image_hash(base_path: impl Display, _env: &dyn askama::Values) -> askama::Result<String> {
@@ -64,6 +77,10 @@ pub fn image_hash(base_path: impl Display, _env: &dyn askama::Values) -> askama:
 /// Returns 0 for SVGs (resolution-independent) or if image not found.
 ///
 /// Usage in templates: `{{ "lifestyle/DSC_1068"|image_max_width }}`
+///
+/// # Errors
+///
+/// This filter is infallible, however Askama requires filters return `askama::Result`.
 #[allow(clippy::unnecessary_wraps)]
 #[askama::filter_fn]
 pub fn image_max_width(base_path: impl Display, _env: &dyn askama::Values) -> askama::Result<u32> {
@@ -76,6 +93,10 @@ pub fn image_max_width(base_path: impl Display, _env: &dyn askama::Values) -> as
 /// Parameters: base_path, hash, format (avif/webp/jpg)
 ///
 /// Usage in templates: `{{ base|image_srcset(hash, "avif") }}`
+///
+/// # Errors
+///
+/// This filter is infallible, however Askama requires filters return `askama::Result`.
 #[allow(clippy::unnecessary_wraps)]
 #[askama::filter_fn]
 pub fn image_srcset(
@@ -122,6 +143,10 @@ pub fn image_srcset(
 /// Returns the largest available size for an image, for use as the default src.
 ///
 /// Usage in templates: `{{ base|image_default_size }}`
+///
+/// # Errors
+///
+/// This filter is infallible, however Askama requires filters return `askama::Result`.
 #[allow(clippy::unnecessary_wraps)]
 #[askama::filter_fn]
 pub fn image_default_size(
@@ -142,6 +167,10 @@ pub fn image_default_size(
 /// Output: "/static/images/derived/hero/hero-self-love.{hash}-{size}.jpg"
 ///
 /// Usage in templates: `{{ path|to_derived_image(1600) }}`
+///
+/// # Errors
+///
+/// This filter is infallible, however Askama requires filters return `askama::Result`.
 #[allow(clippy::unnecessary_wraps)]
 #[askama::filter_fn]
 pub fn to_derived_image(
@@ -176,6 +205,10 @@ pub fn to_derived_image(
 /// Reads from `IMAGE_BASE_URL` env var at runtime, defaults to "/static/images/derived".
 ///
 /// Usage in templates: `{{ ""|image_base_url }}`
+///
+/// # Errors
+///
+/// This filter is infallible, however Askama requires filters return `askama::Result`.
 #[allow(clippy::unnecessary_wraps)]
 #[askama::filter_fn]
 pub fn image_base_url(_value: impl Display, _env: &dyn askama::Values) -> askama::Result<String> {
@@ -187,6 +220,10 @@ pub fn image_base_url(_value: impl Display, _env: &dyn askama::Values) -> askama
 /// The hash is computed at build time from the CSS file content.
 ///
 /// Usage in templates: `{{ ""|css_hash }}`
+///
+/// # Errors
+///
+/// This filter is infallible, however Askama requires filters return `askama::Result`.
 #[allow(clippy::unnecessary_wraps)]
 #[askama::filter_fn]
 pub fn css_hash(_value: impl Display, _env: &dyn askama::Values) -> askama::Result<&'static str> {
@@ -200,6 +237,10 @@ pub fn css_hash(_value: impl Display, _env: &dyn askama::Values) -> askama::Resu
 /// Strip the leading currency symbol ($) from a price string.
 ///
 /// Usage in templates: `{{ product.price|strip_currency }}`
+///
+/// # Errors
+///
+/// This filter is infallible, however Askama requires filters return `askama::Result`.
 #[allow(clippy::unnecessary_wraps)]
 #[askama::filter_fn]
 pub fn strip_currency(value: impl Display, _env: &dyn askama::Values) -> askama::Result<String> {
@@ -220,6 +261,10 @@ static WHITESPACE_RE: LazyLock<Regex> =
 /// and trims leading/trailing whitespace.
 ///
 /// Usage in templates: `{{ product.description|striptags }}`
+///
+/// # Errors
+///
+/// This filter is infallible, however Askama requires filters return `askama::Result`.
 #[allow(clippy::unnecessary_wraps)]
 #[askama::filter_fn]
 pub fn striptags(value: impl Display, _env: &dyn askama::Values) -> askama::Result<String> {
@@ -234,6 +279,10 @@ pub fn striptags(value: impl Display, _env: &dyn askama::Values) -> askama::Resu
 /// Tries to break at word boundaries when possible.
 ///
 /// Usage in templates: `{{ description|truncate(160) }}`
+///
+/// # Errors
+///
+/// This filter is infallible, however Askama requires filters return `askama::Result`.
 #[allow(clippy::unnecessary_wraps)]
 #[askama::filter_fn]
 pub fn truncate(value: &str, _env: &dyn askama::Values, max_len: usize) -> askama::Result<String> {
@@ -269,8 +318,40 @@ static CF_BEACON_TOKEN: LazyLock<String> =
 /// Returns empty string in development (when `CF_BEACON_TOKEN` is not set).
 ///
 /// Usage in templates: `{% let cf_token = ""|cf_beacon_token %}`
+///
+/// # Errors
+///
+/// This filter is infallible, however Askama requires filters return `askama::Result`.
 #[allow(clippy::unnecessary_wraps)]
 #[askama::filter_fn]
 pub fn cf_beacon_token(_value: impl Display, _env: &dyn askama::Values) -> askama::Result<String> {
     Ok(CF_BEACON_TOKEN.clone())
+}
+
+/// Renders inline markdown to HTML.
+///
+/// Only renders inline elements (bold, italic, links, code) - no block elements.
+/// Strips the wrapping `<p>` tag for seamless inline use.
+///
+/// Usage in templates: `{{ message|markdown }}`
+///
+/// # Errors
+///
+/// This filter is infallible, however Askama requires filters return `askama::Result`.
+#[allow(clippy::unnecessary_wraps)]
+#[askama::filter_fn]
+pub fn markdown(value: impl Display, _env: &dyn askama::Values) -> askama::Result<String> {
+    use comrak::{Options, markdown_to_html};
+
+    let input = value.to_string();
+    let html = markdown_to_html(&input, &Options::default());
+
+    // Strip wrapping <p> tags for inline use
+    let trimmed = html.trim();
+    let result = trimmed
+        .strip_prefix("<p>")
+        .and_then(|s| s.strip_suffix("</p>"))
+        .unwrap_or(trimmed);
+
+    Ok(result.to_string())
 }
