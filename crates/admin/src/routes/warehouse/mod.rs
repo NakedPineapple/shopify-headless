@@ -126,6 +126,16 @@ pub struct WarehouseInventoryTemplate {
     pub error_message: Option<String>,
 }
 
+/// Warehouse inventory detail template.
+#[derive(Template)]
+#[template(path = "warehouse/inventory/show.html")]
+pub struct WarehouseInventoryDetailTemplate {
+    pub admin_user: AdminUserView,
+    pub current_path: String,
+    pub product: Product,
+    pub error_message: Option<String>,
+}
+
 // =============================================================================
 // Query Parameters
 // =============================================================================
@@ -168,6 +178,7 @@ pub fn router() -> Router<AppState> {
         .route("/warehouse", get(dashboard))
         // Warehouse inventory
         .route("/warehouse/inventory", get(inventory_index))
+        .route("/warehouse/inventory/{sku}", get(inventory_show))
         // Warehouse orders
         .route("/warehouse/orders", get(orders_index))
         .route("/warehouse/orders/{id}", get(orders_show))
@@ -396,6 +407,60 @@ pub async fn inventory_index(
         has_next_page,
         end_cursor,
         search_query: params.sku,
+        error_message,
+    };
+
+    Html(template.render().unwrap_or_else(|e| {
+        tracing::error!("Template render error: {}", e);
+        "Internal Server Error".to_string()
+    }))
+    .into_response()
+}
+
+/// GET /warehouse/inventory/{sku} - Show product inventory detail.
+#[instrument(skip(state, session))]
+pub async fn inventory_show(
+    State(state): State<AppState>,
+    session: Session,
+    Path(sku): Path<String>,
+) -> Response {
+    let Some(admin) = get_current_admin(&session).await else {
+        return Redirect::to("/auth/login").into_response();
+    };
+
+    let Some(client) = state.shiphero() else {
+        let template = NotConnectedTemplate {
+            admin_user: AdminUserView::from(&admin),
+            current_path: format!("/warehouse/inventory/{sku}"),
+        };
+        return Html(template.render().unwrap_or_else(|e| {
+            tracing::error!("Template render error: {}", e);
+            "Internal Server Error".to_string()
+        }))
+        .into_response();
+    };
+
+    let result = client.get_product_by_sku(&sku).await;
+
+    let (product, error_message) = match result {
+        Ok(Some(product)) => (product, None),
+        Ok(None) => {
+            return Redirect::to("/warehouse/inventory?error=not_found").into_response();
+        }
+        Err(e) => {
+            tracing::error!(error = %e, "Failed to fetch ShipHero product");
+            return Redirect::to(&format!(
+                "/warehouse/inventory?error={}",
+                urlencoding::encode(&e.to_string())
+            ))
+            .into_response();
+        }
+    };
+
+    let template = WarehouseInventoryDetailTemplate {
+        admin_user: AdminUserView::from(&admin),
+        current_path: format!("/warehouse/inventory/{sku}"),
+        product,
         error_message,
     };
 

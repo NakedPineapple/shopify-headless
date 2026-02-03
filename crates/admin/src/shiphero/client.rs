@@ -240,11 +240,12 @@ impl ShipHeroClient {
     /// Returns `ShipHeroError::RateLimited` if we're being rate limited.
     /// Returns `ShipHeroError::GraphQL` if the query returns errors.
     /// Returns `ShipHeroError::Http` on network failures.
-    #[instrument(skip(self, query, variables))]
+    #[instrument(skip(self, query, variables, operation_name))]
     pub async fn execute<T: DeserializeOwned>(
         &self,
         query: &str,
         variables: Option<serde_json::Value>,
+        operation_name: Option<&str>,
     ) -> Result<T, ShipHeroError> {
         debug!("Executing ShipHero GraphQL query");
         let start = std::time::Instant::now();
@@ -263,7 +264,8 @@ impl ShipHeroClient {
 
         let body = serde_json::json!({
             "query": query,
-            "variables": variables.unwrap_or(serde_json::Value::Null)
+            "variables": variables.unwrap_or(serde_json::Value::Null),
+            "operationName": operation_name,
         });
 
         let response = self
@@ -303,36 +305,24 @@ impl ShipHeroClient {
             return Err(ShipHeroError::TokenExpired);
         }
 
-        let graphql_response: GraphQLResponse<T> = response.json().await?;
+        let response_text = response.text().await?;
+        debug!(
+            response_bytes = response_text.len(),
+            response_preview = %truncate_for_log(&response_text, 2000),
+            "Raw ShipHero GraphQL response"
+        );
 
-        // Check for GraphQL errors
-        if let Some(errors) = graphql_response.errors
-            && !errors.is_empty()
-        {
-            let error_messages: Vec<&str> = errors.iter().map(|e| e.message.as_str()).collect();
-            warn!(
-                status = %status,
-                duration_ms = %start.elapsed().as_millis(),
-                errors = ?error_messages,
-                "ShipHero GraphQL query returned errors"
-            );
-            let converted_errors: Vec<GraphQLError> = errors
-                .into_iter()
-                .map(|e| GraphQLError {
-                    message: e.message,
-                    locations: e
-                        .locations
-                        .into_iter()
-                        .map(|l| GraphQLErrorLocation {
-                            line: l.line,
-                            column: l.column,
-                        })
-                        .collect(),
-                    path: e.path,
-                })
-                .collect();
-            return Err(ShipHeroError::GraphQL(converted_errors));
-        }
+        let graphql_response: GraphQLResponse<T> =
+            serde_json::from_str(&response_text).map_err(|e| {
+                warn!(
+                    error = %e,
+                    response_preview = %truncate_for_log(&response_text, 500),
+                    "Failed to deserialize ShipHero response"
+                );
+                ShipHeroError::Deserialization(e.to_string())
+            })?;
+
+        check_graphql_errors(&graphql_response, status, &start)?;
 
         debug!(
             status = %status,
@@ -368,9 +358,11 @@ impl ShipHeroClient {
     {
         let body = Q::build_query(variables);
         let query = body.query;
+        let operation_name = body.operation_name;
         let variables = serde_json::to_value(body.variables)?;
 
-        self.execute(query, Some(variables)).await
+        self.execute(query, Some(variables), Some(operation_name))
+            .await
     }
 
     /// Get the current access token string.
@@ -401,25 +393,33 @@ impl ShipHeroClient {
         let query = r"
             query {
                 account {
-                    id
-                    email
-                    username
+                    request_id
+                    data {
+                        id
+                        email
+                        username
+                    }
                 }
             }
         ";
 
         #[derive(Debug, Deserialize)]
         struct Response {
-            account: AccountInfo,
+            account: AccountResult,
         }
 
-        let response: Response = self.execute(query, None).await?;
+        #[derive(Debug, Deserialize)]
+        struct AccountResult {
+            data: AccountInfo,
+        }
+
+        let response: Response = self.execute(query, None, None).await?;
         debug!(
-            account_id = %response.account.id,
-            email = %response.account.email,
+            account_id = %response.account.data.id,
+            email = %response.account.data.email,
             "ShipHero connection test successful"
         );
-        Ok(response.account)
+        Ok(response.account.data)
     }
 }
 
@@ -438,6 +438,44 @@ pub struct AccountInfo {
     pub email: String,
     /// Username.
     pub username: Option<String>,
+}
+
+/// Check a GraphQL response for errors and convert them to `ShipHeroError`.
+fn check_graphql_errors<T>(
+    response: &GraphQLResponse<T>,
+    status: reqwest::StatusCode,
+    start: &std::time::Instant,
+) -> Result<(), ShipHeroError> {
+    let Some(errors) = response.errors.as_ref().filter(|e| !e.is_empty()) else {
+        return Ok(());
+    };
+    let error_messages: Vec<&str> = errors.iter().map(|e| e.message.as_str()).collect();
+    warn!(
+        status = %status,
+        duration_ms = %start.elapsed().as_millis(),
+        errors = ?error_messages,
+        "ShipHero GraphQL query returned errors"
+    );
+    let converted: Vec<GraphQLError> = errors
+        .iter()
+        .map(|e| GraphQLError {
+            message: e.message.clone(),
+            locations: e
+                .locations
+                .iter()
+                .map(|l| GraphQLErrorLocation {
+                    line: l.line,
+                    column: l.column,
+                })
+                .collect(),
+            path: e.path.clone(),
+        })
+        .collect();
+    Err(ShipHeroError::GraphQL(converted))
+}
+
+fn truncate_for_log(s: &str, max_len: usize) -> &str {
+    if s.len() <= max_len { s } else { &s[..max_len] }
 }
 
 #[cfg(test)]

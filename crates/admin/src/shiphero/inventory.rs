@@ -50,6 +50,68 @@ pub struct Product {
     pub created_at: Option<String>,
     /// Updated timestamp.
     pub updated_at: Option<String>,
+    /// Product dimensions (weight, height, width, length).
+    pub dimensions: Option<ProductDimensions>,
+    /// Harmonized tariff code.
+    pub tariff_code: Option<String>,
+    /// Kit components (if this product is a kit).
+    pub kit_components: Vec<KitComponent>,
+    /// Product vendors.
+    pub vendors: Vec<ProductVendor>,
+}
+
+impl Product {
+    /// Total on-hand quantity across all warehouses.
+    #[must_use]
+    pub fn total_on_hand(&self) -> i64 {
+        self.warehouse_products
+            .iter()
+            .map(|wp| wp.on_hand.unwrap_or(0))
+            .sum()
+    }
+
+    /// Total available quantity across all warehouses.
+    #[must_use]
+    pub fn total_available(&self) -> i64 {
+        self.warehouse_products
+            .iter()
+            .map(|wp| wp.available.unwrap_or(0))
+            .sum()
+    }
+
+    /// Total allocated quantity across all warehouses.
+    #[must_use]
+    pub fn total_allocated(&self) -> i64 {
+        self.warehouse_products
+            .iter()
+            .map(|wp| wp.allocated.unwrap_or(0))
+            .sum()
+    }
+
+    /// Total backorder quantity across all warehouses.
+    #[must_use]
+    pub fn total_backorder(&self) -> i64 {
+        self.warehouse_products
+            .iter()
+            .map(|wp| wp.backorder.unwrap_or(0))
+            .sum()
+    }
+
+    /// Maximum reorder level across all warehouses.
+    #[must_use]
+    pub fn max_reorder_level(&self) -> i64 {
+        self.warehouse_products
+            .iter()
+            .map(|wp| wp.reorder_level.unwrap_or(0))
+            .max()
+            .unwrap_or(0)
+    }
+
+    /// Whether this product is a kit.
+    #[must_use]
+    pub fn is_kit(&self) -> bool {
+        self.kit.unwrap_or(false)
+    }
 }
 
 /// Warehouse-specific inventory for a product.
@@ -92,6 +154,39 @@ pub struct ProductImage {
     pub src: Option<String>,
     /// Image position/order.
     pub position: Option<i64>,
+}
+
+/// Product dimensions from `ShipHero`.
+#[derive(Debug, Clone, Serialize)]
+pub struct ProductDimensions {
+    /// Weight in warehouse units.
+    pub weight: Option<String>,
+    /// Height in warehouse units.
+    pub height: Option<String>,
+    /// Width in warehouse units.
+    pub width: Option<String>,
+    /// Length in warehouse units.
+    pub length: Option<String>,
+}
+
+/// A component of a kit product.
+#[derive(Debug, Clone, Serialize)]
+pub struct KitComponent {
+    /// Component product SKU.
+    pub sku: Option<String>,
+    /// Quantity of this component in the kit.
+    pub quantity: Option<i64>,
+}
+
+/// A vendor for a product.
+#[derive(Debug, Clone, Serialize)]
+pub struct ProductVendor {
+    /// Vendor ID.
+    pub vendor_id: Option<String>,
+    /// Vendor-specific SKU.
+    pub vendor_sku: Option<String>,
+    /// Vendor price.
+    pub price: Option<String>,
 }
 
 /// A bin location in the warehouse.
@@ -250,6 +345,28 @@ impl ShipHeroClient {
             .flatten()
             .filter_map(|edge| {
                 let node = edge.node?;
+                let sku_ref = node.sku.as_deref().unwrap_or("unknown");
+                let wp_count = node.warehouse_products.as_ref().map_or(0, Vec::len);
+                debug!(
+                    sku = sku_ref,
+                    warehouse_product_count = wp_count,
+                    "Processing product node from ShipHero"
+                );
+                let warehouse_products = convert_warehouse_products(node.warehouse_products);
+                if let Some(wp) = warehouse_products.first() {
+                    debug!(
+                        sku = sku_ref,
+                        on_hand = ?wp.on_hand,
+                        allocated = ?wp.allocated,
+                        available = ?wp.available,
+                        reserve_inventory = ?wp.reserve_inventory,
+                        reorder_level = ?wp.reorder_level,
+                        warehouse_id = ?wp.warehouse_id,
+                        "Product warehouse inventory data"
+                    );
+                } else {
+                    debug!(sku = sku_ref, "Product has no warehouse inventory data");
+                }
                 Some(Product {
                     id: node.id?,
                     legacy_id: node.legacy_id,
@@ -262,10 +379,14 @@ impl ShipHeroClient {
                     no_air: node.no_air,
                     final_sale: node.final_sale,
                     is_virtual: node.virtual_,
-                    warehouse_products: convert_warehouse_products(node.warehouse_products),
+                    warehouse_products,
                     images: convert_images(node.images),
                     created_at: node.created_at,
                     updated_at: node.updated_at,
+                    dimensions: None,
+                    tariff_code: None,
+                    kit_components: Vec::new(),
+                    vendors: Vec::new(),
                 })
             })
             .collect();
@@ -304,24 +425,57 @@ impl ShipHeroClient {
             .and_then(|result| result.data)
             .and_then(|data| data.edges.into_iter().flatten().next())
             .and_then(|edge| edge.node)
-            .map(|node| Product {
-                id: node.id.unwrap_or_default(),
-                legacy_id: node.legacy_id,
-                sku: node.sku,
-                name: node.name,
-                barcode: node.barcode,
-                country_of_manufacture: node.country_of_manufacture,
-                kit: node.kit,
-                kit_build: node.kit_build,
-                no_air: None,
-                final_sale: None,
-                is_virtual: None,
-                warehouse_products: convert_product_by_sku_warehouse_products(
-                    node.warehouse_products,
-                ),
-                images: Vec::new(),
-                created_at: None,
-                updated_at: None,
+            .map(|node| {
+                let dimensions = node.dimensions.map(|d| ProductDimensions {
+                    weight: d.weight,
+                    height: d.height,
+                    width: d.width,
+                    length: d.length,
+                });
+                let kit_components = node
+                    .kit_components
+                    .unwrap_or_default()
+                    .into_iter()
+                    .flatten()
+                    .map(|kc| KitComponent {
+                        sku: kc.sku,
+                        quantity: kc.quantity,
+                    })
+                    .collect();
+                let vendors = node
+                    .vendors
+                    .unwrap_or_default()
+                    .into_iter()
+                    .flatten()
+                    .map(|v| ProductVendor {
+                        vendor_id: v.vendor_id,
+                        vendor_sku: v.vendor_sku,
+                        price: v.price,
+                    })
+                    .collect();
+                Product {
+                    id: node.id.unwrap_or_default(),
+                    legacy_id: node.legacy_id,
+                    sku: node.sku,
+                    name: node.name,
+                    barcode: node.barcode,
+                    country_of_manufacture: node.country_of_manufacture,
+                    kit: node.kit,
+                    kit_build: node.kit_build,
+                    no_air: None,
+                    final_sale: None,
+                    is_virtual: None,
+                    warehouse_products: convert_product_by_sku_warehouse_products(
+                        node.warehouse_products,
+                    ),
+                    images: Vec::new(),
+                    created_at: None,
+                    updated_at: None,
+                    dimensions,
+                    tariff_code: node.tariff_code,
+                    kit_components,
+                    vendors,
+                }
             });
 
         if product.is_some() {
@@ -470,7 +624,7 @@ impl ShipHeroClient {
                     sellable: node.sellable,
                     is_cart: node.is_cart,
                     pick_priority: node.pick_priority,
-                    kind: node.type_.map(|t| format!("{t:?}")),
+                    kind: node.type_.and_then(|t| t.name),
                     warehouse_id: node.warehouse_id,
                 })
             })
@@ -552,7 +706,7 @@ impl ShipHeroClient {
         Ok(changes)
     }
 
-    /// Get expiration lots for a SKU or warehouse.
+    /// Get expiration lots for a SKU.
     ///
     /// # Errors
     ///
@@ -561,22 +715,16 @@ impl ShipHeroClient {
     pub async fn get_expiration_lots(
         &self,
         sku: Option<String>,
-        warehouse_id: Option<String>,
         first: Option<i64>,
     ) -> Result<Vec<ExpirationLot>, ShipHeroError> {
         use super::queries::get_expiration_lots::Variables;
 
         debug!(
             sku = sku.as_deref(),
-            warehouse_id = warehouse_id.as_deref(),
             "Fetching expiration lots from ShipHero"
         );
 
-        let variables = Variables {
-            sku,
-            warehouse_id,
-            first,
-        };
+        let variables = Variables { sku, first };
         let response = self.execute_query::<GetExpirationLots>(variables).await?;
 
         let lots: Vec<_> = response
@@ -636,9 +784,15 @@ impl ShipHeroClient {
             .products
             .into_iter()
             .filter_map(|p| {
-                let wp = p.warehouse_products.first()?;
-                let on_hand = wp.on_hand.unwrap_or(0);
-                let reorder_level = wp.reorder_level.unwrap_or(0);
+                if p.warehouse_products.is_empty() {
+                    return None;
+                }
+                let on_hand = p.total_on_hand();
+                let reorder_level = p.max_reorder_level();
+                let bin_location = p
+                    .warehouse_products
+                    .first()
+                    .and_then(|wp| wp.inventory_bin.clone());
 
                 // Only include if reorder_level is set and stock is at or below it
                 if reorder_level > 0 && on_hand <= reorder_level {
@@ -648,7 +802,7 @@ impl ShipHeroClient {
                         name: p.name.unwrap_or_default(),
                         on_hand,
                         reorder_level,
-                        bin_location: wp.inventory_bin.clone(),
+                        bin_location,
                     })
                 } else {
                     None
@@ -692,9 +846,9 @@ impl ShipHeroClient {
         for product in &result.products {
             total_skus += 1;
 
-            if let Some(wp) = product.warehouse_products.first() {
-                let on_hand = wp.on_hand.unwrap_or(0);
-                let reorder_level = wp.reorder_level.unwrap_or(0);
+            if !product.warehouse_products.is_empty() {
+                let on_hand = product.total_on_hand();
+                let reorder_level = product.max_reorder_level();
 
                 if on_hand > 0 {
                     items_in_stock += 1;
@@ -780,7 +934,8 @@ fn convert_warehouse_products(
     let Some(wps) = wps else {
         return Vec::new();
     };
-    wps.into_iter()
+    let mut products: Vec<WarehouseProduct> = wps
+        .into_iter()
         .flatten()
         .map(|wp| WarehouseProduct {
             warehouse_id: wp.warehouse_id,
@@ -798,7 +953,10 @@ fn convert_warehouse_products(
             value: wp.value,
             value_currency: wp.value_currency,
         })
-        .collect()
+        .collect();
+    // Sort by on_hand descending so the warehouse with the most stock is first
+    products.sort_by(|a, b| b.on_hand.unwrap_or(0).cmp(&a.on_hand.unwrap_or(0)));
+    products
 }
 
 fn convert_product_by_sku_warehouse_products(
@@ -807,14 +965,15 @@ fn convert_product_by_sku_warehouse_products(
     let Some(wps) = wps else {
         return Vec::new();
     };
-    wps.into_iter()
+    let mut products: Vec<WarehouseProduct> = wps
+        .into_iter()
         .flatten()
         .map(|wp| WarehouseProduct {
             warehouse_id: wp.warehouse_id,
             on_hand: wp.on_hand,
-            allocated: None,
-            available: None,
-            backorder: None,
+            allocated: wp.allocated,
+            available: wp.available,
+            backorder: wp.backorder,
             inventory_bin: wp.inventory_bin,
             inventory_overstock_bin: wp.inventory_overstock_bin,
             reserve_inventory: wp.reserve_inventory,
@@ -825,7 +984,10 @@ fn convert_product_by_sku_warehouse_products(
             value: wp.value,
             value_currency: wp.value_currency,
         })
-        .collect()
+        .collect();
+    // Sort by on_hand descending so the warehouse with the most stock is first
+    products.sort_by(|a, b| b.on_hand.unwrap_or(0).cmp(&a.on_hand.unwrap_or(0)));
+    products
 }
 
 fn convert_images(

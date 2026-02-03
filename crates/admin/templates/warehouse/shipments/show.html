@@ -31,7 +31,7 @@
             <dl class="grid grid-cols-2 gap-4 text-sm">
                 <div>
                     <dt class="text-muted-foreground">Shipment ID</dt>
-                    <dd class="text-foreground font-mono text-xs">{{ shipment.id }}</dd>
+                    <dd class="text-foreground font-mono text-xs">{{ shipment.id|decode_base64 }}</dd>
                 </div>
                 <div>
                     <dt class="text-muted-foreground">Order Number</dt>
@@ -174,7 +174,7 @@
         {% if let Some(warehouse_id) = shipment.warehouse_id.as_deref() %}
         <div class="bg-card rounded-xl border border-border p-6">
             <h2 class="text-lg font-semibold text-foreground mb-4">Warehouse</h2>
-            <p class="text-sm text-foreground font-mono">{{ warehouse_id }}</p>
+            <p class="text-sm text-foreground font-mono">{{ warehouse_id|decode_base64 }}</p>
         </div>
         {% endif %}
     </div>

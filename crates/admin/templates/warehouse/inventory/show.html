@@ -1,0 +1,323 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}{{ product.name.as_deref().unwrap_or("Product") }} - Inventory{% endblock %}
+
+{% block page_title %}{{ product.name.as_deref().unwrap_or("Product Detail") }}{% endblock %}
+
+{% block page_subtitle %}
+<p class="text-sm text-muted-foreground mt-1">SKU: <span class="font-mono">{{ product.sku.as_deref().unwrap_or("-") }}</span></p>
+{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <a href="/warehouse/inventory" class="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+        <i class="ph ph-arrow-left"></i>
+        Back to Inventory
+    </a>
+</div>
+
+{% if let Some(error) = error_message %}
+<div class="mb-6 p-4 bg-warning/10 border border-warning/20 rounded-lg text-warning">
+    <i class="ph ph-warning mr-2"></i>{{ error }}
+</div>
+{% endif %}
+
+<!-- Product Header -->
+<div class="bg-card rounded-xl border border-border p-6 mb-6">
+    <div class="flex items-center gap-6">
+        {% if !product.images.is_empty() %}
+        {% let img = product.images.first().unwrap() %}
+        {% if let Some(src) = img.src.as_deref() %}
+        <img src="{{ src }}" alt="{{ product.name.as_deref().unwrap_or("") }}" class="w-20 h-20 rounded-lg object-cover">
+        {% else %}
+        <div class="w-20 h-20 rounded-lg bg-muted flex items-center justify-center">
+            <i class="ph ph-package text-2xl text-muted-foreground"></i>
+        </div>
+        {% endif %}
+        {% else %}
+        <div class="w-20 h-20 rounded-lg bg-muted flex items-center justify-center">
+            <i class="ph ph-package text-2xl text-muted-foreground"></i>
+        </div>
+        {% endif %}
+        <div>
+            <h2 class="text-xl font-semibold text-foreground">{{ product.name.as_deref().unwrap_or("-") }}</h2>
+            <div class="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
+                <span class="font-mono">{{ product.sku.as_deref().unwrap_or("-") }}</span>
+                {% if let Some(barcode) = product.barcode.as_deref() %}
+                <span class="flex items-center gap-1"><i class="ph ph-barcode"></i> {{ barcode }}</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Main Content -->
+    <div class="lg:col-span-2 space-y-6">
+        <!-- Warehouse Inventory Table -->
+        <div class="bg-card rounded-xl border border-border overflow-hidden">
+            <div class="p-6 border-b border-border">
+                <h2 class="text-lg font-semibold text-foreground">Warehouse Inventory</h2>
+            </div>
+            {% if product.warehouse_products.is_empty() %}
+            <div class="px-6 py-12 text-center text-muted-foreground">
+                <i class="ph ph-warehouse text-4xl mb-2"></i>
+                <p>No warehouse inventory data</p>
+            </div>
+            {% else %}
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-muted">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Warehouse</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">On Hand</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Allocated</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Available</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Backorder</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Bin</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Reorder Level</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-border">
+                        {% for wp in product.warehouse_products %}
+                        <tr class="hover:bg-accent transition-colors">
+                            <td class="px-6 py-4 text-sm font-medium text-foreground">{{ wp.warehouse_id.as_deref().unwrap_or("-")|decode_base64 }}</td>
+                            <td class="px-6 py-4 text-sm text-right font-medium
+                                {% if wp.on_hand.unwrap_or(0) == 0 %}text-destructive{% else %}text-foreground{% endif %}">
+                                {{ wp.on_hand.unwrap_or(0) }}
+                            </td>
+                            <td class="px-6 py-4 text-sm text-right text-muted-foreground">{{ wp.allocated.unwrap_or(0) }}</td>
+                            <td class="px-6 py-4 text-sm text-right text-foreground">{{ wp.available.unwrap_or(0) }}</td>
+                            <td class="px-6 py-4 text-sm text-right text-muted-foreground">{{ wp.backorder.unwrap_or(0) }}</td>
+                            <td class="px-6 py-4 text-sm">
+                                {% if let Some(bin) = wp.inventory_bin.as_deref() %}
+                                <span class="font-mono text-foreground">{{ bin }}</span>
+                                {% else %}
+                                <span class="text-muted-foreground">-</span>
+                                {% endif %}
+                                {% if let Some(overstock) = wp.inventory_overstock_bin.as_deref() %}
+                                <p class="text-xs text-muted-foreground mt-0.5">Overstock: {{ overstock }}</p>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 text-sm text-right text-muted-foreground">{{ wp.reorder_level.unwrap_or(0) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    {% if product.warehouse_products.len() > 1 %}
+                    <tfoot class="bg-muted/50 border-t border-border">
+                        <tr class="font-semibold">
+                            <td class="px-6 py-3 text-sm text-foreground">Totals</td>
+                            <td class="px-6 py-3 text-sm text-right text-foreground">{{ product.total_on_hand() }}</td>
+                            <td class="px-6 py-3 text-sm text-right text-muted-foreground">{{ product.total_allocated() }}</td>
+                            <td class="px-6 py-3 text-sm text-right text-foreground">{{ product.total_available() }}</td>
+                            <td class="px-6 py-3 text-sm text-right text-muted-foreground">{{ product.total_backorder() }}</td>
+                            <td class="px-6 py-3"></td>
+                            <td class="px-6 py-3"></td>
+                        </tr>
+                    </tfoot>
+                    {% endif %}
+                </table>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Product Details -->
+        <div class="bg-card rounded-xl border border-border p-6">
+            <h2 class="text-lg font-semibold text-foreground mb-4">Product Details</h2>
+            <dl class="grid grid-cols-2 gap-4 text-sm">
+                {% if let Some(country) = product.country_of_manufacture.as_deref() %}
+                <div>
+                    <dt class="text-muted-foreground">Country of Manufacture</dt>
+                    <dd class="text-foreground">{{ country }}</dd>
+                </div>
+                {% endif %}
+                {% if let Some(tariff) = product.tariff_code.as_deref() %}
+                <div>
+                    <dt class="text-muted-foreground">Tariff Code</dt>
+                    <dd class="text-foreground font-mono">{{ tariff }}</dd>
+                </div>
+                {% endif %}
+                {% if let Some(dims) = product.dimensions.as_ref() %}
+                {% if let Some(weight) = dims.weight.as_deref() %}
+                <div>
+                    <dt class="text-muted-foreground">Weight</dt>
+                    <dd class="text-foreground">{{ weight }}</dd>
+                </div>
+                {% endif %}
+                {% if let Some(length) = dims.length.as_deref() %}
+                <div>
+                    <dt class="text-muted-foreground">Dimensions (L x W x H)</dt>
+                    <dd class="text-foreground">{{ length }} x {{ dims.width.as_deref().unwrap_or("-") }} x {{ dims.height.as_deref().unwrap_or("-") }}</dd>
+                </div>
+                {% endif %}
+                {% endif %}
+                <div>
+                    <dt class="text-muted-foreground">ShipHero ID</dt>
+                    <dd class="text-foreground font-mono text-xs">{{ product.id|decode_base64 }}</dd>
+                </div>
+                {% if let Some(legacy_id) = product.legacy_id %}
+                <div>
+                    <dt class="text-muted-foreground">Legacy ID</dt>
+                    <dd class="text-foreground font-mono">{{ legacy_id }}</dd>
+                </div>
+                {% endif %}
+            </dl>
+        </div>
+
+        <!-- Kit Components (conditional) -->
+        {% if product.is_kit() && !product.kit_components.is_empty() %}
+        <div class="bg-card rounded-xl border border-border overflow-hidden">
+            <div class="p-6 border-b border-border">
+                <h2 class="text-lg font-semibold text-foreground">Kit Components</h2>
+            </div>
+            <table class="w-full">
+                <thead class="bg-muted">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Component SKU</th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Quantity</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-border">
+                    {% for kc in product.kit_components %}
+                    <tr class="hover:bg-accent transition-colors">
+                        <td class="px-6 py-4 text-sm">
+                            {% if let Some(sku) = kc.sku.as_deref() %}
+                            <a href="/warehouse/inventory/{{ sku|urlencode }}" class="font-mono text-primary hover:underline">{{ sku }}</a>
+                            {% else %}
+                            <span class="text-muted-foreground">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-sm text-right text-foreground">{{ kc.quantity.unwrap_or(0) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+
+        <!-- Vendors (conditional) -->
+        {% if !product.vendors.is_empty() %}
+        <div class="bg-card rounded-xl border border-border overflow-hidden">
+            <div class="p-6 border-b border-border">
+                <h2 class="text-lg font-semibold text-foreground">Vendors</h2>
+            </div>
+            <table class="w-full">
+                <thead class="bg-muted">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Vendor ID</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Vendor SKU</th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Price</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-border">
+                    {% for vendor in product.vendors %}
+                    <tr class="hover:bg-accent transition-colors">
+                        <td class="px-6 py-4 text-sm text-foreground">{{ vendor.vendor_id.as_deref().unwrap_or("-")|decode_base64 }}</td>
+                        <td class="px-6 py-4 text-sm font-mono text-foreground">{{ vendor.vendor_sku.as_deref().unwrap_or("-") }}</td>
+                        <td class="px-6 py-4 text-sm text-right text-foreground">{{ vendor.price.as_deref().unwrap_or("-") }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Sidebar -->
+    <div class="space-y-6">
+        <!-- Inventory Summary -->
+        <div class="bg-card rounded-xl border border-border p-6">
+            <h2 class="text-lg font-semibold text-foreground mb-4">Inventory Summary</h2>
+            <dl class="space-y-3 text-sm">
+                <div class="flex justify-between">
+                    <dt class="text-muted-foreground">Total On Hand</dt>
+                    <dd class="font-medium text-foreground">{{ product.total_on_hand() }}</dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt class="text-muted-foreground">Allocated</dt>
+                    <dd class="text-foreground">{{ product.total_allocated() }}</dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt class="text-muted-foreground">Available</dt>
+                    <dd class="font-medium text-foreground">{{ product.total_available() }}</dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt class="text-muted-foreground">Backorder</dt>
+                    <dd class="text-foreground">{{ product.total_backorder() }}</dd>
+                </div>
+                <div class="flex justify-between border-t border-border pt-3">
+                    <dt class="text-muted-foreground">Warehouses</dt>
+                    <dd class="text-foreground">{{ product.warehouse_products.len() }}</dd>
+                </div>
+            </dl>
+        </div>
+
+        <!-- Status -->
+        <div class="bg-card rounded-xl border border-border p-6">
+            <h2 class="text-lg font-semibold text-foreground mb-4">Status</h2>
+            <div class="space-y-3">
+                {% if product.total_on_hand() == 0 %}
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-destructive/20 text-destructive">
+                    <i class="ph ph-x-circle"></i> Out of Stock
+                </span>
+                {% elif product.max_reorder_level() > 0 && product.total_on_hand() <= product.max_reorder_level() %}
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-warning/20 text-warning">
+                    <i class="ph ph-warning"></i> Low Stock
+                </span>
+                {% else %}
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-success/20 text-success">
+                    <i class="ph ph-check-circle"></i> In Stock
+                </span>
+                {% endif %}
+
+                {% if product.is_kit() %}
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-info/20 text-info">
+                    <i class="ph ph-package"></i> Kit
+                </span>
+                {% endif %}
+                {% if product.no_air.unwrap_or(false) %}
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+                    <i class="ph ph-airplane-tilt"></i> No Air
+                </span>
+                {% endif %}
+                {% if product.final_sale.unwrap_or(false) %}
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+                    <i class="ph ph-tag"></i> Final Sale
+                </span>
+                {% endif %}
+                {% if product.is_virtual.unwrap_or(false) %}
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+                    <i class="ph ph-cloud"></i> Virtual
+                </span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Reorder Settings (conditional) -->
+        {% if product.max_reorder_level() > 0 %}
+        {% let wp = product.warehouse_products.first().unwrap() %}
+        <div class="bg-card rounded-xl border border-border p-6">
+            <h2 class="text-lg font-semibold text-foreground mb-4">Reorder Settings</h2>
+            <dl class="space-y-3 text-sm">
+                <div class="flex justify-between">
+                    <dt class="text-muted-foreground">Reorder Level</dt>
+                    <dd class="text-foreground">{{ wp.reorder_level.unwrap_or(0) }}</dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt class="text-muted-foreground">Reorder Amount</dt>
+                    <dd class="text-foreground">{{ wp.reorder_amount.unwrap_or(0) }}</dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt class="text-muted-foreground">Replenishment Level</dt>
+                    <dd class="text-foreground">{{ wp.replenishment_level.unwrap_or(0) }}</dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt class="text-muted-foreground">Reserve Inventory</dt>
+                    <dd class="text-foreground">{{ wp.reserve_inventory.unwrap_or(0) }}</dd>
+                </div>
+            </dl>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

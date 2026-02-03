@@ -4,14 +4,12 @@
 # Get recent shipments
 query GetShipments($first: Int = 50, $after: String, $date_from: ISODateTime, $date_to: ISODateTime) {
   shipments(
-    first: $first
-    after: $after
     date_from: $date_from
     date_to: $date_to
   ) {
     request_id
     complexity
-    data {
+    data(first: $first, after: $after) {
       pageInfo {
         hasNextPage
         endCursor

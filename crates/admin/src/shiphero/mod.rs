@@ -63,6 +63,10 @@ pub enum ShipHeroError {
     #[error("No access token - ShipHero authentication required")]
     NoAccessToken,
 
+    /// Response deserialization failed.
+    #[error("Deserialization error: {0}")]
+    Deserialization(String),
+
     /// Database error during credential operations.
     #[error("Database error: {0}")]
     Database(#[from] sqlx::Error),

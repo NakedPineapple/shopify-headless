@@ -14,6 +14,7 @@
 
 use std::fmt::Display;
 
+use base64::{Engine, engine::general_purpose::STANDARD};
 use chrono::{DateTime, Utc};
 use chrono_tz::{America::Denver, Etc::GMTPlus12};
 
@@ -289,6 +290,23 @@ pub fn format_datetime_mst(dt_str: &str, _env: &dyn askama::Values) -> askama::R
     }
     // Fallback to original string
     Ok(dt_str.to_string())
+}
+
+/// Decode a base64-encoded string (e.g. ShipHero global IDs).
+///
+/// Usage in templates: `{{ value|decode_base64 }}`
+///
+/// # Errors
+///
+/// This filter is infallible, however Askama requires filters return `askama::Result`.
+#[allow(clippy::unnecessary_wraps)]
+#[askama::filter_fn]
+pub fn decode_base64(value: &str, _env: &dyn askama::Values) -> askama::Result<String> {
+    Ok(STANDARD
+        .decode(value)
+        .ok()
+        .and_then(|bytes| String::from_utf8(bytes).ok())
+        .unwrap_or_else(|| value.to_string()))
 }
 
 /// Format a datetime string (ISO format) in AOE (Anywhere on Earth) timezone.

@@ -5,12 +5,10 @@
 query GetPendingOrders($first: Int = 50, $after: String, $fulfillment_status: String = "pending") {
   orders(
     fulfillment_status: $fulfillment_status
-    first: $first
-    after: $after
   ) {
     request_id
     complexity
-    data {
+    data(first: $first, after: $after) {
       pageInfo {
         hasNextPage
         endCursor
@@ -128,10 +126,10 @@ query GetOrder($id: String!) {
 
 # Get order history/timeline
 query GetOrderHistory($order_id: String!) {
-  order_history(order_id: $order_id, first: 50) {
+  order_history(order_id: $order_id) {
     request_id
     complexity
-    data {
+    data(first: 50) {
       pageInfo {
         hasNextPage
         endCursor

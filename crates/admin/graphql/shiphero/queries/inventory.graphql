@@ -4,13 +4,11 @@
 # Get products with inventory levels
 query GetProducts($first: Int = 50, $after: String, $sku: String) {
   products(
-    first: $first
-    after: $after
     sku: $sku
   ) {
     request_id
     complexity
-    data {
+    data(first: $first, after: $after) {
       pageInfo {
         hasNextPage
         endCursor
@@ -60,10 +58,10 @@ query GetProducts($first: Int = 50, $after: String, $sku: String) {
 
 # Get a single product by SKU
 query GetProductBySku($sku: String!) {
-  products(sku: $sku, first: 1) {
+  products(sku: $sku) {
     request_id
     complexity
-    data {
+    data(first: 1) {
       edges {
         node {
           id
@@ -74,6 +72,9 @@ query GetProductBySku($sku: String!) {
           warehouse_products {
             warehouse_id
             on_hand
+            allocated
+            available
+            backorder
             inventory_bin
             inventory_overstock_bin
             reserve_inventory
@@ -113,12 +114,10 @@ query GetProductBySku($sku: String!) {
 query GetWarehouseProducts($warehouse_id: String!, $first: Int = 50, $after: String) {
   warehouse_products(
     warehouse_id: $warehouse_id
-    first: $first
-    after: $after
   ) {
     request_id
     complexity
-    data {
+    data(first: $first, after: $after) {
       pageInfo {
         hasNextPage
         endCursor
@@ -151,11 +150,10 @@ query GetWarehouseProducts($warehouse_id: String!, $first: Int = 50, $after: Str
 query GetLocations($warehouse_id: String!, $first: Int = 100) {
   locations(
     warehouse_id: $warehouse_id
-    first: $first
   ) {
     request_id
     complexity
-    data {
+    data(first: $first) {
       pageInfo {
         hasNextPage
         endCursor
@@ -170,7 +168,9 @@ query GetLocations($warehouse_id: String!, $first: Int = 100) {
           sellable
           is_cart
           pick_priority
-          type
+          type {
+            name
+          }
           warehouse_id
         }
       }
@@ -184,11 +184,10 @@ query GetInventoryChanges($sku: String!, $date_from: ISODateTime, $date_to: ISOD
     sku: $sku
     date_from: $date_from
     date_to: $date_to
-    first: $first
   ) {
     request_id
     complexity
-    data {
+    data(first: $first) {
       pageInfo {
         hasNextPage
         endCursor
@@ -214,15 +213,13 @@ query GetInventoryChanges($sku: String!, $date_from: ISODateTime, $date_to: ISOD
 }
 
 # Get lot/batch information for products with expiration
-query GetExpirationLots($sku: String, $warehouse_id: String, $first: Int = 50) {
+query GetExpirationLots($sku: String, $first: Int = 50) {
   expiration_lots(
     sku: $sku
-    warehouse_id: $warehouse_id
-    first: $first
   ) {
     request_id
     complexity
-    data {
+    data(first: $first) {
       pageInfo {
         hasNextPage
         endCursor

@@ -76,7 +76,7 @@
                             </div>
                             {% endif %}
                             <div>
-                                <p class="font-medium text-foreground">{{ product.name.as_deref().unwrap_or("-") }}</p>
+                                <a href="/warehouse/inventory/{{ product.sku.as_deref().unwrap_or("")|urlencode }}" class="font-medium text-foreground hover:text-primary transition-colors">{{ product.name.as_deref().unwrap_or("-") }}</a>
                                 {% if let Some(barcode) = product.barcode.as_deref() %}
                                 <p class="text-xs text-muted-foreground">{{ barcode }}</p>
                                 {% endif %}
@@ -88,10 +88,9 @@
                     </td>
                     <td class="px-6 py-4" data-label="On Hand">
                         {% if !product.warehouse_products.is_empty() %}
-                        {% let wp = product.warehouse_products.first().unwrap() %}
                         <span class="text-sm font-medium
-                            {% if wp.on_hand.unwrap_or(0) <= wp.reorder_level.unwrap_or(0) && wp.reorder_level.unwrap_or(0) > 0 %}text-warning{% else %}text-foreground{% endif %}">
-                            {{ wp.on_hand.unwrap_or(0) }}
+                            {% if product.total_on_hand() <= product.max_reorder_level() && product.max_reorder_level() > 0 %}text-warning{% else %}text-foreground{% endif %}">
+                            {{ product.total_on_hand() }}
                         </span>
                         {% else %}
                         <span class="text-sm text-muted-foreground">-</span>
@@ -116,8 +115,7 @@
                     </td>
                     <td class="px-6 py-4 text-sm text-muted-foreground" data-label="Reorder Level">
                         {% if !product.warehouse_products.is_empty() %}
-                        {% let wp = product.warehouse_products.first().unwrap() %}
-                        {{ wp.reorder_level.unwrap_or(0) }}
+                        {{ product.max_reorder_level() }}
                         {% else %}
                         -
                         {% endif %}
@@ -131,14 +129,11 @@
                     </td>
                     <td class="px-6 py-4" data-label="Status">
                         {% if !product.warehouse_products.is_empty() %}
-                        {% let wp = product.warehouse_products.first().unwrap() %}
-                        {% let on_hand = wp.on_hand.unwrap_or(0) %}
-                        {% let reorder = wp.reorder_level.unwrap_or(0) %}
-                        {% if on_hand == 0 %}
+                        {% if product.total_on_hand() == 0 %}
                         <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-destructive/20 text-destructive">
                             Out of Stock
                         </span>
-                        {% elif reorder > 0 && on_hand <= reorder %}
+                        {% elif product.max_reorder_level() > 0 && product.total_on_hand() <= product.max_reorder_level() %}
                         <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-warning/20 text-warning">
                             Low Stock
                         </span>

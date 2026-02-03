@@ -51,7 +51,7 @@
                     <td class="px-6 py-4 card-header" data-label="">
                         <a href="/warehouse/shipments/{{ shipment.id }}"
                            class="font-medium text-foreground hover:text-primary transition-colors font-mono text-sm">
-                            {{ shipment.id|truncate(12) }}...
+                            {{ shipment.id|decode_base64 }}
                         </a>
                     </td>
                     <td class="px-6 py-4" data-label="Order">
