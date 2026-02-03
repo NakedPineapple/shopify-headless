@@ -5,6 +5,7 @@
 //! ```text
 //! GET  /                        - Dashboard (auth required)
 //! GET  /health                 - Health check
+//! GET  /proposal               - Platform proposal (no auth required)
 //!
 //! # Authentication
 //! GET  /auth/login             - Login page (passkey only)
@@ -62,6 +63,7 @@ pub mod orders;
 pub mod payouts;
 pub mod products;
 pub mod promotions;
+pub mod proposal;
 pub mod settings;
 pub mod setup;
 pub mod shiphero_settings;
@@ -412,6 +414,8 @@ pub fn routes() -> Router<AppState> {
         // Auth
         .merge(auth::router())
         .merge(setup::router())
+        // Proposal (public, no auth)
+        .merge(proposal::router())
         .merge(api::router())
         .merge(chat::router())
         // Shopify OAuth
