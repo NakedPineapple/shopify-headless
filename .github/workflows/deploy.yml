@@ -150,6 +150,13 @@ jobs:
     steps:
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
+      - name: Log in to Fly Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: x
+          password: ${{ secrets.FLY_API_TOKEN }}
+
       - name: Get staging storefront image
         id: staging-storefront
         if: inputs.target != 'admin'
@@ -157,6 +164,15 @@ jobs:
           IMAGE=$(flyctl status -a nakedpineapple-storefront-staging --json | jq -r '.Machines[0].config.image')
           echo "image=$IMAGE" >> $GITHUB_OUTPUT
           echo "Promoting storefront image: $IMAGE"
+
+      - name: Copy storefront image to production registry
+        if: inputs.target != 'admin'
+        run: |
+          docker pull ${{ steps.staging-storefront.outputs.image }}
+          PROD_TAG=${{ env.REGISTRY }}/nakedpineapple-storefront:${{ github.run_id }}
+          docker tag ${{ steps.staging-storefront.outputs.image }} $PROD_TAG
+          docker push $PROD_TAG
+          echo "STOREFRONT_PROD_IMAGE=$PROD_TAG" >> $GITHUB_ENV
 
       - name: Get staging admin image
         id: staging-admin
@@ -166,10 +182,19 @@ jobs:
           echo "image=$IMAGE" >> $GITHUB_OUTPUT
           echo "Promoting admin image: $IMAGE"
 
+      - name: Copy admin image to production registry
+        if: inputs.target != 'storefront'
+        run: |
+          docker pull ${{ steps.staging-admin.outputs.image }}
+          PROD_TAG=${{ env.REGISTRY }}/nakedpineapple-admin:${{ github.run_id }}
+          docker tag ${{ steps.staging-admin.outputs.image }} $PROD_TAG
+          docker push $PROD_TAG
+          echo "ADMIN_PROD_IMAGE=$PROD_TAG" >> $GITHUB_ENV
+
       - name: Deploy storefront to production
         if: inputs.target != 'admin'
-        run: flyctl deploy --image ${{ steps.staging-storefront.outputs.image }} -a nakedpineapple-storefront
+        run: flyctl deploy --image ${{ env.STOREFRONT_PROD_IMAGE }} -a nakedpineapple-storefront
 
       - name: Deploy admin to production
         if: inputs.target != 'storefront'
-        run: flyctl deploy --image ${{ steps.staging-admin.outputs.image }} -a nakedpineapple-admin
+        run: flyctl deploy --image ${{ env.ADMIN_PROD_IMAGE }} -a nakedpineapple-admin
