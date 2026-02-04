@@ -22,6 +22,7 @@ use webauthn_rs::prelude::*;
 use naked_pineapple_core::Email;
 
 use crate::db::{AdminInviteRepository, AdminUserRepository};
+use crate::error::set_sentry_user;
 use crate::filters;
 use crate::middleware::set_current_admin;
 use crate::models::{CurrentAdmin, session_keys};
@@ -537,6 +538,11 @@ async fn register_finish(
     set_current_admin(&session, &current_admin)
         .await
         .map_err(|e| ApiError::new(format!("Session error: {e}")))?;
+
+    set_sentry_user(
+        current_admin.id.as_i32(),
+        Some(current_admin.email.as_str()),
+    );
 
     info!(
         admin_id = %user.id.as_i32(),

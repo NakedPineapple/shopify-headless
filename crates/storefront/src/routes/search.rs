@@ -12,6 +12,7 @@ use serde::{Deserialize, Deserializer};
 use tracing::{debug, info, instrument, warn};
 
 use crate::config::{AnalyticsConfig, AnalyticsUserInfo};
+use crate::error::add_breadcrumb;
 use crate::filters;
 use crate::middleware::OptionalAuth;
 use crate::search::{SearchFilters, SearchResults, SearchSort};
@@ -141,6 +142,7 @@ pub async fn search_page(
     Query(query): Query<SearchPageQuery>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> impl IntoResponse {
+    add_breadcrumb("search", "Searched", Some(&[("query", query.q.trim())]));
     debug!("Handling full search page request");
     let query_str = query.q.trim();
     let sort = SearchSort::parse(&query.sort_by);

@@ -13,6 +13,7 @@ use serde::{Deserialize, Serialize};
 use tower_sessions::Session;
 use webauthn_rs::prelude::*;
 
+use crate::error::set_sentry_user;
 use crate::middleware::{RequireAdminAuth, set_current_admin};
 use crate::models::{CurrentAdmin, session_keys};
 use crate::services::{AdminAuthError, AdminAuthService};
@@ -278,6 +279,11 @@ pub async fn finish_authentication(
     set_current_admin(&session, &current_admin)
         .await
         .map_err(|e| ApiError::new(format!("session error: {e}")))?;
+
+    set_sentry_user(
+        current_admin.id.as_i32(),
+        Some(current_admin.email.as_str()),
+    );
 
     Ok(Json(FinishAuthenticationResponse {
         success: true,

@@ -10,6 +10,7 @@ use serde::Deserialize;
 use tracing::instrument;
 
 use crate::{
+    error::add_breadcrumb,
     middleware::auth::RequireAdminAuth,
     shopify::types::{
         FulfillmentHoldInput, FulfillmentHoldReason, RefundCreateInput, RefundLineItemInput,
@@ -157,6 +158,7 @@ pub async fn fulfill(
     Path(id): Path<String>,
     Form(input): Form<FulfillInput>,
 ) -> impl IntoResponse {
+    add_breadcrumb("order", "Created fulfillment", Some(&[("order_id", &id)]));
     let fulfillment_order_id = if input.fulfillment_order_id.starts_with("gid://") {
         input.fulfillment_order_id.clone()
     } else {
@@ -200,6 +202,11 @@ pub async fn hold_fulfillment(
     Path((order_id, fo_id)): Path<(String, String)>,
     Form(input): Form<HoldInput>,
 ) -> impl IntoResponse {
+    add_breadcrumb(
+        "order",
+        "Placed fulfillment hold",
+        Some(&[("order_id", &order_id)]),
+    );
     let fulfillment_order_id = if fo_id.starts_with("gid://") {
         fo_id.clone()
     } else {
@@ -250,6 +257,11 @@ pub async fn release_hold(
     State(state): State<AppState>,
     Path((order_id, fo_id)): Path<(String, String)>,
 ) -> impl IntoResponse {
+    add_breadcrumb(
+        "order",
+        "Released fulfillment hold",
+        Some(&[("order_id", &order_id)]),
+    );
     let fulfillment_order_id = if fo_id.starts_with("gid://") {
         fo_id.clone()
     } else {
@@ -290,6 +302,7 @@ pub async fn calculate_refund(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> impl IntoResponse {
+    add_breadcrumb("order", "Calculated refund", Some(&[("order_id", &id)]));
     let order_id = if id.starts_with("gid://") {
         id.clone()
     } else {

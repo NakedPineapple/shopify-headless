@@ -13,6 +13,7 @@ use axum::{
 use tower_sessions::Session;
 use tracing::{debug, info, instrument, warn};
 
+use crate::error::clear_sentry_user;
 use crate::filters;
 use crate::middleware::clear_current_admin;
 use crate::state::AppState;
@@ -54,6 +55,8 @@ async fn logout(session: Session) -> impl IntoResponse {
         Ok(()) => info!("Admin session cleared"),
         Err(e) => warn!(error = %e, "Failed to clear admin session"),
     }
+
+    clear_sentry_user();
 
     // Redirect to login page
     Redirect::to("/auth/login")

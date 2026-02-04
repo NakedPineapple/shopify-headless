@@ -51,7 +51,7 @@ impl IntoResponse for AppError {
         // Log server errors with Sentry
         if matches!(
             self,
-            Self::Database(_) | Self::Internal(_) | Self::Shopify(_)
+            Self::Database(_) | Self::Internal(_) | Self::Shopify(_) | Self::Claude(_)
         ) {
             let event_id = sentry::capture_error(&self);
             tracing::error!(
@@ -97,6 +97,30 @@ pub fn clear_sentry_user() {
     sentry::configure_scope(|scope| {
         scope.set_user(None);
     });
+}
+
+/// Add a breadcrumb for admin actions.
+///
+/// Breadcrumbs appear in Sentry error reports to show the trail of actions
+/// leading up to an error.
+pub fn add_breadcrumb(category: &str, message: &str, data: Option<&[(&str, &str)]>) {
+    let mut breadcrumb = sentry::Breadcrumb {
+        category: Some(category.to_string()),
+        message: Some(message.to_string()),
+        level: sentry::Level::Info,
+        ..Default::default()
+    };
+
+    if let Some(pairs) = data {
+        for (key, value) in pairs {
+            breadcrumb.data.insert(
+                (*key).to_string(),
+                serde_json::Value::String((*value).to_string()),
+            );
+        }
+    }
+
+    sentry::add_breadcrumb(breadcrumb);
 }
 
 #[cfg(test)]

@@ -75,6 +75,8 @@ const CONNECT_SRC_EXTERNAL: &[&str] = &[
     "https://*.shopify.com",
     // Mixpanel tracking API
     "https://api-js.mixpanel.com",
+    // Sentry error reporting
+    "https://*.ingest.sentry.io",
 ];
 
 /// External frame sources for embedded widgets.

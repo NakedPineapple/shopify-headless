@@ -14,6 +14,7 @@ use serde::Deserialize;
 use tower_sessions::Session;
 use tracing::{debug, error, info, instrument, warn};
 
+use crate::error::clear_sentry_user;
 use crate::models::session_keys;
 use crate::shopify::CustomerAccessToken;
 use crate::state::AppState;
@@ -208,6 +209,7 @@ pub async fn logout(State(state): State<AppState>, session: Session) -> Response
         .remove::<CustomerAccessToken>(session_keys::SHOPIFY_CUSTOMER_TOKEN)
         .await;
 
+    clear_sentry_user();
     debug!("Cleared Shopify customer token from session");
 
     // If we have an id_token, redirect to Shopify logout

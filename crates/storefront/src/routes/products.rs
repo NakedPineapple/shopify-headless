@@ -11,6 +11,7 @@ use serde::Deserialize;
 use tracing::{debug, info, instrument, warn};
 
 use crate::config::{AnalyticsConfig, AnalyticsUserInfo};
+use crate::error::add_breadcrumb;
 use crate::filters;
 use crate::middleware::OptionalAuth;
 use crate::shopify::ShopifyError;
@@ -437,6 +438,7 @@ pub async fn show(
     Path(handle): Path<String>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> Response {
+    add_breadcrumb("product", "Viewed product", Some(&[("handle", &handle)]));
     debug!(handle = %handle, "Fetching product detail page");
     let analytics_user_info = AnalyticsUserInfo::from_customer(customer.as_ref());
     let result = state.storefront().get_product_by_handle(&handle).await;
@@ -516,6 +518,7 @@ pub async fn show(
 /// Display quick view fragment (for HTMX).
 #[instrument(skip(state))]
 pub async fn quick_view(State(state): State<AppState>, Path(handle): Path<String>) -> Response {
+    add_breadcrumb("product", "Opened quick view", Some(&[("handle", &handle)]));
     debug!(handle = %handle, "Fetching quick view product fragment");
 
     // Fetch product from Shopify Storefront API

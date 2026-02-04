@@ -308,10 +308,57 @@ pub fn truncate(value: &str, _env: &dyn askama::Values, max_len: usize) -> askam
 // Analytics Filters
 // =============================================================================
 
+/// Sentry public DSN for client-side error reporting, read from `SENTRY_DSN_PUBLIC` env var.
+/// Returns empty string if not set (development).
+static SENTRY_DSN_PUBLIC: LazyLock<String> =
+    LazyLock::new(|| std::env::var("SENTRY_DSN_PUBLIC").unwrap_or_default());
+
+/// Sentry environment name, read from `SENTRY_ENVIRONMENT` env var.
+/// Defaults to "production" if not set.
+static SENTRY_ENVIRONMENT: LazyLock<String> = LazyLock::new(|| {
+    std::env::var("SENTRY_ENVIRONMENT").unwrap_or_else(|_| "production".to_string())
+});
+
 /// Cloudflare Web Analytics beacon token, read from `CF_BEACON_TOKEN` env var.
 /// Returns empty string if not set (development).
 static CF_BEACON_TOKEN: LazyLock<String> =
     LazyLock::new(|| std::env::var("CF_BEACON_TOKEN").unwrap_or_default());
+
+/// Returns the Sentry public DSN for client-side error reporting.
+///
+/// Returns empty string in development (when `SENTRY_DSN_PUBLIC` is not set).
+///
+/// Usage in templates: `{% let sentry_dsn = ""|sentry_dsn_public %}`
+///
+/// # Errors
+///
+/// This filter is infallible, however Askama requires filters return `askama::Result`.
+#[allow(clippy::unnecessary_wraps)]
+#[askama::filter_fn]
+pub fn sentry_dsn_public(
+    _value: impl Display,
+    _env: &dyn askama::Values,
+) -> askama::Result<String> {
+    Ok(SENTRY_DSN_PUBLIC.clone())
+}
+
+/// Returns the Sentry environment name.
+///
+/// Defaults to "production" when `SENTRY_ENVIRONMENT` is not set.
+///
+/// Usage in templates: `{% let sentry_env = ""|sentry_environment %}`
+///
+/// # Errors
+///
+/// This filter is infallible, however Askama requires filters return `askama::Result`.
+#[allow(clippy::unnecessary_wraps)]
+#[askama::filter_fn]
+pub fn sentry_environment(
+    _value: impl Display,
+    _env: &dyn askama::Values,
+) -> askama::Result<String> {
+    Ok(SENTRY_ENVIRONMENT.clone())
+}
 
 /// Returns the Cloudflare beacon token for Web Analytics.
 ///

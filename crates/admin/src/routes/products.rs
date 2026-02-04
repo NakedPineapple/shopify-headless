@@ -11,6 +11,7 @@ use serde::Deserialize;
 use tracing::{debug, info, instrument};
 
 use crate::{
+    error::add_breadcrumb,
     filters,
     middleware::auth::{RequireAdminAuth, RequireSuperAdmin},
     models::CurrentAdmin,
@@ -363,6 +364,11 @@ pub async fn create(
     State(state): State<AppState>,
     Form(input): Form<ProductFormInput>,
 ) -> impl IntoResponse {
+    add_breadcrumb(
+        "product",
+        "Created product",
+        Some(&[("title", &input.title)]),
+    );
     debug!(title = %input.title, "Creating new product");
     // Parse tags from comma-separated string
     let tags: Vec<String> = input
@@ -454,6 +460,7 @@ pub async fn update(
     Path(id): Path<String>,
     Form(input): Form<ProductFormInput>,
 ) -> impl IntoResponse {
+    add_breadcrumb("product", "Updated product", Some(&[("product_id", &id)]));
     debug!(title = %input.title, "Updating product");
     let product_id = if id.starts_with("gid://") {
         id.clone()
@@ -546,6 +553,7 @@ pub async fn archive(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> impl IntoResponse {
+    add_breadcrumb("product", "Archived product", Some(&[("product_id", &id)]));
     debug!("Archiving product");
     let product_id = if id.starts_with("gid://") {
         id.clone()
@@ -616,6 +624,7 @@ pub async fn delete(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> impl IntoResponse {
+    add_breadcrumb("product", "Deleted product", Some(&[("product_id", &id)]));
     debug!("Deleting product");
     let product_id = if id.starts_with("gid://") {
         id.clone()

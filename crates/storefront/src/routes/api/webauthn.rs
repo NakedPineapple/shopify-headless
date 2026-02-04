@@ -16,6 +16,7 @@ use serde::{Deserialize, Serialize};
 use tower_sessions::Session;
 use webauthn_rs::prelude::*;
 
+use crate::error::set_sentry_user;
 use crate::middleware::{RequireAuth, set_current_customer};
 use crate::models::{CurrentCustomer, session_keys};
 use crate::services::{AuthError, AuthService};
@@ -296,6 +297,11 @@ pub async fn finish_authentication(
     set_current_customer(&session, &current_customer)
         .await
         .map_err(|e| ApiError::new(format!("session error: {e}")))?;
+
+    set_sentry_user(
+        &current_customer.shopify_customer_id,
+        Some(&current_customer.email),
+    );
 
     Ok(Json(FinishAuthenticationResponse {
         success: true,

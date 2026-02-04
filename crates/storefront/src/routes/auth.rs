@@ -16,6 +16,7 @@ use tower_sessions::Session;
 use tracing::{debug, info, instrument, warn};
 
 use crate::config::{AnalyticsConfig, AnalyticsUserInfo};
+use crate::error::{clear_sentry_user, set_sentry_user};
 use crate::filters;
 use crate::middleware::{clear_current_customer, set_current_customer};
 use crate::models::CurrentCustomer;
@@ -257,6 +258,10 @@ pub async fn login(
                         return Redirect::to("/auth/login?error=session").into_response();
                     }
 
+                    set_sentry_user(
+                        &current_customer.shopify_customer_id,
+                        Some(&current_customer.email),
+                    );
                     info!(email = %form.email, "Customer logged in successfully");
                     Redirect::to("/account").into_response()
                 }
@@ -460,6 +465,10 @@ pub async fn activate(
                 return Redirect::to("/auth/login?error=session").into_response();
             }
 
+            set_sentry_user(
+                &current_customer.shopify_customer_id,
+                Some(&current_customer.email),
+            );
             info!("Customer account activated successfully");
             // Redirect to account page - user is now logged in
             Redirect::to("/account?activated=true").into_response()
@@ -611,6 +620,10 @@ pub async fn reset_password(
                 return Redirect::to("/auth/login?error=session").into_response();
             }
 
+            set_sentry_user(
+                &current_customer.shopify_customer_id,
+                Some(&current_customer.email),
+            );
             info!("Customer password reset successfully");
             // Redirect to account page - user is now logged in
             Redirect::to("/account").into_response()
@@ -655,6 +668,8 @@ pub async fn logout(State(state): State<AppState>, session: Session) -> Response
     if let Err(e) = clear_current_customer(&session).await {
         tracing::error!("Failed to clear session: {}", e);
     }
+
+    clear_sentry_user();
 
     // Also destroy the entire session
     if let Err(e) = session.flush().await {

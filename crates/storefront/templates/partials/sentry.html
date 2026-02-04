@@ -1,13 +1,15 @@
 {# Sentry Browser SDK for frontend error tracking #}
-{# Reads configuration from data-sentry-* attributes on body tag #}
-{% if sentry_dsn_public.is_some() %}
+{# Reads DSN and environment from Askama filter functions (env vars) #}
+{% let sentry_dsn = ""|sentry_dsn_public %}
+{% let sentry_env = ""|sentry_environment %}
+{% if !sentry_dsn.is_empty() %}
 <script src="/static/vendor/sentry.bundle.tracing.min.js"></script>
 <script nonce="{{ nonce }}">
 (function() {
     'use strict';
 
-    var dsn = '{{ sentry_dsn_public.as_ref().unwrap_or(&String::new()) }}';
-    var environment = '{{ sentry_environment.as_ref().unwrap_or(&"production".to_string()) }}';
+    var dsn = '{{ sentry_dsn }}';
+    var environment = '{{ sentry_env }}';
 
     if (!dsn) return;
 
@@ -57,6 +59,41 @@
             });
         }
     });
+
+    // Capture failed image/resource loads from R2 and Shopify CDN
+    window.addEventListener('error', function(evt) {
+        // Only capture resource load failures (not JS errors)
+        if (!evt.target || evt.target === window) return;
+
+        var element = evt.target;
+        var tagName = element.tagName ? element.tagName.toLowerCase() : '';
+
+        // Only track img, link (CSS), and script elements
+        if (tagName !== 'img' && tagName !== 'link' && tagName !== 'script') return;
+
+        var src = element.src || element.href || '';
+        if (!src) return;
+
+        // Only track failures from our CDN sources
+        var isR2 = src.indexOf('images.nakedpineapple.com') !== -1;
+        var isShopify = src.indexOf('cdn.shopify.com') !== -1;
+
+        if (!isR2 && !isShopify) return;
+
+        var origin = isR2 ? 'R2' : 'Shopify CDN';
+        var resourceType = tagName === 'img' ? 'image' : (tagName === 'link' ? 'stylesheet' : 'script');
+
+        Sentry.captureMessage('Resource load failed: ' + resourceType + ' from ' + origin, {
+            level: 'warning',
+            extra: {
+                url: src,
+                origin: origin,
+                resourceType: resourceType,
+                elementTag: tagName,
+                pageUrl: window.location.href
+            }
+        });
+    }, true); // Use capture phase to catch before bubbling
 })();
 </script>
 {% endif %}

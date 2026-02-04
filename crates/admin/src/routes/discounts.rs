@@ -16,6 +16,7 @@ use crate::{
     components::data_table::{
         BulkAction, FilterType, TableColumn, TableFilter, discounts_table_config,
     },
+    error::add_breadcrumb,
     filters,
     middleware::auth::RequireAdminAuth,
     shopify::{
@@ -981,6 +982,7 @@ pub async fn create(
     State(state): State<AppState>,
     Form(input): Form<BasicDiscountFormInput>,
 ) -> impl IntoResponse {
+    add_breadcrumb("discount", "Created discount", None);
     debug!("Creating discount (legacy handler)");
     create_basic(RequireAdminAuth(admin), State(state), Form(input)).await
 }
@@ -1088,6 +1090,11 @@ pub async fn activate(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> impl IntoResponse {
+    add_breadcrumb(
+        "discount",
+        "Activated discount",
+        Some(&[("discount_id", &id)]),
+    );
     debug!("Activating discount");
     let discount_id = normalize_discount_id(&id);
 
@@ -1121,6 +1128,11 @@ pub async fn deactivate(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> impl IntoResponse {
+    add_breadcrumb(
+        "discount",
+        "Deactivated discount",
+        Some(&[("discount_id", &id)]),
+    );
     debug!("Deactivating discount");
     let discount_id = normalize_discount_id(&id);
 
@@ -1154,6 +1166,11 @@ pub async fn delete(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> impl IntoResponse {
+    add_breadcrumb(
+        "discount",
+        "Deleted discount",
+        Some(&[("discount_id", &id)]),
+    );
     debug!("Deleting discount");
     let discount_id = normalize_discount_id(&id);
 

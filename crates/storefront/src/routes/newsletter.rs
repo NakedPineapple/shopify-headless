@@ -15,6 +15,7 @@ use axum::{
 use serde::Deserialize;
 use tracing::{debug, error, info, instrument, warn};
 
+use crate::error::add_breadcrumb;
 use crate::filters;
 use crate::services::KlaviyoClient;
 use crate::state::AppState;
@@ -110,6 +111,7 @@ pub async fn subscribe(
     headers: HeaderMap,
     Form(form): Form<SubscribeForm>,
 ) -> impl IntoResponse {
+    add_breadcrumb("newsletter", "Subscribed to newsletter", None);
     debug!("Processing newsletter subscription request");
     let email = form.email.trim().to_lowercase();
 

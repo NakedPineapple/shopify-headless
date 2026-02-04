@@ -18,6 +18,7 @@ use tracing::{debug, info, instrument, warn};
 use naked_pineapple_core::{AdminCredentialId, Email};
 
 use crate::db::AdminUserRepository;
+use crate::error::set_sentry_user;
 use crate::filters;
 use crate::middleware::{RequireAdminAuth, set_current_admin};
 use crate::models::CurrentAdmin;
@@ -289,6 +290,10 @@ async fn update_profile(
         .await
         .map_err(|e| ApiError::new(format!("Session error: {e}")))?;
 
+    set_sentry_user(
+        current_admin.id.as_i32(),
+        Some(current_admin.email.as_str()),
+    );
     info!(new_name = %updated_user.name, "Admin profile updated");
     Ok(Json(UpdateProfileResponse {
         success: true,
@@ -468,6 +473,10 @@ async fn verify_email(
         .await
         .map_err(|e| ApiError::new(format!("Session error: {e}")))?;
 
+    set_sentry_user(
+        current_admin.id.as_i32(),
+        Some(current_admin.email.as_str()),
+    );
     info!(new_email = %updated_user.email, "Admin email updated successfully");
     Ok(Json(VerifyEmailResponse {
         success: true,

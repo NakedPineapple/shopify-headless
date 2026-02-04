@@ -11,6 +11,7 @@ use serde::Deserialize;
 use tracing::{debug, info, instrument, warn};
 
 use crate::{
+    error::add_breadcrumb,
     filters,
     middleware::auth::{RequireAdminAuth, RequireSuperAdmin},
     models::CurrentAdmin,
@@ -918,6 +919,7 @@ pub async fn create(
     State(state): State<AppState>,
     Form(input): Form<CustomerFormInput>,
 ) -> impl IntoResponse {
+    add_breadcrumb("customer", "Created customer", None);
     debug!("Creating new customer");
     let tags: Vec<String> = input
         .tags
@@ -1005,6 +1007,11 @@ pub async fn update(
     Path(id): Path<String>,
     Form(input): Form<CustomerFormInput>,
 ) -> impl IntoResponse {
+    add_breadcrumb(
+        "customer",
+        "Updated customer",
+        Some(&[("customer_id", &id)]),
+    );
     debug!("Updating customer");
     let gid = format!("gid://shopify/Customer/{id}");
 
@@ -1177,6 +1184,11 @@ pub async fn send_invite(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> impl IntoResponse {
+    add_breadcrumb(
+        "customer",
+        "Sent account invite",
+        Some(&[("customer_id", &id)]),
+    );
     debug!("Sending customer invite");
     let gid = format!("gid://shopify/Customer/{id}");
 
@@ -1649,6 +1661,7 @@ pub async fn merge(
     Path(id): Path<String>,
     Form(form): Form<MergeForm>,
 ) -> impl IntoResponse {
+    add_breadcrumb("customer", "Merged customers", None);
     debug!(merge_into = %id, merge_from = %form.merge_customer_id, "Merging customers");
     let customer_one_gid = format!("gid://shopify/Customer/{id}");
 

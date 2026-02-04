@@ -19,6 +19,7 @@ use tower_sessions::Session;
 use tracing::{debug, info, instrument, warn};
 
 use crate::config::{AnalyticsConfig, AnalyticsUserInfo};
+use crate::error::add_breadcrumb;
 use crate::filters;
 use crate::middleware::OptionalAuth;
 use crate::models::session_keys;
@@ -503,6 +504,14 @@ pub async fn add(
     session: Session,
     Form(form): Form<AddToCartForm>,
 ) -> Response {
+    add_breadcrumb(
+        "cart",
+        "Added item to cart",
+        Some(&[
+            ("variant_id", &form.variant_id),
+            ("quantity", &form.quantity.unwrap_or(1).to_string()),
+        ]),
+    );
     debug!("Adding item to cart");
 
     let raw_quantity = form.quantity.unwrap_or(1);
@@ -577,6 +586,14 @@ pub async fn update(
     session: Session,
     Form(form): Form<UpdateCartForm>,
 ) -> Response {
+    add_breadcrumb(
+        "cart",
+        "Updated cart quantity",
+        Some(&[
+            ("line_id", &form.line_id),
+            ("quantity", &form.quantity.to_string()),
+        ]),
+    );
     debug!("Updating cart item quantity");
 
     let Some(cart_id) = get_cart_id(&session).await else {
@@ -646,6 +663,11 @@ pub async fn remove(
     session: Session,
     Form(form): Form<RemoveFromCartForm>,
 ) -> Response {
+    add_breadcrumb(
+        "cart",
+        "Removed item from cart",
+        Some(&[("line_id", &form.line_id)]),
+    );
     debug!("Removing item from cart");
 
     let Some(cart_id) = get_cart_id(&session).await else {
@@ -806,6 +828,7 @@ pub async fn summary(State(state): State<AppState>, session: Session) -> Respons
 /// Redirect to Shopify checkout.
 #[instrument(skip(state, session))]
 pub async fn checkout(State(state): State<AppState>, session: Session) -> Response {
+    add_breadcrumb("checkout", "Initiated checkout", None);
     debug!("Initiating checkout redirect");
 
     let Some(cart_id) = get_cart_id(&session).await else {
@@ -939,6 +962,11 @@ pub async fn claim_gwp(
     session: Session,
     Form(form): Form<ClaimGwpForm>,
 ) -> Response {
+    add_breadcrumb(
+        "cart",
+        "Claimed gift with purchase",
+        Some(&[("variant_id", &form.variant_id)]),
+    );
     debug!("Claiming GWP item");
 
     let Some(cart_id) = get_cart_id(&session).await else {

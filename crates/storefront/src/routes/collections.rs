@@ -11,6 +11,7 @@ use serde::Deserialize;
 use tracing::{debug, info, instrument, warn};
 
 use crate::config::{AnalyticsConfig, AnalyticsUserInfo};
+use crate::error::add_breadcrumb;
 use crate::filters;
 use crate::middleware::OptionalAuth;
 use crate::shopify::types::Collection as ShopifyCollection;
@@ -414,6 +415,11 @@ pub async fn show(
     Query(query): Query<PaginationQuery>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> Response {
+    add_breadcrumb(
+        "collection",
+        "Viewed collection",
+        Some(&[("handle", &handle)]),
+    );
     debug!(?query, "Fetching collection detail page with products");
 
     let current_page = query.page.unwrap_or(1);
