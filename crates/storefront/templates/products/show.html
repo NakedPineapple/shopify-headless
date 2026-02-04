@@ -677,6 +677,15 @@
         </div>
     </section>
     {% endif %}
+
+    <!-- Analytics data (read by JS for tracking events) -->
+    <div id="product-analytics-data"
+         data-id="{{ product.first_variant_id }}"
+         data-name="{{ product.title }}"
+         data-price="{{ product.price|strip_currency }}"
+         data-category="{{ product.product_type }}"
+         {% if let Some(v) = product.variants.first() %}data-variant="{{ v.title }}"{% endif %}
+         hidden></div>
 </div>
 
 {% block scripts %}
@@ -1060,6 +1069,37 @@
     // ═══════════════════════════════════════════════════════════════════════
     function init() {
         initPurchaseOptions();
+
+        // Track product view
+        var pd = document.getElementById('product-analytics-data');
+        if (pd && window.NP_Analytics) {
+            window.NP_Analytics.trackViewItem({
+                id: pd.dataset.id,
+                name: pd.dataset.name,
+                price: pd.dataset.price,
+                category: pd.dataset.category,
+                variant: pd.dataset.variant || ''
+            });
+        }
+
+        // Track add-to-cart after successful HTMX request
+        var addToCartBtn = document.getElementById('add-to-cart-btn');
+        if (addToCartBtn) {
+            addToCartBtn.addEventListener('htmx:afterRequest', function(event) {
+                if (event.detail.successful && window.NP_Analytics && pd) {
+                    var selectedVariant = document.getElementById('selected-variant');
+                    var quantityInput = document.getElementById('product-quantity');
+                    window.NP_Analytics.trackAddToCart({
+                        id: selectedVariant ? selectedVariant.value : pd.dataset.id,
+                        name: pd.dataset.name,
+                        price: pd.dataset.price,
+                        quantity: quantityInput ? parseInt(quantityInput.value) || 1 : 1,
+                        category: pd.dataset.category,
+                        variant: pd.dataset.variant || ''
+                    });
+                }
+            });
+        }
     }
 
     if (document.readyState === 'loading') {

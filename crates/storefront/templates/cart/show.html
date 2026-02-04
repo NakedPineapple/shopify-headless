@@ -371,3 +371,55 @@
     </div>
 </div>
 {% endblock %}
+
+{% block scripts %}
+<script nonce="{{ nonce }}">
+(function() {
+    'use strict';
+
+    function initCartTracking() {
+        var cartContainer = document.getElementById('cart-items');
+        if (!cartContainer || !window.NP_Analytics) return;
+
+        var subtotal = parseFloat(cartContainer.dataset.analyticsSubtotal) || 0;
+        var itemEls = cartContainer.querySelectorAll('[data-analytics-product-id]');
+        var items = [];
+
+        itemEls.forEach(function(el) {
+            items.push({
+                id: el.dataset.analyticsProductId,
+                name: el.dataset.analyticsTitle,
+                price: el.dataset.analyticsPrice,
+                quantity: parseInt(el.dataset.analyticsQuantity) || 1,
+                variant: el.dataset.analyticsVariant || ''
+            });
+        });
+
+        if (items.length > 0) {
+            window.NP_Analytics.trackViewCart({ value: subtotal, items: items });
+        }
+
+        // Track begin_checkout when checkout links are clicked.
+        // Brief delay allows tracking beacons to fire before navigation.
+        var checkoutClicked = false;
+        document.addEventListener('click', function(e) {
+            var link = e.target.closest('a[href="/checkout"]');
+            if (!link || checkoutClicked) return;
+
+            if (window.NP_Analytics && items.length > 0) {
+                e.preventDefault();
+                checkoutClicked = true;
+                window.NP_Analytics.trackBeginCheckout({ value: subtotal, items: items });
+                setTimeout(function() { window.location.href = '/checkout'; }, 150);
+            }
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initCartTracking);
+    } else {
+        initCartTracking();
+    }
+})();
+</script>
+{% endblock %}

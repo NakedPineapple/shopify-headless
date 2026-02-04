@@ -1,6 +1,8 @@
 {# Cart Items - Rendered via HTMX on cart operations #}
 {# Expected variables: cart (with items, subtotal) #}
-<div id="cart-items" class="transition-opacity duration-150 [&.htmx-request]:opacity-60 [&.htmx-request]:pointer-events-none">
+<div id="cart-items"
+     data-analytics-subtotal="{{ cart.subtotal|strip_currency }}"
+     class="transition-opacity duration-150 [&.htmx-request]:opacity-60 [&.htmx-request]:pointer-events-none">
     {% if cart.items.is_empty() %}
     {# Empty state for HTMX swap - redirects to full page for better experience #}
     <div class="text-center py-16 md:py-24">
@@ -33,7 +35,12 @@
     <!-- Cart Line Items -->
     <div class="space-y-0 divide-y divide-border">
         {% for item in cart.items %}
-        <div class="group flex gap-4 md:gap-6 py-6 first:pt-0 transition-colors hover:bg-muted/30 -mx-2 px-2 rounded-lg {% if item.is_gwp %}bg-leaf/5{% endif %}">
+        <div class="group flex gap-4 md:gap-6 py-6 first:pt-0 transition-colors hover:bg-muted/30 -mx-2 px-2 rounded-lg {% if item.is_gwp %}bg-leaf/5{% endif %}"
+             data-analytics-product-id="{{ item.product_id }}"
+             data-analytics-title="{{ item.title }}"
+             data-analytics-price="{{ item.price|strip_currency }}"
+             data-analytics-quantity="{{ item.quantity }}"
+             {% if let Some(vt) = item.variant_title %}data-analytics-variant="{{ vt }}"{% endif %}>
             <!-- Item Image -->
             <a href="/products/{{ item.handle }}" class="relative shrink-0 w-20 h-20 md:w-28 md:h-28 rounded-xl bg-muted shadow-sm group-hover:shadow-md transition-shadow">
                 {% if let Some(image) = item.image %}

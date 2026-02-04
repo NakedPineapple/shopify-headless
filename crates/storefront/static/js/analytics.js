@@ -87,12 +87,8 @@
     // =========================================================================
     // TikTok Pixel
     // =========================================================================
-
-    function ttq() {
-        if (window.ttq) {
-            window.ttq.apply(window, arguments);
-        }
-    }
+    // TikTok initializes window.ttq as an object with methods (.page, .track),
+    // not a callable function. Use window.ttq directly throughout.
 
     // =========================================================================
     // Pinterest Tag
@@ -196,7 +192,7 @@
 
         // TikTok Pixel
         if (tiktokPixelId && window.ttq) {
-            ttq.page();
+            window.ttq.page();
         }
 
         // Pinterest Tag
@@ -272,8 +268,8 @@
         }
 
         // TikTok Pixel - ViewContent
-        if (tiktokPixelId) {
-            ttq.track('ViewContent', {
+        if (tiktokPixelId && window.ttq) {
+            window.ttq.track('ViewContent', {
                 content_id: itemId,
                 content_name: itemName,
                 content_type: 'product',
@@ -374,8 +370,8 @@
         }
 
         // TikTok Pixel - AddToCart
-        if (tiktokPixelId) {
-            ttq.track('AddToCart', {
+        if (tiktokPixelId && window.ttq) {
+            window.ttq.track('AddToCart', {
                 content_id: itemId,
                 content_name: itemName,
                 content_type: 'product',
@@ -543,8 +539,8 @@
         }
 
         // TikTok Pixel - InitiateCheckout
-        if (tiktokPixelId) {
-            ttq.track('InitiateCheckout', {
+        if (tiktokPixelId && window.ttq) {
+            window.ttq.track('InitiateCheckout', {
                 content_ids: contentIds,
                 value: value,
                 currency: 'USD'
@@ -655,8 +651,8 @@
         }
 
         // TikTok Pixel - CompletePayment
-        if (tiktokPixelId) {
-            ttq.track('CompletePayment', {
+        if (tiktokPixelId && window.ttq) {
+            window.ttq.track('CompletePayment', {
                 content_ids: contentIds,
                 content_type: 'product',
                 value: value,
