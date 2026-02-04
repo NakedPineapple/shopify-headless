@@ -38,7 +38,7 @@
     // Check if any tracking is enabled
     var hasAnyTracking = ga4Id || metaPixelId || googleAdsId || tiktokPixelId ||
                          pinterestTagId || snapchatPixelId || microsoftUetId || twitterPixelId ||
-                         mixpanelToken;
+                         mixpanelToken || crazyEggId;
 
     if (!hasAnyTracking) {
         // No tracking configured - export no-op functions
@@ -225,6 +225,11 @@
                 'Page Path': pagePath,
                 'Page Title': pageTitle
             });
+        }
+
+        // Crazy Egg - notify of SPA-style page transition for heatmap/recording accuracy
+        if (crazyEggId && window.CE2) {
+            CE2.virtualPageview();
         }
     }
 

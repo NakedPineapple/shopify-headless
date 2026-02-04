@@ -48,6 +48,7 @@ const IMG_SRC_EXTERNAL: &[&str] = &[
     "https://ct.pinterest.com",
     "https://t.co",
     "https://analytics.twitter.com",
+    "https://script.crazyegg.com",
     "data:",
 ];
 
@@ -60,6 +61,7 @@ const CONNECT_SRC_EXTERNAL: &[&str] = &[
     "https://connect.facebook.net",
     "https://analytics.tiktok.com",
     "https://googleads.g.doubleclick.net",
+    "https://script.crazyegg.com",
     "https://cloudflareinsights.com",
     // Shop Pay APIs
     "https://shop.app",
