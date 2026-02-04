@@ -161,7 +161,10 @@
                         "quantity": parseInt(document.getElementById("quick-view-quantity")?.value || 1)
                     }'
                     hx-swap="none"
-                    hx-on::after-request="htmx.trigger(document.body, 'cartUpdated'); closeQuickView();">
+                    hx-on::after-request="htmx.trigger(document.body, 'cartUpdated'); closeQuickView();"
+                    data-analytics-name="{{ product.title }}"
+                    data-analytics-price="{{ product.price|strip_currency }}"
+                    data-analytics-category="{{ product.product_type }}">
                 <i class="ph ph-tote mr-2"></i>
                 Add to Cart
             </button>

@@ -73,6 +73,8 @@ const CONNECT_SRC_EXTERNAL: &[&str] = &[
     // Shop Pay APIs
     "https://shop.app",
     "https://*.shopify.com",
+    // Mixpanel tracking API
+    "https://api-js.mixpanel.com",
 ];
 
 /// External frame sources for embedded widgets.

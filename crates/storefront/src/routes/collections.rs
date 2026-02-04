@@ -10,8 +10,9 @@ use axum::{
 use serde::Deserialize;
 use tracing::{debug, info, instrument, warn};
 
-use crate::config::AnalyticsConfig;
+use crate::config::{AnalyticsConfig, AnalyticsUserInfo};
 use crate::filters;
+use crate::middleware::OptionalAuth;
 use crate::shopify::types::Collection as ShopifyCollection;
 use crate::shopify::{PriceRangeFilter, ProductCollectionSortKeys, ProductFilter, ShopifyError};
 use crate::state::AppState;
@@ -74,6 +75,7 @@ impl From<&ShopifyCollection> for CollectionView {
 pub struct CollectionsIndexTemplate {
     pub collections: Vec<CollectionView>,
     pub analytics: AnalyticsConfig,
+    pub analytics_user_info: AnalyticsUserInfo,
     pub nonce: String,
     /// Base URL for canonical links.
     pub base_url: String,
@@ -89,6 +91,7 @@ pub struct CollectionShowTemplate {
     pub total_pages: u32,
     pub has_more_pages: bool,
     pub analytics: AnalyticsConfig,
+    pub analytics_user_info: AnalyticsUserInfo,
     pub nonce: String,
     /// Base URL for canonical links and structured data.
     pub base_url: String,
@@ -113,6 +116,7 @@ const PRODUCTS_PER_PAGE: usize = 12;
 #[instrument(skip_all)]
 pub async fn index(
     State(state): State<AppState>,
+    OptionalAuth(customer): OptionalAuth,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> Response {
     debug!("Fetching all collections from Shopify Storefront API");
@@ -139,6 +143,7 @@ pub async fn index(
             CollectionsIndexTemplate {
                 collections,
                 analytics: state.config().analytics.clone(),
+                analytics_user_info: AnalyticsUserInfo::from_customer(customer.as_ref()),
                 nonce,
                 base_url: state.config().base_url.clone(),
             }
@@ -149,6 +154,7 @@ pub async fn index(
             CollectionsIndexTemplate {
                 collections: Vec::new(),
                 analytics: state.config().analytics.clone(),
+                analytics_user_info: AnalyticsUserInfo::from_customer(customer.as_ref()),
                 nonce,
                 base_url: state.config().base_url.clone(),
             }
@@ -292,7 +298,12 @@ fn build_breadcrumbs(title: &str) -> Vec<BreadcrumbItem> {
 }
 
 /// Create an error response for collection pages.
-fn error_template(params: ErrorParams, state: &AppState, nonce: String) -> Response {
+fn error_template(
+    params: ErrorParams,
+    state: &AppState,
+    nonce: String,
+    analytics_user_info: AnalyticsUserInfo,
+) -> Response {
     let has_price_filter = params.filters.has_price_filter();
     (
         params.status,
@@ -309,6 +320,7 @@ fn error_template(params: ErrorParams, state: &AppState, nonce: String) -> Respo
             total_pages: 1,
             has_more_pages: false,
             analytics: state.config().analytics.clone(),
+            analytics_user_info,
             nonce,
             base_url: state.config().base_url.clone(),
             breadcrumbs: Vec::new(),
@@ -350,6 +362,7 @@ fn build_collection_response(
     filters: CollectionFilterState,
     state: &AppState,
     nonce: String,
+    analytics_user_info: AnalyticsUserInfo,
 ) -> Response {
     let collection = CollectionView::from(shopify_collection);
     let products: Vec<ProductView> = shopify_collection
@@ -380,6 +393,7 @@ fn build_collection_response(
         },
         has_more_pages: has_more,
         analytics: state.config().analytics.clone(),
+        analytics_user_info,
         nonce,
         base_url: state.config().base_url.clone(),
         current_sort: filters.current_sort,
@@ -392,10 +406,11 @@ fn build_collection_response(
 }
 
 /// Display collection detail page with products.
-#[instrument(skip(state, nonce), fields(handle = %handle))]
+#[instrument(skip(state, nonce, customer), fields(handle = %handle))]
 pub async fn show(
     State(state): State<AppState>,
     Path(handle): Path<String>,
+    OptionalAuth(customer): OptionalAuth,
     Query(query): Query<PaginationQuery>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> Response {
@@ -443,6 +458,8 @@ pub async fn show(
         filter_price_max,
     };
 
+    let analytics_user_info = AnalyticsUserInfo::from_customer(customer.as_ref());
+
     let err_params = |status, title, desc| ErrorParams {
         status,
         handle: handle.clone(),
@@ -458,6 +475,7 @@ pub async fn show(
             filter_state.clone(),
             &state,
             nonce,
+            analytics_user_info,
         ),
         Err(ShopifyError::NotFound(_)) => {
             warn!("Collection not found");
@@ -465,6 +483,7 @@ pub async fn show(
                 err_params(StatusCode::NOT_FOUND, "Collection Not Found", None),
                 &state,
                 nonce,
+                analytics_user_info,
             )
         }
         Err(e) => {
@@ -477,6 +496,7 @@ pub async fn show(
                 ),
                 &state,
                 nonce,
+                analytics_user_info,
             )
         }
     }

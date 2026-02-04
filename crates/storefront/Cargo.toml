@@ -81,6 +81,8 @@ tower_governor = "0.8"
 # Security
 secrecy = { workspace = true }
 ammonia = "4"
+hmac = "0.12"
+sha2 = "0.10"
 
 # Async utilities
 futures = { workspace = true }

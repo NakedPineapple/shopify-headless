@@ -30,6 +30,8 @@ use std::net::{IpAddr, SocketAddr};
 use secrecy::{ExposeSecret, SecretString};
 use thiserror::Error;
 
+use crate::models::CurrentCustomer;
+
 const MIN_SESSION_SECRET_LENGTH: usize = 32;
 const MIN_ENTROPY_BITS_PER_CHAR: f64 = 3.3;
 
@@ -91,6 +93,8 @@ pub struct StorefrontConfig {
     pub sentry_sample_rate: f32,
     /// Sentry traces sample rate for performance monitoring (0.0 to 1.0)
     pub sentry_traces_sample_rate: f32,
+    /// Shopify webhook signing secret (optional - webhook feature only active when set)
+    pub shopify_webhook_secret: Option<SecretString>,
 }
 
 /// Klaviyo API configuration.
@@ -184,6 +188,35 @@ pub struct AnalyticsConfig {
     pub crazy_egg_account_id: Option<String>,
 }
 
+/// Per-request user identity for analytics tracking.
+///
+/// Passed to templates so Mixpanel (and other platforms) can identify
+/// logged-in users via data attributes on the body tag.
+#[derive(Debug, Clone, Default)]
+pub struct AnalyticsUserInfo {
+    /// Shopify customer ID (e.g., `gid://shopify/Customer/123`).
+    pub user_id: Option<String>,
+    /// Customer email address.
+    pub email: Option<String>,
+    /// Customer first name.
+    pub first_name: Option<String>,
+    /// Customer last name.
+    pub last_name: Option<String>,
+}
+
+impl AnalyticsUserInfo {
+    /// Create from an optional [`CurrentCustomer`].
+    #[must_use]
+    pub fn from_customer(customer: Option<&CurrentCustomer>) -> Self {
+        customer.map_or_else(Self::default, |c| Self {
+            user_id: Some(c.shopify_customer_id.clone()),
+            email: Some(c.email.clone()),
+            first_name: c.first_name.clone(),
+            last_name: c.last_name.clone(),
+        })
+    }
+}
+
 impl StorefrontConfig {
     /// Load configuration from environment variables.
     ///
@@ -224,6 +257,8 @@ impl StorefrontConfig {
         let sentry_traces_sample_rate = get_optional_env("SENTRY_TRACES_SAMPLE_RATE")
             .and_then(|s| s.parse().ok())
             .unwrap_or(1.0);
+        let shopify_webhook_secret =
+            get_optional_env("SHOPIFY_WEBHOOK_SECRET").map(SecretString::from);
 
         Ok(Self {
             database_url,
@@ -239,6 +274,7 @@ impl StorefrontConfig {
             sentry_environment,
             sentry_sample_rate,
             sentry_traces_sample_rate,
+            shopify_webhook_secret,
         })
     }
 
@@ -504,6 +540,7 @@ mod tests {
             sentry_environment: None,
             sentry_sample_rate: 1.0,
             sentry_traces_sample_rate: 1.0,
+            shopify_webhook_secret: None,
         };
 
         let addr = config.socket_addr();

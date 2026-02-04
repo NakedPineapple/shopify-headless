@@ -12,9 +12,10 @@ use axum::{
 use chrono::NaiveDate;
 use tracing::{debug, info, instrument, warn};
 
-use crate::config::AnalyticsConfig;
+use crate::config::{AnalyticsConfig, AnalyticsUserInfo};
 use crate::content::Post;
 use crate::filters;
+use crate::middleware::OptionalAuth;
 use crate::routes::products::BreadcrumbItem;
 use crate::state::AppState;
 
@@ -54,6 +55,7 @@ impl From<&Post> for PostView {
 pub struct BlogIndexTemplate {
     pub posts: Vec<PostView>,
     pub analytics: AnalyticsConfig,
+    pub analytics_user_info: AnalyticsUserInfo,
     pub nonce: String,
     /// Base URL for canonical links.
     pub base_url: String,
@@ -66,6 +68,7 @@ pub struct BlogShowTemplate {
     pub post: PostView,
     pub recent_posts: Vec<PostView>,
     pub analytics: AnalyticsConfig,
+    pub analytics_user_info: AnalyticsUserInfo,
     pub nonce: String,
     /// Base URL for canonical links and structured data.
     pub base_url: String,
@@ -79,9 +82,10 @@ pub struct BlogShowTemplate {
 const RECENT_POSTS_COUNT: usize = 3;
 
 /// Display the blog index page with all published posts.
-#[instrument(skip(state, nonce))]
+#[instrument(skip(state, nonce, customer))]
 pub async fn index(
     State(state): State<AppState>,
+    OptionalAuth(customer): OptionalAuth,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> impl IntoResponse {
     debug!("Rendering blog index page");
@@ -97,6 +101,7 @@ pub async fn index(
     BlogIndexTemplate {
         posts,
         analytics: state.config().analytics.clone(),
+        analytics_user_info: AnalyticsUserInfo::from_customer(customer.as_ref()),
         nonce,
         base_url: state.config().base_url.clone(),
     }
@@ -107,9 +112,10 @@ pub async fn index(
 /// # Errors
 ///
 /// Returns 404 if the post doesn't exist or is a draft.
-#[instrument(skip(state, nonce))]
+#[instrument(skip(state, nonce, customer))]
 pub async fn show(
     State(state): State<AppState>,
+    OptionalAuth(customer): OptionalAuth,
     Path(slug): Path<String>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> Result<impl IntoResponse, StatusCode> {
@@ -167,6 +173,7 @@ pub async fn show(
         post: post_view,
         recent_posts,
         analytics: state.config().analytics.clone(),
+        analytics_user_info: AnalyticsUserInfo::from_customer(customer.as_ref()),
         nonce,
         base_url,
         logo_url,

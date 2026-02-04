@@ -11,8 +11,9 @@ use axum::{
 use serde::{Deserialize, Deserializer};
 use tracing::{debug, info, instrument, warn};
 
-use crate::config::AnalyticsConfig;
+use crate::config::{AnalyticsConfig, AnalyticsUserInfo};
 use crate::filters;
+use crate::middleware::OptionalAuth;
 use crate::search::{SearchFilters, SearchResults, SearchSort};
 use crate::state::AppState;
 
@@ -83,6 +84,7 @@ pub struct SearchPageTemplate {
     pub filter_price_gte: Option<u64>,
     pub filter_price_lte: Option<u64>,
     pub analytics: AnalyticsConfig,
+    pub analytics_user_info: AnalyticsUserInfo,
     pub nonce: String,
 }
 
@@ -131,10 +133,11 @@ pub async fn suggest(
 }
 
 /// Full search page.
-#[instrument(skip(state, nonce))]
+#[instrument(skip(state, nonce, customer))]
 #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
 pub async fn search_page(
     State(state): State<AppState>,
+    OptionalAuth(customer): OptionalAuth,
     Query(query): Query<SearchPageQuery>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> impl IntoResponse {
@@ -186,6 +189,7 @@ pub async fn search_page(
         filter_price_gte: filters.min_price_cents,
         filter_price_lte: filters.max_price_cents,
         analytics: state.config().analytics.clone(),
+        analytics_user_info: AnalyticsUserInfo::from_customer(customer.as_ref()),
         nonce,
     }
     .into_response()

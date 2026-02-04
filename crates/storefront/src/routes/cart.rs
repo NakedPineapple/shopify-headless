@@ -18,8 +18,9 @@ use serde::Deserialize;
 use tower_sessions::Session;
 use tracing::{debug, info, instrument, warn};
 
-use crate::config::AnalyticsConfig;
+use crate::config::{AnalyticsConfig, AnalyticsUserInfo};
 use crate::filters;
+use crate::middleware::OptionalAuth;
 use crate::models::session_keys;
 use crate::routes::products::ProductView;
 use crate::services::discount_matcher::{self, DiscountMatchResult, DiscountSuggestion, GwpAction};
@@ -206,6 +207,7 @@ pub struct CartShowTemplate {
     /// Whether there's a pending GWP selection that blocks checkout.
     pub has_pending_gwp_selection: bool,
     pub analytics: AnalyticsConfig,
+    pub analytics_user_info: AnalyticsUserInfo,
     pub nonce: String,
 }
 
@@ -236,18 +238,27 @@ pub struct OrderSummaryTemplate {
 }
 
 /// Display cart page.
-#[instrument(skip(state, session, nonce))]
+#[instrument(skip(state, session, nonce, customer))]
 pub async fn show(
     State(state): State<AppState>,
     session: Session,
+    OptionalAuth(customer): OptionalAuth,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> Response {
     debug!("Displaying cart page");
 
+    let analytics_user_info = AnalyticsUserInfo::from_customer(customer.as_ref());
+
     // Get cart ID from session
     let Some(cart_id) = get_cart_id(&session).await else {
         debug!("No cart found in session, displaying empty cart");
-        return render_cart_page(&state, CartView::empty(), nonce).await;
+        return render_cart_page(
+            &state,
+            CartView::empty(),
+            nonce,
+            analytics_user_info.clone(),
+        )
+        .await;
     };
 
     debug!(cart_id = %cart_id, "Found existing cart in session");
@@ -257,7 +268,7 @@ pub async fn show(
         Ok(cart) => cart,
         Err(e) => {
             warn!(cart_id = %cart_id, error = %e, "Failed to fetch cart from Shopify");
-            return render_cart_page(&state, CartView::empty(), nonce).await;
+            return render_cart_page(&state, CartView::empty(), nonce, analytics_user_info).await;
         }
     };
 
@@ -335,6 +346,7 @@ pub async fn show(
         qualifies_for_free_shipping,
         has_pending_gwp_selection,
         analytics: state.config().analytics.clone(),
+        analytics_user_info,
         nonce,
     };
 
@@ -352,7 +364,12 @@ pub async fn show(
 }
 
 /// Render the cart page with an empty or minimal cart (helper for early returns).
-async fn render_cart_page(state: &AppState, cart: CartView, nonce: String) -> Response {
+async fn render_cart_page(
+    state: &AppState,
+    cart: CartView,
+    nonce: String,
+    analytics_user_info: AnalyticsUserInfo,
+) -> Response {
     let promotions = state
         .storefront()
         .get_active_promotions()
@@ -381,6 +398,7 @@ async fn render_cart_page(state: &AppState, cart: CartView, nonce: String) -> Re
         qualifies_for_free_shipping,
         has_pending_gwp_selection: false,
         analytics: state.config().analytics.clone(),
+        analytics_user_info,
         nonce,
     };
 

@@ -12,7 +12,9 @@
 pub mod auth;
 pub mod discount_matcher;
 mod klaviyo;
+pub mod mixpanel;
 
 pub use auth::{AuthError, AuthService};
 pub use discount_matcher::{DiscountSuggestion, match_qualifying_rules};
 pub use klaviyo::{KlaviyoClient, KlaviyoError};
+pub use mixpanel::MixpanelClient;

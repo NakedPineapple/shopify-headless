@@ -214,7 +214,7 @@ pub async fn logout(State(state): State<AppState>, session: Session) -> Response
     if let Some(token) = token
         && let Some(id_token) = token.id_token
     {
-        let post_logout_uri = format!("{}/", state.config().base_url);
+        let post_logout_uri = format!("{}/?logged_out=1", state.config().base_url);
         let logout_url = state.customer().logout_url(&id_token, &post_logout_uri);
         info!("Redirecting to Shopify logout endpoint for full session termination");
         return Redirect::to(&logout_url).into_response();
@@ -222,5 +222,5 @@ pub async fn logout(State(state): State<AppState>, session: Session) -> Response
 
     info!("Shopify customer logged out locally (no Shopify session to terminate)");
     // Otherwise just redirect to home
-    Redirect::to("/").into_response()
+    Redirect::to("/?logged_out=1").into_response()
 }

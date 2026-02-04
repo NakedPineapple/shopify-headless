@@ -15,7 +15,7 @@ use serde::Deserialize;
 use tower_sessions::Session;
 use tracing::{debug, info, instrument, warn};
 
-use crate::config::AnalyticsConfig;
+use crate::config::{AnalyticsConfig, AnalyticsUserInfo};
 use crate::filters;
 use crate::middleware::{clear_current_customer, set_current_customer};
 use crate::models::CurrentCustomer;
@@ -134,6 +134,7 @@ pub struct LoginTemplate {
     pub error: Option<String>,
     pub success: Option<String>,
     pub analytics: AnalyticsConfig,
+    pub analytics_user_info: AnalyticsUserInfo,
     pub nonce: String,
 }
 
@@ -143,6 +144,7 @@ pub struct LoginTemplate {
 pub struct RegisterTemplate {
     pub error: Option<String>,
     pub analytics: AnalyticsConfig,
+    pub analytics_user_info: AnalyticsUserInfo,
     pub nonce: String,
 }
 
@@ -152,6 +154,7 @@ pub struct RegisterTemplate {
 pub struct RegisterSuccessTemplate {
     pub email: String,
     pub analytics: AnalyticsConfig,
+    pub analytics_user_info: AnalyticsUserInfo,
     pub nonce: String,
 }
 
@@ -162,6 +165,7 @@ pub struct ForgotPasswordTemplate {
     pub error: Option<String>,
     pub success: Option<String>,
     pub analytics: AnalyticsConfig,
+    pub analytics_user_info: AnalyticsUserInfo,
     pub nonce: String,
 }
 
@@ -172,6 +176,7 @@ pub struct ResetPasswordTemplate {
     pub error: Option<String>,
     pub reset_url: String,
     pub analytics: AnalyticsConfig,
+    pub analytics_user_info: AnalyticsUserInfo,
     pub nonce: String,
 }
 
@@ -182,6 +187,7 @@ pub struct ActivateTemplate {
     pub error: Option<String>,
     pub activation_url: String,
     pub analytics: AnalyticsConfig,
+    pub analytics_user_info: AnalyticsUserInfo,
     pub nonce: String,
 }
 
@@ -201,6 +207,7 @@ pub async fn login_page(
         error: query.error,
         success: query.success,
         analytics: state.config().analytics.clone(),
+        analytics_user_info: AnalyticsUserInfo::default(),
         nonce,
     }
 }
@@ -281,6 +288,7 @@ pub async fn register_page(
     RegisterTemplate {
         error: query.error,
         analytics: state.config().analytics.clone(),
+        analytics_user_info: AnalyticsUserInfo::default(),
         nonce,
     }
 }
@@ -333,6 +341,7 @@ pub async fn register(
             RegisterSuccessTemplate {
                 email: customer.email.unwrap_or_else(|| form.email.clone()),
                 analytics: state.config().analytics.clone(),
+                analytics_user_info: AnalyticsUserInfo::default(),
                 nonce,
             }
             .into_response()
@@ -348,6 +357,7 @@ pub async fn register(
             RegisterSuccessTemplate {
                 email: form.email.clone(),
                 analytics: state.config().analytics.clone(),
+                analytics_user_info: AnalyticsUserInfo::default(),
                 nonce,
             }
             .into_response()
@@ -375,6 +385,7 @@ pub async fn activate_page(
             error: query.error,
             activation_url: url,
             analytics: state.config().analytics.clone(),
+            analytics_user_info: AnalyticsUserInfo::default(),
             nonce,
         }
         .into_response()
@@ -480,6 +491,7 @@ pub async fn forgot_password_page(
         error: query.error,
         success: query.success,
         analytics: state.config().analytics.clone(),
+        analytics_user_info: AnalyticsUserInfo::default(),
         nonce,
     }
 }
@@ -521,6 +533,7 @@ pub async fn reset_password_page(
             error: query.error,
             reset_url: url,
             analytics: state.config().analytics.clone(),
+            analytics_user_info: AnalyticsUserInfo::default(),
             nonce,
         }
         .into_response()
@@ -649,5 +662,5 @@ pub async fn logout(State(state): State<AppState>, session: Session) -> Response
     }
 
     info!("Customer logged out successfully");
-    Redirect::to("/").into_response()
+    Redirect::to("/?logged_out=1").into_response()
 }

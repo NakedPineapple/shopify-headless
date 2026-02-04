@@ -10,8 +10,9 @@ use axum::{
 use serde::Deserialize;
 use tracing::{debug, info, instrument, warn};
 
-use crate::config::AnalyticsConfig;
+use crate::config::{AnalyticsConfig, AnalyticsUserInfo};
 use crate::filters;
+use crate::middleware::OptionalAuth;
 use crate::shopify::ShopifyError;
 use crate::shopify::types::{
     Money, Product as ShopifyProduct, ProductRecommendationIntent, SellingPlanPriceAdjustmentValue,
@@ -282,6 +283,7 @@ pub struct ProductsIndexTemplate {
     pub total_pages: u32,
     pub has_more_pages: bool,
     pub analytics: AnalyticsConfig,
+    pub analytics_user_info: AnalyticsUserInfo,
     pub nonce: String,
     /// Base URL for canonical links.
     pub base_url: String,
@@ -294,6 +296,7 @@ pub struct ProductShowTemplate {
     pub product: ProductView,
     pub related_products: Vec<ProductView>,
     pub analytics: AnalyticsConfig,
+    pub analytics_user_info: AnalyticsUserInfo,
     pub nonce: String,
     /// Base URL for canonical links and structured data.
     pub base_url: String,
@@ -316,9 +319,10 @@ pub struct QuickViewTemplate {
 const PRODUCTS_PER_PAGE: i64 = 12;
 
 /// Display product listing page.
-#[instrument(skip(state, nonce))]
+#[instrument(skip(state, nonce, customer))]
 pub async fn index(
     State(state): State<AppState>,
+    OptionalAuth(customer): OptionalAuth,
     Query(query): Query<PaginationQuery>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> Response {
@@ -355,6 +359,7 @@ pub async fn index(
                 },
                 has_more_pages: has_more,
                 analytics: state.config().analytics.clone(),
+                analytics_user_info: AnalyticsUserInfo::from_customer(customer.as_ref()),
                 nonce,
                 base_url: state.config().base_url.clone(),
             }
@@ -369,6 +374,7 @@ pub async fn index(
                 total_pages: 1,
                 has_more_pages: false,
                 analytics: state.config().analytics.clone(),
+                analytics_user_info: AnalyticsUserInfo::from_customer(customer.as_ref()),
                 nonce,
                 base_url: state.config().base_url.clone(),
             }
@@ -385,6 +391,7 @@ fn build_error_product_template(
     description: &str,
     state: &AppState,
     nonce: String,
+    analytics_user_info: AnalyticsUserInfo,
 ) -> Response {
     (
         status,
@@ -412,6 +419,7 @@ fn build_error_product_template(
             },
             related_products: Vec::new(),
             analytics: state.config().analytics.clone(),
+            analytics_user_info,
             nonce,
             base_url: state.config().base_url.clone(),
             breadcrumbs: Vec::new(),
@@ -422,13 +430,15 @@ fn build_error_product_template(
 }
 
 /// Display product detail page.
-#[instrument(skip(state, nonce))]
+#[instrument(skip(state, nonce, customer))]
 pub async fn show(
     State(state): State<AppState>,
+    OptionalAuth(customer): OptionalAuth,
     Path(handle): Path<String>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> Response {
     debug!(handle = %handle, "Fetching product detail page");
+    let analytics_user_info = AnalyticsUserInfo::from_customer(customer.as_ref());
     let result = state.storefront().get_product_by_handle(&handle).await;
 
     match result {
@@ -468,6 +478,7 @@ pub async fn show(
                 product,
                 related_products,
                 analytics: state.config().analytics.clone(),
+                analytics_user_info,
                 nonce,
                 base_url: state.config().base_url.clone(),
                 breadcrumbs,
@@ -484,6 +495,7 @@ pub async fn show(
                 "This product could not be found.",
                 &state,
                 nonce,
+                analytics_user_info.clone(),
             )
         }
         Err(e) => {
@@ -495,6 +507,7 @@ pub async fn show(
                 "An error occurred loading this product.",
                 &state,
                 nonce,
+                analytics_user_info,
             )
         }
     }

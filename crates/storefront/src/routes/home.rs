@@ -5,8 +5,9 @@ use askama_web::WebTemplate;
 use axum::{extract::State, response::IntoResponse};
 use tracing::{debug, info, instrument};
 
-use crate::config::AnalyticsConfig;
+use crate::config::{AnalyticsConfig, AnalyticsUserInfo};
 use crate::filters;
+use crate::middleware::OptionalAuth;
 use crate::shopify::types::{Money, Product as ShopifyProduct};
 use crate::state::AppState;
 
@@ -304,6 +305,8 @@ pub struct HomeTemplate {
     pub featured_reviews: Vec<ReviewView>,
     /// Analytics tracking configuration.
     pub analytics: AnalyticsConfig,
+    /// Per-request user identity for analytics.
+    pub analytics_user_info: AnalyticsUserInfo,
     /// CSP nonce for inline scripts.
     pub nonce: String,
     /// Base URL for canonical links and structured data.
@@ -324,6 +327,7 @@ const MERCH_COLLECTION: &str = "merch";
 pub async fn home(
     State(state): State<AppState>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
+    OptionalAuth(customer): OptionalAuth,
 ) -> impl IntoResponse {
     debug!("Rendering home page with hero carousel and product collections");
 
@@ -404,6 +408,7 @@ pub async fn home(
         merch_products,
         featured_reviews: get_featured_reviews(),
         analytics: state.config().analytics.clone(),
+        analytics_user_info: AnalyticsUserInfo::from_customer(customer.as_ref()),
         nonce,
         base_url,
         logo_url,

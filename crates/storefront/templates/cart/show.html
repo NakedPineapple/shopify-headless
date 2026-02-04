@@ -1,7 +1,7 @@
 {% extends "layouts/base.html" %}
 {% import "macros/analytics_data.html" as analytics_macro %}
 
-{% block body_data %}{{ analytics_macro::body_attrs(analytics=analytics) }}{% endblock %}
+{% block body_data %}{{ analytics_macro::body_attrs(analytics=analytics, user_info=analytics_user_info) }}{% endblock %}
 
 {% block title %}Your Cart | Naked Pineapple{% endblock %}
 
@@ -177,7 +177,10 @@
                                         hx-vals='{"variant_id": "{{ product.first_variant_id }}", "quantity": 1}'
                                         hx-target="#cart-count"
                                         hx-swap="innerHTML"
-                                        {% if product.first_variant_id.is_empty() %}disabled{% endif %}>
+                                        {% if product.first_variant_id.is_empty() %}disabled{% endif %}
+                                        data-analytics-name="{{ product.title }}"
+                                        data-analytics-price="{{ product.price|strip_currency }}"
+                                        data-analytics-category="{{ product.product_type }}">
                                     <i class="ph ph-plus-circle"></i>
                                     Add to Cart
                                 </button>
@@ -347,7 +350,10 @@
                                     hx-vals='{"variant_id": "{{ product.first_variant_id }}", "quantity": 1}'
                                     hx-target="#cart-count"
                                     hx-swap="innerHTML"
-                                    {% if product.first_variant_id.is_empty() %}disabled{% endif %}>
+                                    {% if product.first_variant_id.is_empty() %}disabled{% endif %}
+                                    data-analytics-name="{{ product.title }}"
+                                    data-analytics-price="{{ product.price|strip_currency }}"
+                                    data-analytics-category="{{ product.product_type }}">
                                 <i class="ph ph-plus-circle"></i>
                                 Add to Cart
                                 <i class="ph ph-arrow-right ml-1 transition-transform group-hover:translate-x-1"></i>

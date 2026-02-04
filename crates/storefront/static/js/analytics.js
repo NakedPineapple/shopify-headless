@@ -33,6 +33,8 @@
     var mixpanelToken = document.body.dataset.mixpanelToken;
     var mixpanelUserId = document.body.dataset.mixpanelUserId;
     var mixpanelUserEmail = document.body.dataset.mixpanelUserEmail;
+    var mixpanelUserFirstName = document.body.dataset.mixpanelUserFirstName;
+    var mixpanelUserLastName = document.body.dataset.mixpanelUserLastName;
     var crazyEggId = document.body.dataset.crazyEggId;
 
     // Check if any tracking is enabled
@@ -147,8 +149,25 @@
 
         // Always identify the user
         mixpanel.identify(mixpanelUserId);
-        if (mixpanelUserEmail) {
-            mixpanel.people.set({ '$email': mixpanelUserEmail });
+        var userProps = {};
+        if (mixpanelUserEmail) { userProps['$email'] = mixpanelUserEmail; }
+        if (mixpanelUserFirstName) { userProps['$first_name'] = mixpanelUserFirstName; }
+        if (mixpanelUserLastName) { userProps['$last_name'] = mixpanelUserLastName; }
+        if (Object.keys(userProps).length > 0) {
+            mixpanel.people.set(userProps);
+        }
+    }
+
+    // Reset Mixpanel identity on logout
+    // The server redirects to /?logged_out=1 after clearing the session
+    if (mixpanelToken && window.mixpanel) {
+        var params = new URLSearchParams(window.location.search);
+        if (params.get('logged_out') === '1') {
+            mixpanel.reset();
+            // Clean up the URL parameter
+            params.delete('logged_out');
+            var cleanUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+            window.history.replaceState({}, '', cleanUrl);
         }
     }
 
@@ -716,6 +735,35 @@
             mixpanel.people.track_charge(value);
         }
     }
+
+    // =========================================================================
+    // Global Add-to-Cart Tracking
+    // =========================================================================
+
+    // Track add-to-cart for buttons with data-analytics-* attributes.
+    // Covers home page quick-add, quick view, and cart recommended products.
+    // The product show page has its own handler and does not use these attributes.
+    document.body.addEventListener('htmx:afterRequest', function(event) {
+        if (!window.NP_Analytics) return;
+        var el = event.detail.elt;
+        if (!el || !el.matches('[hx-post="/cart/add"][data-analytics-name]')) return;
+        if (!event.detail.successful) return;
+
+        var quantity = 1;
+        // Try to read quantity from hx-vals for quick view
+        var qtyInput = document.getElementById('quick-view-quantity');
+        if (qtyInput) {
+            quantity = parseInt(qtyInput.value) || 1;
+        }
+
+        window.NP_Analytics.trackAddToCart({
+            id: el.dataset.analyticsId || '',
+            name: el.dataset.analyticsName || '',
+            price: el.dataset.analyticsPrice || '0',
+            quantity: quantity,
+            category: el.dataset.analyticsCategory || ''
+        });
+    });
 
     // =========================================================================
     // HTMX Navigation Tracking

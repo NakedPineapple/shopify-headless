@@ -24,9 +24,9 @@ use axum::{
 use serde::Deserialize;
 use tracing::{debug, error, info, instrument, warn};
 
-use crate::config::AnalyticsConfig;
+use crate::config::{AnalyticsConfig, AnalyticsUserInfo};
 use crate::filters;
-use crate::middleware::RequireShopifyCustomer;
+use crate::middleware::{OptionalAuth, RequireShopifyCustomer};
 use crate::shopify::Money;
 use crate::shopify::customer::{Address, AddressInput, Order};
 use crate::state::AppState;
@@ -73,6 +73,7 @@ pub struct AccountIndexTemplate {
     pub default_address: Option<AddressView>,
     pub subscription_count: u32,
     pub analytics: AnalyticsConfig,
+    pub analytics_user_info: AnalyticsUserInfo,
     pub nonce: String,
 }
 
@@ -82,6 +83,7 @@ pub struct AccountIndexTemplate {
 pub struct OrdersTemplate {
     pub orders: Vec<Order>,
     pub analytics: AnalyticsConfig,
+    pub analytics_user_info: AnalyticsUserInfo,
     pub nonce: String,
 }
 
@@ -92,6 +94,7 @@ pub struct AddressesTemplate {
     pub addresses: Vec<Address>,
     pub default_address_id: Option<String>,
     pub analytics: AnalyticsConfig,
+    pub analytics_user_info: AnalyticsUserInfo,
     pub nonce: String,
 }
 
@@ -114,6 +117,7 @@ pub struct AddressFormTemplate {
     pub address: Option<Address>,
     pub error: Option<String>,
     pub analytics: AnalyticsConfig,
+    pub analytics_user_info: AnalyticsUserInfo,
     pub nonce: String,
 }
 
@@ -162,12 +166,15 @@ impl From<AddressForm> for AddressInput {
 /// # Route
 ///
 /// `GET /account`
-#[instrument(skip(state, token, nonce))]
+#[instrument(skip(state, token, current_customer, nonce))]
 pub async fn index(
     State(state): State<AppState>,
     RequireShopifyCustomer(token): RequireShopifyCustomer,
+    OptionalAuth(current_customer): OptionalAuth,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> impl IntoResponse {
+    let analytics_user_info = AnalyticsUserInfo::from_customer(current_customer.as_ref());
+
     debug!("Rendering account overview page");
 
     // Fetch customer data from Shopify
@@ -235,6 +242,7 @@ pub async fn index(
         default_address,
         subscription_count: 0, // TODO: Implement subscriptions
         analytics: state.config().analytics.clone(),
+        analytics_user_info,
         nonce,
     }
     .into_response()
@@ -245,10 +253,11 @@ pub async fn index(
 /// # Route
 ///
 /// `GET /account/orders`
-#[instrument(skip(state, token, nonce))]
+#[instrument(skip(state, token, customer, nonce))]
 pub async fn orders(
     State(state): State<AppState>,
     RequireShopifyCustomer(token): RequireShopifyCustomer,
+    OptionalAuth(customer): OptionalAuth,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> impl IntoResponse {
     debug!("Fetching order history page");
@@ -272,6 +281,7 @@ pub async fn orders(
     OrdersTemplate {
         orders,
         analytics: state.config().analytics.clone(),
+        analytics_user_info: AnalyticsUserInfo::from_customer(customer.as_ref()),
         nonce,
     }
 }
@@ -281,10 +291,11 @@ pub async fn orders(
 /// # Route
 ///
 /// `GET /account/addresses`
-#[instrument(skip(state, token, nonce))]
+#[instrument(skip(state, token, customer, nonce))]
 pub async fn addresses(
     State(state): State<AppState>,
     RequireShopifyCustomer(token): RequireShopifyCustomer,
+    OptionalAuth(customer): OptionalAuth,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> impl IntoResponse {
     debug!("Fetching addresses list page");
@@ -332,6 +343,7 @@ pub async fn addresses(
         addresses,
         default_address_id,
         analytics: state.config().analytics.clone(),
+        analytics_user_info: AnalyticsUserInfo::from_customer(customer.as_ref()),
         nonce,
     }
 }
@@ -341,10 +353,11 @@ pub async fn addresses(
 /// # Route
 ///
 /// `GET /account/addresses/new`
-#[instrument(skip(state, _token, nonce))]
+#[instrument(skip(state, _token, customer, nonce))]
 pub async fn new_address(
     State(state): State<AppState>,
     RequireShopifyCustomer(_token): RequireShopifyCustomer,
+    OptionalAuth(customer): OptionalAuth,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> impl IntoResponse {
     debug!("Rendering new address form");
@@ -357,6 +370,7 @@ pub async fn new_address(
         address: None,
         error: None,
         analytics: state.config().analytics.clone(),
+        analytics_user_info: AnalyticsUserInfo::from_customer(customer.as_ref()),
         nonce,
     }
 }
@@ -366,10 +380,11 @@ pub async fn new_address(
 /// # Route
 ///
 /// `POST /account/addresses`
-#[instrument(skip(state, token, nonce, form))]
+#[instrument(skip(state, token, customer, nonce, form))]
 pub async fn create_address(
     State(state): State<AppState>,
     RequireShopifyCustomer(token): RequireShopifyCustomer,
+    OptionalAuth(customer): OptionalAuth,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
     Form(form): Form<AddressForm>,
 ) -> Response {
@@ -394,6 +409,7 @@ pub async fn create_address(
                 address: None,
                 error: Some(e.to_string()),
                 analytics: state.config().analytics.clone(),
+                analytics_user_info: AnalyticsUserInfo::from_customer(customer.as_ref()),
                 nonce,
             }
             .into_response()
@@ -406,10 +422,11 @@ pub async fn create_address(
 /// # Route
 ///
 /// `GET /account/addresses/:id/edit`
-#[instrument(skip(state, token, nonce), fields(address_id = %address_id))]
+#[instrument(skip(state, token, customer, nonce), fields(address_id = %address_id))]
 pub async fn edit_address(
     State(state): State<AppState>,
     RequireShopifyCustomer(token): RequireShopifyCustomer,
+    OptionalAuth(customer): OptionalAuth,
     Path(address_id): Path<String>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
 ) -> Response {
@@ -447,6 +464,7 @@ pub async fn edit_address(
         address: Some(addr),
         error: None,
         analytics: state.config().analytics.clone(),
+        analytics_user_info: AnalyticsUserInfo::from_customer(customer.as_ref()),
         nonce,
     }
     .into_response()
@@ -457,10 +475,11 @@ pub async fn edit_address(
 /// # Route
 ///
 /// `POST /account/addresses/:id`
-#[instrument(skip(state, token, nonce, form), fields(address_id = %address_id))]
+#[instrument(skip(state, token, customer, nonce, form), fields(address_id = %address_id))]
 pub async fn update_address(
     State(state): State<AppState>,
     RequireShopifyCustomer(token): RequireShopifyCustomer,
+    OptionalAuth(customer): OptionalAuth,
     Path(address_id): Path<String>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
     Form(form): Form<AddressForm>,
@@ -494,6 +513,7 @@ pub async fn update_address(
                 address,
                 error: Some(e.to_string()),
                 analytics: state.config().analytics.clone(),
+                analytics_user_info: AnalyticsUserInfo::from_customer(customer.as_ref()),
                 nonce,
             }
             .into_response()

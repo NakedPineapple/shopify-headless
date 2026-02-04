@@ -3,7 +3,7 @@
 {% import "macros/json_ld.html" as json_ld %}
 {% import "macros/picture.html" as img %}
 
-{% block body_data %}{{ analytics_macro::body_attrs(analytics=analytics) }}{% endblock %}
+{% block body_data %}{{ analytics_macro::body_attrs(analytics=analytics, user_info=analytics_user_info) }}{% endblock %}
 
 {% block title %}{{ product.title }} | Naked Pineapple{% endblock %}
 

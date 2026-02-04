@@ -3,7 +3,7 @@
 {% import "macros/picture.html" as img %}
 {% import "macros/json_ld.html" as json_ld %}
 
-{% block body_data %}{{ analytics_macro::body_attrs(analytics=analytics) }}{% endblock %}
+{% block body_data %}{{ analytics_macro::body_attrs(analytics=analytics, user_info=analytics_user_info) }}{% endblock %}
 
 {% block title %}{{ post.title }} - Beyond the Skin{% endblock %}
 
@@ -298,6 +298,14 @@
 {% endblock %}
 
 {% block scripts %}
+<script nonce="{{ nonce }}">
+if (window.mixpanel) {
+    mixpanel.track('Blog Post Viewed', {
+        'Post Title': '{{ post.title|escape }}',
+        'Post Handle': '{{ post.slug|escape }}'
+    });
+}
+</script>
 <style>
 @keyframes fade-up {
     from { opacity: 0; transform: translateY(20px); }

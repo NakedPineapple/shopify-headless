@@ -70,6 +70,7 @@ pub mod pages;
 pub mod products;
 pub mod search;
 pub mod shopify_auth;
+pub mod webhooks;
 
 use axum::{
     Router,
@@ -217,4 +218,9 @@ pub fn routes() -> Router<AppState> {
         )
         // Contact routes
         .route("/contact/product-question", post(contact::product_question))
+        // Shopify webhooks (CSRF-exempt via /api/webhooks prefix)
+        .route(
+            "/api/webhooks/shopify/orders-create",
+            post(webhooks::orders_create),
+        )
 }
