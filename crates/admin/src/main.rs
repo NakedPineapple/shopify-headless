@@ -150,7 +150,8 @@ async fn main() {
         .layer(
             TraceLayer::new_for_http()
                 .make_span_with(logging::make_http_span)
-                .on_response(logging::on_http_response),
+                .on_response(logging::on_http_response)
+                .on_failure(logging::on_http_failure),
         )
         .with_state(state)
         // Catch panics and log them before returning 500

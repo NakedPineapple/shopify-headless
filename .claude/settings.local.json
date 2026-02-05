@@ -22,6 +22,7 @@
       "Skill(frontend-design:frontend-design)",
       "WebFetch(domain:askama.readthedocs.io)",
       "WebFetch(domain:askama.rs)",
+      "WebFetch(domain:betterstack.com)",
       "WebFetch(domain:community.fly.io)",
       "WebFetch(domain:community.shopify.com)",
       "WebFetch(domain:community.shopify.dev)",
@@ -29,14 +30,15 @@
       "WebFetch(domain:developers.klaviyo.com)",
       "WebFetch(domain:developers.pinterest.com)",
       "WebFetch(domain:docs.github.com)",
+      "WebFetch(domain:docs.rs)",
       "WebFetch(domain:help.klaviyo.com)",
+      "WebFetch(domain:help.pinterest.com)",
       "WebFetch(domain:help.shopify.com)",
       "WebFetch(domain:nakedpineapple.co)",
       "WebFetch(domain:shopify.dev)",
       "WebFetch(domain:tailscale.com)",
-      "WebSearch",
       "WebFetch(domain:webcomponents.shopify.dev)",
-      "WebFetch(domain:betterstack.com)"
+      "WebSearch"
     ],
     "deny": [
       "Bash(cargo build:*)",

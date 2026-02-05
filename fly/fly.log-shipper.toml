@@ -2,7 +2,7 @@ app = 'nakedpineapple-log-shipper'
 primary_region = 'sjc'
 
 [build]
-  image = 'flyio/log-shipper:latest'
+  dockerfile = 'log-shipper/Dockerfile'
 
 [http_service]
   internal_port = 8080

@@ -1,0 +1,100 @@
+# Custom Vector configuration for Naked Pineapple log shipping
+# Parses JSON from application logs and merges with Fly.io metadata
+
+[api]
+enabled = true
+address = "[::]:8686"
+
+[sources.fly_logs]
+type = "nats"
+url = "nats://[${NETWORK:-fdaa}::3]:4223"
+subject = "${SUBJECT:-logs.>}"
+queue = "${QUEUE:-}"
+connection_name = "Fly logs stream"
+auth.strategy = "user_password"
+auth.user_password.user = "${ORG}"
+auth.user_password.password = "${ACCESS_TOKEN}"
+
+[transforms.parse_fly_logs]
+type = "remap"
+inputs = ["fly_logs"]
+source = '''
+# Parse the NATS message which contains Fly.io's log wrapper
+. = parse_json!(.message)
+'''
+
+[transforms.parse_json_message]
+type = "remap"
+inputs = ["parse_fly_logs"]
+source = '''
+# If the message field contains JSON, parse it and merge at top level
+if is_string(.message) && starts_with(string!(.message), "{") {
+    parsed = parse_json(.message) ?? {}
+    if is_object(parsed) {
+        # Preserve original Fly metadata
+        fly_meta = .fly
+        dt = .dt
+        host = .host
+        log_level = .log.level
+        event_meta = .event
+
+        # Merge parsed JSON fields to top level
+        . = merge(., parsed)
+
+        # Restore Fly metadata (takes precedence)
+        .fly = fly_meta
+        .dt = dt
+        .host = host
+        .event = event_meta
+
+        # Use app log level if present, otherwise keep Fly's
+        if exists(.level) {
+            .log.level = downcase(string!(.level))
+            del(.level)
+        } else {
+            .log.level = log_level
+        }
+
+        # Promote nested message to top level
+        if exists(.message) && is_string(.message) {
+            .message = string!(.message)
+        }
+    }
+}
+
+# Normalize error field names from third-party crates to OTel convention
+# - tower_sessions::service uses "err"
+# - tower_http::trace uses "classification"
+# - Standardize to "error.message" (OTel semantic convention)
+if exists(.err) {
+    ."error.message" = del(.err)
+}
+if exists(.error) && is_string(.error) {
+    ."error.message" = del(.error)
+}
+if exists(.classification) {
+    ."error.message" = del(.classification)
+}
+'''
+
+[sinks.better_stack]
+type = "http"
+inputs = ["parse_json_message"]
+uri = "https://${BETTER_STACK_INGESTING_HOST}"
+method = "post"
+encoding.codec = "ndjson"
+
+[sinks.better_stack.request]
+headers.Authorization = "Bearer ${BETTER_STACK_SOURCE_TOKEN}"
+headers.Content-Type = "application/x-ndjson"
+
+[sinks.better_stack.batch]
+max_bytes = 1000000
+timeout_secs = 1
+
+# Prometheus metrics for monitoring
+[sinks.prometheus]
+type = "prometheus_exporter"
+inputs = ["internal_metrics"]
+address = "[::]:9598"
+default_namespace = "fly-logs"

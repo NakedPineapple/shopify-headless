@@ -20,12 +20,17 @@
 use std::io;
 
 use sentry::integrations::tracing as sentry_tracing;
+use serde_json::{Map, Value};
 use tracing_subscriber::{
     EnvFilter,
     fmt::{self, MakeWriter},
     layer::SubscriberExt,
     util::SubscriberInitExt,
 };
+
+/// Field names that should be normalized to `error.message` (OpenTelemetry convention).
+/// These come from various third-party crates that use inconsistent naming.
+const ERROR_FIELD_ALIASES: &[&str] = &["error", "err", "classification"];
 
 /// Service metadata from environment, injected into every log line.
 #[derive(Clone)]
@@ -63,49 +68,42 @@ impl ServiceMetadata {
     pub const fn is_fly(&self) -> bool {
         self.cloud_app.is_some()
     }
-
-    /// Format as JSON prefix for log line injection.
-    fn as_json_prefix(&self) -> String {
-        let mut parts = vec![
-            format!(r#""service.name":"{}""#, self.service_name),
-            format!(r#""service.version":"{}""#, self.service_version),
-            format!(r#""host.name":"{}""#, self.host_name),
-        ];
-
-        if let Some(region) = &self.cloud_region {
-            parts.push(format!(r#""cloud.region":"{region}""#));
-        }
-
-        if let Some(app) = &self.cloud_app {
-            parts.push(format!(r#""cloud.app":"{app}""#));
-        }
-
-        parts.join(",")
-    }
 }
 
-/// A writer that injects service metadata into JSON log lines.
+/// A writer that transforms JSON log lines for production observability.
 ///
-/// Each line is expected to be a JSON object. This writer prepends
-/// the service metadata fields to the object.
+/// For each JSON log line, this writer:
+/// 1. Normalizes error field names to OpenTelemetry conventions (`error.message`)
+/// 2. Injects service metadata fields
 struct MetadataInjectingWriter<W> {
     inner: W,
-    metadata_prefix: String,
+    metadata: ServiceMetadata,
 }
 
 impl<W: io::Write> io::Write for MetadataInjectingWriter<W> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        // Convert to string to manipulate JSON
         let line = String::from_utf8_lossy(buf);
 
-        // If it starts with '{', inject our metadata after the opening brace
-        if let Some(rest) = line.strip_prefix('{') {
-            let injected = format!("{{{},{rest}", self.metadata_prefix);
-            // Write the injected content but return original length
-            // to satisfy the Write contract
-            self.inner.write_all(injected.as_bytes())?;
+        if line.starts_with('{') {
+            match serde_json::from_str::<Value>(&line) {
+                Ok(mut json) => {
+                    if let Some(obj) = json.as_object_mut() {
+                        normalize_error_fields(obj);
+                        inject_service_metadata(obj, &self.metadata);
+                    }
+                    let mut output =
+                        serde_json::to_string(&json).unwrap_or_else(|_| line.into_owned());
+                    if !output.ends_with('\n') {
+                        output.push('\n');
+                    }
+                    self.inner.write_all(output.as_bytes())?;
+                }
+                Err(_) => {
+                    // Not valid JSON, pass through unchanged
+                    self.inner.write_all(buf)?;
+                }
+            }
         } else {
-            // Not JSON, pass through unchanged
             self.inner.write_all(buf)?;
         }
         Ok(buf.len())
@@ -116,11 +114,43 @@ impl<W: io::Write> io::Write for MetadataInjectingWriter<W> {
     }
 }
 
-/// A `MakeWriter` that wraps another `MakeWriter` and injects metadata.
+/// Normalize error field aliases to OTel-compliant `error.message`.
+fn normalize_error_fields(obj: &mut Map<String, Value>) {
+    for alias in ERROR_FIELD_ALIASES {
+        if let Some(value) = obj.remove(*alias) {
+            // Only set if not already present (first wins)
+            obj.entry("error.message".to_string()).or_insert(value);
+        }
+    }
+}
+
+/// Inject service metadata fields into the JSON object.
+fn inject_service_metadata(obj: &mut Map<String, Value>, metadata: &ServiceMetadata) {
+    obj.insert(
+        "service.name".to_string(),
+        Value::String(metadata.service_name.to_string()),
+    );
+    obj.insert(
+        "service.version".to_string(),
+        Value::String(metadata.service_version.to_string()),
+    );
+    obj.insert(
+        "host.name".to_string(),
+        Value::String(metadata.host_name.clone()),
+    );
+    if let Some(region) = &metadata.cloud_region {
+        obj.insert("cloud.region".to_string(), Value::String(region.clone()));
+    }
+    if let Some(app) = &metadata.cloud_app {
+        obj.insert("cloud.app".to_string(), Value::String(app.clone()));
+    }
+}
+
+/// A `MakeWriter` that wraps another `MakeWriter` and transforms JSON output.
 #[derive(Clone)]
 struct MetadataInjectingMakeWriter<M> {
     inner: M,
-    metadata_prefix: String,
+    metadata: ServiceMetadata,
 }
 
 impl<'a, M> MakeWriter<'a> for MetadataInjectingMakeWriter<M>
@@ -132,7 +162,7 @@ where
     fn make_writer(&'a self) -> Self::Writer {
         MetadataInjectingWriter {
             inner: self.inner.make_writer(),
-            metadata_prefix: self.metadata_prefix.clone(),
+            metadata: self.metadata.clone(),
         }
     }
 }
@@ -161,10 +191,10 @@ pub fn init_tracing(metadata: &ServiceMetadata) {
         .unwrap_or_else(|_| "naked_pineapple_admin=info,tower_http=debug".into());
 
     if metadata.is_fly() {
-        // JSON format for production with service metadata injection
+        // JSON format for production with metadata injection and field normalization
         let make_writer = MetadataInjectingMakeWriter {
             inner: io::stdout,
-            metadata_prefix: metadata.as_json_prefix(),
+            metadata: metadata.clone(),
         };
 
         let json_layer = fmt::layer()
@@ -242,4 +272,27 @@ pub fn on_http_response<B>(
         "http.request.duration_ms",
         u64::try_from(latency.as_millis()).unwrap_or(u64::MAX),
     );
+}
+
+/// Record failure information with OpenTelemetry-style field names.
+///
+/// This should be used with `tower_http::trace::TraceLayer::on_failure()`.
+/// Prevents tower-http from emitting non-standard `classification` field.
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "OnFailure trait requires failure to be passed by value"
+)]
+pub fn on_http_failure(
+    failure: tower_http::classify::ServerErrorsFailureClass,
+    _latency: std::time::Duration,
+    _span: &tracing::Span,
+) {
+    use tower_http::classify::ServerErrorsFailureClass;
+
+    let error_message = match &failure {
+        ServerErrorsFailureClass::StatusCode(code) => format!("HTTP {}", code.as_u16()),
+        ServerErrorsFailureClass::Error(msg) => msg.clone(),
+    };
+
+    tracing::error!("error.message" = %error_message, "Request failed");
 }
