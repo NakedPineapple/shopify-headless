@@ -1,5 +1,6 @@
 {# Cart Items - Rendered via HTMX on cart operations #}
 {# Expected variables: cart (with items, subtotal) #}
+{% import "macros/shopify_picture.html" as shopify %}
 <div id="cart-items"
      data-analytics-subtotal="{{ cart.subtotal|strip_currency }}"
      class="transition-opacity duration-150 [&.htmx-request]:opacity-60 [&.htmx-request]:pointer-events-none">
@@ -44,9 +45,7 @@
             <!-- Item Image -->
             <a href="/products/{{ item.handle }}" class="relative shrink-0 w-20 h-20 md:w-28 md:h-28 rounded-xl bg-muted shadow-sm group-hover:shadow-md transition-shadow">
                 {% if let Some(image) = item.image %}
-                <img src="{{ image.url }}"
-                     alt="{{ item.title }}"
-                     class="w-full h-full object-cover rounded-xl overflow-hidden transition-transform duration-500 group-hover:scale-105">
+                {{ shopify::img(url=image.url, alt=item.title, sizes="(max-width: 768px) 80px, 112px", class="w-full h-full object-cover rounded-xl overflow-hidden transition-transform duration-500 group-hover:scale-105") }}
                 {% else %}
                 <div class="w-full h-full flex items-center justify-center rounded-xl">
                     <i class="ph ph-image text-2xl text-muted-foreground/40"></i>

@@ -1,25 +1,25 @@
 {# Quick View - Product quick view content for sidebar #}
 {# Expected variables: product, store_url #}
 {% import "macros/picture.html" as img %}
+{% import "macros/shopify_picture.html" as shopify %}
 <div class="space-y-6">
     {# Product Images - Swiper Carousel #}
     {% if !product.images.is_empty() %}
     <div class="aspect-square rounded-lg overflow-hidden bg-muted">
         {% if product.images.len() == 1 %}
         {# Single image - no carousel needed #}
-        <img src="{{ product.images[0].url }}"
-             alt="{{ product.images[0].alt }}"
-             class="w-full h-full object-cover">
+        {{ shopify::img(url=product.images[0].url, alt=product.images[0].alt, sizes="400px", class="w-full h-full object-cover", loading="eager") }}
         {% else %}
         {# Multiple images - Swiper carousel #}
         <div class="swiper quick-view-carousel h-full" id="quick-view-swiper">
             <div class="swiper-wrapper">
                 {% for image in product.images %}
                 <div class="swiper-slide">
-                    <img src="{{ image.url }}"
-                         alt="{{ image.alt }}"
-                         class="w-full h-full object-cover"
-                         loading="{% if loop.first %}eager{% else %}lazy{% endif %}">
+                    {% if loop.first %}
+                    {{ shopify::img(url=image.url, alt=image.alt, sizes="400px", class="w-full h-full object-cover", loading="eager") }}
+                    {% else %}
+                    {{ shopify::img(url=image.url, alt=image.alt, sizes="400px", class="w-full h-full object-cover") }}
+                    {% endif %}
                 </div>
                 {% endfor %}
             </div>

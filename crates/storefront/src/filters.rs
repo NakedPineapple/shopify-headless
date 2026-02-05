@@ -485,3 +485,78 @@ pub fn sanitize_html(html: impl Display, _env: &dyn askama::Values) -> askama::R
 
     Ok(sanitized)
 }
+
+// =============================================================================
+// Shopify CDN Image Filters
+// =============================================================================
+
+/// Generates a `/cdn-cgi/image/` URL for a Shopify product image at a specific width.
+///
+/// Transforms a Shopify CDN URL into a Cloudflare Image Resizing URL.
+/// In production, Cloudflare intercepts these URLs and applies transforms (AVIF/WebP).
+/// In local dev, a fallback handler serves the original image.
+///
+/// Input:  `https://cdn.shopify.com/s/files/1/0123/image.jpg`, 800
+/// Output: `/cdn-cgi/image/w=800,q=80,f=auto/images/shopify/s/files/1/0123/image.jpg`
+///
+/// Usage in templates: `{{ image.url|shopify_cdn_url(800) }}`
+///
+/// # Errors
+///
+/// This filter is infallible, however Askama requires filters return `askama::Result`.
+#[allow(clippy::unnecessary_wraps)]
+#[askama::filter_fn]
+pub fn shopify_cdn_url(
+    url: impl Display,
+    _env: &dyn askama::Values,
+    width: u32,
+) -> askama::Result<String> {
+    let url_str = url.to_string();
+
+    // Extract the path from the Shopify CDN URL
+    // Input: https://cdn.shopify.com/s/files/1/0123/image.jpg
+    // We want: s/files/1/0123/image.jpg
+    let path = url_str
+        .strip_prefix("https://cdn.shopify.com/")
+        .or_else(|| url_str.strip_prefix("http://cdn.shopify.com/"))
+        .unwrap_or(&url_str);
+
+    // Build the cdn-cgi URL with transform parameters
+    // w=width, q=80 (quality), f=auto (format negotiation for AVIF/WebP)
+    Ok(format!(
+        "/cdn-cgi/image/w={width},q=80,f=auto/images/shopify/{path}"
+    ))
+}
+
+/// Generates a srcset string with `/cdn-cgi/image/` URLs at multiple sizes.
+///
+/// Sizes: 320, 640, 1024, 1600, 2400
+///
+/// Input:  `https://cdn.shopify.com/s/files/1/0123/image.jpg`
+/// Output: `/cdn-cgi/image/w=320,q=80,f=auto/images/shopify/... 320w, ...`
+///
+/// Usage in templates: `{{ image.url|shopify_srcset }}`
+///
+/// # Errors
+///
+/// This filter is infallible, however Askama requires filters return `askama::Result`.
+#[allow(clippy::unnecessary_wraps)]
+#[askama::filter_fn]
+pub fn shopify_srcset(url: impl Display, _env: &dyn askama::Values) -> askama::Result<String> {
+    const SIZES: [u32; 5] = [320, 640, 1024, 1600, 2400];
+
+    let url_str = url.to_string();
+
+    // Extract the path from the Shopify CDN URL
+    let path = url_str
+        .strip_prefix("https://cdn.shopify.com/")
+        .or_else(|| url_str.strip_prefix("http://cdn.shopify.com/"))
+        .unwrap_or(&url_str);
+
+    let srcset: Vec<String> = SIZES
+        .iter()
+        .map(|&size| format!("/cdn-cgi/image/w={size},q=80,f=auto/images/shopify/{path} {size}w"))
+        .collect();
+
+    Ok(srcset.join(", "))
+}

@@ -64,6 +64,7 @@ pub mod cart;
 pub mod collections;
 pub mod contact;
 pub mod home;
+pub mod images;
 pub mod manifest;
 pub mod newsletter;
 pub mod pages;
@@ -190,6 +191,10 @@ pub fn routes() -> Router<AppState> {
         .route("/", get(home::home))
         // Web app manifest
         .route("/manifest.webmanifest", get(manifest::webmanifest))
+        // Shopify image proxy (for Cloudflare Image Resizing)
+        .route("/images/shopify/{*path}", get(images::proxy_shopify_image))
+        // cdn-cgi fallback for local dev (Cloudflare intercepts in production)
+        .route("/cdn-cgi/image/{*rest}", get(images::cdn_cgi_fallback))
         // Product routes
         .nest("/products", product_routes())
         // Collection routes

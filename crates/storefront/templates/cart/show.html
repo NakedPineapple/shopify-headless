@@ -1,5 +1,6 @@
 {% extends "layouts/base.html" %}
 {% import "macros/analytics_data.html" as analytics_macro %}
+{% import "macros/shopify_picture.html" as shopify %}
 
 {% block body_data %}{{ analytics_macro::body_attrs(analytics=analytics, user_info=analytics_user_info) }}{% endblock %}
 
@@ -145,10 +146,7 @@
                             <!-- Product Image -->
                             <a href="/products/{{ product.handle }}" class="shrink-0 w-20 h-20 rounded-lg overflow-hidden bg-muted block group">
                                 {% if let Some(image) = product.featured_image %}
-                                <img src="{{ image.url }}"
-                                     alt="{{ image.alt }}"
-                                     class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                                     loading="lazy">
+                                {{ shopify::img(url=image.url, alt=image.alt, sizes="80px", class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110") }}
                                 {% else %}
                                 <div class="w-full h-full flex items-center justify-center text-muted-foreground">
                                     <i class="ph ph-image text-xl"></i>
@@ -256,10 +254,7 @@
                     <!-- Product Image -->
                     <a href="/products/{{ product.handle }}" class="group block aspect-square md:aspect-[4/5] overflow-hidden bg-muted">
                         {% if let Some(image) = product.featured_image %}
-                        <img src="{{ image.url }}"
-                             alt="{{ image.alt }}"
-                             class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                             loading="lazy">
+                        {{ shopify::img(url=image.url, alt=image.alt, sizes="(max-width: 768px) 100vw, 50vw", class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105") }}
                         {% else %}
                         <div class="w-full h-full flex items-center justify-center text-muted-foreground">
                             <i class="ph ph-image text-6xl"></i>

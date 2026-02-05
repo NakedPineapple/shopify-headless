@@ -2,6 +2,7 @@
 {% import "macros/analytics_data.html" as analytics_macro %}
 {% import "macros/json_ld.html" as json_ld %}
 {% import "macros/picture.html" as img %}
+{% import "macros/shopify_picture.html" as shopify %}
 
 {% block body_data %}{{ analytics_macro::body_attrs(analytics=analytics, user_info=analytics_user_info) }}{% endblock %}
 
@@ -14,7 +15,7 @@
 {% block og_title %}{{ product.title }}{% endblock %}
 {% block og_description %}{{ product.description|striptags|truncate(200) }}{% endblock %}
 {% block og_type %}product{% endblock %}
-{% block og_image %}{% if let Some(image) = product.featured_image %}{{ image.url }}{% endif %}{% endblock %}
+{% block og_image %}{% if let Some(image) = product.featured_image %}{{ image.url|shopify_cdn_url(1200) }}{% endif %}{% endblock %}
 {% block og_url %}{{ base_url }}/products/{{ product.handle }}{% endblock %}
 {% block og_product %}
 <meta property="product:price:amount" content="{{ product.price|strip_currency }}">
@@ -24,7 +25,7 @@
 {% block twitter_card %}summary_large_image{% endblock %}
 {% block twitter_title %}<meta name="twitter:title" content="{{ product.title }}">{% endblock %}
 {% block twitter_description %}<meta name="twitter:description" content="{{ product.description|striptags|truncate(200) }}">{% endblock %}
-{% block twitter_image %}{% if let Some(image) = product.featured_image %}<meta name="twitter:image" content="{{ image.url }}">{% endif %}{% endblock %}
+{% block twitter_image %}{% if let Some(image) = product.featured_image %}<meta name="twitter:image" content="{{ image.url|shopify_cdn_url(1200) }}">{% endif %}{% endblock %}
 
 {% block json_ld %}
 {{ json_ld::product(base_url=base_url, product=product) }}
@@ -54,9 +55,13 @@
                 <!-- Main Image -->
                 <div class="aspect-[4/5] rounded-2xl overflow-hidden bg-muted shadow-lg">
                     {% if let Some(image) = product.featured_image %}
-                    <img src="{{ image.url }}"
+                    <img src="{{ image.url|shopify_cdn_url(1024) }}"
+                         srcset="{{ image.url|shopify_srcset }}"
+                         sizes="(max-width: 1024px) 100vw, 58vw"
                          alt="{{ image.alt }}"
                          class="w-full h-full object-cover"
+                         loading="eager"
+                         decoding="async"
                          id="main-product-image">
                     {% else %}
                     <div class="w-full h-full flex items-center justify-center text-muted-foreground">
@@ -72,10 +77,8 @@
                     <button type="button"
                             class="shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 border-transparent hover:border-primary transition-colors focus:border-primary {% if loop.first %}border-primary{% endif %}"
                             data-action="select-thumbnail"
-                            data-image-url="{{ image.url }}">
-                        <img src="{{ image.url }}"
-                             alt="{{ image.alt }}"
-                             class="w-full h-full object-cover">
+                            data-image-url="{{ image.url|shopify_cdn_url(1024) }}">
+                        {{ shopify::img(url=image.url, alt=image.alt, sizes="80px", class="w-full h-full object-cover") }}
                     </button>
                     {% endfor %}
                 </div>

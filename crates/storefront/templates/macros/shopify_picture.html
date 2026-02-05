@@ -1,0 +1,33 @@
+{#
+  Shopify Product Image Macro
+
+  Generates responsive <img> elements for Shopify product images using
+  Cloudflare Image Resizing URLs. In production, Cloudflare automatically
+  converts images to AVIF/WebP and caches at the edge.
+
+  Parameters:
+    - url: Full Shopify CDN URL, e.g., "https://cdn.shopify.com/s/files/1/0123/image.jpg"
+    - alt: Alt text for accessibility (required)
+    - sizes: Responsive sizes attribute, e.g., "(max-width: 768px) 100vw, 50vw"
+    - class: Optional CSS classes for the <img> element
+    - loading: "lazy" (default) or "eager" for above-fold images
+
+  Usage:
+    {% import "macros/shopify_picture.html" as shopify %}
+    {{ shopify::img(url=image.url, alt=image.alt, sizes="100vw") }}
+    {{ shopify::img(url=product.featured_image.url, alt=product.title, sizes="(max-width: 768px) 100vw, 50vw", class="w-full h-full object-cover", loading="eager") }}
+
+  Output URLs use /cdn-cgi/image/ format for Cloudflare Image Resizing:
+    /cdn-cgi/image/w=1024,q=80,f=auto/images/shopify/s/files/1/0123/image.jpg
+#}
+
+{% macro img(url, alt, sizes, class="", loading="lazy") %}
+<img
+  src="{{ url|shopify_cdn_url(1024) }}"
+  srcset="{{ url|shopify_srcset }}"
+  sizes="{{ sizes }}"
+  alt="{{ alt }}"
+  {% if !class.is_empty() %}class="{{ class }}"{% endif %}
+  loading="{{ loading }}"
+  decoding="async">
+{% endmacro %}

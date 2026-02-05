@@ -1,13 +1,11 @@
 {# Product Card - Reusable product display component #}
 {# Expected variables: product (with handle, title, featured_image, price, compare_at_price) #}
+{% import "macros/shopify_picture.html" as shopify %}
 <article class="group relative">
     <!-- Product Image -->
     <a href="/products/{{ product.handle }}" class="block aspect-square overflow-hidden rounded-lg bg-muted mb-4">
         {% if let Some(image) = product.featured_image %}
-        <img src="{{ image.url }}"
-             alt="{{ image.alt }}"
-             class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-             loading="lazy">
+        {{ shopify::img(url=image.url, alt=image.alt, sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw", class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105") }}
         {% else %}
         <div class="w-full h-full flex items-center justify-center text-muted-foreground">
             <i class="ph ph-image text-4xl"></i>
