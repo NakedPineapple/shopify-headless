@@ -20,6 +20,7 @@ pub static IMAGE_INFO: LazyLock<HashMap<&'static str, ImageInfo>> = LazyLock::ne
             "about/DSC_5841_7937b270-76ec-46ca-94be-0d898b03767f",
             ("ae33eb2d", 2400),
         ),
+        ("about/Team_Photos_Naked_Pineapple45", ("a6e5da90", 1067)),
         ("branding/Logo_Horizontal", ("71cba526", 0)),
         ("branding/Logo_MarkOnly", ("8264e21e", 0)),
         ("branding/Pistachio_MarkOnly", ("a8e348cf", 0)),
@@ -145,6 +146,10 @@ pub static IMAGE_INFO: LazyLock<HashMap<&'static str, ImageInfo>> = LazyLock::ne
         (
             "products/pineapple-enzyme-cleanser/Model_Program_March_2025_38",
             ("03c307ab", 1058),
+        ),
+        (
+            "products/pineapple-enzyme-cleanser/NP_-_Photoshoot_210",
+            ("b41f9c4b", 1067),
         ),
         (
             "products/pineapple-enzyme-cleanser/NP_-_Photoshoot_262",

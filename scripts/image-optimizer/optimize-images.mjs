@@ -215,6 +215,9 @@ async function discoverUsedImages() {
   // Pattern to match Rust function calls like get_image_hash("path/to/image")
   const rustFunctionRegex = /get_image_hash\("([^"]+)"\)/g;
 
+  // Pattern to match {{image "path/to/image.jpg" ...}} in Markdown content files
+  const markdownImageRegex = /\{\{image\s+"([^"]+)"/g;
+
   // Scan HTML templates
   const templateFiles = await fg("crates/storefront/templates/**/*.html", {
     cwd: PROJECT_ROOT,
@@ -227,13 +230,13 @@ async function discoverUsedImages() {
     absolute: true,
   });
 
-  // Scan blog content files (markdown with YAML frontmatter)
-  const blogFiles = await fg("crates/storefront/content/blog/**/*.md", {
+  // Scan all Markdown content files (blog posts, pages, etc.)
+  const contentFiles = await fg("crates/storefront/content/**/*.md", {
     cwd: PROJECT_ROOT,
     absolute: true,
   });
 
-  const allFiles = [...templateFiles, ...rustFiles, ...blogFiles];
+  const allFiles = [...templateFiles, ...rustFiles, ...contentFiles];
 
   for (const file of allFiles) {
     const content = await readFile(file, "utf-8");
@@ -294,6 +297,11 @@ async function discoverUsedImages() {
           // File doesn't exist with this extension, try next
         }
       }
+    }
+
+    // Find {{image "path/to/image.jpg" ...}} in Markdown content
+    while ((match = markdownImageRegex.exec(content)) !== null) {
+      usedImages.add(match[1]);
     }
   }
 

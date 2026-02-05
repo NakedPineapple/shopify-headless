@@ -8,7 +8,7 @@
 //! Use the `{{image}}` shortcode to embed responsive images:
 //!
 //! ```markdown
-//! {{image "lifestyle/photo.jpg" alt="Description" sizes="100vw"}}
+//! {{image "lifestyle/DSC_1068.jpg" alt="Description" sizes="100vw"}}
 //! ```
 //!
 //! This generates a `<picture>` element with AVIF, WebP, and JPEG sources.
@@ -310,8 +310,8 @@ fn render_markdown(content: &str) -> String {
 
 /// Regex for matching image shortcodes.
 ///
-/// Matches: `{{image "path" ...attributes}}`
-/// Example: `{{image "lifestyle/photo.jpg" alt="Beautiful photo" sizes="100vw"}}`
+/// Matches image shortcodes with a quoted path and optional key=value attributes.
+/// Example: `{{image "lifestyle/DSC_1068.jpg" alt="Beautiful photo" sizes="100vw"}}`
 static IMAGE_SHORTCODE_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r#"\{\{image\s+"([^"]+)"([^}]*)\}\}"#).expect("Invalid regex"));
 
