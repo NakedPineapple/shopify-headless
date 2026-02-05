@@ -40,6 +40,7 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          fetch-tags: true
 
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
@@ -48,6 +49,7 @@ jobs:
         uses: cocogitto/cocogitto-action@v4
         with:
           command: check
+          args: --from-latest-tag
 
       - name: Check formatting
         run: cargo fmt --check
@@ -75,40 +77,50 @@ jobs:
           SQLX_OFFLINE: true
 
   # ============================================================================
-  # Stage 2: Version bump (only on push to main, after lint+test pass)
+  # Stage 2: Version bump (after lint+test pass, skips [skip ci] commits)
   # ============================================================================
   version-bump:
     name: Version Bump
     needs: [lint, test]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     if: >-
-      github.event_name == 'push' &&
-      !contains(github.event.head_commit.message, '[skip ci]')
+      !inputs.promote_to_production &&
+      !contains(github.event.head_commit.message || '', '[skip ci]')
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          fetch-tags: true
 
       - name: Configure git
+        if: github.event_name == 'push'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
       - uses: dtolnay/rust-toolchain@stable
+        if: github.event_name == 'push'
       - uses: Swatinem/rust-cache@v2
+        if: github.event_name == 'push'
 
       - name: Install cargo-edit
+        if: github.event_name == 'push'
         run: cargo install cargo-edit --locked
 
       - name: Install cocogitto
+        if: github.event_name == 'push'
         run: cargo install cocogitto --locked
 
       - name: Bump version
+        if: github.event_name == 'push'
         run: cog bump --auto --skip-ci || echo "Nothing to bump"
 
       - name: Push version commit and tag
+        if: github.event_name == 'push'
         run: git push origin main --follow-tags
 
       - name: Output version
@@ -122,12 +134,12 @@ jobs:
   # ============================================================================
   build:
     name: Build ${{ matrix.app }}
-    needs: [version-bump]
+    needs: [lint, test, version-bump]
     runs-on: ubuntu-latest
     if: >-
       !inputs.promote_to_production &&
       !cancelled() &&
-      (needs.version-bump.result == 'success' || needs.version-bump.result == 'skipped')
+      !failure()
     strategy:
       matrix:
         app: [storefront, admin]
