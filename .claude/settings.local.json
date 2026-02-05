@@ -29,6 +29,7 @@
       "WebFetch(domain:developer.shiphero.com)",
       "WebFetch(domain:developers.klaviyo.com)",
       "WebFetch(domain:developers.pinterest.com)",
+      "WebFetch(domain:docs.cocogitto.io)",
       "WebFetch(domain:docs.github.com)",
       "WebFetch(domain:docs.rs)",
       "WebFetch(domain:docs.sentry.io)",

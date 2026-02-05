@@ -1,9 +1,42 @@
 # https://docs.cocogitto.io/config
 
-scopes = ["gateway", "config", "docker", "docs", "deps"]
+# Scopes aligned with crate names and domain areas used in git history.
+scopes = [
+    # Crate scopes
+    "storefront",
+    "admin",
+    "core",
+    "cli",
+    # Domain scopes
+    "cart",
+    "blog",
+    "images",
+    "search",
+    "warehouse",
+    # Cross-cutting scopes
+    "analytics",
+    "logging",
+    "monitoring",
+    "security",
+    # Infrastructure scopes
+    "deploy",
+    "ci",
+    "infra",
+    "deps",
+    "docs",
+]
 
+tag_prefix = "v"
 from_latest_tag = true
 ignore_merge_commits = true
+branch_whitelist = ["main"]
+skip_ci = "[skip ci]"
+
+# Update the workspace Cargo.toml version before the bump commit is created.
+# All crates inherit via version.workspace = true, so only the root needs updating.
+pre_bump_hooks = [
+    "cargo set-version {{version}} --workspace",
+]
 
 [commit_types]
 build = { changelog_title = "Build System" }

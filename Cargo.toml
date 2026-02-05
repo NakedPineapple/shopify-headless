@@ -12,8 +12,8 @@ members = [
 version = "0.1.0"
 edition = "2024"
 license = "MIT OR Apache-2.0"
-authors = ["Adam Walz <adam@pistachiohq.com>"]
-repository = "https://github.com/PistachioHQ/NakedPineapple"
+authors = ["Adam Walz <adam@pineappleskinco.com>"]
+repository = "https://github.com/NakedPineapple/shopify-headless"
 
 [workspace.lints.rust]
 # unsafe_code is handled per-crate via #![cfg_attr(not(test), forbid(unsafe_code))]

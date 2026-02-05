@@ -116,6 +116,10 @@ tasks:
           MISSING="${MISSING}cargo-watch (cargo install cargo-watch)\n"
         fi
 
+        if ! command -v cargo-set-version >/dev/null 2>&1; then
+          MISSING="${MISSING}cargo-edit (cargo install cargo-edit)\n"
+        fi
+
         if ! command -v tailwindcss >/dev/null 2>&1; then
           MISSING="${MISSING}tailwindcss (brew install tailwindcss)\n"
         fi
@@ -428,6 +432,12 @@ tasks:
   # Changelog tasks
   # ============================================================================
 
+  version:
+    desc: "Show current project version"
+    cmds:
+      - git describe --tags --abbrev=0 2>/dev/null || grep -m1 'version = "' Cargo.toml | sed 's/.*version = "\(.*\)"/\1/'
+    silent: true
+
   changelog:
     desc: "Generate changelog from conventional commits"
     cmds:
@@ -447,6 +457,12 @@ tasks:
     desc: "Preview version bump without making changes"
     cmds:
       - cog bump --auto --dry-run
+
+  release:
+    desc: "Bump version, update changelog, tag, and push"
+    cmds:
+      - cog bump --auto
+      - git push origin main --follow-tags
 
   # ============================================================================
   # Rust tasks

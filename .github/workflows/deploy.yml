@@ -34,13 +34,24 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
-    if: ${{ !inputs.promote_to_production }}
+    if: >-
+      !inputs.promote_to_production
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+
+      - name: Check conventional commits
+        uses: cocogitto/cocogitto-action@v4
+        with:
+          command: check
+
       - name: Check formatting
         run: cargo fmt --check
+
       - name: Run clippy
         run: cargo clippy --all-targets -- -D warnings
 
@@ -50,24 +61,73 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
-    if: ${{ !inputs.promote_to_production }}
+    if: >-
+      !inputs.promote_to_production
     steps:
       - uses: actions/checkout@v6
+
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+
       - name: Run tests
         run: cargo test
         env:
           SQLX_OFFLINE: true
 
   # ============================================================================
-  # Stage 2: Build Docker images (parallel matrix, skipped if promoting)
+  # Stage 2: Version bump (only on push to main, after lint+test pass)
+  # ============================================================================
+  version-bump:
+    name: Version Bump
+    needs: [lint, test]
+    runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'push' &&
+      !contains(github.event.head_commit.message, '[skip ci]')
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install cargo-edit
+        run: cargo install cargo-edit --locked
+
+      - name: Install cocogitto
+        run: cargo install cocogitto --locked
+
+      - name: Bump version
+        run: cog bump --auto --skip-ci || echo "Nothing to bump"
+
+      - name: Push version commit and tag
+        run: git push origin main --follow-tags
+
+      - name: Output version
+        id: version
+        run: |
+          VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "0.1.0")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+  # ============================================================================
+  # Stage 3: Build Docker images (after version bump, skipped if promoting)
   # ============================================================================
   build:
     name: Build ${{ matrix.app }}
-    needs: [lint, test]
+    needs: [version-bump]
     runs-on: ubuntu-latest
-    if: ${{ !inputs.promote_to_production }}
+    if: >-
+      !inputs.promote_to_production &&
+      !cancelled() &&
+      (needs.version-bump.result == 'success' || needs.version-bump.result == 'skipped')
     strategy:
       matrix:
         app: [storefront, admin]
@@ -92,6 +152,18 @@ jobs:
 
       - uses: actions/checkout@v6
         if: steps.check.outputs.skip != 'true'
+        with:
+          ref: ${{ needs.version-bump.result == 'success' && 'main' || github.sha }}
+
+      - name: Determine version
+        id: version
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          VERSION="${{ needs.version-bump.outputs.version }}"
+          if [ -z "$VERSION" ]; then
+            VERSION=$(grep -m1 'version = "' Cargo.toml | sed 's/.*version = "\(.*\)"/\1/')
+          fi
+          echo "tag=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Set up Docker Buildx
         if: steps.check.outputs.skip != 'true'
@@ -114,18 +186,22 @@ jobs:
           push: true
           tags: |
             ${{ env.REGISTRY }}/${{ matrix.image }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ matrix.image }}:${{ steps.version.outputs.tag }}
             ${{ env.REGISTRY }}/${{ matrix.image }}:latest
           build-args: |
             IMAGE_BASE_URL=${{ vars.IMAGE_BASE_URL }}
+            VERSION=${{ steps.version.outputs.tag }}
+            COMMIT_SHA=${{ github.sha }}
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
           cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ matrix.cache }}:latest
           cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ matrix.cache }}:latest,mode=max
 
   # ============================================================================
-  # Stage 3: Deploy to staging (after builds complete)
+  # Stage 4: Deploy to staging (after builds complete)
   # ============================================================================
   deploy-staging:
     name: Deploy to Staging
-    needs: [build, test]
+    needs: [build]
     runs-on: ubuntu-latest
     environment: staging
     steps:
@@ -140,7 +216,7 @@ jobs:
         run: flyctl deploy --image ${{ env.REGISTRY }}/nakedpineapple-admin-staging:${{ github.sha }} -a nakedpineapple-admin-staging
 
   # ============================================================================
-  # Stage 4: Promote to production (manual trigger only)
+  # Stage 5: Promote to production (manual trigger only)
   # ============================================================================
   promote-to-production:
     name: Promote to Production
@@ -148,6 +224,10 @@ jobs:
     if: ${{ inputs.promote_to_production }}
     environment: production
     steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
       - name: Log in to Fly Registry
@@ -156,6 +236,12 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: x
           password: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Get current version
+        id: version
+        run: |
+          VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "0.1.0")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Get staging storefront image
         id: staging-storefront
@@ -170,8 +256,11 @@ jobs:
         run: |
           docker pull ${{ steps.staging-storefront.outputs.image }}
           PROD_TAG=${{ env.REGISTRY }}/nakedpineapple-storefront:${{ github.run_id }}
+          VERSION_TAG=${{ env.REGISTRY }}/nakedpineapple-storefront:${{ steps.version.outputs.version }}
           docker tag ${{ steps.staging-storefront.outputs.image }} $PROD_TAG
+          docker tag ${{ steps.staging-storefront.outputs.image }} $VERSION_TAG
           docker push $PROD_TAG
+          docker push $VERSION_TAG
           echo "STOREFRONT_PROD_IMAGE=$PROD_TAG" >> $GITHUB_ENV
 
       - name: Get staging admin image
@@ -187,8 +276,11 @@ jobs:
         run: |
           docker pull ${{ steps.staging-admin.outputs.image }}
           PROD_TAG=${{ env.REGISTRY }}/nakedpineapple-admin:${{ github.run_id }}
+          VERSION_TAG=${{ env.REGISTRY }}/nakedpineapple-admin:${{ steps.version.outputs.version }}
           docker tag ${{ steps.staging-admin.outputs.image }} $PROD_TAG
+          docker tag ${{ steps.staging-admin.outputs.image }} $VERSION_TAG
           docker push $PROD_TAG
+          docker push $VERSION_TAG
           echo "ADMIN_PROD_IMAGE=$PROD_TAG" >> $GITHUB_ENV
 
       - name: Deploy storefront to production

@@ -51,6 +51,21 @@ RUN cargo build --release -p naked-pineapple-admin -p naked-pineapple-cli
 # =============================================================================
 FROM debian:trixie-slim AS runtime
 
+# OCI image metadata (values injected by CI via --build-arg or Docker --label)
+ARG VERSION=0.1.0
+ARG COMMIT_SHA
+ARG BUILD_DATE
+LABEL org.opencontainers.image.title="Naked Pineapple Admin" \
+      org.opencontainers.image.description="Internal admin panel for Naked Pineapple" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.authors="Adam Walz <adam@pineappleskinco.com>" \
+      org.opencontainers.image.licenses="MIT OR Apache-2.0" \
+      org.opencontainers.image.url="https://admin.pineappleskinco.com" \
+      org.opencontainers.image.source="https://github.com/NakedPineapple/shopify-headless" \
+      org.opencontainers.image.revision="${COMMIT_SHA}" \
+      org.opencontainers.image.created="${BUILD_DATE}" \
+      org.opencontainers.image.vendor="Pineapple Skin Co LLC"
+
 RUN apt-get update && apt-get install -y \
     ca-certificates \
     libssl3 \
