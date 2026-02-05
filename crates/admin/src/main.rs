@@ -31,14 +31,14 @@
 
 use axum::extract::State;
 use axum::http::StatusCode;
+use axum::middleware::from_fn;
 use axum::{Router, routing::get};
 use axum_server::Handle;
 use axum_server::tls_rustls::RustlsConfig;
 use secrecy::ExposeSecret;
 use tower_http::catch_panic::CatchPanicLayer;
 use tower_http::services::ServeDir;
-use tower_http::trace::{DefaultOnResponse, OnResponse, TraceLayer};
-use tracing::Span;
+use tower_http::trace::TraceLayer;
 
 mod claude;
 mod components;
@@ -46,6 +46,7 @@ mod config;
 mod db;
 mod error;
 mod filters;
+mod logging;
 mod middleware;
 mod models;
 mod routes;
@@ -58,9 +59,7 @@ mod tool_selection;
 
 use config::AdminConfig;
 use middleware::create_session_layer;
-use sentry::integrations::tracing as sentry_tracing;
 use state::AppState;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 /// Initialize Sentry error tracking and return guard that must be kept alive.
 fn init_sentry(config: &AdminConfig) -> Option<sentry::ClientInitGuard> {
@@ -84,15 +83,6 @@ fn init_sentry(config: &AdminConfig) -> Option<sentry::ClientInitGuard> {
 
     tracing::info!("Sentry initialized");
     Some(guard)
-}
-
-/// Filter tracing events to Sentry event types.
-fn sentry_event_filter(metadata: &tracing::Metadata<'_>) -> sentry_tracing::EventFilter {
-    match *metadata.level() {
-        tracing::Level::ERROR | tracing::Level::WARN => sentry_tracing::EventFilter::Event,
-        tracing::Level::INFO | tracing::Level::DEBUG => sentry_tracing::EventFilter::Breadcrumb,
-        _ => sentry_tracing::EventFilter::Ignore,
-    }
 }
 
 /// Handle panics by logging and returning a 500 response.
@@ -125,22 +115,9 @@ async fn main() {
     // Initialize Sentry (must be done before tracing subscriber)
     let _sentry_guard = init_sentry(&config);
 
-    // Initialize tracing with EnvFilter and Sentry integration
-    // Defaults to info level for our crate if RUST_LOG is not set
-    let env_filter = tracing_subscriber::EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| "naked_pineapple_admin=info,tower_http=debug".into());
-
-    // Use JSON format on Fly.io for structured log parsing, text format locally
-    let is_fly = std::env::var("FLY_APP_NAME").is_ok();
-    let json_layer = is_fly.then(|| tracing_subscriber::fmt::layer().json().flatten_event(true));
-    let text_layer = (!is_fly).then(tracing_subscriber::fmt::layer);
-
-    tracing_subscriber::registry()
-        .with(env_filter)
-        .with(json_layer)
-        .with(text_layer)
-        .with(sentry_tracing::layer().event_filter(sentry_event_filter))
-        .init();
+    // Initialize structured logging with service metadata
+    let service_metadata = logging::ServiceMetadata::from_env("admin");
+    logging::init_tracing(&service_metadata);
 
     // Initialize database connection pool
     let pool = db::create_pool(&config.database_url)
@@ -169,29 +146,11 @@ async fn main() {
         .layer(axum::middleware::from_fn(
             middleware::security_headers_middleware,
         ))
+        .layer(from_fn(middleware::request_id_middleware))
         .layer(
             TraceLayer::new_for_http()
-                .make_span_with(|request: &axum::http::Request<_>| {
-                    tracing::info_span!(
-                        "http_request",
-                        method = %request.method(),
-                        uri = %request.uri(),
-                        status = tracing::field::Empty,
-                        latency_ms = tracing::field::Empty,
-                    )
-                })
-                .on_response(
-                    |response: &axum::http::Response<_>,
-                     latency: std::time::Duration,
-                     span: &Span| {
-                        span.record("status", response.status().as_u16());
-                        span.record(
-                            "latency_ms",
-                            u64::try_from(latency.as_millis()).unwrap_or(u64::MAX),
-                        );
-                        DefaultOnResponse::default().on_response(response, latency, span);
-                    },
-                ),
+                .make_span_with(logging::make_http_span)
+                .on_response(logging::on_http_response),
         )
         .with_state(state)
         // Catch panics and log them before returning 500

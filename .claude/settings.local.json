@@ -35,7 +35,8 @@
       "WebFetch(domain:shopify.dev)",
       "WebFetch(domain:tailscale.com)",
       "WebSearch",
-      "WebFetch(domain:webcomponents.shopify.dev)"
+      "WebFetch(domain:webcomponents.shopify.dev)",
+      "WebFetch(domain:betterstack.com)"
     ],
     "deny": [
       "Bash(cargo build:*)",
