@@ -75,8 +75,10 @@ const CONNECT_SRC_EXTERNAL: &[&str] = &[
     "https://*.shopify.com",
     // Mixpanel tracking API
     "https://api-js.mixpanel.com",
-    // Sentry error reporting
+    // Sentry error reporting (includes regional subdomains like us, eu)
     "https://*.ingest.sentry.io",
+    "https://*.ingest.us.sentry.io",
+    "https://*.ingest.eu.sentry.io",
 ];
 
 /// External frame sources for embedded widgets.
@@ -84,6 +86,8 @@ const FRAME_SRC_EXTERNAL: &[&str] = &[
     // Shop Pay payment terms iframe
     "https://cdn.shopify.com",
     "https://shop.app",
+    // Pinterest tracking iframe
+    "https://ct.pinterest.com",
 ];
 
 // =============================================================================

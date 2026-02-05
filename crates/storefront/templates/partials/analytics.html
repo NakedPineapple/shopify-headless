@@ -73,7 +73,11 @@ window.pintrk.queue.push(Array.prototype.slice.call(arguments))};var
   t=document.createElement("script");t.async=!0,t.src=e;var
   r=document.getElementsByTagName("script")[0];
   r.parentNode.insertBefore(t,r)}}("https://s.pinimg.com/ct/core.js");
-pintrk('load', '{{ tag_id }}');
+{# Guard against duplicate load calls (e.g., from bfcache restoration) #}
+if (!window._pinterestTagLoaded) {
+  window._pinterestTagLoaded = true;
+  pintrk('load', '{{ tag_id }}');
+}
 {# page() tracked by analytics.js for HTMX compatibility #}
 </script>
 <noscript>

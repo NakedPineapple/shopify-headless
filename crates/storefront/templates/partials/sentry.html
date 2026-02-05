@@ -36,29 +36,38 @@
         }
     });
 
-    // Capture HTMX-specific errors
-    document.body.addEventListener('htmx:sendError', function(evt) {
-        Sentry.captureException(new Error('HTMX send error: ' + evt.detail.error), {
-            extra: {
-                xhr: evt.detail.xhr,
-                path: evt.detail.pathInfo ? evt.detail.pathInfo.requestPath : 'unknown'
-            }
-        });
-    });
-
-    document.body.addEventListener('htmx:responseError', function(evt) {
-        // Only capture 5xx errors (4xx are expected user errors)
-        var status = evt.detail.xhr ? evt.detail.xhr.status : 0;
-        if (status >= 500) {
-            Sentry.captureException(new Error('HTMX response error: ' + status), {
+    // Capture HTMX-specific errors (deferred until body exists)
+    function attachHtmxErrorHandlers() {
+        document.body.addEventListener('htmx:sendError', function(evt) {
+            Sentry.captureException(new Error('HTMX send error: ' + evt.detail.error), {
                 extra: {
-                    status: status,
-                    path: evt.detail.pathInfo ? evt.detail.pathInfo.requestPath : 'unknown',
-                    response: evt.detail.xhr ? evt.detail.xhr.responseText.substring(0, 500) : ''
+                    xhr: evt.detail.xhr,
+                    path: evt.detail.pathInfo ? evt.detail.pathInfo.requestPath : 'unknown'
                 }
             });
-        }
-    });
+        });
+
+        document.body.addEventListener('htmx:responseError', function(evt) {
+            // Only capture 5xx errors (4xx are expected user errors)
+            var status = evt.detail.xhr ? evt.detail.xhr.status : 0;
+            if (status >= 500) {
+                Sentry.captureException(new Error('HTMX response error: ' + status), {
+                    extra: {
+                        status: status,
+                        path: evt.detail.pathInfo ? evt.detail.pathInfo.requestPath : 'unknown',
+                        response: evt.detail.xhr ? evt.detail.xhr.responseText.substring(0, 500) : ''
+                    }
+                });
+            }
+        });
+    }
+
+    // Attach handlers when body is ready
+    if (document.body) {
+        attachHtmxErrorHandlers();
+    } else {
+        document.addEventListener('DOMContentLoaded', attachHtmxErrorHandlers);
+    }
 
     // Capture failed image/resource loads from R2 and Shopify CDN
     window.addEventListener('error', function(evt) {
