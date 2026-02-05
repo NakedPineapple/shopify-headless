@@ -69,7 +69,7 @@
     gtag('js', new Date());
 
     if (ga4Id) {
-        gtag('config', ga4Id, { send_page_view: true });
+        gtag('config', ga4Id, { send_page_view: false });
     }
 
     if (googleAdsId) {
@@ -566,9 +566,9 @@
             });
         }
 
-        // Pinterest Tag - Checkout
+        // Pinterest Tag - InitiateCheckout (checkout initiation, not completion)
         if (pinterestTagId) {
-            pintrk('track', 'checkout', {
+            pintrk('track', 'initiatecheckout', {
                 product_id: contentIds,
                 value: value,
                 order_quantity: numItems,
@@ -679,7 +679,7 @@
             });
         }
 
-        // Pinterest Tag - Checkout (purchase)
+        // Pinterest Tag - Checkout (purchase completion)
         if (pinterestTagId) {
             pintrk('track', 'checkout', {
                 product_id: contentIds,
@@ -769,20 +769,47 @@
     // HTMX Navigation Tracking
     // =========================================================================
 
-    // Listen for HTMX navigation to track page views
+    // Track last URL to prevent duplicate page views
+    var _lastTrackedUrl = null;
+
+    /**
+     * Track page view only if URL has changed since last tracking.
+     * Handles initial load, HTMX navigation, and browser back/forward.
+     */
+    function trackPageViewIfUrlChanged() {
+        var currentUrl = window.location.href;
+        if (currentUrl !== _lastTrackedUrl) {
+            _lastTrackedUrl = currentUrl;
+            trackPageView();
+        }
+    }
+
+    // Fire initial page view on script load
+    requestAnimationFrame(function() {
+        trackPageViewIfUrlChanged();
+    });
+
+    // Listen for HTMX content swaps
     document.body.addEventListener('htmx:afterSettle', function(event) {
         var target = event.detail.target;
         if (target && (target.id === 'MainContent' || target === document.body || target.tagName === 'BODY')) {
             requestAnimationFrame(function() {
-                trackPageView();
+                trackPageViewIfUrlChanged();
             });
         }
     });
 
-    // Also listen for htmx:pushedIntoHistory for URL-changing navigations
+    // Handle URL push from HTMX
     document.body.addEventListener('htmx:pushedIntoHistory', function() {
         requestAnimationFrame(function() {
-            trackPageView();
+            trackPageViewIfUrlChanged();
+        });
+    });
+
+    // Handle browser back/forward
+    window.addEventListener('popstate', function() {
+        requestAnimationFrame(function() {
+            trackPageViewIfUrlChanged();
         });
     });
 
