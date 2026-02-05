@@ -484,7 +484,7 @@ pub async fn show(
             analytics_user_info,
         ),
         Err(ShopifyError::NotFound(_)) => {
-            warn!("Collection not found");
+            warn!(handle = %handle, "Collection not found");
             error_template(
                 err_params(StatusCode::NOT_FOUND, "Collection Not Found", None),
                 &state,

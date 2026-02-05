@@ -241,9 +241,11 @@ async fn main() {
         .with_state(state)
         // Catch panics and log them before returning 500
         .layer(CatchPanicLayer::custom(handle_panic))
-        // Sentry layers (outermost for full request coverage)
-        .layer(sentry_tower::NewSentryLayer::new_from_top())
-        .layer(sentry_tower::SentryHttpLayer::new().enable_transaction());
+        // Sentry layers: NewSentryLayer must be outermost (last .layer() call)
+        // so it creates a per-request hub BEFORE SentryHttpLayer sets HTTP context.
+        // Reversed ordering causes scope leak between concurrent requests.
+        .layer(sentry_tower::SentryHttpLayer::new().enable_transaction())
+        .layer(sentry_tower::NewSentryLayer::new_from_top());
 
     // Start server
     let addr = config.socket_addr();
