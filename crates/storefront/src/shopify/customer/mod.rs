@@ -740,6 +740,339 @@ impl CustomerClient {
             .ok_or_else(|| ShopifyError::OAuth("No address returned".to_string()))
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // Subscription Operations
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Get the customer's subscription contracts.
+    ///
+    /// # Arguments
+    ///
+    /// * `access_token` - The customer's access token
+    /// * `first` - The number of subscriptions to retrieve
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails.
+    pub async fn get_subscriptions(
+        &self,
+        access_token: &str,
+        first: u32,
+    ) -> Result<Vec<SubscriptionContract>, ShopifyError> {
+        #[derive(Deserialize)]
+        struct Response {
+            customer: CustomerWithSubscriptions,
+        }
+
+        #[derive(Deserialize)]
+        struct CustomerWithSubscriptions {
+            #[serde(rename = "subscriptionContracts")]
+            subscription_contracts: SubscriptionContractConnection,
+        }
+
+        #[derive(Deserialize)]
+        struct SubscriptionContractConnection {
+            edges: Vec<SubscriptionContractEdge>,
+        }
+
+        #[derive(Deserialize)]
+        struct SubscriptionContractEdge {
+            node: SubscriptionContract,
+        }
+
+        const QUERY: &str = r"
+            query getSubscriptions($first: Int!) {
+                customer {
+                    subscriptionContracts(
+                        first: $first,
+                        sortKey: CREATED_AT,
+                        reverse: true
+                    ) {
+                        edges {
+                            node {
+                                id
+                                status
+                                createdAt
+                                nextBillingDate
+                                billingPolicy {
+                                    interval
+                                    intervalCount {
+                                        count
+                                    }
+                                }
+                                deliveryPrice {
+                                    amount
+                                    currencyCode
+                                }
+                                lines(first: 10) {
+                                    edges {
+                                        node {
+                                            id
+                                            name
+                                            quantity
+                                            currentPrice {
+                                                amount
+                                                currencyCode
+                                            }
+                                            image {
+                                                url
+                                                altText
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        ";
+
+        let variables = serde_json::json!({ "first": first });
+        let response: Response = self.query(access_token, QUERY, Some(variables)).await?;
+
+        Ok(response
+            .customer
+            .subscription_contracts
+            .edges
+            .into_iter()
+            .map(|e| e.node)
+            .collect())
+    }
+
+    /// Get a specific subscription contract by ID.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails.
+    pub async fn get_subscription(
+        &self,
+        access_token: &str,
+        id: &str,
+    ) -> Result<Option<SubscriptionContract>, ShopifyError> {
+        #[derive(Deserialize)]
+        struct Response {
+            customer: CustomerWithSubscription,
+        }
+
+        #[derive(Deserialize)]
+        struct CustomerWithSubscription {
+            #[serde(rename = "subscriptionContract")]
+            subscription_contract: Option<SubscriptionContract>,
+        }
+
+        const QUERY: &str = r"
+            query getSubscription($id: ID!) {
+                customer {
+                    subscriptionContract(id: $id) {
+                        id
+                        status
+                        createdAt
+                        nextBillingDate
+                        billingPolicy {
+                            interval
+                            intervalCount {
+                                count
+                            }
+                        }
+                        deliveryPrice {
+                            amount
+                            currencyCode
+                        }
+                        lines(first: 10) {
+                            edges {
+                                node {
+                                    id
+                                    name
+                                    quantity
+                                    currentPrice {
+                                        amount
+                                        currencyCode
+                                    }
+                                    image {
+                                        url
+                                        altText
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        ";
+
+        let variables = serde_json::json!({ "id": id });
+        let response: Response = self.query(access_token, QUERY, Some(variables)).await?;
+
+        Ok(response.customer.subscription_contract)
+    }
+
+    /// Pause a subscription contract.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the mutation fails or returns user errors.
+    pub async fn pause_subscription(
+        &self,
+        access_token: &str,
+        id: &str,
+    ) -> Result<(), ShopifyError> {
+        #[derive(Deserialize)]
+        struct Response {
+            #[serde(rename = "subscriptionContractPause")]
+            result: MutationResult,
+        }
+
+        #[derive(Deserialize)]
+        struct MutationResult {
+            #[serde(rename = "userErrors")]
+            user_errors: Vec<CustomerUserError>,
+        }
+
+        const QUERY: &str = r"
+            mutation pauseSubscription($id: ID!) {
+                subscriptionContractPause(subscriptionContractId: $id) {
+                    contract {
+                        id
+                        status
+                    }
+                    userErrors {
+                        field
+                        message
+                        code
+                    }
+                }
+            }
+        ";
+
+        let variables = serde_json::json!({ "id": id });
+        let response: Response = self.query(access_token, QUERY, Some(variables)).await?;
+
+        if !response.result.user_errors.is_empty() {
+            let messages: Vec<_> = response
+                .result
+                .user_errors
+                .iter()
+                .map(|e| e.message.as_str())
+                .collect();
+            return Err(ShopifyError::UserError(messages.join(", ")));
+        }
+
+        Ok(())
+    }
+
+    /// Cancel a subscription contract.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the mutation fails or returns user errors.
+    pub async fn cancel_subscription(
+        &self,
+        access_token: &str,
+        id: &str,
+    ) -> Result<(), ShopifyError> {
+        #[derive(Deserialize)]
+        struct Response {
+            #[serde(rename = "subscriptionContractCancel")]
+            result: MutationResult,
+        }
+
+        #[derive(Deserialize)]
+        struct MutationResult {
+            #[serde(rename = "userErrors")]
+            user_errors: Vec<CustomerUserError>,
+        }
+
+        const QUERY: &str = r"
+            mutation cancelSubscription($id: ID!) {
+                subscriptionContractCancel(subscriptionContractId: $id) {
+                    contract {
+                        id
+                        status
+                    }
+                    userErrors {
+                        field
+                        message
+                        code
+                    }
+                }
+            }
+        ";
+
+        let variables = serde_json::json!({ "id": id });
+        let response: Response = self.query(access_token, QUERY, Some(variables)).await?;
+
+        if !response.result.user_errors.is_empty() {
+            let messages: Vec<_> = response
+                .result
+                .user_errors
+                .iter()
+                .map(|e| e.message.as_str())
+                .collect();
+            return Err(ShopifyError::UserError(messages.join(", ")));
+        }
+
+        Ok(())
+    }
+
+    /// Activate (resume) a paused subscription contract.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the mutation fails or returns user errors.
+    pub async fn activate_subscription(
+        &self,
+        access_token: &str,
+        id: &str,
+    ) -> Result<(), ShopifyError> {
+        #[derive(Deserialize)]
+        struct Response {
+            #[serde(rename = "subscriptionContractActivate")]
+            result: MutationResult,
+        }
+
+        #[derive(Deserialize)]
+        struct MutationResult {
+            #[serde(rename = "userErrors")]
+            user_errors: Vec<CustomerUserError>,
+        }
+
+        const QUERY: &str = r"
+            mutation activateSubscription($id: ID!) {
+                subscriptionContractActivate(subscriptionContractId: $id) {
+                    contract {
+                        id
+                        status
+                    }
+                    userErrors {
+                        field
+                        message
+                        code
+                    }
+                }
+            }
+        ";
+
+        let variables = serde_json::json!({ "id": id });
+        let response: Response = self.query(access_token, QUERY, Some(variables)).await?;
+
+        if !response.result.user_errors.is_empty() {
+            let messages: Vec<_> = response
+                .result
+                .user_errors
+                .iter()
+                .map(|e| e.message.as_str())
+                .collect();
+            return Err(ShopifyError::UserError(messages.join(", ")));
+        }
+
+        Ok(())
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Address Operations
+    // ─────────────────────────────────────────────────────────────────────────
+
     /// Delete an address.
     ///
     /// # Errors

@@ -1,0 +1,121 @@
+{% extends "layouts/base.html" %}
+{% import "macros/analytics_data.html" as analytics_macro %}
+
+{% block body_data %}{{ analytics_macro::body_attrs(analytics=analytics, user_info=analytics_user_info) }}{% endblock %}
+
+{% block title %}Subscriptions | Naked Pineapple{% endblock %}
+
+{% block robots %}noindex, nofollow{% endblock %}
+
+{% block content %}
+<div class="py-8 md:py-12">
+    <div class="page-width">
+        <!-- Breadcrumb -->
+        <nav class="text-sm text-muted-foreground mb-8" aria-label="Breadcrumb">
+            <ol class="flex items-center gap-2 list-none">
+                <li><a href="/" class="hover:text-primary transition-colors">Home</a></li>
+                <li aria-hidden="true"><i class="ph ph-caret-right text-xs"></i></li>
+                <li><a href="/account" class="hover:text-primary transition-colors">Account</a></li>
+                <li aria-hidden="true"><i class="ph ph-caret-right text-xs"></i></li>
+                <li class="text-foreground">Subscriptions</li>
+            </ol>
+        </nav>
+
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+            <div>
+                <h1 class="font-display text-3xl md:text-4xl font-semibold text-foreground">
+                    Subscriptions
+                </h1>
+                <p class="text-muted-foreground mt-2">
+                    Manage your recurring orders
+                </p>
+            </div>
+            <a href="/account" class="btn btn-outline">
+                <i class="ph ph-arrow-left mr-2"></i>
+                Back to Account
+            </a>
+        </div>
+
+        {% if subscriptions.is_empty() %}
+        <div class="card p-12 text-center">
+            <div class="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
+                <i class="ph ph-repeat text-3xl text-muted-foreground"></i>
+            </div>
+            <h2 class="text-xl font-semibold text-foreground mb-2">No subscriptions yet</h2>
+            <p class="text-muted-foreground mb-6">
+                Subscribe to your favorite products and save 20% on every order.
+            </p>
+            <a href="/products" class="btn btn-primary">
+                Browse Products
+            </a>
+        </div>
+        {% else %}
+        <div class="space-y-4">
+            {% for sub in subscriptions %}
+            <a href="/account/subscriptions/{{ sub.id }}" class="card p-6 block hover:shadow-md transition-shadow">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div class="flex items-start gap-4">
+                        {% if let Some(first_line) = sub.line_items.first() %}
+                        {% if let Some(img_url) = first_line.image_url %}
+                        <div class="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-muted">
+                            <img src="{{ img_url }}" alt="{{ first_line.name }}" class="w-full h-full object-cover" loading="lazy">
+                        </div>
+                        {% else %}
+                        <div class="w-16 h-16 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                            <i class="ph ph-repeat text-xl text-primary"></i>
+                        </div>
+                        {% endif %}
+                        {% else %}
+                        <div class="w-16 h-16 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                            <i class="ph ph-repeat text-xl text-primary"></i>
+                        </div>
+                        {% endif %}
+                        <div>
+                            <h3 class="font-semibold text-foreground">
+                                {% for item in sub.line_items %}
+                                {% if !loop.first %}, {% endif %}
+                                {{ item.name }}
+                                {% endfor %}
+                            </h3>
+                            <p class="text-sm text-muted-foreground mt-1">
+                                {{ sub.interval_label }}
+                            </p>
+                            {% if let Some(next_date) = sub.next_billing_date %}
+                            <p class="text-sm text-muted-foreground">
+                                Next billing: {{ next_date }}
+                            </p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        {% match sub.status %}
+                            {% when SubscriptionContractStatus::Active %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-accent/20 text-accent">
+                                <i class="ph-fill ph-check-circle mr-1"></i>
+                                Active
+                            </span>
+                            {% when SubscriptionContractStatus::Paused %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-secondary/20 text-secondary-foreground">
+                                <i class="ph ph-pause-circle mr-1"></i>
+                                Paused
+                            </span>
+                            {% when SubscriptionContractStatus::Cancelled %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+                                <i class="ph ph-x-circle mr-1"></i>
+                                Cancelled
+                            </span>
+                            {% when _ %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+                                {{ sub.status_label }}
+                            </span>
+                        {% endmatch %}
+                        <i class="ph ph-caret-right text-muted-foreground"></i>
+                    </div>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

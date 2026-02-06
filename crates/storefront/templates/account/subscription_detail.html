@@ -1,0 +1,167 @@
+{% extends "layouts/base.html" %}
+{% import "macros/analytics_data.html" as analytics_macro %}
+
+{% block body_data %}{{ analytics_macro::body_attrs(analytics=analytics, user_info=analytics_user_info) }}{% endblock %}
+
+{% block title %}Subscription Details | Naked Pineapple{% endblock %}
+
+{% block robots %}noindex, nofollow{% endblock %}
+
+{% block content %}
+<div class="py-8 md:py-12">
+    <div class="page-width">
+        <!-- Breadcrumb -->
+        <nav class="text-sm text-muted-foreground mb-8" aria-label="Breadcrumb">
+            <ol class="flex items-center gap-2 list-none">
+                <li><a href="/" class="hover:text-primary transition-colors">Home</a></li>
+                <li aria-hidden="true"><i class="ph ph-caret-right text-xs"></i></li>
+                <li><a href="/account" class="hover:text-primary transition-colors">Account</a></li>
+                <li aria-hidden="true"><i class="ph ph-caret-right text-xs"></i></li>
+                <li><a href="/account/subscriptions" class="hover:text-primary transition-colors">Subscriptions</a></li>
+                <li aria-hidden="true"><i class="ph ph-caret-right text-xs"></i></li>
+                <li class="text-foreground">Details</li>
+            </ol>
+        </nav>
+
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+            <div class="flex items-center gap-4">
+                <div>
+                    <h1 class="font-display text-3xl md:text-4xl font-semibold text-foreground">
+                        Subscription Details
+                    </h1>
+                    <div class="flex items-center gap-3 mt-2">
+                        {% match subscription.status %}
+                            {% when SubscriptionContractStatus::Active %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-accent/20 text-accent">
+                                <i class="ph-fill ph-check-circle mr-1"></i>
+                                Active
+                            </span>
+                            {% when SubscriptionContractStatus::Paused %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-secondary/20 text-secondary-foreground">
+                                <i class="ph ph-pause-circle mr-1"></i>
+                                Paused
+                            </span>
+                            {% when SubscriptionContractStatus::Cancelled %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+                                <i class="ph ph-x-circle mr-1"></i>
+                                Cancelled
+                            </span>
+                            {% when _ %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+                                {{ subscription.status_label }}
+                            </span>
+                        {% endmatch %}
+                        <span class="text-sm text-muted-foreground">{{ subscription.interval_label }}</span>
+                    </div>
+                </div>
+            </div>
+            <a href="/account/subscriptions" class="btn btn-outline">
+                <i class="ph ph-arrow-left mr-2"></i>
+                All Subscriptions
+            </a>
+        </div>
+
+        <div class="grid md:grid-cols-3 gap-6 md:gap-8">
+            <!-- Line Items -->
+            <div class="md:col-span-2 space-y-4">
+                <h2 class="font-semibold text-lg text-foreground">Items</h2>
+                {% for item in subscription.line_items %}
+                <div class="card p-4">
+                    <div class="flex items-center gap-4">
+                        {% if let Some(img_url) = item.image_url %}
+                        <div class="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-muted">
+                            <img src="{{ img_url }}" alt="{{ item.name }}" class="w-full h-full object-cover" loading="lazy">
+                        </div>
+                        {% else %}
+                        <div class="w-20 h-20 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                            <i class="ph ph-package text-2xl text-primary"></i>
+                        </div>
+                        {% endif %}
+                        <div class="flex-1">
+                            <h3 class="font-semibold text-foreground">{{ item.name }}</h3>
+                            <p class="text-sm text-muted-foreground mt-1">
+                                Qty: {{ item.quantity }}
+                            </p>
+                        </div>
+                        <div class="text-right">
+                            <p class="font-semibold text-foreground">{{ item.price }}</p>
+                            <p class="text-xs text-muted-foreground">per delivery</p>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Sidebar -->
+            <div class="space-y-6">
+                <!-- Subscription Info -->
+                <div class="card p-6">
+                    <h2 class="font-semibold text-lg text-foreground mb-4">Details</h2>
+                    <dl class="space-y-3 text-sm">
+                        <div class="flex justify-between">
+                            <dt class="text-muted-foreground">Frequency</dt>
+                            <dd class="text-foreground font-medium">{{ subscription.interval_label }}</dd>
+                        </div>
+                        {% if let Some(next_date) = subscription.next_billing_date %}
+                        <div class="flex justify-between">
+                            <dt class="text-muted-foreground">Next billing</dt>
+                            <dd class="text-foreground font-medium">{{ next_date }}</dd>
+                        </div>
+                        {% endif %}
+                        <div class="flex justify-between">
+                            <dt class="text-muted-foreground">Shipping</dt>
+                            <dd class="text-foreground font-medium">
+                                {% if delivery_price == "$0.00" %}
+                                Free
+                                {% else %}
+                                {{ delivery_price }}
+                                {% endif %}
+                            </dd>
+                        </div>
+                        <div class="flex justify-between">
+                            <dt class="text-muted-foreground">Created</dt>
+                            <dd class="text-foreground font-medium">{{ created_at }}</dd>
+                        </div>
+                    </dl>
+                </div>
+
+                <!-- Actions -->
+                {% if subscription.can_pause || subscription.can_activate || subscription.can_cancel %}
+                <div class="card p-6">
+                    <h2 class="font-semibold text-lg text-foreground mb-4">Actions</h2>
+                    <div class="space-y-3">
+                        {% if subscription.can_pause %}
+                        <form action="/account/subscriptions/{{ subscription.id }}/pause" method="post">
+                            <button type="submit" class="btn btn-outline w-full justify-center">
+                                <i class="ph ph-pause mr-2"></i>
+                                Pause Subscription
+                            </button>
+                        </form>
+                        {% endif %}
+
+                        {% if subscription.can_activate %}
+                        <form action="/account/subscriptions/{{ subscription.id }}/activate" method="post">
+                            <button type="submit" class="btn btn-primary w-full justify-center">
+                                <i class="ph ph-play mr-2"></i>
+                                Resume Subscription
+                            </button>
+                        </form>
+                        {% endif %}
+
+                        {% if subscription.can_cancel %}
+                        <form action="/account/subscriptions/{{ subscription.id }}/cancel" method="post"
+                              onsubmit="return confirm('Are you sure you want to cancel this subscription? You can subscribe again at any time.')">
+                            <button type="submit" class="btn btn-outline w-full justify-center text-destructive border-destructive/30 hover:bg-destructive/10">
+                                <i class="ph ph-x mr-2"></i>
+                                Cancel Subscription
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

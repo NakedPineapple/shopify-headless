@@ -193,6 +193,163 @@ impl Order {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Subscription Types
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Status of a subscription contract.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum SubscriptionContractStatus {
+    /// The contract is active and continuing per its policies.
+    Active,
+    /// The contract is temporarily paused.
+    Paused,
+    /// The contract was cancelled by the customer.
+    Cancelled,
+    /// The contract has completed all billing cycles.
+    Expired,
+    /// The contract ended due to billing failures.
+    Failed,
+    /// The contract expired due to inactivity.
+    Stale,
+}
+
+impl SubscriptionContractStatus {
+    /// Whether the subscription can be paused.
+    #[must_use]
+    pub const fn can_pause(&self) -> bool {
+        matches!(self, Self::Active)
+    }
+
+    /// Whether the subscription can be cancelled.
+    #[must_use]
+    pub const fn can_cancel(&self) -> bool {
+        matches!(self, Self::Active | Self::Paused)
+    }
+
+    /// Whether the subscription can be activated/resumed.
+    #[must_use]
+    pub const fn can_activate(&self) -> bool {
+        matches!(self, Self::Paused)
+    }
+
+    /// Human-readable label for the status.
+    #[must_use]
+    pub const fn label(&self) -> &'static str {
+        match self {
+            Self::Active => "Active",
+            Self::Paused => "Paused",
+            Self::Cancelled => "Cancelled",
+            Self::Expired => "Expired",
+            Self::Failed => "Failed",
+            Self::Stale => "Stale",
+        }
+    }
+}
+
+/// A count value from Shopify.
+#[derive(Debug, Clone, Deserialize)]
+pub struct Count {
+    /// The count value.
+    pub count: i64,
+}
+
+/// Billing policy for a subscription.
+#[derive(Debug, Clone, Deserialize)]
+pub struct SubscriptionBillingPolicy {
+    /// Billing interval type (e.g., WEEK, MONTH).
+    pub interval: String,
+    /// Number of intervals between billings.
+    #[serde(rename = "intervalCount")]
+    pub interval_count: Option<Count>,
+}
+
+impl SubscriptionBillingPolicy {
+    /// Human-readable label for the billing frequency.
+    #[must_use]
+    pub fn frequency_label(&self) -> String {
+        let count = self.interval_count.as_ref().map_or(1, |c| c.count);
+        let interval = self.interval.to_lowercase();
+        if count == 1 {
+            format!("Every {interval}")
+        } else {
+            format!("Every {count} {interval}s")
+        }
+    }
+}
+
+/// Image on a subscription line item.
+#[derive(Debug, Clone, Deserialize)]
+pub struct SubscriptionLineImage {
+    /// Image URL.
+    pub url: String,
+    /// Alt text for accessibility.
+    #[serde(rename = "altText")]
+    pub alt_text: Option<String>,
+}
+
+/// A line item in a subscription contract.
+#[derive(Debug, Clone, Deserialize)]
+pub struct SubscriptionLine {
+    /// Line item ID.
+    pub id: String,
+    /// Product name.
+    pub name: String,
+    /// Quantity per delivery.
+    pub quantity: i64,
+    /// Current price per unit.
+    #[serde(rename = "currentPrice")]
+    pub current_price: Money,
+    /// Product image.
+    pub image: Option<SubscriptionLineImage>,
+}
+
+/// Connection wrapper for subscription lines.
+#[derive(Debug, Clone, Deserialize)]
+pub struct SubscriptionLineConnection {
+    /// Line item edges.
+    pub edges: Vec<SubscriptionLineEdge>,
+}
+
+/// Edge wrapper for subscription lines.
+#[derive(Debug, Clone, Deserialize)]
+pub struct SubscriptionLineEdge {
+    /// The subscription line.
+    pub node: SubscriptionLine,
+}
+
+/// A subscription contract.
+#[derive(Debug, Clone, Deserialize)]
+pub struct SubscriptionContract {
+    /// The contract ID.
+    pub id: String,
+    /// Current status.
+    pub status: SubscriptionContractStatus,
+    /// When the contract was created.
+    #[serde(rename = "createdAt")]
+    pub created_at: String,
+    /// Next billing date.
+    #[serde(rename = "nextBillingDate")]
+    pub next_billing_date: Option<String>,
+    /// Billing policy (frequency).
+    #[serde(rename = "billingPolicy")]
+    pub billing_policy: SubscriptionBillingPolicy,
+    /// Delivery price per billing cycle.
+    #[serde(rename = "deliveryPrice")]
+    pub delivery_price: Money,
+    /// Line items in the subscription.
+    pub lines: SubscriptionLineConnection,
+}
+
+impl SubscriptionContract {
+    /// Get flattened line items.
+    #[must_use]
+    pub fn line_items(&self) -> Vec<&SubscriptionLine> {
+        self.lines.edges.iter().map(|e| &e.node).collect()
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Input Types
 // ─────────────────────────────────────────────────────────────────────────────
 

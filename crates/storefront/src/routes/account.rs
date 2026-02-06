@@ -15,6 +15,11 @@
 //! - `GET /account/addresses/:id/edit` - Edit address form
 //! - `POST /account/addresses/:id` - Update address
 //! - `DELETE /account/addresses/:id` - Delete address
+//! - `GET /account/subscriptions` - Subscription list
+//! - `GET /account/subscriptions/:id` - Subscription detail
+//! - `POST /account/subscriptions/:id/pause` - Pause subscription
+//! - `POST /account/subscriptions/:id/cancel` - Cancel subscription
+//! - `POST /account/subscriptions/:id/activate` - Activate subscription
 
 use askama::Template;
 use askama_web::WebTemplate;
@@ -34,7 +39,9 @@ use crate::filters;
 use crate::middleware::{OptionalAuth, RequireAuth, RequireShopifyCustomer, set_current_customer};
 use crate::models::CurrentCustomer;
 use crate::shopify::Money;
-use crate::shopify::customer::{Address, AddressInput, Order};
+use crate::shopify::customer::{
+    Address, AddressInput, Order, SubscriptionContract, SubscriptionContractStatus,
+};
 use crate::state::AppState;
 
 // =============================================================================
@@ -125,6 +132,53 @@ pub struct AddressFormTemplate {
     pub address_id: Option<String>,
     pub address: Option<Address>,
     pub error: Option<String>,
+    pub analytics: AnalyticsConfig,
+    pub analytics_user_info: AnalyticsUserInfo,
+    pub site: crate::middleware::SiteContext,
+    pub nonce: String,
+}
+
+/// Subscription display data for templates.
+#[derive(Clone)]
+pub struct SubscriptionView {
+    pub id: String,
+    pub status: SubscriptionContractStatus,
+    pub status_label: String,
+    pub next_billing_date: Option<String>,
+    pub interval_label: String,
+    pub line_items: Vec<SubscriptionLineView>,
+    pub can_pause: bool,
+    pub can_cancel: bool,
+    pub can_activate: bool,
+}
+
+/// Subscription line item display data for templates.
+#[derive(Clone)]
+pub struct SubscriptionLineView {
+    pub name: String,
+    pub quantity: i64,
+    pub price: String,
+    pub image_url: Option<String>,
+}
+
+/// Subscription list page template.
+#[derive(Template, WebTemplate)]
+#[template(path = "account/subscriptions.html")]
+pub struct SubscriptionsTemplate {
+    pub subscriptions: Vec<SubscriptionView>,
+    pub analytics: AnalyticsConfig,
+    pub analytics_user_info: AnalyticsUserInfo,
+    pub site: crate::middleware::SiteContext,
+    pub nonce: String,
+}
+
+/// Subscription detail page template.
+#[derive(Template, WebTemplate)]
+#[template(path = "account/subscription_detail.html")]
+pub struct SubscriptionDetailTemplate {
+    pub subscription: SubscriptionView,
+    pub delivery_price: String,
+    pub created_at: String,
     pub analytics: AnalyticsConfig,
     pub analytics_user_info: AnalyticsUserInfo,
     pub site: crate::middleware::SiteContext,
@@ -227,8 +281,13 @@ pub async fn index(
         }
     };
 
-    // Fetch recent orders
-    let recent_orders = match state.customer().get_orders(&token.access_token, 3).await {
+    // Fetch recent orders and subscription count concurrently
+    let (orders_result, subscriptions_result) = tokio::join!(
+        state.customer().get_orders(&token.access_token, 3),
+        state.customer().get_subscriptions(&token.access_token, 50),
+    );
+
+    let recent_orders = match orders_result {
         Ok(orders) => {
             debug!(order_count = orders.len(), "Fetched recent orders");
             orders
@@ -242,6 +301,21 @@ pub async fn index(
         Err(e) => {
             warn!("Failed to fetch orders: {}", e);
             Vec::new()
+        }
+    };
+
+    let subscription_count: u32 = match subscriptions_result {
+        Ok(subs) => {
+            let count = subs
+                .iter()
+                .filter(|s| s.status == SubscriptionContractStatus::Active)
+                .count();
+            debug!(active_count = count, "Fetched subscription count");
+            u32::try_from(count).unwrap_or(0)
+        }
+        Err(e) => {
+            warn!("Failed to fetch subscriptions: {}", e);
+            0
         }
     };
 
@@ -278,7 +352,7 @@ pub async fn index(
         recent_orders,
         passkey_count: 0, // TODO: Fetch from database
         default_address,
-        subscription_count: 0, // TODO: Implement subscriptions
+        subscription_count,
         analytics: state.config().analytics.clone(),
         analytics_user_info,
         nonce,
@@ -600,6 +674,219 @@ pub async fn delete_address(
             StatusCode::INTERNAL_SERVER_ERROR.into_response()
         }
     }
+}
+
+// =============================================================================
+// Subscriptions
+// =============================================================================
+
+/// Convert a `SubscriptionContract` to a `SubscriptionView`.
+fn subscription_to_view(contract: &SubscriptionContract) -> SubscriptionView {
+    let line_items = contract
+        .line_items()
+        .into_iter()
+        .map(|line| SubscriptionLineView {
+            name: line.name.clone(),
+            quantity: line.quantity,
+            price: format_money(&line.current_price),
+            image_url: line.image.as_ref().map(|img| img.url.clone()),
+        })
+        .collect();
+
+    SubscriptionView {
+        id: contract.id.clone(),
+        status_label: contract.status.label().to_string(),
+        next_billing_date: contract.next_billing_date.clone(),
+        interval_label: contract.billing_policy.frequency_label(),
+        line_items,
+        can_pause: contract.status.can_pause(),
+        can_cancel: contract.status.can_cancel(),
+        can_activate: contract.status.can_activate(),
+        status: contract.status.clone(),
+    }
+}
+
+/// Display subscriptions list page.
+///
+/// # Route
+///
+/// `GET /account/subscriptions`
+#[instrument(skip(state, token, customer, nonce, site))]
+pub async fn subscriptions(
+    State(state): State<AppState>,
+    RequireShopifyCustomer(token): RequireShopifyCustomer,
+    OptionalAuth(customer): OptionalAuth,
+    crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
+    site: crate::middleware::SiteContext,
+) -> impl IntoResponse {
+    debug!("Fetching subscriptions list page");
+
+    let contracts = match state
+        .customer()
+        .get_subscriptions(&token.access_token, 50)
+        .await
+    {
+        Ok(subs) => {
+            debug!(count = subs.len(), "Fetched subscriptions from Shopify");
+            subs
+        }
+        Err(e) => {
+            error!("Failed to fetch subscriptions: {}", e);
+            Vec::new()
+        }
+    };
+
+    let subscriptions: Vec<SubscriptionView> = contracts.iter().map(subscription_to_view).collect();
+
+    info!(
+        count = subscriptions.len(),
+        "Successfully rendered subscriptions list page"
+    );
+
+    SubscriptionsTemplate {
+        subscriptions,
+        analytics: state.config().analytics.clone(),
+        analytics_user_info: AnalyticsUserInfo::from_customer(customer.as_ref()),
+        nonce,
+        site,
+    }
+}
+
+/// Display subscription detail page.
+///
+/// # Route
+///
+/// `GET /account/subscriptions/:id`
+#[instrument(skip(state, token, customer, nonce, site), fields(subscription_id = %id))]
+pub async fn subscription_detail(
+    State(state): State<AppState>,
+    RequireShopifyCustomer(token): RequireShopifyCustomer,
+    OptionalAuth(customer): OptionalAuth,
+    Path(id): Path<String>,
+    crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
+    site: crate::middleware::SiteContext,
+) -> Response {
+    debug!("Fetching subscription detail page");
+
+    let contract = match state
+        .customer()
+        .get_subscription(&token.access_token, &id)
+        .await
+    {
+        Ok(Some(contract)) => contract,
+        Ok(None) => {
+            warn!(subscription_id = %id, "Subscription not found");
+            return Redirect::to("/account/subscriptions").into_response();
+        }
+        Err(e) => {
+            error!("Failed to fetch subscription: {}", e);
+            return Redirect::to("/account/subscriptions").into_response();
+        }
+    };
+
+    let delivery_price = format_money(&contract.delivery_price);
+    let created_at = contract.created_at.clone();
+    let subscription = subscription_to_view(&contract);
+
+    info!("Successfully rendered subscription detail page");
+
+    SubscriptionDetailTemplate {
+        subscription,
+        delivery_price,
+        created_at,
+        analytics: state.config().analytics.clone(),
+        analytics_user_info: AnalyticsUserInfo::from_customer(customer.as_ref()),
+        nonce,
+        site,
+    }
+    .into_response()
+}
+
+/// Pause a subscription.
+///
+/// # Route
+///
+/// `POST /account/subscriptions/:id/pause`
+#[instrument(skip(state, token), fields(subscription_id = %id))]
+pub async fn pause_subscription(
+    State(state): State<AppState>,
+    RequireShopifyCustomer(token): RequireShopifyCustomer,
+    Path(id): Path<String>,
+) -> Response {
+    debug!("Pausing subscription");
+
+    match state
+        .customer()
+        .pause_subscription(&token.access_token, &id)
+        .await
+    {
+        Ok(()) => {
+            info!("Successfully paused subscription");
+        }
+        Err(e) => {
+            error!("Failed to pause subscription: {}", e);
+        }
+    }
+
+    Redirect::to(&format!("/account/subscriptions/{id}")).into_response()
+}
+
+/// Cancel a subscription.
+///
+/// # Route
+///
+/// `POST /account/subscriptions/:id/cancel`
+#[instrument(skip(state, token), fields(subscription_id = %id))]
+pub async fn cancel_subscription(
+    State(state): State<AppState>,
+    RequireShopifyCustomer(token): RequireShopifyCustomer,
+    Path(id): Path<String>,
+) -> Response {
+    debug!("Cancelling subscription");
+
+    match state
+        .customer()
+        .cancel_subscription(&token.access_token, &id)
+        .await
+    {
+        Ok(()) => {
+            info!("Successfully cancelled subscription");
+        }
+        Err(e) => {
+            error!("Failed to cancel subscription: {}", e);
+        }
+    }
+
+    Redirect::to(&format!("/account/subscriptions/{id}")).into_response()
+}
+
+/// Activate (resume) a paused subscription.
+///
+/// # Route
+///
+/// `POST /account/subscriptions/:id/activate`
+#[instrument(skip(state, token), fields(subscription_id = %id))]
+pub async fn activate_subscription(
+    State(state): State<AppState>,
+    RequireShopifyCustomer(token): RequireShopifyCustomer,
+    Path(id): Path<String>,
+) -> Response {
+    debug!("Activating subscription");
+
+    match state
+        .customer()
+        .activate_subscription(&token.access_token, &id)
+        .await
+    {
+        Ok(()) => {
+            info!("Successfully activated subscription");
+        }
+        Err(e) => {
+            error!("Failed to activate subscription: {}", e);
+        }
+    }
+
+    Redirect::to(&format!("/account/subscriptions/{id}")).into_response()
 }
 
 // =============================================================================

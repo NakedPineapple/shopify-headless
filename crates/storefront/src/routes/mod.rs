@@ -188,6 +188,20 @@ pub fn account_routes() -> Router<AppState> {
             post(account::update_address).delete(account::delete_address),
         )
         .route("/addresses/{id}/edit", get(account::edit_address))
+        .route("/subscriptions", get(account::subscriptions))
+        .route("/subscriptions/{id}", get(account::subscription_detail))
+        .route(
+            "/subscriptions/{id}/pause",
+            post(account::pause_subscription),
+        )
+        .route(
+            "/subscriptions/{id}/cancel",
+            post(account::cancel_subscription),
+        )
+        .route(
+            "/subscriptions/{id}/activate",
+            post(account::activate_subscription),
+        )
     // TODO: Add passkey management routes
     // .route("/passkeys", get(account::passkeys))
 }
