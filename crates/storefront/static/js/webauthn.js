@@ -127,28 +127,16 @@ async function registerPasskey(name = 'Passkey') {
 /**
  * Authenticate with a passkey.
  *
- * @param {string} email - User's email address
+ * Uses discoverable credentials so no email is needed — the browser
+ * presents all saved passkeys for this site.
+ *
  * @returns {Promise<{success: boolean, redirect?: string, error?: string}>}
  */
-async function loginWithPasskey(email) {
+async function loginWithPasskey() {
     try {
-        // If no email provided, try to get from form
-        if (!email) {
-            const emailInput = document.getElementById('passkey-email');
-            if (emailInput) {
-                email = emailInput.value;
-            }
-        }
-
-        if (!email) {
-            return { success: false, error: 'Please enter your email address' };
-        }
-
-        // Start authentication - get challenge from server
+        // Start authentication - get challenge from server (no email needed)
         const startResponse = await fetch('/api/auth/webauthn/authenticate/start', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email }),
         });
 
         if (!startResponse.ok) {

@@ -14,12 +14,15 @@ use axum::{
 use secrecy::SecretString;
 use serde::{Deserialize, Serialize};
 use tower_sessions::Session;
-use webauthn_rs::prelude::*;
+use webauthn_rs::prelude::{
+    CreationChallengeResponse, DiscoverableAuthentication, PasskeyRegistration,
+    PublicKeyCredential, RegisterPublicKeyCredential, RequestChallengeResponse,
+};
 
 use crate::error::set_sentry_user;
 use crate::middleware::{RequireAuth, set_current_customer};
 use crate::models::{CurrentCustomer, session_keys};
-use crate::services::{AuthError, AuthService};
+use crate::services::AuthService;
 use crate::state::AppState;
 
 /// Error response for API endpoints.
@@ -170,14 +173,8 @@ pub async fn finish_registration(
 }
 
 // ============================================================================
-// Authentication
+// Authentication (Discoverable Credentials)
 // ============================================================================
-
-/// Request to start passkey authentication.
-#[derive(Debug, Deserialize)]
-pub struct StartAuthenticationRequest {
-    pub email: String,
-}
 
 /// Response from starting passkey authentication.
 #[derive(Debug, Serialize)]
@@ -185,9 +182,11 @@ pub struct StartAuthenticationResponse {
     pub options: RequestChallengeResponse,
 }
 
-/// Start passkey authentication.
+/// Start discoverable passkey authentication.
 ///
 /// POST /api/auth/webauthn/authenticate/start
+///
+/// No email is required — the browser presents all saved passkeys for this site.
 ///
 /// # Errors
 ///
@@ -196,27 +195,16 @@ pub async fn start_authentication(
     State(state): State<AppState>,
     session: Session,
     site: crate::middleware::SiteContext,
-    Json(req): Json<StartAuthenticationRequest>,
 ) -> Result<Json<StartAuthenticationResponse>, ApiError> {
     let auth = AuthService::new(state.pool(), state.webauthn_for_host(&site.host));
 
-    // Start authentication - this looks up credentials by email
-    // and returns the Shopify customer ID for verification after auth
-    let (options, auth_state, shopify_customer_id) = auth
-        .start_passkey_authentication_for_shopify_customer(&req.email)
-        .await
-        .map_err(|e| match e {
-            AuthError::UserNotFound => ApiError::new("no account found with this email"),
-            AuthError::NoCredentials => ApiError::new("no passkeys registered for this account"),
-            other => ApiError::new(other.to_string()),
-        })?;
+    let (options, auth_state) = auth
+        .start_discoverable_authentication_for_shopify_customer()
+        .map_err(|e| ApiError::new(e.to_string()))?;
 
-    // Store authentication state in session (includes Shopify customer ID for verification)
+    // Store discoverable authentication state in session
     session
-        .insert(
-            session_keys::WEBAUTHN_AUTH,
-            (auth_state, shopify_customer_id),
-        )
+        .insert(session_keys::WEBAUTHN_AUTH, auth_state)
         .await
         .map_err(|e| ApiError::new(format!("session error: {e}")))?;
 
@@ -236,7 +224,7 @@ pub struct FinishAuthenticationResponse {
     pub redirect: String,
 }
 
-/// Finish passkey authentication.
+/// Finish discoverable passkey authentication.
 ///
 /// POST /api/auth/webauthn/authenticate/finish
 ///
@@ -249,8 +237,8 @@ pub async fn finish_authentication(
     site: crate::middleware::SiteContext,
     Json(req): Json<FinishAuthenticationRequest>,
 ) -> Result<Json<FinishAuthenticationResponse>, ApiError> {
-    // Get authentication state from session
-    let (auth_state, shopify_customer_id): (PasskeyAuthentication, String) = session
+    // Get discoverable authentication state from session
+    let auth_state: DiscoverableAuthentication = session
         .get(session_keys::WEBAUTHN_AUTH)
         .await
         .map_err(|e| ApiError::new(format!("session error: {e}")))?
@@ -258,40 +246,27 @@ pub async fn finish_authentication(
 
     // Clear authentication state
     let _ = session
-        .remove::<(PasskeyAuthentication, String)>(session_keys::WEBAUTHN_AUTH)
+        .remove::<DiscoverableAuthentication>(session_keys::WEBAUTHN_AUTH)
         .await;
 
     let auth = AuthService::new(state.pool(), state.webauthn_for_host(&site.host));
 
-    // Finish authentication - verifies the passkey response
-    auth.finish_passkey_authentication_for_shopify_customer(
-        &auth_state,
-        &req.credential,
-        &shopify_customer_id,
-    )
-    .await
-    .map_err(|e| ApiError::new(e.to_string()))?;
+    // Finish authentication - looks up credential by WebAuthn ID and verifies
+    let credential = auth
+        .finish_discoverable_authentication_for_shopify_customer(auth_state, &req.credential)
+        .await
+        .map_err(|e| ApiError::new(e.to_string()))?;
 
-    // After successful passkey auth, we need to get customer data from Shopify
-    // and create an access token. For now, we'll create a session with the customer ID
-    // but without a Shopify access token (the customer will need to login with password
-    // to get a full session with Shopify API access).
-    //
-    // TODO: Consider using Shopify's customerAccessTokenCreateWithMultipass for
-    // full Shopify integration, or store a long-lived token during password auth.
-
-    // For now, fetch customer info from Shopify to populate the session
-    // This requires that the customer already has a stored access token or we skip this
-    // In a production implementation, you might want to:
-    // 1. Store a refresh token during password auth
-    // 2. Use multipass for seamless token creation
-    // 3. Require password auth periodically to refresh tokens
+    let email = credential.email.map(|e| e.to_string()).unwrap_or_default();
 
     // Create a minimal session - the customer is authenticated via passkey
     // but doesn't have a fresh Shopify access token
+    //
+    // TODO: Consider using Shopify's customerAccessTokenCreateWithMultipass for
+    // full Shopify integration, or store a long-lived token during password auth.
     let current_customer = CurrentCustomer::new(
-        shopify_customer_id,
-        String::new(), // Email will be fetched when needed
+        credential.shopify_customer_id,
+        email,
         None,
         None,
         SecretString::from(String::new()), // No access token for passkey-only auth

@@ -489,96 +489,84 @@ impl<'a> AuthService<'a> {
         Ok(result?)
     }
 
-    /// Start passkey authentication for a Shopify customer.
+    /// Start discoverable passkey authentication for a Shopify customer.
     ///
-    /// Looks up credentials by email address stored during passkey registration.
+    /// Uses discoverable credentials so no email is needed — the browser
+    /// presents all saved passkeys for this relying party.
     ///
     /// # Errors
     ///
-    /// Returns `AuthError::InvalidEmail` if the email format is invalid.
-    /// Returns `AuthError::NoCredentials` if no passkeys are registered for this email.
     /// Returns `AuthError::WebAuthn` if the challenge cannot be generated.
-    #[instrument(skip(self), fields(email = %email))]
-    pub async fn start_passkey_authentication_for_shopify_customer(
+    #[instrument(skip(self))]
+    pub fn start_discoverable_authentication_for_shopify_customer(
         &self,
-        email: &str,
-    ) -> Result<(RequestChallengeResponse, PasskeyAuthentication, String), AuthError> {
-        debug!("Starting passkey authentication for Shopify customer");
+    ) -> Result<(RequestChallengeResponse, DiscoverableAuthentication), AuthError> {
+        debug!("Starting discoverable passkey authentication for Shopify customer");
 
-        // Parse and validate email
-        let email = Email::parse(email)?;
+        let (challenge, auth_state) = self.webauthn.start_discoverable_authentication()?;
 
-        // Look up credentials by email
-        let credentials = self.users.get_credentials_by_email(&email).await?;
-
-        // Get the Shopify customer ID from the first credential
-        // (all credentials for the same email should have the same customer ID)
-        let Some(first_credential) = credentials.first() else {
-            warn!("Passkey authentication failed for Shopify customer: no credentials registered");
-            return Err(AuthError::NoCredentials);
-        };
-        let shopify_customer_id = first_credential.shopify_customer_id.clone();
-
-        debug!(
-            credentials_count = credentials.len(),
-            "Found credentials for Shopify customer passkey authentication"
-        );
-
-        // Get passkeys for WebAuthn
-        let passkeys: Vec<Passkey> = credentials.iter().map(|c| c.passkey.clone()).collect();
-
-        // Create challenge
-        let (challenge, auth_state) = self.webauthn.start_passkey_authentication(&passkeys)?;
-
-        info!("Passkey authentication challenge created for Shopify customer");
-        Ok((challenge, auth_state, shopify_customer_id))
+        info!("Discoverable passkey authentication challenge created");
+        Ok((challenge, auth_state))
     }
 
-    /// Finish passkey authentication for a Shopify customer.
+    /// Finish discoverable passkey authentication for a Shopify customer.
     ///
-    /// Validates the client's response and updates credentials if needed.
+    /// Looks up the credential by its `WebAuthn` ID from the response, verifies
+    /// the authentication, and returns the matched credential (which contains
+    /// the `shopify_customer_id` and email).
     ///
     /// # Errors
     ///
+    /// Returns `AuthError::CredentialNotFound` if the credential isn't found.
     /// Returns `AuthError::WebAuthn` if validation fails.
-    #[instrument(skip(self, state, response), fields(shopify_customer_id = %shopify_customer_id))]
-    pub async fn finish_passkey_authentication_for_shopify_customer(
+    #[instrument(skip(self, state, response))]
+    pub async fn finish_discoverable_authentication_for_shopify_customer(
         &self,
-        state: &PasskeyAuthentication,
+        state: DiscoverableAuthentication,
         response: &PublicKeyCredential,
-        shopify_customer_id: &str,
-    ) -> Result<(), AuthError> {
-        let _ = shopify_customer_id; // Used only in instrument fields
-        debug!("Finishing passkey authentication for Shopify customer");
+    ) -> Result<UserCredential, AuthError> {
+        debug!("Finishing discoverable passkey authentication for Shopify customer");
+
+        // Look up the credential by its WebAuthn ID from the response
+        let credential = self
+            .users
+            .get_credential_by_webauthn_id(response.raw_id.as_ref())
+            .await?
+            .ok_or(AuthError::CredentialNotFound)?;
+
+        // Convert to DiscoverableKey for verification
+        let discoverable_key: DiscoverableKey = credential.passkey.clone().into();
 
         // Verify the authentication
         let auth_result = self
             .webauthn
-            .finish_passkey_authentication(response, state)
+            .finish_discoverable_authentication(response, state, &[discoverable_key])
             .map_err(|e| {
-                warn!(error = %e, "Passkey authentication validation failed for Shopify customer");
+                warn!(error = %e, "Discoverable authentication validation failed");
                 e
             })?;
 
         // Update credential if needed
         if auth_result.needs_update() {
-            debug!("Credential needs update for Shopify customer, updating stored passkey");
+            debug!("Credential needs update, updating stored passkey");
             let cred_id = auth_result.cred_id();
-            if let Some(mut credential) = self
+            if let Some(mut cred) = self
                 .users
                 .get_credential_by_webauthn_id(cred_id.as_ref())
                 .await?
             {
-                credential.passkey.update_credential(&auth_result);
+                cred.passkey.update_credential(&auth_result);
                 self.users
-                    .update_credential(cred_id.as_ref(), &credential.passkey)
+                    .update_credential(cred_id.as_ref(), &cred.passkey)
                     .await?;
-                debug!("Credential updated successfully for Shopify customer");
             }
         }
 
-        info!("Shopify customer authenticated successfully via passkey");
-        Ok(())
+        info!(
+            shopify_customer_id = %credential.shopify_customer_id,
+            "Shopify customer authenticated successfully via discoverable passkey"
+        );
+        Ok(credential)
     }
 
     /// Delete a credential for a Shopify customer.
