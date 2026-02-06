@@ -116,11 +116,16 @@ jobs:
         run: cargo install cocogitto --locked
 
       - name: Bump version
+        id: bump
         if: github.event_name == 'push'
-        run: cog bump --auto --skip-ci || echo "Nothing to bump"
+        run: |
+          if [ -n "$(git log $(git describe --tags --abbrev=0)..HEAD --oneline)" ]; then
+            cog bump --auto --skip-ci
+            echo "bumped=true" >> $GITHUB_OUTPUT
+          fi
 
       - name: Push version commit and tag
-        if: github.event_name == 'push'
+        if: steps.bump.outputs.bumped == 'true'
         run: git push origin main --follow-tags
 
       - name: Output version
