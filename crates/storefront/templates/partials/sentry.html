@@ -20,7 +20,10 @@
             Sentry.browserTracingIntegration()
         ],
         tracesSampleRate: 1.0,
-        tracePropagationTargets: ['localhost', /^https:\/\/.*\.nakedpineapple\.com/],
+        // Use the page origin so trace headers are attached to same-origin
+        // requests (HTMX, fetch) on all storefront domains, not just
+        // *.nakedpineapple.com.
+        tracePropagationTargets: ['localhost', location.origin],
         beforeSend: function(event) {
             // Filter out known non-errors
             if (event.exception && event.exception.values) {
@@ -32,6 +35,22 @@
                     }
                 }
             }
+
+            // TODO(post-launch): Once analytics integrations are validated,
+            // add denyUrls to drop unhandled errors from third-party analytics
+            // SDKs (e.g. Pinterest fetch failures when blocked by ad blockers).
+            // See: https://docs.sentry.io/platforms/javascript/configuration/filtering/
+            // Example:
+            //   denyUrls: [
+            //       /s\.pinimg\.com/,
+            //       /connect\.facebook\.net/,
+            //       /analytics\.tiktok\.com/,
+            //       /sc-static\.net/,
+            //       /bat\.bing\.com/,
+            //       /static\.ads-twitter\.com/,
+            //   ]
+            // (denyUrls is a top-level Sentry.init option, not inside beforeSend)
+
             return event;
         }
     });
