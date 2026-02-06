@@ -111,6 +111,29 @@ mutation CustomerAccessTokenDelete($customerAccessToken: String!) {
   }
 }
 
+# Update customer information (including password)
+# When password is updated, all previous access tokens are invalidated
+# and a new token is returned
+mutation CustomerUpdate($customerAccessToken: String!, $customer: CustomerUpdateInput!) {
+  customerUpdate(customerAccessToken: $customerAccessToken, customer: $customer) {
+    customer {
+      id
+      email
+      firstName
+      lastName
+    }
+    customerAccessToken {
+      accessToken
+      expiresAt
+    }
+    customerUserErrors {
+      field
+      message
+      code
+    }
+  }
+}
+
 # Get customer by access token
 query GetCustomerByToken {
   customer {

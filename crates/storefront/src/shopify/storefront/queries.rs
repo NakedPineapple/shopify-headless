@@ -199,6 +199,14 @@ pub struct CustomerAccessTokenDelete;
     query_path = "graphql/storefront/queries/customer.graphql",
     response_derives = "Debug, Clone"
 )]
+pub struct CustomerUpdate;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/storefront/schema.json",
+    query_path = "graphql/storefront/queries/customer.graphql",
+    response_derives = "Debug, Clone"
+)]
 pub struct GetCustomerByToken;
 
 // Shop queries

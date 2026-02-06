@@ -26,6 +26,18 @@ use crate::state::AppState;
 // Password Validation
 // =============================================================================
 
+/// Validate a redirect URL is safe (prevents open redirects).
+///
+/// Only allows relative paths starting with `/` (not protocol-relative `//`).
+#[must_use]
+pub fn validate_redirect_url(url: &str) -> Option<&str> {
+    if url.starts_with('/') && !url.starts_with("//") {
+        Some(url)
+    } else {
+        None
+    }
+}
+
 /// Minimum password length.
 const MIN_PASSWORD_LENGTH: usize = 8;
 
@@ -40,7 +52,11 @@ const MAX_PASSWORD_LENGTH: usize = 128;
 /// - At least one uppercase letter
 /// - At least one lowercase letter
 /// - At least one digit
-fn validate_password_complexity(password: &str) -> Result<(), &'static str> {
+///
+/// # Errors
+///
+/// Returns an error code string if the password fails validation.
+pub fn validate_password_complexity(password: &str) -> Result<(), &'static str> {
     if password.len() < MIN_PASSWORD_LENGTH {
         return Err("password_too_short");
     }
@@ -73,6 +89,7 @@ fn validate_password_complexity(password: &str) -> Result<(), &'static str> {
 pub struct LoginForm {
     pub email: String,
     pub password: String,
+    pub next: Option<String>,
 }
 
 /// Registration form data.
@@ -114,6 +131,7 @@ pub struct ActivateForm {
 pub struct MessageQuery {
     pub error: Option<String>,
     pub success: Option<String>,
+    pub next: Option<String>,
 }
 
 /// Query parameters for activation/reset callbacks.
@@ -134,6 +152,7 @@ pub struct CallbackQuery {
 pub struct LoginTemplate {
     pub error: Option<String>,
     pub success: Option<String>,
+    pub next: Option<String>,
     pub analytics: AnalyticsConfig,
     pub analytics_user_info: AnalyticsUserInfo,
     pub site: crate::middleware::SiteContext,
@@ -214,6 +233,7 @@ pub async fn login_page(
     LoginTemplate {
         error: query.error,
         success: query.success,
+        next: query.next,
         analytics: state.config().analytics.clone(),
         analytics_user_info: AnalyticsUserInfo::default(),
         site,
@@ -271,7 +291,12 @@ pub async fn login(
                         Some(&current_customer.email),
                     );
                     info!(email = %form.email, "Customer logged in successfully");
-                    Redirect::to("/account").into_response()
+                    let redirect_to = form
+                        .next
+                        .as_deref()
+                        .and_then(validate_redirect_url)
+                        .unwrap_or("/account");
+                    Redirect::to(redirect_to).into_response()
                 }
                 Err(e) => {
                     warn!("Failed to fetch customer after login: {}", e);

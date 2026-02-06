@@ -1,11 +1,14 @@
 //! Account route handlers.
 //!
 //! These routes require authentication via Shopify Customer OAuth.
+//! The change password route uses Storefront API auth (`RequireAuth`) instead.
 //!
 //! # Routes
 //!
 //! - `GET /account` - Account overview
 //! - `GET /account/orders` - Order history
+//! - `GET /account/change-password` - Change password page
+//! - `POST /account/change-password` - Change password action
 //! - `GET /account/addresses` - Address list
 //! - `GET /account/addresses/new` - New address form
 //! - `POST /account/addresses` - Create address
@@ -17,16 +20,19 @@ use askama::Template;
 use askama_web::WebTemplate;
 use axum::{
     Form,
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::StatusCode,
     response::{IntoResponse, Redirect, Response},
 };
+use secrecy::{ExposeSecret, SecretString};
 use serde::Deserialize;
+use tower_sessions::Session;
 use tracing::{debug, error, info, instrument, warn};
 
 use crate::config::{AnalyticsConfig, AnalyticsUserInfo};
 use crate::filters;
-use crate::middleware::{OptionalAuth, RequireShopifyCustomer};
+use crate::middleware::{OptionalAuth, RequireAuth, RequireShopifyCustomer, set_current_customer};
+use crate::models::CurrentCustomer;
 use crate::shopify::Money;
 use crate::shopify::customer::{Address, AddressInput, Order};
 use crate::state::AppState;
@@ -125,9 +131,36 @@ pub struct AddressFormTemplate {
     pub nonce: String,
 }
 
+/// Change password page template.
+#[derive(Template, WebTemplate)]
+#[template(path = "account/change_password.html")]
+pub struct ChangePasswordTemplate {
+    pub error: Option<String>,
+    pub success: Option<String>,
+    pub analytics: AnalyticsConfig,
+    pub analytics_user_info: AnalyticsUserInfo,
+    pub site: crate::middleware::SiteContext,
+    pub nonce: String,
+}
+
 // =============================================================================
 // Form Data
 // =============================================================================
+
+/// Change password form data.
+#[derive(Debug, Deserialize)]
+pub struct ChangePasswordForm {
+    pub current_password: String,
+    pub new_password: String,
+    pub new_password_confirm: String,
+}
+
+/// Query parameters for the change password page.
+#[derive(Debug, Deserialize)]
+pub struct ChangePasswordQuery {
+    pub error: Option<String>,
+    pub success: Option<String>,
+}
 
 /// Address form data.
 #[derive(Debug, Deserialize)]
@@ -565,6 +598,124 @@ pub async fn delete_address(
         Err(e) => {
             error!("Failed to delete address: {}", e);
             StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
+    }
+}
+
+// =============================================================================
+// Change Password
+// =============================================================================
+
+/// Display change password page.
+///
+/// # Route
+///
+/// `GET /account/change-password`
+#[instrument(skip(state, _customer, nonce, site))]
+pub async fn change_password_page(
+    State(state): State<AppState>,
+    RequireAuth(_customer): RequireAuth,
+    Query(query): Query<ChangePasswordQuery>,
+    crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
+    site: crate::middleware::SiteContext,
+) -> impl IntoResponse {
+    debug!("Rendering change password page");
+
+    ChangePasswordTemplate {
+        error: query.error,
+        success: query.success,
+        analytics: state.config().analytics.clone(),
+        analytics_user_info: AnalyticsUserInfo::default(),
+        site,
+        nonce,
+    }
+}
+
+/// Handle change password form submission.
+///
+/// Verifies current password, then updates via Shopify `customerUpdate` mutation.
+/// Updates the session with the new access token since password change
+/// invalidates all existing tokens.
+///
+/// # Route
+///
+/// `POST /account/change-password`
+#[instrument(skip(state, session, customer, form))]
+pub async fn change_password(
+    State(state): State<AppState>,
+    session: Session,
+    RequireAuth(customer): RequireAuth,
+    Form(form): Form<ChangePasswordForm>,
+) -> Response {
+    debug!("Processing change password request");
+
+    // Validate new passwords match
+    if form.new_password != form.new_password_confirm {
+        return Redirect::to("/account/change-password?error=password_mismatch").into_response();
+    }
+
+    // Validate new password complexity
+    if let Err(code) = crate::routes::auth::validate_password_complexity(&form.new_password) {
+        return Redirect::to(&format!(
+            "/account/change-password?error={}",
+            urlencoding::encode(code)
+        ))
+        .into_response();
+    }
+
+    // Verify current password by creating a fresh access token.
+    // This also gives us a known-good token for the customerUpdate call,
+    // which handles passkey-authenticated users who may have empty session tokens.
+    let fresh_token = match state
+        .storefront()
+        .create_access_token(&customer.email, &form.current_password)
+        .await
+    {
+        Ok(token) => token,
+        Err(e) => {
+            warn!(
+                "Change password: current password verification failed: {}",
+                e
+            );
+            return Redirect::to("/account/change-password?error=invalid_current_password")
+                .into_response();
+        }
+    };
+
+    // Update password via Shopify customerUpdate mutation
+    match state
+        .storefront()
+        .update_customer_password(&fresh_token.access_token, &form.new_password)
+        .await
+    {
+        Ok((updated_customer, new_token)) => {
+            // Update session with new access token (old ones are invalidated)
+            let updated = CurrentCustomer::new(
+                updated_customer.id,
+                updated_customer
+                    .email
+                    .unwrap_or_else(|| customer.email.clone()),
+                updated_customer
+                    .first_name
+                    .or_else(|| customer.first_name.clone()),
+                updated_customer
+                    .last_name
+                    .or_else(|| customer.last_name.clone()),
+                SecretString::from(new_token.access_token),
+                new_token.expires_at,
+            );
+
+            if let Err(e) = set_current_customer(&session, &updated).await {
+                error!("Failed to update session after password change: {}", e);
+                return Redirect::to("/account/change-password?error=session").into_response();
+            }
+
+            info!("Customer password changed successfully");
+            Redirect::to("/account/change-password?success=password_changed").into_response()
+        }
+        Err(e) => {
+            warn!("Password change failed: {}", e);
+            Redirect::to("/account/change-password?error=update_failed").into_response()
         }
     }
 }

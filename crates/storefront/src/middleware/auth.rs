@@ -9,6 +9,7 @@ use axum::{
 };
 use tower_sessions::Session;
 use tracing::{debug, instrument, warn};
+use urlencoding::encode;
 
 use crate::models::{CurrentCustomer, session_keys};
 
@@ -29,8 +30,8 @@ pub struct RequireAuth(pub CurrentCustomer);
 
 /// Error returned when authentication is required but the customer is not logged in.
 pub enum AuthRejection {
-    /// Redirect to login page (for HTML requests).
-    RedirectToLogin,
+    /// Redirect to login page with the original path for redirect-after-login.
+    RedirectToLogin(String),
     /// Unauthorized response (for API requests).
     Unauthorized,
 }
@@ -38,7 +39,14 @@ pub enum AuthRejection {
 impl IntoResponse for AuthRejection {
     fn into_response(self) -> Response {
         match self {
-            Self::RedirectToLogin => Redirect::to("/auth/login").into_response(),
+            Self::RedirectToLogin(next) => {
+                let login_url = if next.is_empty() || next == "/" {
+                    "/auth/login".to_string()
+                } else {
+                    format!("/auth/login?next={}", encode(&next))
+                };
+                Redirect::to(&login_url).into_response()
+            }
             Self::Unauthorized => StatusCode::UNAUTHORIZED.into_response(),
         }
     }
@@ -74,7 +82,12 @@ where
                     AuthRejection::Unauthorized
                 } else {
                     debug!(path = %path, "Access denied: no valid session, redirecting to login");
-                    AuthRejection::RedirectToLogin
+                    let next = parts
+                        .uri
+                        .path_and_query()
+                        .map(|pq| pq.as_str().to_owned())
+                        .unwrap_or_default();
+                    AuthRejection::RedirectToLogin(next)
                 }
             })?;
 

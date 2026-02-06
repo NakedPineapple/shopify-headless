@@ -50,14 +50,15 @@ use conversions::{
 use queries::{
     AddToCart, CreateCart, CustomerAccessTokenCreate, CustomerAccessTokenDelete,
     CustomerAccessTokenRenew, CustomerActivateByUrl, CustomerCreate, CustomerRecover,
-    CustomerResetByUrl, GetCart, GetCollectionByHandle, GetCollections, GetCustomerByToken,
-    GetProductByHandle, GetProductRecommendations, GetProducts, GetShopMetafield, RemoveFromCart,
-    UpdateCartDiscountCodes, UpdateCartLines, UpdateCartNote, add_to_cart, create_cart,
-    customer_access_token_create, customer_access_token_delete, customer_access_token_renew,
-    customer_activate_by_url, customer_create, customer_recover, customer_reset_by_url, get_cart,
-    get_collection_by_handle, get_collections, get_customer_by_token, get_product_by_handle,
-    get_product_recommendations, get_products, get_shop_metafield, remove_from_cart,
-    update_cart_discount_codes, update_cart_lines, update_cart_note,
+    CustomerResetByUrl, CustomerUpdate, GetCart, GetCollectionByHandle, GetCollections,
+    GetCustomerByToken, GetProductByHandle, GetProductRecommendations, GetProducts,
+    GetShopMetafield, RemoveFromCart, UpdateCartDiscountCodes, UpdateCartLines, UpdateCartNote,
+    add_to_cart, create_cart, customer_access_token_create, customer_access_token_delete,
+    customer_access_token_renew, customer_activate_by_url, customer_create, customer_recover,
+    customer_reset_by_url, customer_update, get_cart, get_collection_by_handle, get_collections,
+    get_customer_by_token, get_product_by_handle, get_product_recommendations, get_products,
+    get_shop_metafield, remove_from_cart, update_cart_discount_codes, update_cart_lines,
+    update_cart_note,
 };
 
 // =============================================================================
@@ -1521,6 +1522,86 @@ impl StorefrontClient {
         );
         Err(ShopifyError::GraphQL(vec![super::GraphQLError {
             message: "Customer not found or token invalid".to_string(),
+            locations: vec![],
+            path: vec![],
+        }]))
+    }
+
+    /// Update a customer's password.
+    ///
+    /// When the password changes, Shopify invalidates all existing access tokens
+    /// and returns a new one which must be stored in the session.
+    ///
+    /// # Arguments
+    ///
+    /// * `access_token` - Current customer access token
+    /// * `new_password` - The new password to set
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the token is invalid or the update fails.
+    #[instrument(skip(self, access_token, new_password))]
+    pub async fn update_customer_password(
+        &self,
+        access_token: &str,
+        new_password: &str,
+    ) -> Result<(StorefrontCustomer, StorefrontAccessToken), ShopifyError> {
+        let variables = customer_update::Variables {
+            customer_access_token: access_token.to_string(),
+            customer: customer_update::CustomerUpdateInput {
+                password: Some(new_password.to_string()),
+                email: None,
+                first_name: None,
+                last_name: None,
+                accepts_marketing: None,
+                phone: None,
+            },
+        };
+
+        let data = self.execute::<CustomerUpdate>(variables).await?;
+
+        if let Some(result) = data.customer_update {
+            if !result.customer_user_errors.is_empty() {
+                let errors: Vec<_> = result
+                    .customer_user_errors
+                    .iter()
+                    .map(|e| e.message.as_str())
+                    .collect();
+                return Err(ShopifyError::UserError(errors.join("; ")));
+            }
+
+            let customer = result.customer.ok_or_else(|| {
+                ShopifyError::GraphQL(vec![super::GraphQLError {
+                    message: "No customer returned from update".to_string(),
+                    locations: vec![],
+                    path: vec![],
+                }])
+            })?;
+
+            let token = result.customer_access_token.ok_or_else(|| {
+                ShopifyError::GraphQL(vec![super::GraphQLError {
+                    message: "No access token returned from password update".to_string(),
+                    locations: vec![],
+                    path: vec![],
+                }])
+            })?;
+
+            return Ok((
+                StorefrontCustomer {
+                    id: customer.id,
+                    email: customer.email,
+                    first_name: customer.first_name,
+                    last_name: customer.last_name,
+                },
+                StorefrontAccessToken {
+                    access_token: token.access_token,
+                    expires_at: token.expires_at,
+                },
+            ));
+        }
+
+        Err(ShopifyError::GraphQL(vec![super::GraphQLError {
+            message: "Failed to update customer password".to_string(),
             locations: vec![],
             path: vec![],
         }]))

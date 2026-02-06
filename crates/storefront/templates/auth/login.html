@@ -45,6 +45,9 @@
 
     <!-- Password Login Form -->
     <form method="POST" action="/auth/login" class="space-y-4 mb-8">
+        {% if let Some(n) = next %}
+        <input type="hidden" name="next" value="{{ n }}">
+        {% endif %}
         <div>
             <label for="email" class="block text-sm font-medium text-foreground mb-1">Email</label>
             <input

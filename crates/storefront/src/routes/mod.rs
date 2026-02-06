@@ -53,6 +53,8 @@
 //! # Account (requires auth)
 //! GET  /account                - Account overview
 //! GET  /account/orders         - Order history
+//! GET  /account/change-password   - Change password page
+//! POST /account/change-password   - Change password action
 //! GET  /account/addresses      - Address list
 //! GET  /account/passkeys       - Passkey management
 //! ```
@@ -172,6 +174,10 @@ pub fn account_routes() -> Router<AppState> {
     Router::new()
         .route("/", get(account::index))
         .route("/orders", get(account::orders))
+        .route(
+            "/change-password",
+            get(account::change_password_page).post(account::change_password),
+        )
         .route(
             "/addresses",
             get(account::addresses).post(account::create_address),
