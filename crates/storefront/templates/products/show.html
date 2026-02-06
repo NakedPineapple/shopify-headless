@@ -511,7 +511,7 @@
                 <!-- Benefits -->
                 {% if let Some(benefits) = product.benefits %}
                 <div class="mt-10 pt-8 border-t border-border">
-                    <h3 class="font-display text-lg font-medium text-foreground mb-4">Benefits</h3>
+                    <h2 class="font-display text-lg font-medium text-foreground mb-4">Benefits</h2>
                     <div class="text-sm text-muted-foreground leading-relaxed space-y-3
                                 [&_strong]:text-foreground [&_strong]:font-medium
                                 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1.5
@@ -525,7 +525,7 @@
                 <!-- Promotes -->
                 {% if !product.promotes.is_empty() %}
                 <div class="mt-8">
-                    <h4 class="text-sm font-medium text-foreground mb-3">Promotes</h4>
+                    <h3 class="text-sm font-medium text-foreground mb-3">Promotes</h3>
                     <div class="flex flex-wrap gap-2">
                         {% for item in product.promotes %}
                         <span class="px-3 py-1.5 text-sm bg-secondary/15 text-secondary-foreground rounded-full">
@@ -539,7 +539,7 @@
                 <!-- Free From -->
                 {% if !product.free_from.is_empty() %}
                 <div class="mt-6">
-                    <h4 class="text-sm font-medium text-foreground mb-3">Free From</h4>
+                    <h3 class="text-sm font-medium text-foreground mb-3">Free From</h3>
                     <div class="flex flex-wrap gap-2">
                         {% for item in product.free_from %}
                         <span class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-muted text-muted-foreground rounded-full">
@@ -643,7 +643,7 @@
     <section class="py-12 md:py-16 bg-muted/30">
         <div class="page-width">
             <div class="max-w-3xl mx-auto">
-                <h3 class="font-display text-xl font-medium text-foreground mb-4">Shipping & Returns</h3>
+                <h2 class="font-display text-xl font-medium text-foreground mb-4">Shipping & Returns</h2>
                 <div class="prose prose-sm text-muted-foreground leading-relaxed max-w-none">
                     <p>Free shipping on orders over $50. Standard shipping 3-5 business days.</p>
                     {% if product.product_type == "Merch" %}

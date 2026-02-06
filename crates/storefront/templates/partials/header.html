@@ -132,6 +132,8 @@
                 <i class="ph ph-tote text-xl"></i>
                 <span class="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-primary text-primary-foreground text-[11px] font-semibold rounded-full items-center justify-center hidden"
                       id="cart-count"
+                      aria-live="polite"
+                      aria-atomic="true"
                       hx-get="/cart/count"
                       hx-trigger="load, cartUpdated from:body"
                       hx-on::after-swap="this.classList.toggle('hidden', !this.textContent.trim()); this.classList.toggle('flex', !!this.textContent.trim())"></span>
@@ -236,6 +238,7 @@
                 <span class="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
                     <i class="ph ph-magnifying-glass text-xl"></i>
                 </span>
+                <label for="search-input" class="sr-only">Search products</label>
                 <input type="search"
                        name="q"
                        id="search-input"
@@ -261,7 +264,7 @@
             </div>
 
             <!-- Search Results -->
-            <div id="search-results" class="mt-6 flex-1">
+            <div id="search-results" class="mt-6 flex-1" aria-live="polite">
                 <!-- Results loaded via HTMX -->
                 <div class="text-center text-muted-foreground py-8">
                     <i class="ph ph-magnifying-glass text-4xl mb-3 block opacity-50"></i>

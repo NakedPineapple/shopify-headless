@@ -376,9 +376,49 @@
      Accessibility
      ───────────────────────────────────────────────────────────────────────── */
 
+  /* Keyboard-accessible dropdown menus — mirrors group-hover: for keyboard users */
+  .group.is-open > div {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+  }
+  .group.is-open > button > i {
+    transform: rotate(180deg);
+  }
+  .group\/sub.is-open > ul {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(0);
+  }
+
   .visually-hidden {
     @apply absolute w-px h-px p-0 -m-px overflow-hidden whitespace-nowrap border-0;
     clip: rect(0, 0, 0, 0);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Reduced Motion
+   Users who prefer reduced motion get minimal/no animations.
+   ───────────────────────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-float,
+  .animate-sway,
+  .animate-marquee,
+  .animate-fade-in,
+  .animate-slide-up,
+  .animate-hero-zoom,
+  .animate-scroll,
+  .animate-shake {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
   }
 }
 

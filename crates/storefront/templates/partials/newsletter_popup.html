@@ -255,8 +255,9 @@
 
         document.body.style.overflow = 'hidden';
 
-        // Focus the email input for accessibility
+        // Focus the email input and trap focus for accessibility
         setTimeout(function() {
+            window.trapFocus(content);
             var emailInput = document.getElementById('newsletter-popup-email');
             if (emailInput) emailInput.focus();
         }, 400);
@@ -269,6 +270,7 @@
     window.closeNewsletterPopup = function() {
         if (!overlay || !modal || !content) return;
 
+        window.releaseFocus(content);
         overlay.classList.add('opacity-0', 'pointer-events-none');
         overlay.classList.remove('opacity-100', 'pointer-events-auto');
         modal.classList.add('opacity-0', 'pointer-events-none');

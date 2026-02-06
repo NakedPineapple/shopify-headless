@@ -27,7 +27,7 @@
     {% endif %}
 
     {% if error.is_some() %}
-    <div class="bg-destructive/10 border border-destructive text-destructive px-4 py-3 rounded mb-6">
+    <div id="form-error" class="bg-destructive/10 border border-destructive text-destructive px-4 py-3 rounded mb-6" role="alert">
         {% match error.as_deref() %}
             {% when Some with ("credentials") %}
                 Invalid email or password. If you haven't activated your account yet, please check your email.
@@ -56,6 +56,7 @@
                 id="email"
                 required
                 autocomplete="email"
+                {% if error.is_some() %}aria-describedby="form-error" aria-invalid="true"{% endif %}
                 class="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-coral-500 focus:border-transparent"
                 placeholder="you@example.com"
             >
@@ -108,7 +109,7 @@
             </svg>
             Login with Passkey
         </button>
-        <p id="passkey-error" class="text-destructive text-sm hidden"></p>
+        <p id="passkey-error" class="text-destructive text-sm hidden" aria-live="polite"></p>
     </div>
 
     <p class="text-center mt-8 text-muted-foreground">

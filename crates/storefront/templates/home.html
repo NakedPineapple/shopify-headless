@@ -65,7 +65,8 @@
                                 {% endif %}
                                 {% if let Some(hover) = product.hover_image %}
                                 <img src="{{ hover.url }}"
-                                     alt="{{ hover.alt }}"
+                                     alt=""
+                                     aria-hidden="true"
                                      class="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-500 group-hover:opacity-100"
                                      loading="lazy">
                                 {% endif %}
@@ -126,7 +127,8 @@
                                 {% endif %}
                                 {% if let Some(hover) = product.hover_image %}
                                 <img src="{{ hover.url }}"
-                                     alt="{{ hover.alt }}"
+                                     alt=""
+                                     aria-hidden="true"
                                      class="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-500 group-hover:opacity-100"
                                      loading="lazy">
                                 {% endif %}

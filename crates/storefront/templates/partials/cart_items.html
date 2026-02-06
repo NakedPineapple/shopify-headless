@@ -3,6 +3,7 @@
 {% import "macros/shopify_picture.html" as shopify %}
 <div id="cart-items"
      data-analytics-subtotal="{{ cart.subtotal|strip_currency }}"
+     aria-live="polite"
      class="transition-opacity duration-150 [&.htmx-request]:opacity-60 [&.htmx-request]:pointer-events-none">
     {% if cart.items.is_empty() %}
     {# Empty state for HTMX swap - redirects to full page for better experience #}

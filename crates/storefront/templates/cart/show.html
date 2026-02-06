@@ -105,6 +105,7 @@
                     <h2 class="font-display text-xl font-semibold mb-6">Order Summary</h2>
 
                     <div id="order-summary"
+                         aria-live="polite"
                          hx-get="/cart/summary"
                          hx-trigger="cartUpdated from:body"
                          hx-swap="innerHTML">
@@ -119,6 +120,7 @@
                             <i class="ph ph-caret-down text-xs transition-transform group-open:rotate-180 ml-auto"></i>
                         </summary>
                         <div class="mt-3 flex gap-2">
+                            <label for="promo-code" class="sr-only">Promo code</label>
                             <input type="text"
                                    id="promo-code"
                                    class="input flex-1 text-sm"

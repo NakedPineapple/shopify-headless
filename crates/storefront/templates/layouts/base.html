@@ -113,6 +113,9 @@
         {% endblock %}
     </div>
 
+    <!-- Screen reader announcements for dynamic updates -->
+    <div id="sr-announcements" class="sr-only" aria-live="assertive" aria-atomic="true"></div>
+
     <!-- Quick View Sidebar -->
     <div id="quick-view-overlay"
          class="fixed inset-0 bg-black/50 z-[199] opacity-0 pointer-events-none transition-opacity duration-300"
@@ -245,6 +248,46 @@
             console.error('HTMX send error:', e.detail);
         });
 
+        // Screen reader announcement for cart updates
+        document.body.addEventListener('cartUpdated', function() {
+            var el = document.getElementById('sr-announcements');
+            if (el) {
+                el.textContent = '';
+                setTimeout(function() { el.textContent = 'Item added to cart'; }, 100);
+            }
+        });
+
+        // Focus trap utility for modals and drawers (WCAG 2.4.3)
+        window._focusTrapState = { previousFocus: null, handler: null };
+        window.trapFocus = function(container) {
+            window._focusTrapState.previousFocus = document.activeElement;
+            var focusable = container.querySelectorAll(
+                'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+            );
+            if (focusable.length === 0) return;
+            var first = focusable[0];
+            var last = focusable[focusable.length - 1];
+            window._focusTrapState.handler = function(e) {
+                if (e.key !== 'Tab') return;
+                if (e.shiftKey) {
+                    if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+                } else {
+                    if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+                }
+            };
+            container.addEventListener('keydown', window._focusTrapState.handler);
+            first.focus();
+        };
+        window.releaseFocus = function(container) {
+            if (window._focusTrapState.handler && container) {
+                container.removeEventListener('keydown', window._focusTrapState.handler);
+            }
+            if (window._focusTrapState.previousFocus) {
+                window._focusTrapState.previousFocus.focus();
+            }
+            window._focusTrapState = { previousFocus: null, handler: null };
+        };
+
         // Quick View functionality
         window.openQuickView = function() {
             var sidebar = document.getElementById('quick-view-sidebar');
@@ -256,6 +299,7 @@
             sidebar.classList.remove('translate-x-full');
             sidebar.classList.add('translate-x-0');
             document.body.style.overflow = 'hidden';
+            setTimeout(function() { window.trapFocus(sidebar); }, 350);
         };
 
         window.closeQuickView = function() {
@@ -263,6 +307,7 @@
             var overlay = document.getElementById('quick-view-overlay');
             if (!sidebar || !overlay) return;
 
+            window.releaseFocus(sidebar);
             overlay.classList.add('opacity-0', 'pointer-events-none');
             overlay.classList.remove('opacity-100', 'pointer-events-auto');
             sidebar.classList.add('translate-x-full');
@@ -300,6 +345,7 @@
             overlay.classList.add('opacity-100', 'visible');
             setTimeout(function() {
                 menu.classList.add('is-open');
+                window.trapFocus(menu);
             }, 10);
             document.body.style.overflow = 'hidden';
         };
@@ -309,6 +355,7 @@
             var overlay = document.getElementById('mobile-menu-overlay');
             if (!menu || !overlay) return;
 
+            window.releaseFocus(menu);
             menu.classList.remove('is-open');
             overlay.classList.add('opacity-0', 'invisible');
             overlay.classList.remove('opacity-100', 'visible');
@@ -330,6 +377,7 @@
             overlay.classList.add('opacity-100', 'visible');
             setTimeout(function() {
                 drawer.classList.add('is-open');
+                window.trapFocus(drawer);
                 if (input) input.focus();
             }, 10);
             document.body.style.overflow = 'hidden';
@@ -340,6 +388,7 @@
             var overlay = document.getElementById('search-drawer-overlay');
             if (!drawer || !overlay) return;
 
+            window.releaseFocus(drawer);
             drawer.classList.remove('is-open');
             overlay.classList.add('opacity-0', 'invisible');
             overlay.classList.remove('opacity-100', 'visible');
@@ -375,6 +424,43 @@
                 if (clearBtn) clearBtn.classList.add('hidden');
             }
         });
+
+        // Desktop dropdown keyboard accessibility (WCAG 2.1.1)
+        (function() {
+            var navDropdowns = document.querySelectorAll('nav[aria-label="Primary"] > ul > li.group');
+            navDropdowns.forEach(function(li) {
+                var btn = li.querySelector('button[aria-expanded]');
+                if (!btn) return;
+
+                function openDropdown() {
+                    li.classList.add('is-open');
+                    btn.setAttribute('aria-expanded', 'true');
+                }
+                function closeDropdown() {
+                    li.classList.remove('is-open');
+                    btn.setAttribute('aria-expanded', 'false');
+                }
+
+                btn.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        var isOpen = li.classList.contains('is-open');
+                        if (isOpen) { closeDropdown(); } else { openDropdown(); }
+                    }
+                    if (e.key === 'Escape') { closeDropdown(); btn.focus(); }
+                });
+
+                li.addEventListener('keydown', function(e) {
+                    if (e.key === 'Escape') { closeDropdown(); btn.focus(); }
+                });
+
+                li.addEventListener('focusout', function(e) {
+                    setTimeout(function() {
+                        if (!li.contains(document.activeElement)) { closeDropdown(); }
+                    }, 0);
+                });
+            });
+        })();
 
         // Quantity selector functionality
         document.addEventListener('click', function(e) {
@@ -489,14 +575,15 @@
 
                 var autoplayDelay = parseInt(heroCarousel.dataset.autoplay) || 5000;
                 heroCarousel.style.setProperty('--autoplay-duration', autoplayDelay + 'ms');
+                var prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
                 window._heroSwiper = new Swiper(heroCarousel, {
                     loop: true,
-                    speed: 800,
+                    speed: prefersReducedMotion ? 0 : 800,
                     centeredSlides: true,
                     slidesPerView: 1.15,
                     spaceBetween: 20,
-                    autoplay: {
+                    autoplay: prefersReducedMotion ? false : {
                         delay: autoplayDelay,
                         disableOnInteraction: false,
                     },
