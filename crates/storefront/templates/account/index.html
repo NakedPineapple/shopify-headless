@@ -8,10 +8,15 @@
 {% block robots %}noindex, nofollow{% endblock %}
 
 {% block content %}
-<div class="py-8 md:py-12">
-    <div class="page-width">
-        <!-- Breadcrumb -->
-        <nav class="text-sm text-muted-foreground mb-8" aria-label="Breadcrumb">
+<section class="relative py-16 md:py-24 overflow-hidden">
+    {# Decorative gradient blobs #}
+    <div class="absolute top-12 -left-20 w-72 h-72 bg-gradient-to-br from-honey/20 to-honey/5 rounded-full blur-3xl pointer-events-none" aria-hidden="true"></div>
+    <div class="absolute -bottom-16 -right-16 w-80 h-80 bg-gradient-to-tl from-primary/10 to-terracotta/5 rounded-full blur-3xl pointer-events-none" aria-hidden="true"></div>
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-br from-leaf/5 to-transparent rounded-full blur-3xl pointer-events-none" aria-hidden="true"></div>
+
+    <div class="page-width relative z-10">
+        {# Breadcrumb #}
+        <nav class="text-sm text-muted-foreground mb-8 animate-fade-in" style="opacity: 0; animation-delay: 50ms;" aria-label="Breadcrumb">
             <ol class="flex items-center gap-2 list-none">
                 <li><a href="/" class="hover:text-primary transition-colors">Home</a></li>
                 <li aria-hidden="true"><i class="ph ph-caret-right text-xs"></i></li>
@@ -21,14 +26,17 @@
 
         <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
             <div>
-                <h1 class="font-display text-3xl md:text-4xl font-semibold text-foreground">
+                <p class="text-xs uppercase tracking-[0.2em] text-primary dark:text-foreground font-medium mb-3 animate-fade-in" style="opacity: 0; animation-delay: 100ms;">
+                    Welcome Back
+                </p>
+                <h1 class="font-display text-3xl md:text-4xl font-semibold text-foreground animate-slide-up" style="opacity: 0; animation-delay: 200ms;">
                     My Account
                 </h1>
-                <p class="text-muted-foreground mt-2">
+                <p class="text-muted-foreground mt-2 animate-slide-up" style="opacity: 0; animation-delay: 280ms;">
                     Welcome back, {% if let Some(name) = user.name %}{{ name }}{% else %}{{ user.email }}{% endif %}
                 </p>
             </div>
-            <form action="/auth/logout" method="post">
+            <form action="/auth/logout" method="post" class="animate-fade-in" style="opacity: 0; animation-delay: 300ms;">
                 <button type="submit" class="btn btn-outline">
                     <i class="ph ph-sign-out mr-2"></i>
                     Sign Out
@@ -36,9 +44,9 @@
             </form>
         </div>
 
-        <div class="grid md:grid-cols-3 gap-6 md:gap-8">
-            <!-- Account Overview -->
-            <div class="card p-6">
+        <div class="grid md:grid-cols-3 gap-6 md:gap-8 animate-slide-up" style="opacity: 0; animation-delay: 350ms;">
+            {# Account Overview #}
+            <div class="card rounded-2xl p-6 shadow-lg">
                 <div class="flex items-center gap-4 mb-4">
                     <div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
                         <i class="ph ph-user text-2xl text-primary"></i>
@@ -59,8 +67,8 @@
                 </a>
             </div>
 
-            <!-- Order History -->
-            <div class="card p-6">
+            {# Order History #}
+            <div class="card rounded-2xl p-6 shadow-lg">
                 <div class="flex items-center gap-4 mb-4">
                     <div class="w-12 h-12 rounded-full bg-secondary/20 flex items-center justify-center">
                         <i class="ph ph-package text-2xl text-secondary-foreground"></i>
@@ -87,8 +95,8 @@
                 </a>
             </div>
 
-            <!-- Passkeys -->
-            <div class="card p-6">
+            {# Passkeys #}
+            <div class="card rounded-2xl p-6 shadow-lg">
                 <div class="flex items-center gap-4 mb-4">
                     <div class="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center">
                         <i class="ph ph-key text-2xl text-accent"></i>
@@ -111,10 +119,10 @@
             </div>
         </div>
 
-        <!-- Account Actions -->
-        <div class="mt-8 grid md:grid-cols-2 gap-6">
-            <!-- Addresses -->
-            <div class="card p-6">
+        {# Account Actions #}
+        <div class="mt-8 grid md:grid-cols-2 gap-6 animate-slide-up" style="opacity: 0; animation-delay: 450ms;">
+            {# Addresses #}
+            <div class="card rounded-2xl p-6 shadow-lg">
                 <div class="flex items-center justify-between mb-4">
                     <div class="flex items-center gap-3">
                         <i class="ph ph-map-pin text-xl text-muted-foreground"></i>
@@ -135,8 +143,8 @@
                 {% endif %}
             </div>
 
-            <!-- Subscriptions -->
-            <div class="card p-6">
+            {# Subscriptions #}
+            <div class="card rounded-2xl p-6 shadow-lg">
                 <div class="flex items-center justify-between mb-4">
                     <div class="flex items-center gap-3">
                         <i class="ph ph-repeat text-xl text-muted-foreground"></i>
@@ -158,8 +166,22 @@
                 {% endif %}
             </div>
 
-            <!-- Security -->
-            <div class="card p-6">
+            {% if let Some(balance) = store_credit_balance %}
+            {# Store Credit #}
+            <div class="card rounded-2xl p-6 shadow-lg">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-3">
+                        <i class="ph ph-credit-card text-xl text-muted-foreground"></i>
+                        <h3 class="font-semibold text-foreground">Store Credit</h3>
+                    </div>
+                </div>
+                <p class="text-2xl font-semibold text-foreground">{{ balance }}</p>
+                <p class="text-sm text-muted-foreground mt-1">Available balance</p>
+            </div>
+            {% endif %}
+
+            {# Security #}
+            <div class="card rounded-2xl p-6 shadow-lg">
                 <div class="flex items-center justify-between mb-4">
                     <div class="flex items-center gap-3">
                         <i class="ph ph-lock text-xl text-muted-foreground"></i>
@@ -175,5 +197,5 @@
             </div>
         </div>
     </div>
-</div>
+</section>
 {% endblock %}

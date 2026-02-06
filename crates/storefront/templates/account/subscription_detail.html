@@ -8,10 +8,15 @@
 {% block robots %}noindex, nofollow{% endblock %}
 
 {% block content %}
-<div class="py-8 md:py-12">
-    <div class="page-width">
-        <!-- Breadcrumb -->
-        <nav class="text-sm text-muted-foreground mb-8" aria-label="Breadcrumb">
+<section class="relative py-16 md:py-24 overflow-hidden">
+    {# Decorative gradient blobs #}
+    <div class="absolute top-12 -left-20 w-72 h-72 bg-gradient-to-br from-honey/20 to-honey/5 rounded-full blur-3xl pointer-events-none" aria-hidden="true"></div>
+    <div class="absolute -bottom-16 -right-16 w-80 h-80 bg-gradient-to-tl from-primary/10 to-terracotta/5 rounded-full blur-3xl pointer-events-none" aria-hidden="true"></div>
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-br from-leaf/5 to-transparent rounded-full blur-3xl pointer-events-none" aria-hidden="true"></div>
+
+    <div class="page-width relative z-10">
+        {# Breadcrumb #}
+        <nav class="text-sm text-muted-foreground mb-8 animate-fade-in" style="opacity: 0; animation-delay: 50ms;" aria-label="Breadcrumb">
             <ol class="flex items-center gap-2 list-none">
                 <li><a href="/" class="hover:text-primary transition-colors">Home</a></li>
                 <li aria-hidden="true"><i class="ph ph-caret-right text-xs"></i></li>
@@ -24,49 +29,50 @@
         </nav>
 
         <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
-            <div class="flex items-center gap-4">
-                <div>
-                    <h1 class="font-display text-3xl md:text-4xl font-semibold text-foreground">
-                        Subscription Details
-                    </h1>
-                    <div class="flex items-center gap-3 mt-2">
-                        {% match subscription.status %}
-                            {% when SubscriptionContractStatus::Active %}
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-accent/20 text-accent">
-                                <i class="ph-fill ph-check-circle mr-1"></i>
-                                Active
-                            </span>
-                            {% when SubscriptionContractStatus::Paused %}
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-secondary/20 text-secondary-foreground">
-                                <i class="ph ph-pause-circle mr-1"></i>
-                                Paused
-                            </span>
-                            {% when SubscriptionContractStatus::Cancelled %}
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
-                                <i class="ph ph-x-circle mr-1"></i>
-                                Cancelled
-                            </span>
-                            {% when _ %}
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
-                                {{ subscription.status_label }}
-                            </span>
-                        {% endmatch %}
-                        <span class="text-sm text-muted-foreground">{{ subscription.interval_label }}</span>
-                    </div>
+            <div>
+                <p class="text-xs uppercase tracking-[0.2em] text-primary dark:text-foreground font-medium mb-3 animate-fade-in" style="opacity: 0; animation-delay: 100ms;">
+                    Subscription
+                </p>
+                <h1 class="font-display text-3xl md:text-4xl font-semibold text-foreground animate-slide-up" style="opacity: 0; animation-delay: 200ms;">
+                    Subscription Details
+                </h1>
+                <div class="flex items-center gap-3 mt-2 animate-slide-up" style="opacity: 0; animation-delay: 280ms;">
+                    {% match subscription.status %}
+                        {% when SubscriptionContractStatus::Active %}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-accent/20 text-accent">
+                            <i class="ph-fill ph-check-circle mr-1"></i>
+                            Active
+                        </span>
+                        {% when SubscriptionContractStatus::Paused %}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-secondary/20 text-secondary-foreground">
+                            <i class="ph ph-pause-circle mr-1"></i>
+                            Paused
+                        </span>
+                        {% when SubscriptionContractStatus::Cancelled %}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+                            <i class="ph ph-x-circle mr-1"></i>
+                            Cancelled
+                        </span>
+                        {% when _ %}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+                            {{ subscription.status_label }}
+                        </span>
+                    {% endmatch %}
+                    <span class="text-sm text-muted-foreground">{{ subscription.interval_label }}</span>
                 </div>
             </div>
-            <a href="/account/subscriptions" class="btn btn-outline">
+            <a href="/account/subscriptions" class="btn btn-outline animate-fade-in" style="opacity: 0; animation-delay: 300ms;">
                 <i class="ph ph-arrow-left mr-2"></i>
                 All Subscriptions
             </a>
         </div>
 
-        <div class="grid md:grid-cols-3 gap-6 md:gap-8">
-            <!-- Line Items -->
+        <div class="grid md:grid-cols-3 gap-6 md:gap-8 animate-slide-up" style="opacity: 0; animation-delay: 350ms;">
+            {# Line Items #}
             <div class="md:col-span-2 space-y-4">
                 <h2 class="font-semibold text-lg text-foreground">Items</h2>
                 {% for item in subscription.line_items %}
-                <div class="card p-4">
+                <div class="card rounded-2xl p-4 shadow-lg">
                     <div class="flex items-center gap-4">
                         {% if let Some(img_url) = item.image_url %}
                         <div class="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-muted">
@@ -92,10 +98,10 @@
                 {% endfor %}
             </div>
 
-            <!-- Sidebar -->
+            {# Sidebar #}
             <div class="space-y-6">
-                <!-- Subscription Info -->
-                <div class="card p-6">
+                {# Subscription Info #}
+                <div class="card rounded-2xl p-6 shadow-lg">
                     <h2 class="font-semibold text-lg text-foreground mb-4">Details</h2>
                     <dl class="space-y-3 text-sm">
                         <div class="flex justify-between">
@@ -125,9 +131,9 @@
                     </dl>
                 </div>
 
-                <!-- Actions -->
+                {# Actions #}
                 {% if subscription.can_pause || subscription.can_activate || subscription.can_cancel %}
-                <div class="card p-6">
+                <div class="card rounded-2xl p-6 shadow-lg">
                     <h2 class="font-semibold text-lg text-foreground mb-4">Actions</h2>
                     <div class="space-y-3">
                         {% if subscription.can_pause %}
@@ -162,6 +168,55 @@
                 {% endif %}
             </div>
         </div>
+
+        {# Upcoming Deliveries #}
+        {% if !upcoming_cycles.is_empty() %}
+        <div class="mt-8 animate-slide-up" style="opacity: 0; animation-delay: 450ms;">
+            <h2 class="font-semibold text-lg text-foreground mb-4">Upcoming Deliveries</h2>
+            <div class="space-y-3">
+                {% for cycle in upcoming_cycles %}
+                <div class="card rounded-2xl p-4 shadow-lg">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            {% if cycle.skipped %}
+                            <div class="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                                <i class="ph ph-skip-forward text-lg text-muted-foreground"></i>
+                            </div>
+                            <div>
+                                <p class="font-medium text-muted-foreground line-through">{{ cycle.expected_date }}</p>
+                                <p class="text-xs text-muted-foreground">Skipped</p>
+                            </div>
+                            {% else %}
+                            <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                                <i class="ph ph-calendar-check text-lg text-primary"></i>
+                            </div>
+                            <div>
+                                <p class="font-medium text-foreground">{{ cycle.expected_date }}</p>
+                                <p class="text-xs text-muted-foreground">Scheduled</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% if cycle.skipped %}
+                        <form action="/account/subscriptions/{{ subscription.id }}/unskip/{{ cycle.cycle_index }}" method="post">
+                            <button type="submit" class="btn btn-outline text-sm">
+                                <i class="ph ph-play mr-1"></i>
+                                Unskip
+                            </button>
+                        </form>
+                        {% else %}
+                        <form action="/account/subscriptions/{{ subscription.id }}/skip/{{ cycle.cycle_index }}" method="post">
+                            <button type="submit" class="btn btn-outline text-sm">
+                                <i class="ph ph-skip-forward mr-1"></i>
+                                Skip
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
     </div>
-</div>
+</section>
 {% endblock %}

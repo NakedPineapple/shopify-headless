@@ -1126,4 +1126,469 @@ impl CustomerClient {
 
         Ok(())
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Order Detail Operations
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Get a single order with full details.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails.
+    pub async fn get_order(
+        &self,
+        access_token: &str,
+        id: &str,
+    ) -> Result<Option<OrderDetail>, ShopifyError> {
+        #[derive(Deserialize)]
+        struct Response {
+            customer: CustomerWithOrder,
+        }
+
+        #[derive(Deserialize)]
+        struct CustomerWithOrder {
+            order: Option<OrderDetail>,
+        }
+
+        const QUERY: &str = r"
+            query getOrder($id: ID!) {
+                customer {
+                    order(id: $id) {
+                        id
+                        name
+                        orderNumber
+                        processedAt
+                        financialStatus
+                        fulfillmentStatus
+                        totalPrice { amount currencyCode }
+                        subtotal { amount currencyCode }
+                        totalShipping { amount currencyCode }
+                        totalTax { amount currencyCode }
+                        lineItems(first: 50) {
+                            edges {
+                                node {
+                                    id
+                                    title
+                                    quantity
+                                    unitPrice { amount currencyCode }
+                                    totalPrice { amount currencyCode }
+                                    image { url altText }
+                                    variantTitle
+                                }
+                            }
+                        }
+                        shippingAddress {
+                            id
+                            firstName
+                            lastName
+                            company
+                            address1
+                            address2
+                            city
+                            province
+                            provinceCode
+                            country
+                            countryCode
+                            zip
+                            phone
+                        }
+                        returns(first: 10) {
+                            edges {
+                                node {
+                                    id
+                                    name
+                                    status
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        ";
+
+        let variables = serde_json::json!({ "id": id });
+        let response: Response = self.query(access_token, QUERY, Some(variables)).await?;
+
+        Ok(response.customer.order)
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Return Operations
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Get an order's line items with suggested return reasons.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails.
+    pub async fn get_order_for_return(
+        &self,
+        access_token: &str,
+        order_id: &str,
+    ) -> Result<Option<OrderForReturn>, ShopifyError> {
+        #[derive(Deserialize)]
+        struct Response {
+            customer: CustomerWithOrderForReturn,
+        }
+
+        #[derive(Deserialize)]
+        struct CustomerWithOrderForReturn {
+            order: Option<OrderForReturn>,
+        }
+
+        const QUERY: &str = r"
+            query getOrderForReturn($id: ID!) {
+                customer {
+                    order(id: $id) {
+                        id
+                        name
+                        lineItems(first: 50) {
+                            edges {
+                                node {
+                                    id
+                                    title
+                                    quantity
+                                    image { url altText }
+                                    variantTitle
+                                    suggestedReturnReasonDefinitions(first: 20) {
+                                        edges {
+                                            node {
+                                                id
+                                                name
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        ";
+
+        let variables = serde_json::json!({ "id": order_id });
+        let response: Response = self.query(access_token, QUERY, Some(variables)).await?;
+
+        Ok(response.customer.order)
+    }
+
+    /// Request a return on an order.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the mutation fails or returns user errors.
+    pub async fn request_return(
+        &self,
+        access_token: &str,
+        order_id: &str,
+        items: &[ReturnRequestLineItemInput],
+    ) -> Result<(), ShopifyError> {
+        #[derive(Deserialize)]
+        struct Response {
+            #[serde(rename = "orderRequestReturn")]
+            result: ReturnResult,
+        }
+
+        #[derive(Deserialize)]
+        struct ReturnResult {
+            #[serde(rename = "userErrors")]
+            user_errors: Vec<CustomerUserError>,
+        }
+
+        const QUERY: &str = r"
+            mutation requestReturn($orderId: ID!, $items: [RequestedLineItemInput!]!) {
+                orderRequestReturn(orderId: $orderId, requestedLineItems: $items) {
+                    return {
+                        id
+                        name
+                        status
+                    }
+                    userErrors {
+                        field
+                        message
+                        code
+                    }
+                }
+            }
+        ";
+
+        let variables = serde_json::json!({
+            "orderId": order_id,
+            "items": items,
+        });
+        let response: Response = self.query(access_token, QUERY, Some(variables)).await?;
+
+        if !response.result.user_errors.is_empty() {
+            let messages: Vec<_> = response
+                .result
+                .user_errors
+                .iter()
+                .map(|e| e.message.as_str())
+                .collect();
+            return Err(ShopifyError::UserError(messages.join(", ")));
+        }
+
+        Ok(())
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Store Credit Operations
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Get the customer's store credit balance.
+    ///
+    /// Returns `None` if no store credit account exists.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails.
+    pub async fn get_store_credit(
+        &self,
+        access_token: &str,
+    ) -> Result<Option<crate::shopify::types::Money>, ShopifyError> {
+        #[derive(Deserialize)]
+        struct Response {
+            customer: CustomerWithStoreCredit,
+        }
+
+        #[derive(Deserialize)]
+        struct CustomerWithStoreCredit {
+            #[serde(rename = "storeCreditAccounts")]
+            store_credit_accounts: StoreCreditConnection,
+        }
+
+        #[derive(Deserialize)]
+        struct StoreCreditConnection {
+            edges: Vec<StoreCreditEdge>,
+        }
+
+        #[derive(Deserialize)]
+        struct StoreCreditEdge {
+            node: StoreCreditAccount,
+        }
+
+        const QUERY: &str = r"
+            query getStoreCredit {
+                customer {
+                    storeCreditAccounts(first: 1) {
+                        edges {
+                            node {
+                                balance {
+                                    amount
+                                    currencyCode
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        ";
+
+        let response: Response = self.query(access_token, QUERY, None).await?;
+
+        Ok(response
+            .customer
+            .store_credit_accounts
+            .edges
+            .first()
+            .map(|e| e.node.balance.clone()))
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Billing Cycle Operations
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Get upcoming billing cycles for a subscription contract.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails.
+    pub async fn get_upcoming_billing_cycles(
+        &self,
+        access_token: &str,
+        contract_id: &str,
+        first: u32,
+    ) -> Result<Vec<SubscriptionBillingCycle>, ShopifyError> {
+        #[derive(Deserialize)]
+        struct Response {
+            customer: CustomerWithContract,
+        }
+
+        #[derive(Deserialize)]
+        struct CustomerWithContract {
+            #[serde(rename = "subscriptionContract")]
+            subscription_contract: Option<ContractWithCycles>,
+        }
+
+        #[derive(Deserialize)]
+        struct ContractWithCycles {
+            #[serde(rename = "upcomingBillingCycles")]
+            upcoming_billing_cycles: BillingCycleConnection,
+        }
+
+        #[derive(Deserialize)]
+        struct BillingCycleConnection {
+            edges: Vec<BillingCycleEdge>,
+        }
+
+        #[derive(Deserialize)]
+        struct BillingCycleEdge {
+            node: SubscriptionBillingCycle,
+        }
+
+        const QUERY: &str = r"
+            query getUpcomingBillingCycles($id: ID!, $first: Int!) {
+                customer {
+                    subscriptionContract(id: $id) {
+                        upcomingBillingCycles(first: $first) {
+                            edges {
+                                node {
+                                    billingAttemptExpectedDate
+                                    cycleIndex
+                                    skipped
+                                    status
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        ";
+
+        let variables = serde_json::json!({ "id": contract_id, "first": first });
+        let response: Response = self.query(access_token, QUERY, Some(variables)).await?;
+
+        Ok(response
+            .customer
+            .subscription_contract
+            .map(|c| {
+                c.upcoming_billing_cycles
+                    .edges
+                    .into_iter()
+                    .map(|e| e.node)
+                    .collect()
+            })
+            .unwrap_or_default())
+    }
+
+    /// Skip a billing cycle.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the mutation fails or returns user errors.
+    pub async fn skip_billing_cycle(
+        &self,
+        access_token: &str,
+        contract_id: &str,
+        cycle_index: i64,
+    ) -> Result<(), ShopifyError> {
+        #[derive(Deserialize)]
+        struct Response {
+            #[serde(rename = "subscriptionBillingCycleSkip")]
+            result: BillingCycleMutationResult,
+        }
+
+        #[derive(Deserialize)]
+        struct BillingCycleMutationResult {
+            #[serde(rename = "userErrors")]
+            user_errors: Vec<CustomerUserError>,
+        }
+
+        const QUERY: &str = r"
+            mutation skipBillingCycle($input: SubscriptionBillingCycleInput!) {
+                subscriptionBillingCycleSkip(billingCycleInput: $input) {
+                    billingCycle {
+                        cycleIndex
+                        skipped
+                    }
+                    userErrors {
+                        field
+                        message
+                        code
+                    }
+                }
+            }
+        ";
+
+        let variables = serde_json::json!({
+            "input": {
+                "contractId": contract_id,
+                "selector": { "index": cycle_index }
+            }
+        });
+        let response: Response = self.query(access_token, QUERY, Some(variables)).await?;
+
+        if !response.result.user_errors.is_empty() {
+            let messages: Vec<_> = response
+                .result
+                .user_errors
+                .iter()
+                .map(|e| e.message.as_str())
+                .collect();
+            return Err(ShopifyError::UserError(messages.join(", ")));
+        }
+
+        Ok(())
+    }
+
+    /// Unskip a billing cycle.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the mutation fails or returns user errors.
+    pub async fn unskip_billing_cycle(
+        &self,
+        access_token: &str,
+        contract_id: &str,
+        cycle_index: i64,
+    ) -> Result<(), ShopifyError> {
+        #[derive(Deserialize)]
+        struct Response {
+            #[serde(rename = "subscriptionBillingCycleUnskip")]
+            result: BillingCycleMutationResult,
+        }
+
+        #[derive(Deserialize)]
+        struct BillingCycleMutationResult {
+            #[serde(rename = "userErrors")]
+            user_errors: Vec<CustomerUserError>,
+        }
+
+        const QUERY: &str = r"
+            mutation unskipBillingCycle($input: SubscriptionBillingCycleInput!) {
+                subscriptionBillingCycleUnskip(billingCycleInput: $input) {
+                    billingCycle {
+                        cycleIndex
+                        skipped
+                    }
+                    userErrors {
+                        field
+                        message
+                        code
+                    }
+                }
+            }
+        ";
+
+        let variables = serde_json::json!({
+            "input": {
+                "contractId": contract_id,
+                "selector": { "index": cycle_index }
+            }
+        });
+        let response: Response = self.query(access_token, QUERY, Some(variables)).await?;
+
+        if !response.result.user_errors.is_empty() {
+            let messages: Vec<_> = response
+                .result
+                .user_errors
+                .iter()
+                .map(|e| e.message.as_str())
+                .collect();
+            return Err(ShopifyError::UserError(messages.join(", ")));
+        }
+
+        Ok(())
+    }
 }

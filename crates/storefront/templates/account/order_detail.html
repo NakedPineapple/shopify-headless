@@ -1,0 +1,169 @@
+{% extends "layouts/base.html" %}
+{% import "macros/analytics_data.html" as analytics_macro %}
+
+{% block body_data %}{{ analytics_macro::body_attrs(analytics=analytics, user_info=analytics_user_info) }}{% endblock %}
+
+{% block title %}Order {{ order.name }} | Naked Pineapple{% endblock %}
+
+{% block robots %}noindex, nofollow{% endblock %}
+
+{% block content %}
+<section class="relative py-16 md:py-24 overflow-hidden">
+    {# Decorative gradient blobs #}
+    <div class="absolute top-12 -left-20 w-72 h-72 bg-gradient-to-br from-honey/20 to-honey/5 rounded-full blur-3xl pointer-events-none" aria-hidden="true"></div>
+    <div class="absolute -bottom-16 -right-16 w-80 h-80 bg-gradient-to-tl from-primary/10 to-terracotta/5 rounded-full blur-3xl pointer-events-none" aria-hidden="true"></div>
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-br from-leaf/5 to-transparent rounded-full blur-3xl pointer-events-none" aria-hidden="true"></div>
+
+    <div class="page-width relative z-10">
+        {# Breadcrumb #}
+        <nav class="text-sm text-muted-foreground mb-8 animate-fade-in" style="opacity: 0; animation-delay: 50ms;" aria-label="Breadcrumb">
+            <ol class="flex items-center gap-2 list-none">
+                <li><a href="/" class="hover:text-primary transition-colors">Home</a></li>
+                <li aria-hidden="true"><i class="ph ph-caret-right text-xs"></i></li>
+                <li><a href="/account" class="hover:text-primary transition-colors">Account</a></li>
+                <li aria-hidden="true"><i class="ph ph-caret-right text-xs"></i></li>
+                <li><a href="/account/orders" class="hover:text-primary transition-colors">Orders</a></li>
+                <li aria-hidden="true"><i class="ph ph-caret-right text-xs"></i></li>
+                <li class="text-foreground">{{ order.name }}</li>
+            </ol>
+        </nav>
+
+        {# Header #}
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+            <div>
+                <p class="text-xs uppercase tracking-[0.2em] text-primary dark:text-foreground font-medium mb-3 animate-fade-in" style="opacity: 0; animation-delay: 100ms;">
+                    Order Details
+                </p>
+                <h1 class="font-display text-3xl md:text-4xl font-semibold text-foreground animate-slide-up" style="opacity: 0; animation-delay: 200ms;">
+                    Order {{ order.name }}
+                </h1>
+                <div class="flex items-center gap-3 mt-2 animate-slide-up" style="opacity: 0; animation-delay: 280ms;">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/20 text-primary">
+                        {{ order.financial_status_label }}
+                    </span>
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-secondary/20 text-secondary-foreground">
+                        {{ order.fulfillment_status_label }}
+                    </span>
+                    <span class="text-sm text-muted-foreground">{{ order.processed_at }}</span>
+                </div>
+            </div>
+            <a href="/account/orders" class="btn btn-outline animate-fade-in" style="opacity: 0; animation-delay: 300ms;">
+                <i class="ph ph-arrow-left mr-2"></i>
+                Back to Orders
+            </a>
+        </div>
+
+        {# Main Grid #}
+        <div class="grid md:grid-cols-3 gap-6 md:gap-8 animate-slide-up" style="opacity: 0; animation-delay: 350ms;">
+            {# Line Items #}
+            <div class="md:col-span-2 space-y-4">
+                <h2 class="font-semibold text-lg text-foreground">Items</h2>
+                {% for item in order.line_items %}
+                <div class="card rounded-2xl p-4 shadow-lg">
+                    <div class="flex items-start gap-4">
+                        {% if let Some(img_url) = item.image_url %}
+                        <div class="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-muted">
+                            <img src="{{ img_url }}" alt="{{ item.title }}" class="w-full h-full object-cover" loading="lazy">
+                        </div>
+                        {% else %}
+                        <div class="w-20 h-20 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                            <i class="ph ph-package text-2xl text-primary"></i>
+                        </div>
+                        {% endif %}
+                        <div class="flex-1">
+                            <h3 class="font-semibold text-foreground">{{ item.title }}</h3>
+                            {% if let Some(variant_title) = item.variant_title %}
+                            <p class="text-sm text-muted-foreground mt-1">{{ variant_title }}</p>
+                            {% endif %}
+                            <p class="text-sm text-muted-foreground mt-1">
+                                Qty: {{ item.quantity }}
+                            </p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-sm text-muted-foreground">{{ item.unit_price }} each</p>
+                            <p class="font-semibold text-foreground mt-1">{{ item.total }}</p>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            {# Sidebar #}
+            <div class="space-y-6">
+                {# Order Summary #}
+                <div class="card rounded-2xl p-6 shadow-lg">
+                    <h2 class="font-semibold text-lg text-foreground mb-4">Order Summary</h2>
+                    <dl class="space-y-3 text-sm">
+                        <div class="flex justify-between">
+                            <dt class="text-muted-foreground">Subtotal</dt>
+                            <dd class="text-foreground">{{ order.subtotal }}</dd>
+                        </div>
+                        <div class="flex justify-between">
+                            <dt class="text-muted-foreground">Shipping</dt>
+                            <dd class="text-foreground">
+                                {% if order.shipping == "$0.00" %}
+                                Free
+                                {% else %}
+                                {{ order.shipping }}
+                                {% endif %}
+                            </dd>
+                        </div>
+                        <div class="flex justify-between">
+                            <dt class="text-muted-foreground">Tax</dt>
+                            <dd class="text-foreground">{{ order.tax }}</dd>
+                        </div>
+                        <div class="flex justify-between pt-3 border-t border-border">
+                            <dt class="font-semibold text-foreground">Total</dt>
+                            <dd class="font-semibold text-foreground">{{ order.total }}</dd>
+                        </div>
+                    </dl>
+                </div>
+
+                {# Shipping Address #}
+                {% if let Some(address) = order.shipping_address %}
+                <div class="card rounded-2xl p-6 shadow-lg">
+                    <h2 class="font-semibold text-lg text-foreground mb-4">Shipping Address</h2>
+                    <address class="text-sm text-muted-foreground not-italic whitespace-pre-line">{{ address }}</address>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        {# Returns Section #}
+        {% if !order.returns.is_empty() || order.can_request_return %}
+        <div class="mt-8 animate-slide-up" style="opacity: 0; animation-delay: 450ms;">
+            <h2 class="font-semibold text-lg text-foreground mb-4">Returns</h2>
+
+            {% if !order.returns.is_empty() %}
+            <div class="space-y-4 mb-6">
+                {% for return_item in order.returns %}
+                <div class="card rounded-2xl p-4 shadow-lg">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                                <i class="ph ph-arrow-counter-clockwise text-lg text-primary"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold text-foreground">{{ return_item.name }}</h3>
+                            </div>
+                        </div>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-secondary/20 text-secondary-foreground">
+                            {{ return_item.status_label }}
+                        </span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% if order.can_request_return %}
+            <a href="/account/orders/{{ order.id }}/return" class="btn btn-outline">
+                <i class="ph ph-arrow-counter-clockwise mr-2"></i>
+                Request Return
+            </a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

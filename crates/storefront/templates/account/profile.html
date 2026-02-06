@@ -1,0 +1,176 @@
+{% extends "layouts/base.html" %}
+{% import "macros/analytics_data.html" as analytics_macro %}
+
+{% block body_data %}{{ analytics_macro::body_attrs(analytics=analytics, user_info=analytics_user_info) }}{% endblock %}
+
+{% block title %}Edit Profile | Naked Pineapple{% endblock %}
+
+{% block robots %}noindex, nofollow{% endblock %}
+
+{% block content %}
+<section class="relative py-16 md:py-24 overflow-hidden">
+    {# Decorative gradient blobs #}
+    <div class="absolute top-12 -left-20 w-72 h-72 bg-gradient-to-br from-honey/20 to-honey/5 rounded-full blur-3xl pointer-events-none" aria-hidden="true"></div>
+    <div class="absolute -bottom-16 -right-16 w-80 h-80 bg-gradient-to-tl from-primary/10 to-terracotta/5 rounded-full blur-3xl pointer-events-none" aria-hidden="true"></div>
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-br from-leaf/5 to-transparent rounded-full blur-3xl pointer-events-none" aria-hidden="true"></div>
+
+    <div class="page-width relative z-10 max-w-lg mx-auto">
+        {# Breadcrumb #}
+        <nav class="text-sm text-muted-foreground mb-8 animate-fade-in" style="opacity: 0; animation-delay: 50ms;" aria-label="Breadcrumb">
+            <ol class="flex items-center gap-2 list-none">
+                <li><a href="/" class="hover:text-primary transition-colors">Home</a></li>
+                <li aria-hidden="true"><i class="ph ph-caret-right text-xs"></i></li>
+                <li><a href="/account" class="hover:text-primary transition-colors">Account</a></li>
+                <li aria-hidden="true"><i class="ph ph-caret-right text-xs"></i></li>
+                <li class="text-foreground">Edit Profile</li>
+            </ol>
+        </nav>
+
+        {# Heading #}
+        <div class="mb-10 text-center">
+            <p class="text-xs uppercase tracking-[0.2em] text-primary dark:text-foreground font-medium mb-3 animate-fade-in" style="opacity: 0; animation-delay: 100ms;">
+                Your Details
+            </p>
+            <h1 class="font-display text-3xl md:text-4xl font-semibold text-foreground animate-slide-up" style="opacity: 0; animation-delay: 200ms;">
+                Edit Profile
+            </h1>
+            <p class="text-muted-foreground mt-3 animate-slide-up" style="opacity: 0; animation-delay: 280ms;">
+                Update your personal information and preferences.
+            </p>
+        </div>
+
+        {# Success Message #}
+        {% if let Some(msg) = success %}
+        {% if msg == "profile_updated" %}
+        <div class="flex items-start gap-3 bg-accent/10 border border-accent rounded-xl px-5 py-4 mb-6 animate-slide-up" style="opacity: 0; animation-delay: 250ms;" role="status">
+            <i class="ph ph-check-circle text-accent text-xl mt-0.5 shrink-0" aria-hidden="true"></i>
+            <p class="text-sm text-foreground">Your profile has been updated.</p>
+        </div>
+        {% endif %}
+        {% endif %}
+
+        {# Error Message #}
+        {% if let Some(err) = error %}
+        {% if err == "update_failed" %}
+        <div class="flex items-start gap-3 bg-destructive/10 border border-destructive rounded-xl px-5 py-4 mb-6 animate-shake" role="alert">
+            <i class="ph ph-warning-circle text-destructive text-xl mt-0.5 shrink-0" aria-hidden="true"></i>
+            <p class="text-sm text-destructive">Failed to update profile. Please try again.</p>
+        </div>
+        {% endif %}
+        {% endif %}
+
+        {# Profile Form #}
+        <div class="card rounded-2xl p-8 md:p-10 shadow-lg animate-slide-up" style="opacity: 0; animation-delay: 300ms;">
+            <form method="post" action="/account/profile" class="space-y-5">
+                {# First Name #}
+                <div>
+                    <label for="first_name" class="block text-sm font-medium text-foreground mb-2">
+                        First Name <span class="text-destructive">*</span>
+                    </label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <i class="ph ph-user text-muted-foreground" aria-hidden="true"></i>
+                        </span>
+                        <input
+                            type="text"
+                            id="first_name"
+                            name="first_name"
+                            value="{{ profile.first_name }}"
+                            required
+                            class="input w-full pl-11"
+                        />
+                    </div>
+                </div>
+
+                {# Last Name #}
+                <div>
+                    <label for="last_name" class="block text-sm font-medium text-foreground mb-2">
+                        Last Name <span class="text-destructive">*</span>
+                    </label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <i class="ph ph-user text-muted-foreground" aria-hidden="true"></i>
+                        </span>
+                        <input
+                            type="text"
+                            id="last_name"
+                            name="last_name"
+                            value="{{ profile.last_name }}"
+                            required
+                            class="input w-full pl-11"
+                        />
+                    </div>
+                </div>
+
+                {# Email (Read-only) #}
+                <div>
+                    <label for="email" class="block text-sm font-medium text-foreground mb-2">
+                        Email
+                    </label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <i class="ph ph-envelope text-muted-foreground" aria-hidden="true"></i>
+                        </span>
+                        <input
+                            type="email"
+                            id="email"
+                            value="{{ profile.email }}"
+                            disabled
+                            class="input w-full pl-11 opacity-60 cursor-not-allowed"
+                        />
+                    </div>
+                    <p class="text-xs text-muted-foreground mt-1">Email cannot be changed</p>
+                </div>
+
+                {# Phone #}
+                <div>
+                    <label for="phone" class="block text-sm font-medium text-foreground mb-2">
+                        Phone
+                    </label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <i class="ph ph-phone text-muted-foreground" aria-hidden="true"></i>
+                        </span>
+                        <input
+                            type="tel"
+                            id="phone"
+                            name="phone"
+                            value="{{ profile.phone }}"
+                            class="input w-full pl-11"
+                            placeholder="(123) 456-7890"
+                        />
+                    </div>
+                </div>
+
+                {# Marketing Opt-in #}
+                <div class="flex items-start gap-3">
+                    <input
+                        type="checkbox"
+                        id="accepts_marketing"
+                        name="accepts_marketing"
+                        value="on"
+                        {% if profile.accepts_marketing %}checked{% endif %}
+                        class="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                    />
+                    <label for="accepts_marketing" class="text-sm">
+                        Receive marketing emails
+                    </label>
+                </div>
+
+                {# Save Button #}
+                <button type="submit" class="btn btn-primary w-full justify-center">
+                    Save Changes
+                </button>
+            </form>
+        </div>
+
+        {# Back Link #}
+        <p class="text-center mt-8 text-muted-foreground animate-slide-up" style="opacity: 0; animation-delay: 500ms;">
+            <a href="/account" class="text-primary hover:text-primary/80 font-medium transition-colors">
+                <i class="ph ph-arrow-left mr-1"></i>
+                Back to Account
+            </a>
+        </p>
+    </div>
+</section>
+{% endblock %}

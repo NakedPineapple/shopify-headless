@@ -51,12 +51,22 @@
 //! POST /api/auth/webauthn/authenticate/finish - Finish passkey authentication
 //!
 //! # Account (requires auth)
-//! GET  /account                - Account overview
-//! GET  /account/orders         - Order history
-//! GET  /account/change-password   - Change password page
-//! POST /account/change-password   - Change password action
-//! GET  /account/addresses      - Address list
-//! GET  /account/passkeys       - Passkey management
+//! GET  /account                          - Account overview
+//! GET  /account/profile                  - Profile editing
+//! POST /account/profile                  - Update profile
+//! GET  /account/orders                   - Order history
+//! GET  /account/orders/:id               - Order detail
+//! GET  /account/orders/:id/return        - Return request form
+//! POST /account/orders/:id/return        - Submit return request
+//! GET  /account/change-password          - Change password page
+//! POST /account/change-password          - Change password action
+//! GET  /account/addresses                - Address list
+//! GET  /account/passkeys                 - Passkey management
+//! DELETE /account/passkeys/:id           - Delete passkey
+//! GET  /account/subscriptions            - Subscription list
+//! GET  /account/subscriptions/:id        - Subscription detail
+//! POST /account/subscriptions/:id/skip/:idx   - Skip billing cycle
+//! POST /account/subscriptions/:id/unskip/:idx - Unskip billing cycle
 //! ```
 
 pub mod account;
@@ -173,7 +183,16 @@ pub fn account_routes() -> Router<AppState> {
 
     Router::new()
         .route("/", get(account::index))
+        .route(
+            "/profile",
+            get(account::profile_page).post(account::update_profile),
+        )
         .route("/orders", get(account::orders))
+        .route("/orders/{id}", get(account::order_detail))
+        .route(
+            "/orders/{id}/return",
+            get(account::return_form).post(account::request_return),
+        )
         .route(
             "/change-password",
             get(account::change_password_page).post(account::change_password),
@@ -202,8 +221,16 @@ pub fn account_routes() -> Router<AppState> {
             "/subscriptions/{id}/activate",
             post(account::activate_subscription),
         )
-    // TODO: Add passkey management routes
-    // .route("/passkeys", get(account::passkeys))
+        .route(
+            "/subscriptions/{id}/skip/{cycle_index}",
+            post(account::skip_billing_cycle),
+        )
+        .route(
+            "/subscriptions/{id}/unskip/{cycle_index}",
+            post(account::unskip_billing_cycle),
+        )
+        .route("/passkeys", get(account::passkeys))
+        .route("/passkeys/{id}", delete(account::delete_passkey))
 }
 
 /// Create all routes for the storefront.

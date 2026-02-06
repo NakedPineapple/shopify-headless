@@ -350,6 +350,263 @@ impl SubscriptionContract {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Order Detail Types
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// A detailed order with line items and shipping info.
+#[derive(Debug, Clone, Deserialize)]
+pub struct OrderDetail {
+    /// The order ID.
+    pub id: String,
+    /// The order name (e.g., "#1001").
+    pub name: String,
+    /// The order number.
+    #[serde(rename = "orderNumber")]
+    pub number: i64,
+    /// When the order was processed.
+    #[serde(rename = "processedAt")]
+    pub processed_at: String,
+    /// The financial status.
+    #[serde(rename = "financialStatus")]
+    pub financial_status: Option<String>,
+    /// The fulfillment status.
+    #[serde(rename = "fulfillmentStatus")]
+    pub fulfillment_status: Option<String>,
+    /// The total price.
+    #[serde(rename = "totalPrice")]
+    pub total_price: Money,
+    /// The subtotal before shipping/taxes.
+    pub subtotal: Money,
+    /// The total shipping cost.
+    #[serde(rename = "totalShipping")]
+    pub total_shipping: Money,
+    /// The total tax.
+    #[serde(rename = "totalTax")]
+    pub total_tax: Money,
+    /// The order's line items.
+    #[serde(rename = "lineItems")]
+    pub line_items: OrderLineItemConnection,
+    /// The shipping address.
+    #[serde(rename = "shippingAddress")]
+    pub shipping_address: Option<Address>,
+    /// Returns on this order.
+    pub returns: ReturnConnection,
+}
+
+/// Connection wrapper for order line items.
+#[derive(Debug, Clone, Deserialize)]
+pub struct OrderLineItemConnection {
+    /// Line item edges.
+    pub edges: Vec<OrderLineItemEdge>,
+}
+
+/// Edge wrapper for order line items.
+#[derive(Debug, Clone, Deserialize)]
+pub struct OrderLineItemEdge {
+    /// The line item node.
+    pub node: OrderLineItem,
+}
+
+/// A line item in an order.
+#[derive(Debug, Clone, Deserialize)]
+pub struct OrderLineItem {
+    /// The line item ID.
+    pub id: String,
+    /// The product title.
+    pub title: String,
+    /// The quantity ordered.
+    pub quantity: i64,
+    /// The unit price.
+    #[serde(rename = "unitPrice")]
+    pub unit_price: Money,
+    /// The total price for this line.
+    #[serde(rename = "totalPrice")]
+    pub total_price: Money,
+    /// The product image.
+    pub image: Option<OrderLineItemImage>,
+    /// The variant title (e.g., "Large / Blue").
+    #[serde(rename = "variantTitle")]
+    pub variant_title: Option<String>,
+}
+
+/// Image on an order line item.
+#[derive(Debug, Clone, Deserialize)]
+pub struct OrderLineItemImage {
+    /// Image URL.
+    pub url: String,
+    /// Alt text for accessibility.
+    #[serde(rename = "altText")]
+    pub alt_text: Option<String>,
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Return Types
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Status of a return.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum ReturnStatus {
+    /// The return has been requested.
+    Requested,
+    /// The return is in progress.
+    Open,
+    /// The return has been completed.
+    Closed,
+    /// The return was canceled.
+    Canceled,
+    /// The return was declined.
+    Declined,
+}
+
+impl ReturnStatus {
+    /// Human-readable label for the status.
+    #[must_use]
+    pub const fn label(&self) -> &'static str {
+        match self {
+            Self::Requested => "Requested",
+            Self::Open => "In Progress",
+            Self::Closed => "Completed",
+            Self::Canceled => "Canceled",
+            Self::Declined => "Declined",
+        }
+    }
+}
+
+/// A return on an order.
+#[derive(Debug, Clone, Deserialize)]
+pub struct Return {
+    /// The return ID.
+    pub id: String,
+    /// The return name (e.g., "#1001-R1").
+    pub name: String,
+    /// The return status.
+    pub status: ReturnStatus,
+}
+
+/// Connection wrapper for returns.
+#[derive(Debug, Clone, Deserialize)]
+pub struct ReturnConnection {
+    /// Return edges.
+    pub edges: Vec<ReturnEdge>,
+}
+
+/// Edge wrapper for returns.
+#[derive(Debug, Clone, Deserialize)]
+pub struct ReturnEdge {
+    /// The return node.
+    pub node: Return,
+}
+
+/// A return reason definition from Shopify.
+#[derive(Debug, Clone, Deserialize)]
+pub struct ReturnReasonDefinition {
+    /// The reason ID.
+    pub id: String,
+    /// The localized display name.
+    pub name: String,
+}
+
+/// Connection wrapper for return reason definitions.
+#[derive(Debug, Clone, Deserialize)]
+pub struct ReturnReasonDefinitionConnection {
+    /// Reason edges.
+    pub edges: Vec<ReturnReasonDefinitionEdge>,
+}
+
+/// Edge wrapper for return reason definitions.
+#[derive(Debug, Clone, Deserialize)]
+pub struct ReturnReasonDefinitionEdge {
+    /// The reason node.
+    pub node: ReturnReasonDefinition,
+}
+
+/// A line item with return reason suggestions (for the return form).
+#[derive(Debug, Clone, Deserialize)]
+pub struct OrderLineItemWithReasons {
+    /// The line item ID.
+    pub id: String,
+    /// The product title.
+    pub title: String,
+    /// The quantity ordered.
+    pub quantity: i64,
+    /// The product image.
+    pub image: Option<OrderLineItemImage>,
+    /// The variant title.
+    #[serde(rename = "variantTitle")]
+    pub variant_title: Option<String>,
+    /// Suggested return reasons for this line item.
+    #[serde(rename = "suggestedReturnReasonDefinitions")]
+    pub suggested_reasons: ReturnReasonDefinitionConnection,
+}
+
+/// An order with line items and their suggested return reasons.
+#[derive(Debug, Clone, Deserialize)]
+pub struct OrderForReturn {
+    /// The order ID.
+    pub id: String,
+    /// The order name.
+    pub name: String,
+    /// The order's line items with return reason suggestions.
+    #[serde(rename = "lineItems")]
+    pub line_items: OrderLineItemWithReasonsConnection,
+}
+
+/// Connection wrapper for order line items with reasons.
+#[derive(Debug, Clone, Deserialize)]
+pub struct OrderLineItemWithReasonsConnection {
+    /// Line item edges.
+    pub edges: Vec<OrderLineItemWithReasonsEdge>,
+}
+
+/// Edge wrapper for order line items with reasons.
+#[derive(Debug, Clone, Deserialize)]
+pub struct OrderLineItemWithReasonsEdge {
+    /// The line item node.
+    pub node: OrderLineItemWithReasons,
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Store Credit Types
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// A store credit account.
+#[derive(Debug, Clone, Deserialize)]
+pub struct StoreCreditAccount {
+    /// The balance.
+    pub balance: Money,
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Billing Cycle Types
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// A billing cycle in a subscription contract.
+#[derive(Debug, Clone, Deserialize)]
+pub struct SubscriptionBillingCycle {
+    /// The expected billing date.
+    #[serde(rename = "billingAttemptExpectedDate")]
+    pub billing_attempt_expected_date: String,
+    /// The cycle index.
+    #[serde(rename = "cycleIndex")]
+    pub cycle_index: i64,
+    /// Whether this cycle was skipped.
+    pub skipped: bool,
+    /// The cycle status.
+    pub status: BillingCycleStatus,
+}
+
+/// Status of a billing cycle.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum BillingCycleStatus {
+    /// The cycle has been billed.
+    Billed,
+    /// The cycle has not been billed.
+    Unbilled,
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Input Types
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -403,6 +660,25 @@ pub struct CustomerUpdateInput {
     /// Whether the customer accepts marketing.
     #[serde(rename = "acceptsMarketing", skip_serializing_if = "Option::is_none")]
     pub accepts_marketing: Option<bool>,
+}
+
+/// Input for requesting a return on a line item.
+#[derive(Debug, Serialize)]
+pub struct ReturnRequestLineItemInput {
+    /// The line item ID.
+    #[serde(rename = "lineItemId")]
+    pub line_item_id: String,
+    /// The quantity to return.
+    pub quantity: i32,
+    /// The return reason definition ID.
+    #[serde(
+        rename = "returnReasonDefinitionId",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub reason_id: Option<String>,
+    /// Customer note (max 300 chars).
+    #[serde(rename = "customerNote", skip_serializing_if = "Option::is_none")]
+    pub note: Option<String>,
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
