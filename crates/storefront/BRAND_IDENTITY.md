@@ -8,7 +8,7 @@ A comprehensive guide to the Naked Pineapple brand aesthetic, design system, and
 
 **Brand Name:** Naked Pineapple
 **Founder:** Kristi Fry — Licensed master aesthetician with 20+ years experience
-**Contact:** info@nakedpineapple.co
+**Contact:** info@pineappleskinco.com
 
 **Mission:** Empower individuals to feel radiant, confident, and authentically themselves through pineapple-powered skincare. More than products—an experience of abundance, light, and love.
 

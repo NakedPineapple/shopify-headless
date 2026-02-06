@@ -1,0 +1,84 @@
+{% extends "layouts/base.html" %}
+{% import "macros/analytics_data.html" as analytics_macro %}
+
+{% block body_data %}{{ analytics_macro::body_attrs(analytics=analytics, user_info=analytics_user_info) }}{% endblock %}
+
+{% block title %}Contact Us - Naked Pineapple{% endblock %}
+
+{% block description %}Get in touch with the Naked Pineapple team. We'd love to hear from you — questions, feedback, or just to say hello.{% endblock %}
+
+{% block content %}
+{# Hero Section #}
+<section class="relative py-20 md:py-28 bg-gradient-to-br from-muted/50 via-background to-secondary/10 overflow-hidden">
+    <div class="absolute inset-0 opacity-[0.03] pointer-events-none"
+         style="background-image: url('data:image/svg+xml,<svg width=&quot;60&quot; height=&quot;60&quot; viewBox=&quot;0 0 60 60&quot; xmlns=&quot;http://www.w3.org/2000/svg&quot;><path d=&quot;M30 0L60 30L30 60L0 30Z&quot; fill=&quot;none&quot; stroke=&quot;%23d63a2f&quot; stroke-width=&quot;1&quot;/></svg>'); background-size: 60px 60px;"></div>
+
+    <div class="page-width relative">
+        <div class="max-w-2xl mx-auto text-center">
+            <span class="text-primary font-medium tracking-wider text-sm uppercase mb-4 block">Get in Touch</span>
+            <h1 class="font-display text-4xl md:text-5xl lg:text-6xl font-medium text-foreground mb-6 leading-[1.1]">
+                We'd Love to Hear From You
+            </h1>
+            <p class="text-lg text-muted-foreground max-w-lg mx-auto">
+                Have a question about our products, your order, or just want to say hello? We're here for you.
+            </p>
+        </div>
+    </div>
+</section>
+
+{# Contact Methods #}
+<section class="py-16 md:py-24 bg-background">
+    <div class="page-width">
+        <div class="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+            {# Email #}
+            <a href="mailto:contact@pineappleskinco.com" class="bg-card rounded-3xl p-8 border border-border hover:shadow-xl hover:border-primary/20 transition-all duration-300 text-center group">
+                <div class="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-6 mx-auto group-hover:bg-primary/20 transition-colors">
+                    <i class="ph ph-envelope-simple text-2xl text-primary"></i>
+                </div>
+                <h2 class="font-display text-xl text-foreground mb-2">Email Us</h2>
+                <p class="text-muted-foreground text-sm mb-4">We typically respond within 24 hours.</p>
+                <span class="text-primary font-medium inline-flex items-center gap-1">
+                    contact@pineappleskinco.com
+                    <i class="ph ph-arrow-right text-sm transition-transform group-hover:translate-x-1"></i>
+                </span>
+            </a>
+
+            {# FAQ #}
+            <a href="/faq" class="bg-card rounded-3xl p-8 border border-border hover:shadow-xl hover:border-secondary/20 transition-all duration-300 text-center group">
+                <div class="w-14 h-14 rounded-2xl bg-secondary/10 flex items-center justify-center mb-6 mx-auto group-hover:bg-secondary/20 transition-colors">
+                    <i class="ph ph-question text-2xl text-secondary"></i>
+                </div>
+                <h2 class="font-display text-xl text-foreground mb-2">FAQ</h2>
+                <p class="text-muted-foreground text-sm mb-4">Find answers to common questions.</p>
+                <span class="text-secondary font-medium inline-flex items-center gap-1">
+                    Browse FAQ
+                    <i class="ph ph-arrow-right text-sm transition-transform group-hover:translate-x-1"></i>
+                </span>
+            </a>
+
+            {# Social #}
+            <div class="bg-card rounded-3xl p-8 border border-border text-center">
+                <div class="w-14 h-14 rounded-2xl bg-terracotta/10 flex items-center justify-center mb-6 mx-auto">
+                    <i class="ph ph-chat-circle-dots text-2xl text-terracotta"></i>
+                </div>
+                <h2 class="font-display text-xl text-foreground mb-2">Follow Along</h2>
+                <p class="text-muted-foreground text-sm mb-4">Join the Naked Pineapple community.</p>
+                <div class="flex justify-center gap-3">
+                    <a href="https://instagram.com/_nakedpineapple_" class="w-10 h-10 flex items-center justify-center rounded-full bg-muted text-foreground hover:bg-primary hover:text-primary-foreground transition-all" aria-label="Instagram" target="_blank" rel="noopener">
+                        <i class="ph ph-instagram-logo text-xl"></i>
+                    </a>
+                    <a href="https://www.tiktok.com/@_nakedpineapple_" class="w-10 h-10 flex items-center justify-center rounded-full bg-muted text-foreground hover:bg-primary hover:text-primary-foreground transition-all" aria-label="TikTok" target="_blank" rel="noopener">
+                        <i class="ph ph-tiktok-logo text-xl"></i>
+                    </a>
+                    <a href="https://www.facebook.com/people/Naked-Pineapple/61567739640422/" class="w-10 h-10 flex items-center justify-center rounded-full bg-muted text-foreground hover:bg-primary hover:text-primary-foreground transition-all" aria-label="Facebook" target="_blank" rel="noopener">
+                        <i class="ph ph-facebook-logo text-xl"></i>
+                    </a>
+                    <a href="https://youtube.com/playlist?list=PLUo-lssPL36urXtA211K4B2YqV2EO994C" class="w-10 h-10 flex items-center justify-center rounded-full bg-muted text-foreground hover:bg-primary hover:text-primary-foreground transition-all" aria-label="YouTube" target="_blank" rel="noopener">
+                        <i class="ph ph-youtube-logo text-xl"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

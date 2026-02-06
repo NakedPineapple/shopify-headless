@@ -1,0 +1,192 @@
+{% extends "layouts/base.html" %}
+{% import "macros/analytics_data.html" as analytics_macro %}
+
+{% block body_data %}{{ analytics_macro::body_attrs(analytics=analytics, user_info=analytics_user_info) }}{% endblock %}
+
+{% block title %}Data Request - Naked Pineapple{% endblock %}
+
+{% block description %}Exercise your privacy rights. Request access to, correction of, or deletion of your personal data held by Pineapple Skin Co.{% endblock %}
+
+{% block content %}
+{# Hero Section #}
+<section class="relative py-20 md:py-28 bg-gradient-to-br from-muted/50 via-background to-secondary/10 overflow-hidden">
+    <div class="absolute inset-0 opacity-[0.03] pointer-events-none"
+         style="background-image: url('data:image/svg+xml,<svg width=&quot;60&quot; height=&quot;60&quot; viewBox=&quot;0 0 60 60&quot; xmlns=&quot;http://www.w3.org/2000/svg&quot;><path d=&quot;M30 0L60 30L30 60L0 30Z&quot; fill=&quot;none&quot; stroke=&quot;%23d63a2f&quot; stroke-width=&quot;1&quot;/></svg>'); background-size: 60px 60px;"></div>
+
+    <div class="page-width relative">
+        <div class="max-w-2xl mx-auto text-center">
+            <span class="text-primary font-medium tracking-wider text-sm uppercase mb-4 block">Your Privacy Rights</span>
+            <h1 class="font-display text-4xl md:text-5xl lg:text-6xl font-medium text-foreground mb-6 leading-[1.1]">
+                Data Request
+            </h1>
+            <p class="text-lg text-muted-foreground max-w-lg mx-auto">
+                You have the right to access, correct, or delete the personal information we hold about you. Submit a request below and we'll respond within 30 days.
+            </p>
+        </div>
+    </div>
+</section>
+
+{# Request Types #}
+<section class="py-16 md:py-24 bg-background">
+    <div class="page-width">
+        <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-5xl mx-auto mb-16">
+            <div class="bg-card rounded-3xl p-6 border border-border text-center">
+                <div class="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center mb-4 mx-auto">
+                    <i class="ph ph-eye text-xl text-primary"></i>
+                </div>
+                <h2 class="font-display text-lg text-foreground mb-2">Access</h2>
+                <p class="text-muted-foreground text-sm">Request a copy of the personal data we hold about you.</p>
+            </div>
+
+            <div class="bg-card rounded-3xl p-6 border border-border text-center">
+                <div class="w-12 h-12 rounded-2xl bg-secondary/10 flex items-center justify-center mb-4 mx-auto">
+                    <i class="ph ph-pencil-simple text-xl text-secondary"></i>
+                </div>
+                <h2 class="font-display text-lg text-foreground mb-2">Correct</h2>
+                <p class="text-muted-foreground text-sm">Ask us to fix inaccurate or incomplete personal data.</p>
+            </div>
+
+            <div class="bg-card rounded-3xl p-6 border border-border text-center">
+                <div class="w-12 h-12 rounded-2xl bg-terracotta/10 flex items-center justify-center mb-4 mx-auto">
+                    <i class="ph ph-trash text-xl text-terracotta"></i>
+                </div>
+                <h2 class="font-display text-lg text-foreground mb-2">Delete</h2>
+                <p class="text-muted-foreground text-sm">Request deletion of your personal data from our systems.</p>
+            </div>
+
+            <div class="bg-card rounded-3xl p-6 border border-border text-center">
+                <div class="w-12 h-12 rounded-2xl bg-honey/20 flex items-center justify-center mb-4 mx-auto">
+                    <i class="ph ph-prohibit text-xl text-honey"></i>
+                </div>
+                <h2 class="font-display text-lg text-foreground mb-2">Opt Out</h2>
+                <p class="text-muted-foreground text-sm">Opt out of targeted advertising or data sharing.</p>
+            </div>
+        </div>
+
+        {# Request Form #}
+        <div class="max-w-2xl mx-auto">
+            <div class="bg-card rounded-3xl p-8 md:p-10 border border-border shadow-sm">
+                <h2 class="font-display text-2xl md:text-3xl font-medium text-foreground mb-2">Submit a Request</h2>
+                <p class="text-muted-foreground mb-8">
+                    Fill out the form below and we'll get back to you within 30 days. We may need to verify your identity before processing your request.
+                </p>
+
+                <form id="data-request-form" class="space-y-6">
+                    {# Name #}
+                    <div>
+                        <label for="dr-name" class="block text-sm font-medium text-foreground mb-2">Full name</label>
+                        <input type="text"
+                               id="dr-name"
+                               name="name"
+                               class="input"
+                               placeholder="Your full name"
+                               required
+                               autocomplete="name">
+                    </div>
+
+                    {# Email #}
+                    <div>
+                        <label for="dr-email" class="block text-sm font-medium text-foreground mb-2">Email address</label>
+                        <input type="email"
+                               id="dr-email"
+                               name="email"
+                               class="input"
+                               placeholder="The email associated with your account"
+                               required
+                               autocomplete="email">
+                        <p class="text-xs text-muted-foreground mt-1">Use the email address associated with your account so we can locate your data.</p>
+                    </div>
+
+                    {# Request Type #}
+                    <div>
+                        <label for="dr-type" class="block text-sm font-medium text-foreground mb-2">Request type</label>
+                        <select id="dr-type" name="request_type" class="input" required>
+                            <option value="" disabled selected>Select a request type</option>
+                            <option value="access">Access my data</option>
+                            <option value="copy">Get a copy of my data</option>
+                            <option value="correct">Correct my data</option>
+                            <option value="delete">Delete my data</option>
+                            <option value="opt-out-advertising">Opt out of targeted advertising</option>
+                            <option value="opt-out-sharing">Opt out of data sharing</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+
+                    {# State of Residence #}
+                    <div>
+                        <label for="dr-state" class="block text-sm font-medium text-foreground mb-2">State of residence <span class="text-muted-foreground font-normal">(optional)</span></label>
+                        <input type="text"
+                               id="dr-state"
+                               name="state"
+                               class="input"
+                               placeholder="e.g. California"
+                               autocomplete="address-level1">
+                        <p class="text-xs text-muted-foreground mt-1">Helps us determine which privacy laws apply to your request.</p>
+                    </div>
+
+                    {# Details #}
+                    <div>
+                        <label for="dr-details" class="block text-sm font-medium text-foreground mb-2">Additional details <span class="text-muted-foreground font-normal">(optional)</span></label>
+                        <textarea id="dr-details"
+                                  name="details"
+                                  class="input min-h-[120px]"
+                                  rows="4"
+                                  placeholder="Any additional information that may help us process your request"></textarea>
+                    </div>
+
+                    {# Submit #}
+                    <button type="submit"
+                            class="w-full btn btn-primary justify-center group">
+                        Submit Request
+                        <i class="ph ph-arrow-right text-lg transition-transform group-hover:translate-x-1"></i>
+                    </button>
+                </form>
+
+                <p class="text-xs text-muted-foreground mt-6 text-center">
+                    You can also email us directly at
+                    <a href="mailto:datarequest@pineappleskinco.com" class="underline hover:text-primary transition-colors">datarequest@pineappleskinco.com</a>.
+                    For more information, see our <a href="/privacy" class="underline hover:text-primary transition-colors">Privacy Policy</a>.
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<script nonce="{{ nonce }}">
+(function() {
+    var form = document.getElementById('data-request-form');
+    if (!form) return;
+
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        var name = form.querySelector('[name="name"]').value.trim();
+        var email = form.querySelector('[name="email"]').value.trim();
+        var type = form.querySelector('[name="request_type"]').value;
+        var state = form.querySelector('[name="state"]').value.trim();
+        var details = form.querySelector('[name="details"]').value.trim();
+
+        var typeLabels = {
+            'access': 'Access my data',
+            'copy': 'Get a copy of my data',
+            'correct': 'Correct my data',
+            'delete': 'Delete my data',
+            'opt-out-advertising': 'Opt out of targeted advertising',
+            'opt-out-sharing': 'Opt out of data sharing',
+            'other': 'Other'
+        };
+
+        var subject = 'Data Request: ' + (typeLabels[type] || type);
+        var body = 'Name: ' + name + '\n'
+                 + 'Email: ' + email + '\n'
+                 + 'Request Type: ' + (typeLabels[type] || type) + '\n'
+                 + (state ? 'State of Residence: ' + state + '\n' : '')
+                 + (details ? '\nAdditional Details:\n' + details + '\n' : '');
+
+        window.location.href = 'mailto:datarequest@pineappleskinco.com'
+            + '?subject=' + encodeURIComponent(subject)
+            + '&body=' + encodeURIComponent(body);
+    });
+})();
+</script>
+{% endblock %}

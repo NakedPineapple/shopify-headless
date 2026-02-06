@@ -67,7 +67,7 @@ Accessibility is an ongoing effort. We regularly:
 
 If you experience any difficulty accessing any part of our website, or if you have suggestions for how we can improve accessibility, please contact us:
 
-**Email:** accessibility@nakedpineapple.com
+**Email:** accessibility@pineappleskinco.com
 
 **Phone:** Contact us during business hours
 

@@ -13,7 +13,7 @@ Simply browse our products, add items to your cart, and proceed to checkout. You
 We accept all major credit cards (Visa, Mastercard, American Express, Discover), as well as Apple Pay, Google Pay, and Shop Pay for a seamless checkout experience.
 
 ### Can I modify or cancel my order?
-We process orders quickly to get your products to you as soon as possible. If you need to modify or cancel your order, please contact us immediately at hello@nakedpineapple.com. We'll do our best to accommodate your request, but we cannot guarantee changes once an order has been placed.
+We process orders quickly to get your products to you as soon as possible. If you need to modify or cancel your order, please contact us immediately at support@pineappleskinco.com. We'll do our best to accommodate your request, but we cannot guarantee changes once an order has been placed.
 
 ### Is my payment information secure?
 Absolutely. We use industry-standard SSL encryption to protect your personal and payment information. We never store your full credit card details on our servers.
@@ -47,7 +47,7 @@ Once your order ships, you'll receive an email with tracking information. You ca
 We want you to love your Naked Pineapple products! If you're not completely satisfied, you can return unused, unopened products within 30 days of delivery for a full refund.
 
 ### How do I start a return?
-Contact us at hello@nakedpineapple.com with your order number and reason for return. We'll provide you with return instructions and a prepaid shipping label.
+Contact us at support@pineappleskinco.com with your order number and reason for return. We'll provide you with return instructions and a prepaid shipping label.
 
 ### When will I receive my refund?
 Refunds are processed within 5-7 business days of receiving your return. The refund will be issued to your original payment method.
@@ -108,7 +108,7 @@ Log into your account and navigate to your account settings to update your email
 
 We're here to help! Contact us at:
 
-**Email:** hello@nakedpineapple.com
+**Email:** support@pineappleskinco.com
 
 **Hours:** Monday - Friday, 9am - 5pm EST
 
