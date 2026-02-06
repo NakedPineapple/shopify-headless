@@ -10,113 +10,154 @@
 {% block description %}Sign in to your Naked Pineapple account{% endblock %}
 
 {% block content %}
-<div class="container mx-auto px-4 py-12 max-w-md">
-    <h1 class="text-3xl font-bold text-center mb-8">Login</h1>
+<section class="relative py-16 md:py-24 overflow-hidden">
+    {# Decorative gradient blobs #}
+    <div class="absolute top-12 -left-20 w-72 h-72 bg-gradient-to-br from-honey/20 to-honey/5 rounded-full blur-3xl pointer-events-none" aria-hidden="true"></div>
+    <div class="absolute -bottom-16 -right-16 w-80 h-80 bg-gradient-to-tl from-primary/10 to-terracotta/5 rounded-full blur-3xl pointer-events-none" aria-hidden="true"></div>
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-br from-leaf/5 to-transparent rounded-full blur-3xl pointer-events-none" aria-hidden="true"></div>
 
-    {% if success.is_some() %}
-    <div class="bg-accent/10 border border-accent text-accent px-4 py-3 rounded mb-6">
-        {% match success.as_deref() %}
-            {% when Some with ("activated") %}
-                Your account has been activated! You can now log in.
-            {% when Some with ("password_reset") %}
-                Your password has been reset. Please log in with your new password.
-            {% when _ %}
-                Success!
-        {% endmatch %}
-    </div>
-    {% endif %}
+    <div class="page-width relative z-10">
+        <div class="max-w-md mx-auto">
+            {# Header #}
+            <div class="text-center mb-10">
+                <p class="text-xs uppercase tracking-[0.2em] text-primary dark:text-foreground font-medium mb-3 animate-fade-in" style="opacity: 0; animation-delay: 100ms;">
+                    Welcome Back
+                </p>
+                <h1 class="font-display text-3xl md:text-4xl font-medium text-foreground animate-slide-up" style="opacity: 0; animation-delay: 200ms;">
+                    Sign In to Your Account
+                </h1>
+                <p class="text-muted-foreground mt-3 animate-slide-up" style="opacity: 0; animation-delay: 280ms;">
+                    Access your orders, subscriptions, and saved addresses.
+                </p>
+            </div>
 
-    {% if error.is_some() %}
-    <div id="form-error" class="bg-destructive/10 border border-destructive text-destructive px-4 py-3 rounded mb-6" role="alert">
-        {% match error.as_deref() %}
-            {% when Some with ("credentials") %}
-                Invalid email or password. If you haven't activated your account yet, please check your email.
-            {% when Some with ("session") %}
-                Session error. Please try again.
-            {% when Some with ("customer_fetch") %}
-                Unable to retrieve your account details. Please try again.
-            {% when Some with ("invalid_activation_link") %}
-                Invalid or expired activation link.
-            {% when _ %}
-                An error occurred. Please try again.
-        {% endmatch %}
-    </div>
-    {% endif %}
+            {# Success messages #}
+            {% if success.is_some() %}
+            <div class="flex items-start gap-3 bg-accent/10 border border-accent rounded-xl px-5 py-4 mb-6 animate-slide-up" style="opacity: 0; animation-delay: 250ms;" role="status">
+                <i class="ph ph-check-circle text-accent text-xl mt-0.5 shrink-0" aria-hidden="true"></i>
+                <p class="text-sm text-foreground">
+                    {% match success.as_deref() %}
+                        {% when Some with ("activated") %}
+                            Your account has been activated! You can now log in.
+                        {% when Some with ("password_reset") %}
+                            Your password has been reset. Please log in with your new password.
+                        {% when _ %}
+                            Success!
+                    {% endmatch %}
+                </p>
+            </div>
+            {% endif %}
 
-    <!-- Password Login Form -->
-    <form method="POST" action="/auth/login" class="space-y-4 mb-8">
-        {% if let Some(n) = next %}
-        <input type="hidden" name="next" value="{{ n }}">
-        {% endif %}
-        <div>
-            <label for="email" class="block text-sm font-medium text-foreground mb-1">Email</label>
-            <input
-                type="email"
-                name="email"
-                id="email"
-                required
-                autocomplete="email"
-                {% if error.is_some() %}aria-describedby="form-error" aria-invalid="true"{% endif %}
-                class="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-coral-500 focus:border-transparent"
-                placeholder="you@example.com"
-            >
+            {# Error messages #}
+            {% if error.is_some() %}
+            <div id="form-error" class="flex items-start gap-3 bg-destructive/10 border border-destructive rounded-xl px-5 py-4 mb-6 animate-shake" role="alert">
+                <i class="ph ph-warning-circle text-destructive text-xl mt-0.5 shrink-0" aria-hidden="true"></i>
+                <p class="text-sm text-destructive">
+                    {% match error.as_deref() %}
+                        {% when Some with ("credentials") %}
+                            Invalid email or password. If you haven't activated your account yet, please check your email.
+                        {% when Some with ("session") %}
+                            Session error. Please try again.
+                        {% when Some with ("customer_fetch") %}
+                            Unable to retrieve your account details. Please try again.
+                        {% when Some with ("invalid_activation_link") %}
+                            Invalid or expired activation link.
+                        {% when _ %}
+                            An error occurred. Please try again.
+                    {% endmatch %}
+                </p>
+            </div>
+            {% endif %}
+
+            {# Card #}
+            <div class="card rounded-2xl p-8 md:p-10 shadow-lg animate-slide-up" style="opacity: 0; animation-delay: 300ms;">
+                {# Password Login Form #}
+                <form method="POST" action="/auth/login" class="space-y-5">
+                    {% if let Some(n) = next %}
+                    <input type="hidden" name="next" value="{{ n }}">
+                    {% endif %}
+
+                    <div>
+                        <label for="email" class="block text-sm font-medium text-foreground mb-2">Email</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                <i class="ph ph-envelope text-muted-foreground" aria-hidden="true"></i>
+                            </span>
+                            <input
+                                type="email"
+                                name="email"
+                                id="email"
+                                required
+                                autocomplete="email"
+                                {% if error.is_some() %}aria-describedby="form-error" aria-invalid="true"{% endif %}
+                                class="input pl-11"
+                                placeholder="you@example.com"
+                            >
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <label for="password" class="block text-sm font-medium text-foreground">Password</label>
+                            <a href="/auth/forgot-password" class="text-xs text-primary hover:text-primary/80 transition-colors">
+                                Forgot password?
+                            </a>
+                        </div>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                <i class="ph ph-lock text-muted-foreground" aria-hidden="true"></i>
+                            </span>
+                            <input
+                                type="password"
+                                name="password"
+                                id="password"
+                                required
+                                autocomplete="current-password"
+                                class="input pl-11"
+                                placeholder="Your password"
+                            >
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-full">
+                        <i class="ph ph-sign-in" aria-hidden="true"></i>
+                        Sign In
+                    </button>
+                </form>
+
+                {# Divider #}
+                <div class="relative my-8">
+                    <div class="absolute inset-0 flex items-center" aria-hidden="true">
+                        <div class="w-full border-t border-border"></div>
+                    </div>
+                    <div class="relative flex justify-center text-sm">
+                        <span class="px-4 bg-card text-muted-foreground">Or continue with</span>
+                    </div>
+                </div>
+
+                {# Passkey Login #}
+                <div id="passkey-form">
+                    <button
+                        type="button"
+                        data-action="passkey-login"
+                        id="passkey-button"
+                        class="btn btn-secondary w-full"
+                    >
+                        <i class="ph ph-fingerprint" aria-hidden="true"></i>
+                        Sign In with Passkey
+                    </button>
+                    <p id="passkey-error" class="text-destructive text-sm mt-3 hidden" aria-live="polite"></p>
+                </div>
+            </div>
+
+            {# Footer link #}
+            <p class="text-center mt-8 text-muted-foreground animate-slide-up" style="opacity: 0; animation-delay: 500ms;">
+                Don't have an account?
+                <a href="/auth/register" class="text-primary hover:text-primary/80 font-medium transition-colors">Create one</a>
+            </p>
         </div>
-        <div>
-            <label for="password" class="block text-sm font-medium text-foreground mb-1">Password</label>
-            <input
-                type="password"
-                name="password"
-                id="password"
-                required
-                autocomplete="current-password"
-                class="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-coral-500 focus:border-transparent"
-                placeholder="Your password"
-            >
-        </div>
-        <button
-            type="submit"
-            class="w-full bg-coral-600 text-white py-2 px-4 rounded-md hover:bg-coral-700 transition-colors font-medium"
-        >
-            Login with Password
-        </button>
-    </form>
-
-    <div class="text-center mb-6">
-        <a href="/auth/forgot-password" class="text-coral-600 hover:text-coral-700 text-sm">
-            Forgot your password?
-        </a>
     </div>
-
-    <div class="relative my-8">
-        <div class="absolute inset-0 flex items-center">
-            <div class="w-full border-t border-border"></div>
-        </div>
-        <div class="relative flex justify-center text-sm">
-            <span class="px-2 bg-card text-muted-foreground">Or continue with</span>
-        </div>
-    </div>
-
-    <!-- Passkey Login -->
-    <div id="passkey-form" class="space-y-4">
-        <button
-            type="button"
-            data-action="passkey-login"
-            id="passkey-button"
-            class="w-full bg-foreground text-background py-2 px-4 rounded-md hover:bg-foreground/90 transition-colors font-medium flex items-center justify-center gap-2"
-        >
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0 1.104-.896 2-2 2s-2-.896-2-2 .896-2 2-2 2 .896 2 2zm0 0c0 1.104.896 2 2 2s2-.896 2-2-.896-2-2-2-2 .896-2 2zm-6 9v-1a4 4 0 014-4h4a4 4 0 014 4v1"></path>
-            </svg>
-            Login with Passkey
-        </button>
-        <p id="passkey-error" class="text-destructive text-sm hidden" aria-live="polite"></p>
-    </div>
-
-    <p class="text-center mt-8 text-muted-foreground">
-        Don't have an account?
-        <a href="/auth/register" class="text-coral-600 hover:text-coral-700 font-medium">Register</a>
-    </p>
-</div>
+</section>
 {% endblock %}
 
 {% block scripts %}
@@ -143,10 +184,8 @@ window.handlePasskeyLogin = async function() {
     } finally {
         button.disabled = false;
         button.innerHTML = `
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0 1.104-.896 2-2 2s-2-.896-2-2 .896-2 2-2 2 .896 2 2zm0 0c0 1.104.896 2 2 2s2-.896 2-2-.896-2-2-2-2 .896-2 2zm-6 9v-1a4 4 0 014-4h4a4 4 0 014 4v1"></path>
-            </svg>
-            Login with Passkey
+            <i class="ph ph-fingerprint" aria-hidden="true"></i>
+            Sign In with Passkey
         `;
     }
 }
