@@ -1464,67 +1464,29 @@ impl StorefrontClient {
         access_token: &str,
     ) -> Result<StorefrontCustomer, ShopifyError> {
         debug!("Fetching customer by access token");
-        let start = std::time::Instant::now();
 
-        // For customer-scoped queries, we need to include the access token in the request
-        // This requires a modified execute method that accepts an access token header
-        let request_body = GetCustomerByToken::build_query(get_customer_by_token::Variables {});
+        let variables = get_customer_by_token::Variables {
+            customer_access_token: access_token.to_string(),
+        };
 
-        let response = self
-            .inner
-            .client
-            .post(&self.inner.endpoint)
-            .header("Shopify-Storefront-Private-Token", &self.inner.access_token)
-            .header("X-Shopify-Customer-Access-Token", access_token)
-            .header("Content-Type", "application/json")
-            .json(&request_body)
-            .send()
-            .await?;
+        let data = self.execute::<GetCustomerByToken>(variables).await?;
 
-        let status = response.status();
-        let response_text = response.text().await?;
-
-        if !status.is_success() {
-            warn!(
-                status = %status,
-                duration_ms = %start.elapsed().as_millis(),
-                "Failed to fetch customer by token - non-success status"
-            );
-            return Err(ShopifyError::GraphQL(vec![super::GraphQLError {
-                message: format!("HTTP {status}"),
+        let customer = data.customer.ok_or_else(|| {
+            warn!("Customer not found or token invalid");
+            ShopifyError::GraphQL(vec![super::GraphQLError {
+                message: "Customer not found or token invalid".to_string(),
                 locations: vec![],
                 path: vec![],
-            }]));
-        }
+            }])
+        })?;
 
-        let response: graphql_client::Response<get_customer_by_token::ResponseData> =
-            serde_json::from_str(&response_text)?;
-
-        if let Some(data) = response.data
-            && let Some(customer) = data.customer
-        {
-            debug!(
-                customer_id = %customer.id,
-                duration_ms = %start.elapsed().as_millis(),
-                "Successfully fetched customer by token"
-            );
-            return Ok(StorefrontCustomer {
-                id: customer.id,
-                email: customer.email,
-                first_name: customer.first_name,
-                last_name: customer.last_name,
-            });
-        }
-
-        warn!(
-            duration_ms = %start.elapsed().as_millis(),
-            "Customer not found or token invalid"
-        );
-        Err(ShopifyError::GraphQL(vec![super::GraphQLError {
-            message: "Customer not found or token invalid".to_string(),
-            locations: vec![],
-            path: vec![],
-        }]))
+        debug!(customer_id = %customer.id, "Successfully fetched customer by token");
+        Ok(StorefrontCustomer {
+            id: customer.id,
+            email: customer.email,
+            first_name: customer.first_name,
+            last_name: customer.last_name,
+        })
     }
 
     /// Update a customer's password.

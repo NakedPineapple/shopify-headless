@@ -135,8 +135,8 @@ mutation CustomerUpdate($customerAccessToken: String!, $customer: CustomerUpdate
 }
 
 # Get customer by access token
-query GetCustomerByToken {
-  customer {
+query GetCustomerByToken($customerAccessToken: String!) {
+  customer(customerAccessToken: $customerAccessToken) {
     id
     email
     firstName
