@@ -57,7 +57,7 @@ const QUALITY = {
 };
 
 // Raster image extensions to process (resize + convert to multiple formats)
-const RASTER_EXTENSIONS = new Set([".jpg", ".jpeg", ".webp"]);
+const RASTER_EXTENSIONS = new Set([".jpg", ".jpeg", ".webp", ".avif"]);
 
 // PNG extension - check if it's a favicon (copy as-is) or regular image (process)
 const PNG_EXTENSION = ".png";

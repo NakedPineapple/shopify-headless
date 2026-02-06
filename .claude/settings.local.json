@@ -27,6 +27,7 @@
       "WebFetch(domain:community.shopify.com)",
       "WebFetch(domain:community.shopify.dev)",
       "WebFetch(domain:developer.shiphero.com)",
+      "WebFetch(domain:developers.cloudflare.com)",
       "WebFetch(domain:developers.klaviyo.com)",
       "WebFetch(domain:developers.pinterest.com)",
       "WebFetch(domain:docs.cocogitto.io)",
