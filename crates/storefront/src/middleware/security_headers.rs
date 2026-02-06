@@ -1,7 +1,8 @@
 //! Security headers middleware for XSS, clickjacking, and isolation protection.
 //!
 //! Adds restrictive security headers to all responses. CSP is dynamically built
-//! with a per-request nonce for inline scripts and allowlisted analytics domains.
+//! with a per-request nonce for inline scripts and allowlisted domains.
+//! When the browser sends `Sec-GPC: 1`, analytics domains are excluded from CSP.
 
 use axum::{
     extract::Request,
@@ -18,11 +19,37 @@ use axum::{
 use super::csp::CspNonce;
 
 // =============================================================================
-// External domains for analytics and tracking
+// Essential external domains (always allowed)
 // =============================================================================
 
-/// External script sources for analytics platforms and Shopify.
-const SCRIPT_SRC_EXTERNAL: &[&str] = &[
+/// Script sources needed regardless of GPC (Shopify Shop Pay).
+const SCRIPT_SRC_ESSENTIAL: &[&str] = &["https://cdn.shopify.com"];
+
+/// Image sources needed regardless of GPC (CDN, Shopify).
+const IMG_SRC_ESSENTIAL: &[&str] = &[
+    "https://images.nakedpineapple.co",
+    "https://cdn.shopify.com",
+    "data:",
+];
+
+/// Connect sources needed regardless of GPC (Shopify, Sentry).
+const CONNECT_SRC_ESSENTIAL: &[&str] = &[
+    "https://shop.app",
+    "https://*.shopify.com",
+    "https://*.ingest.sentry.io",
+    "https://*.ingest.us.sentry.io",
+    "https://*.ingest.eu.sentry.io",
+];
+
+/// Frame sources needed regardless of GPC (Shopify Shop Pay).
+const FRAME_SRC_ESSENTIAL: &[&str] = &["https://cdn.shopify.com", "https://shop.app"];
+
+// =============================================================================
+// Analytics-only external domains (suppressed when GPC is active)
+// =============================================================================
+
+/// Script sources for analytics platforms.
+const SCRIPT_SRC_ANALYTICS: &[&str] = &[
     "https://www.googletagmanager.com",
     "https://www.google-analytics.com",
     "https://connect.facebook.net",
@@ -34,14 +61,10 @@ const SCRIPT_SRC_EXTERNAL: &[&str] = &[
     "https://cdn.mxpnl.com",
     "https://script.crazyegg.com",
     "https://static.cloudflareinsights.com",
-    // Shop Pay web components
-    "https://cdn.shopify.com",
 ];
 
-/// External image sources for CDN and tracking pixels.
-const IMG_SRC_EXTERNAL: &[&str] = &[
-    "https://images.nakedpineapple.co",
-    "https://cdn.shopify.com",
+/// Image sources for tracking pixels.
+const IMG_SRC_ANALYTICS: &[&str] = &[
     "https://www.facebook.com",
     "https://www.google-analytics.com",
     "https://googleads.g.doubleclick.net",
@@ -52,11 +75,10 @@ const IMG_SRC_EXTERNAL: &[&str] = &[
     "https://analytics.tiktok.com",
     "https://bat.bing.com",
     "https://script.crazyegg.com",
-    "data:",
 ];
 
-/// External connect sources for analytics beacons and Shopify.
-const CONNECT_SRC_EXTERNAL: &[&str] = &[
+/// Connect sources for analytics beacons.
+const CONNECT_SRC_ANALYTICS: &[&str] = &[
     "https://www.google-analytics.com",
     "https://analytics.google.com",
     "https://region1.google-analytics.com",
@@ -70,25 +92,11 @@ const CONNECT_SRC_EXTERNAL: &[&str] = &[
     "https://analytics.twitter.com",
     "https://script.crazyegg.com",
     "https://cloudflareinsights.com",
-    // Shop Pay APIs
-    "https://shop.app",
-    "https://*.shopify.com",
-    // Mixpanel tracking API
     "https://api-js.mixpanel.com",
-    // Sentry error reporting (includes regional subdomains like us, eu)
-    "https://*.ingest.sentry.io",
-    "https://*.ingest.us.sentry.io",
-    "https://*.ingest.eu.sentry.io",
 ];
 
-/// External frame sources for embedded widgets.
-const FRAME_SRC_EXTERNAL: &[&str] = &[
-    // Shop Pay payment terms iframe
-    "https://cdn.shopify.com",
-    "https://shop.app",
-    // Pinterest tracking iframe
-    "https://ct.pinterest.com",
-];
+/// Frame sources for analytics widgets.
+const FRAME_SRC_ANALYTICS: &[&str] = &["https://ct.pinterest.com"];
 
 // =============================================================================
 // Middleware
@@ -100,13 +108,14 @@ const FRAME_SRC_EXTERNAL: &[&str] = &[
 /// - `X-Frame-Options: DENY` - Prevent clickjacking
 /// - `X-Content-Type-Options: nosniff` - Prevent MIME sniffing
 /// - `Referrer-Policy: no-referrer` - Zero referrer leakage
-/// - `Content-Security-Policy` - Dynamic CSP with nonce and analytics domains
+/// - `Content-Security-Policy` - Dynamic CSP with nonce and domain allowlist
 /// - `Permissions-Policy` - Deny all sensitive features
 /// - `Cache-Control: no-store, max-age=0` - Prevent caching sensitive data
 /// - `Cross-Origin-Opener-Policy: same-origin` - Process isolation
 /// - `Cross-Origin-Resource-Policy: same-origin` - Resource isolation
 /// - `Cross-Origin-Embedder-Policy: credentialless` - Allow CORS resources
 /// - `X-DNS-Prefetch-Control: off` - Prevent DNS prefetch leakage
+/// - `Sec-GPC: 1` - Echo GPC acknowledgment when browser signal is present
 pub async fn security_headers_middleware(request: Request, next: Next) -> Response {
     // Extract nonce BEFORE running the handler (it's set by csp_nonce_middleware)
     let nonce = request
@@ -114,6 +123,13 @@ pub async fn security_headers_middleware(request: Request, next: Next) -> Respon
         .get::<CspNonce>()
         .map(|n| n.value().to_string())
         .unwrap_or_default();
+
+    // Detect Global Privacy Control signal before consuming the request
+    let gpc = request
+        .headers()
+        .get("sec-gpc")
+        .and_then(|v| v.to_str().ok())
+        .is_some_and(|v| v == "1");
 
     let mut response = next.run(request).await;
     let headers = response.headers_mut();
@@ -127,10 +143,18 @@ pub async fn security_headers_middleware(request: Request, next: Next) -> Respon
     // Zero referrer leakage (stricter than same-origin)
     headers.insert(REFERRER_POLICY, HeaderValue::from_static("no-referrer"));
 
-    // Dynamic CSP with nonce for inline scripts and analytics domains
-    let csp = build_csp(&nonce);
+    // Dynamic CSP with nonce — excludes analytics domains when GPC is active
+    let csp = build_csp(&nonce, gpc);
     if let Ok(value) = HeaderValue::from_str(&csp) {
         headers.insert(CONTENT_SECURITY_POLICY, value);
+    }
+
+    // Echo GPC acknowledgment (GPC spec Section 4.1)
+    if gpc {
+        headers.insert(
+            HeaderName::from_static("sec-gpc"),
+            HeaderValue::from_static("1"),
+        );
     }
 
     // Strict Permissions Policy - deny all sensitive features
@@ -211,12 +235,24 @@ pub async fn security_headers_middleware(request: Request, next: Next) -> Respon
     response
 }
 
-/// Build the Content-Security-Policy header value with the given nonce.
-fn build_csp(nonce: &str) -> String {
-    let script_src = SCRIPT_SRC_EXTERNAL.join(" ");
-    let img_src = IMG_SRC_EXTERNAL.join(" ");
-    let connect_src = CONNECT_SRC_EXTERNAL.join(" ");
-    let frame_src = FRAME_SRC_EXTERNAL.join(" ");
+/// Build the Content-Security-Policy header value.
+///
+/// When `gpc` is true, analytics domains are excluded to tighten the policy
+/// and match the suppressed tracking scripts.
+fn build_csp(nonce: &str, gpc: bool) -> String {
+    let script_src = join_domains(
+        SCRIPT_SRC_ESSENTIAL,
+        if gpc { &[] } else { SCRIPT_SRC_ANALYTICS },
+    );
+    let img_src = join_domains(IMG_SRC_ESSENTIAL, if gpc { &[] } else { IMG_SRC_ANALYTICS });
+    let connect_src = join_domains(
+        CONNECT_SRC_ESSENTIAL,
+        if gpc { &[] } else { CONNECT_SRC_ANALYTICS },
+    );
+    let frame_src = join_domains(
+        FRAME_SRC_ESSENTIAL,
+        if gpc { &[] } else { FRAME_SRC_ANALYTICS },
+    );
 
     // Note: 'unsafe-eval' is required for HTMX to function (uses Function() internally).
     // All interactive behavior uses event delegation via data-action attributes,
@@ -235,4 +271,13 @@ fn build_csp(nonce: &str) -> String {
          frame-ancestors 'none'; \
          upgrade-insecure-requests"
     )
+}
+
+/// Join essential and optional domain lists into a single space-separated string.
+fn join_domains(essential: &[&str], extra: &[&str]) -> String {
+    let capacity = essential.len() + extra.len();
+    let mut domains = Vec::with_capacity(capacity);
+    domains.extend_from_slice(essential);
+    domains.extend_from_slice(extra);
+    domains.join(" ")
 }

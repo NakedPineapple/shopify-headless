@@ -73,6 +73,7 @@ pub mod products;
 pub mod search;
 pub mod shopify_auth;
 pub mod webhooks;
+pub mod well_known;
 
 use axum::{
     Router,
@@ -192,6 +193,8 @@ pub fn routes() -> Router<AppState> {
         .route("/", get(home::home))
         // Web app manifest
         .route("/manifest.webmanifest", get(manifest::webmanifest))
+        // Well-known endpoints (GPC, security.txt, change-password)
+        .nest("/.well-known", well_known::router())
         // Shopify image proxy (for Cloudflare Image Resizing)
         .route("/images/shopify/{*path}", get(images::proxy_shopify_image))
         // cdn-cgi fallback for local dev (Cloudflare intercepts in production)

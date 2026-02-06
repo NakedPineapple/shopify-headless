@@ -27,6 +27,8 @@ pub struct SiteContext {
     pub base_url: String,
     /// Cloudflare Web Analytics beacon token (empty if not configured)
     pub cf_beacon_token: String,
+    /// Whether the browser sent the `Sec-GPC: 1` Global Privacy Control signal.
+    pub gpc: bool,
 }
 
 impl FromRequestParts<AppState> for SiteContext {
@@ -61,10 +63,17 @@ impl FromRequestParts<AppState> for SiteContext {
             .cloned()
             .unwrap_or_default();
 
+        let gpc = parts
+            .headers
+            .get("sec-gpc")
+            .and_then(|v| v.to_str().ok())
+            .is_some_and(|v| v == "1");
+
         Ok(Self {
             host: host.to_owned(),
             base_url,
             cf_beacon_token,
+            gpc,
         })
     }
 }

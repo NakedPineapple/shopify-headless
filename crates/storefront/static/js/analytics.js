@@ -20,6 +20,21 @@
 (function() {
     'use strict';
 
+    // Respect Global Privacy Control (GPC) browser signal.
+    // Belt-and-suspenders: server already suppresses tracking scripts when
+    // Sec-GPC: 1 header is present, but check JS API as a fallback.
+    if (navigator.globalPrivacyControl) {
+        window.NP_Analytics = {
+            trackPageView: function() {},
+            trackViewItem: function() {},
+            trackAddToCart: function() {},
+            trackViewCart: function() {},
+            trackBeginCheckout: function() {},
+            trackPurchase: function() {}
+        };
+        return;
+    }
+
     // Get tracking IDs from data attributes on body
     var ga4Id = document.body.dataset.ga4Id;
     var metaPixelId = document.body.dataset.metaPixelId;

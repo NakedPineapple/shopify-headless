@@ -74,9 +74,11 @@
     <!-- JSON-LD Structured Data -->
     {% block json_ld %}{% endblock %}
 
-    <!-- Analytics - Head Scripts -->
+    <!-- Analytics - Head Scripts (suppressed when GPC opt-out signal is present) -->
     {% block ga4_script %}
+    {% if !site.gpc %}
     {% include "partials/analytics.html" %}
+    {% endif %}
     {% endblock %}
     {% include "partials/sentry.html" %}
 
@@ -768,13 +770,15 @@
 
     {% block scripts %}{% endblock %}
 
-    <!-- Analytics script - loaded after other scripts -->
+    <!-- Analytics script - loaded after other scripts (suppressed by GPC) -->
     {% block analytics_script %}
+    {% if !site.gpc %}
     <script src="/static/js/analytics.js"></script>
+    {% endif %}
     {% endblock %}
 
-    <!-- Cloudflare Web Analytics (production only) -->
-    {% if !site.cf_beacon_token.is_empty() %}
+    <!-- Cloudflare Web Analytics (production only, suppressed by GPC) -->
+    {% if !site.gpc && !site.cf_beacon_token.is_empty() %}
     <script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "{{ site.cf_beacon_token }}"}' nonce="{{ nonce }}"></script>
     {% endif %}
 </body>
