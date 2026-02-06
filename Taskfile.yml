@@ -655,6 +655,16 @@ tasks:
         msg: "SHOPIFY_CUSTOMER_ACCESS_TOKEN is required - obtain via Customer OAuth flow first (token starts with shcat_)"
 
   # ============================================================================
+  # Fly.io deploy tasks
+  # ============================================================================
+
+  fly:deploy:log-shipper:
+    desc: "Deploy log-shipper to Fly.io"
+    dir: fly
+    cmds:
+      - fly deploy --config fly.log-shipper.toml
+
+  # ============================================================================
   # Fly.io database tasks
   #
   # Architecture:
