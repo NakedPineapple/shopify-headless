@@ -102,6 +102,7 @@
                     <!-- Quantity Selector -->
                     <div class="inline-flex items-center border border-border rounded-full bg-background shadow-sm">
                         <button type="button"
+                                aria-label="Decrease quantity of {{ item.title }}"
                                 class="w-9 h-9 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted rounded-l-full transition-colors active:scale-90 disabled:opacity-40 disabled:cursor-not-allowed"
                                 hx-post="/cart/update"
                                 hx-vals='{"line_id": "{{ item.id }}", "quantity": {{ item.quantity - 1 }}}'
@@ -110,8 +111,9 @@
                                 {% if item.quantity <= 1 %}disabled{% endif %}>
                             <i class="ph ph-minus text-sm"></i>
                         </button>
-                        <span class="w-10 text-center text-sm font-medium tabular-nums">{{ item.quantity }}</span>
+                        <span class="w-10 text-center text-sm font-medium tabular-nums" aria-label="Quantity: {{ item.quantity }}">{{ item.quantity }}</span>
                         <button type="button"
+                                aria-label="Increase quantity of {{ item.title }}"
                                 class="w-9 h-9 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted rounded-r-full transition-colors active:scale-90"
                                 hx-post="/cart/update"
                                 hx-vals='{"line_id": "{{ item.id }}", "quantity": {{ item.quantity + 1 }}}'

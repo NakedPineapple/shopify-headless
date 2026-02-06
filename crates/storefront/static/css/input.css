@@ -55,9 +55,9 @@
     --background: oklch(0.32 0.035 50);       /* warm teak brown */
     --foreground: oklch(0.94 0.02 80);        /* warm cream text */
 
-    /* Primary - coral stays vibrant */
-    --primary: oklch(0.65 0.16 30);           /* rich coral */
-    --primary-foreground: oklch(0.95 0.01 80);
+    /* Primary - deeper coral for AA contrast with white text */
+    --primary: oklch(0.58 0.19 29);
+    --primary-foreground: oklch(1.0 0 0);
 
     /* Secondary - golden honey glow */
     --secondary: oklch(0.76 0.12 72);         /* sunset honey */
@@ -78,14 +78,14 @@
     /* UI elements - warm caramel tones */
     --border: oklch(0.45 0.04 55);            /* caramel border */
     --input: oklch(0.36 0.03 52);             /* warm input fields */
-    --ring: oklch(0.65 0.16 30);              /* coral focus ring */
+    --ring: oklch(0.58 0.19 29);              /* coral focus ring */
 
     /* Card - slightly elevated warm surface */
     --card: oklch(0.36 0.035 52);             /* lifted teak */
     --card-foreground: oklch(0.94 0.02 80);
 
     /* Brand colors for dark mode */
-    --coral: oklch(0.65 0.16 30);
+    --coral: oklch(0.58 0.19 29);
     --honey: oklch(0.76 0.12 72);
     --terracotta: oklch(0.60 0.10 42);
     --leaf: oklch(0.60 0.10 150);
@@ -99,8 +99,8 @@
   :root.dark {
     --background: oklch(0.32 0.035 50);
     --foreground: oklch(0.94 0.02 80);
-    --primary: oklch(0.65 0.16 30);
-    --primary-foreground: oklch(0.95 0.01 80);
+    --primary: oklch(0.58 0.19 29);
+    --primary-foreground: oklch(1.0 0 0);
     --secondary: oklch(0.76 0.12 72);
     --secondary-foreground: oklch(0.25 0.03 50);
     --muted: oklch(0.38 0.03 55);
@@ -111,10 +111,10 @@
     --destructive-foreground: oklch(0.95 0.01 80);
     --border: oklch(0.45 0.04 55);
     --input: oklch(0.36 0.03 52);
-    --ring: oklch(0.65 0.16 30);
+    --ring: oklch(0.58 0.19 29);
     --card: oklch(0.36 0.035 52);
     --card-foreground: oklch(0.94 0.02 80);
-    --coral: oklch(0.65 0.16 30);
+    --coral: oklch(0.58 0.19 29);
     --honey: oklch(0.76 0.12 72);
     --terracotta: oklch(0.60 0.10 42);
     --leaf: oklch(0.60 0.10 150);
@@ -273,6 +273,7 @@
   /* Form inputs */
   .input {
     @apply w-full rounded-lg border border-input bg-background px-4 py-2
+           placeholder:text-muted-foreground
            focus:outline-none focus:ring-2 focus:ring-ring;
   }
 
@@ -403,21 +404,11 @@
    ───────────────────────────────────────────────────────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {
-  .animate-float,
-  .animate-sway,
-  .animate-marquee,
-  .animate-fade-in,
-  .animate-slide-up,
-  .animate-hero-zoom,
-  .animate-scroll,
-  .animate-shake {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-  }
-
   *,
   *::before,
   *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
 }

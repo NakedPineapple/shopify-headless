@@ -99,7 +99,7 @@
         {# Variant Selector (if applicable) #}
         {% if product.variants.len() > 1 %}
         <div class="space-y-2">
-            <label class="text-sm font-medium text-foreground">Options</label>
+            <label for="quick-view-variant" class="text-sm font-medium text-foreground">Options</label>
             <select name="variant_id" class="input" id="quick-view-variant">
                 {% for variant in product.variants %}
                 <option value="{{ variant.id }}"

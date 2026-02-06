@@ -31,7 +31,7 @@
     <div class="page-width">
         {# Section Header with Tabs #}
         <div class="flex flex-col items-center mb-12 md:mb-16">
-            <p class="text-xs uppercase tracking-[0.2em] text-primary font-medium mb-3">Shop Our Collections</p>
+            <p class="text-xs uppercase tracking-[0.2em] text-primary dark:text-foreground font-medium mb-3">Shop Our Collections</p>
             <h2 class="font-display text-3xl md:text-4xl lg:text-5xl font-medium text-foreground mb-8">Discover Your Glow</h2>
 
             {# Tab Navigation #}
@@ -56,7 +56,7 @@
                     <article class="group">
                         {# Image Container with Hover Swap #}
                         <div class="relative aspect-square mb-4 rounded-2xl overflow-hidden bg-cream">
-                            <a href="/products/{{ product.handle }}" class="block absolute inset-0">
+                            <a href="/products/{{ product.handle }}" class="block absolute inset-0" aria-label="{{ product.title }}">
                                 {% if let Some(img) = product.featured_image %}
                                 <img src="{{ img.url }}"
                                      alt="{{ img.alt }}"
@@ -118,7 +118,7 @@
                     <article class="group">
                         {# Image Container with Hover Swap #}
                         <div class="relative aspect-square mb-4 rounded-2xl overflow-hidden bg-cream">
-                            <a href="/products/{{ product.handle }}" class="block absolute inset-0">
+                            <a href="/products/{{ product.handle }}" class="block absolute inset-0" aria-label="{{ product.title }}">
                                 {% if let Some(img) = product.featured_image %}
                                 <img src="{{ img.url }}"
                                      alt="{{ img.alt }}"
@@ -189,7 +189,7 @@
 {# Instagram Feed #}
 <section class="py-6 md:py-8 bg-cream">
     <div class="page-width text-center">
-        <p class="text-xs uppercase tracking-[0.2em] text-primary font-medium mb-2">Join Our Community</p>
+        <p class="text-xs uppercase tracking-[0.2em] text-primary dark:text-foreground font-medium mb-2">Join Our Community</p>
         <h2 class="font-display text-2xl md:text-3xl font-medium text-foreground mb-8">
             Follow Us <a href="https://instagram.com/_nakedpineapple_" class="text-primary hover:text-primary-dark transition-colors" target="_blank" rel="noopener">@_nakedpineapple_</a>
         </h2>
@@ -213,7 +213,7 @@
                 {{ img::picture(path="/static/images/original/products/naked-pineapple-vip-bundle/NP_-_Photoshoot_2148.jpg", alt="Kristi working with Naked Pineapple products", sizes="144px", class="w-full h-full object-cover") }}
             </div>
 
-            <p class="text-xs uppercase tracking-[0.25em] text-primary font-medium mb-3">The Heart Behind Naked Pineapple</p>
+            <p class="text-xs uppercase tracking-[0.25em] text-primary dark:text-foreground font-medium mb-3">The Heart Behind Naked Pineapple</p>
             <h2 class="font-display text-3xl md:text-4xl lg:text-5xl font-medium text-foreground leading-[1.1] max-w-4xl">
                 Meet <span class="text-gradient">Kristi</span>
             </h2>
@@ -345,7 +345,7 @@
     <div class="page-width relative">
         {# Section header #}
         <div class="text-center mb-8 md:mb-12">
-            <p class="text-xs uppercase tracking-[0.25em] text-primary font-medium mb-3">Be Part of Our Story</p>
+            <p class="text-xs uppercase tracking-[0.25em] text-primary dark:text-foreground font-medium mb-3">Be Part of Our Story</p>
             <h2 class="font-display text-3xl md:text-4xl lg:text-5xl font-medium text-foreground">Model Program</h2>
         </div>
 
@@ -488,7 +488,7 @@
 {# Collections Header #}
 <section class="pt-12 pb-6 md:pt-16 md:pb-8 bg-background">
     <div class="page-width text-center max-w-3xl mx-auto">
-        <p class="text-xs uppercase tracking-[0.2em] text-primary font-medium mb-3">Shop Our Collections</p>
+        <p class="text-xs uppercase tracking-[0.2em] text-primary dark:text-foreground font-medium mb-3">Shop Our Collections</p>
         <h2 class="font-display text-3xl md:text-4xl font-medium text-foreground mb-4">Discover the Heart of Naked Pineapple</h2>
         <p class="text-muted-foreground leading-relaxed">
             From nourishing skincare essentials designed to enhance your natural radiance to cozy, statement-worthy merch that exudes positivity, every item is crafted to empower confidence and self-love.
@@ -765,7 +765,7 @@
 <section class="py-20 md:py-28 bg-background">
     <div class="page-width">
         <div class="text-center mb-8">
-            <p class="text-xs uppercase tracking-[0.2em] text-primary font-medium mb-2">Real Results</p>
+            <p class="text-xs uppercase tracking-[0.2em] text-primary dark:text-foreground font-medium mb-2">Real Results</p>
             <h2 class="font-display text-3xl md:text-4xl lg:text-5xl font-medium text-foreground">Before & After</h2>
         </div>
 
@@ -836,7 +836,7 @@
     <div class="page-width">
         {# Header #}
         <div class="text-center max-w-3xl mx-auto mb-12 md:mb-16">
-            <p class="text-xs uppercase tracking-[0.2em] text-primary font-medium mb-3">Empower Others While Growing With Us</p>
+            <p class="text-xs uppercase tracking-[0.2em] text-foreground font-medium mb-3">Empower Others While Growing With Us</p>
             <h2 class="font-display text-3xl md:text-4xl lg:text-5xl font-medium text-foreground mb-6">Affiliate Program</h2>
             <p class="text-muted-foreground leading-relaxed">
                 Join the Naked Pineapple Affiliate Program and be part of a movement that celebrates authentic beauty and self-love. As an affiliate, you'll share our high-quality skincare and merch with your audience while earning 20% commission on every sale. Whether you're a skincare enthusiast, influencer, or someone who simply loves Naked Pineapple, this is your chance to shine and help others glow too.
@@ -888,7 +888,7 @@
 <section class="py-20 md:py-28 bg-cream overflow-hidden">
     <div class="page-width">
         <div class="text-center mb-12 md:mb-16">
-            <p class="text-xs uppercase tracking-[0.2em] text-primary font-medium mb-3">Customer Love</p>
+            <p class="text-xs uppercase tracking-[0.2em] text-primary dark:text-foreground font-medium mb-3">Customer Love</p>
             <h2 class="font-display text-3xl md:text-4xl lg:text-5xl font-medium text-foreground">Reviews</h2>
         </div>
     </div>

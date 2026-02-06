@@ -128,7 +128,7 @@ The visual design should embody the same values as the products:
 
 | Name | Light Mode | Dark Mode | Usage |
 |------|------------|-----------|-------|
-| **Coral** | `oklch(0.5826 0.1946 28.66)` / `#d63a2f` | `oklch(0.65 0.16 30)` | Primary brand color, CTAs, accents |
+| **Coral** | `oklch(0.5826 0.1946 28.66)` / `#d63a2f` | `oklch(0.58 0.19 29)` | Primary brand color, CTAs, accents |
 | **Honey** | `oklch(0.7764 0.1255 71.46)` / `#e8a854` | `oklch(0.76 0.12 72)` | Secondary accents, highlights, stars |
 | **Terracotta** | `oklch(0.6409 0.1074 37.49)` / `#c4745c` | `oklch(0.60 0.10 42)` | Gradient transitions, warm accents |
 | **Leaf** | `oklch(0.5406 0.0773 152.71)` / `#4a7c59` | `oklch(0.60 0.10 150)` | Accent color, natural/eco messaging |
@@ -142,7 +142,7 @@ The visual design should embody the same values as the products:
 
 ### Dark Mode: "Tropical Dusk"
 
-Dark mode uses a warm, inviting palette like golden hour on the beach — not cold blacks, but warm teak browns and caramel tones.
+Dark mode uses a warm, inviting palette like golden hour on the beach — not cold blacks, but warm teak browns and caramel tones. The dark mode coral matches the light mode value (`oklch(0.58 0.19 29)`) paired with pure white foreground text for WCAG AA contrast on buttons and the announcement bar. Eyebrow labels switch from coral to warm cream (`text-foreground`) in dark mode since mid-tone coral cannot achieve 4.5:1 contrast against dark backgrounds.
 
 ---
 
@@ -165,10 +165,11 @@ Dark mode uses a warm, inviting palette like golden hour on the beach — not co
 
 **Eyebrow Text:**
 ```html
-<p class="text-xs uppercase tracking-[0.2em] text-primary font-medium mb-3">
+<p class="text-xs uppercase tracking-[0.2em] text-primary dark:text-foreground font-medium mb-3">
   Section Label
 </p>
 ```
+In light mode, eyebrow labels use coral (`text-primary`). In dark mode, they switch to warm cream (`text-foreground`) for WCAG AA contrast compliance against dark backgrounds.
 
 **Body Text:**
 - Large: `text-lg md:text-xl text-muted-foreground leading-relaxed`

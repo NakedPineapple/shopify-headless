@@ -33,9 +33,9 @@
         <nav class="text-sm text-muted-foreground mb-4" aria-label="Breadcrumb">
             <ol class="flex items-center gap-2 list-none">
                 <li><a href="/" class="hover:text-primary transition-colors">Home</a></li>
-                <li><i class="ph ph-caret-right text-xs"></i></li>
+                <li aria-hidden="true"><i class="ph ph-caret-right text-xs"></i></li>
                 <li><a href="/collections" class="hover:text-primary transition-colors">Collections</a></li>
-                <li><i class="ph ph-caret-right text-xs"></i></li>
+                <li aria-hidden="true"><i class="ph ph-caret-right text-xs"></i></li>
                 <li class="text-foreground">{{ collection.title }}</li>
             </ol>
         </nav>
@@ -277,12 +277,12 @@
                                        class="absolute w-full h-2 appearance-none bg-transparent cursor-pointer
                                               [&::-webkit-slider-thumb]:appearance-none
                                               [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5
-                                              [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white
+                                              [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-card
                                               [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-primary
                                               [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:cursor-grab
                                               [&::-webkit-slider-thumb]:transition-transform [&::-webkit-slider-thumb]:hover:scale-110
                                               [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:h-5
-                                              [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white
+                                              [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-card
                                               [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-primary
                                               [&::-moz-range-thumb]:shadow-md [&::-moz-range-thumb]:cursor-grab
                                               pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-moz-range-thumb]:pointer-events-auto"
@@ -306,12 +306,12 @@
                                        class="absolute w-full h-2 appearance-none bg-transparent cursor-pointer
                                               [&::-webkit-slider-thumb]:appearance-none
                                               [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5
-                                              [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white
+                                              [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-card
                                               [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-terracotta
                                               [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:cursor-grab
                                               [&::-webkit-slider-thumb]:transition-transform [&::-webkit-slider-thumb]:hover:scale-110
                                               [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:h-5
-                                              [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white
+                                              [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-card
                                               [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-terracotta
                                               [&::-moz-range-thumb]:shadow-md [&::-moz-range-thumb]:cursor-grab
                                               pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-moz-range-thumb]:pointer-events-auto"
