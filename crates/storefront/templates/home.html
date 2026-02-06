@@ -58,17 +58,23 @@
                         <div class="relative aspect-square mb-4 rounded-2xl overflow-hidden bg-cream">
                             <a href="/products/{{ product.handle }}" class="block absolute inset-0" aria-label="{{ product.title }}">
                                 {% if let Some(img) = product.featured_image %}
-                                <img src="{{ img.url }}"
+                                <img src="{{ img.url|shopify_cdn_url(1024) }}"
+                                     srcset="{{ img.url|shopify_srcset }}"
+                                     sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
                                      alt="{{ img.alt }}"
                                      class="absolute inset-0 w-full h-full object-cover transition-opacity duration-500{% if product.hover_image.is_some() %} group-hover:opacity-0{% endif %}"
-                                     loading="lazy">
+                                     loading="lazy"
+                                     decoding="async">
                                 {% endif %}
                                 {% if let Some(hover) = product.hover_image %}
-                                <img src="{{ hover.url }}"
+                                <img src="{{ hover.url|shopify_cdn_url(1024) }}"
+                                     srcset="{{ hover.url|shopify_srcset }}"
+                                     sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
                                      alt=""
                                      aria-hidden="true"
                                      class="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-500 group-hover:opacity-100"
-                                     loading="lazy">
+                                     loading="lazy"
+                                     decoding="async">
                                 {% endif %}
                             </a>
                             {# Quick View Button #}
@@ -120,17 +126,23 @@
                         <div class="relative aspect-square mb-4 rounded-2xl overflow-hidden bg-cream">
                             <a href="/products/{{ product.handle }}" class="block absolute inset-0" aria-label="{{ product.title }}">
                                 {% if let Some(img) = product.featured_image %}
-                                <img src="{{ img.url }}"
+                                <img src="{{ img.url|shopify_cdn_url(1024) }}"
+                                     srcset="{{ img.url|shopify_srcset }}"
+                                     sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
                                      alt="{{ img.alt }}"
                                      class="absolute inset-0 w-full h-full object-cover transition-opacity duration-500{% if product.hover_image.is_some() %} group-hover:opacity-0{% endif %}"
-                                     loading="lazy">
+                                     loading="lazy"
+                                     decoding="async">
                                 {% endif %}
                                 {% if let Some(hover) = product.hover_image %}
-                                <img src="{{ hover.url }}"
+                                <img src="{{ hover.url|shopify_cdn_url(1024) }}"
+                                     srcset="{{ hover.url|shopify_srcset }}"
+                                     sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
                                      alt=""
                                      aria-hidden="true"
                                      class="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-500 group-hover:opacity-100"
-                                     loading="lazy">
+                                     loading="lazy"
+                                     decoding="async">
                                 {% endif %}
                             </a>
                             {# Quick View Button #}
