@@ -117,6 +117,10 @@ You may be required to register to use the Services. You agree to keep your pass
 
 ## 5. PRODUCTS
 
+Our products are intended for personal use only. They are not to be resold or used for commercial purposes without our express prior written consent. If you are interested in wholesale purchasing, please contact us at [wholesale@pineappleskinco.com](mailto:wholesale@pineappleskinco.com).
+
+Results may vary depending on individual skin types and conditions. Our products are not intended to diagnose, treat, cure, or prevent any disease. Please consult with a healthcare professional if you have specific skin concerns or conditions.
+
 We make every effort to display as accurately as possible the colors, features, specifications, and details of the products available on the Services. However, we do not guarantee that the colors, features, specifications, and details of the products will be accurate, complete, reliable, current, or free of other errors, and your electronic display may not accurately reflect the actual colors and details of the products. All products are subject to availability, and we cannot guarantee that items will be in stock. We reserve the right to discontinue any products at any time for any reason. Prices for all products are subject to change.
 
 ## 6. PURCHASES AND PAYMENT
@@ -145,7 +149,7 @@ Your subscription will continue and automatically renew unless canceled. You con
 
 ### Cancellation
 
-You can cancel your subscription at any time by logging into your account. Your cancellation will take effect at the end of the current paid term. If you have any questions or are unsatisfied with our Services, please email us at [support@pineappleskinco.com](mailto:support@pineappleskinco.com).
+You can cancel your subscription at any time by logging into your account. Your cancellation will take effect at the end of the current paid term. Please review our [Purchase Options Cancellation Policy](/cancellation) for full details. If you have any questions or are unsatisfied with our Services, please email us at [support@pineappleskinco.com](mailto:support@pineappleskinco.com).
 
 ### Fee Changes
 

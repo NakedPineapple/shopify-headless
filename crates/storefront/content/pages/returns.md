@@ -12,17 +12,21 @@ All returns must be postmarked within thirty (30) days of the purchase date. All
 
 ## RETURN PROCESS
 
-To return an item, please contact our team at [support@pineappleskinco.com](mailto:support@pineappleskinco.com) with your order number and reason for the return. Our team will provide you with a return shipping label and instructions on how to return the product(s). Once you receive your label, place the item securely in its original packaging and ship it back using the provided label.
+To return an item, please contact our team at [support@pineappleskinco.com](mailto:support@pineappleskinco.com) with your order number and reason for the return. Our team will provide you with instructions on how to return the product(s). Place the item securely in its original packaging and ship it back. Customers are responsible for return shipping costs.
 
 ## REFUNDS
 
-After receiving your return and inspecting the condition of your item, we will process your return. Please allow between seven (7) and ten (10) days from the receipt of your item to process your return. Refunds may take 1–2 billing cycles to appear on your credit card statement, depending on your credit card company. We will notify you by email when your return has been processed.
+After receiving your return and inspecting the condition of your item, we will process your return. Please allow between seven (7) and ten (10) days from the receipt of your item to process your return. Refunds may take 1–2 billing cycles to appear on your credit card statement, depending on your credit card company. We will notify you by email when your return has been processed. Please note that original shipping charges are non-refundable.
 
 ## EXCEPTIONS
 
-We cannot accept returns for products that have been opened or used.
+For hygiene reasons, we cannot accept returns for products that have been opened or used.
 
 For defective or damaged products, please contact us within 48 hours of receiving your order at the contact details below to arrange a refund or exchange. We will provide you with a replacement or issue a full refund, including shipping costs.
+
+## NON-REFUNDABLE ITEMS
+
+Sale items, gift cards, and promotional bundles are not eligible for return or refund.
 
 ## QUESTIONS
 

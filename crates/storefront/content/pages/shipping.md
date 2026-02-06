@@ -31,7 +31,7 @@ All times and dates given for delivery of the products are given in good faith b
 
 ## HOW IS MY SUBSCRIPTION FULFILLED?
 
-If you are buying a subscription then we will deliver on: Monthly, every 2 months, or every 3 months as selected in your subscription frequency settings.
+Subscription orders are delivered on a recurring schedule — monthly, every 2 months, or every 3 months — based on the frequency you select. To change or cancel a subscription, see our [Purchase Options Cancellation Policy](/cancellation).
 
 ## DO YOU DELIVER INTERNATIONALLY?
 
@@ -42,6 +42,14 @@ We do not offer international shipping.
 Orders only ship on business days, which are Monday–Friday.
 
 Shipments to APO/FPO addresses require additional processing time after delivery to the military post office.
+
+## HOW DO I TRACK MY ORDER?
+
+Once your order has shipped, you will receive an email with a tracking number so you can follow your package's delivery status.
+
+## WHAT IF MY ORDER IS LOST OR DAMAGED?
+
+If your order arrives damaged or goes missing, please contact our customer service team within 7 days of the expected delivery date. We will work with the carrier to resolve the issue.
 
 ## WHAT HAPPENS IF MY ORDER IS DELAYED?
 
