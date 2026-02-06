@@ -30,12 +30,15 @@ tag_prefix = "v"
 from_latest_tag = true
 ignore_merge_commits = true
 branch_whitelist = ["main"]
-skip_ci = "[skip ci]"
-
 # Update the workspace Cargo.toml version before the bump commit is created.
 # All crates inherit via version.workspace = true, so only the root needs updating.
 pre_bump_hooks = [
     "cargo set-version {{version}} --workspace",
+]
+
+# Move [skip ci] from the subject line to the commit body for a cleaner history.
+post_bump_hooks = [
+    """git commit --amend -m "$(git log -1 --format=%s)" -m "[skip ci]" """,
 ]
 
 [commit_types]

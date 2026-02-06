@@ -120,13 +120,15 @@ jobs:
         if: github.event_name == 'push'
         run: |
           if [ -n "$(git log $(git describe --tags --abbrev=0)..HEAD --oneline)" ]; then
-            cog bump --auto --skip-ci
+            cog bump --auto
             echo "bumped=true" >> $GITHUB_OUTPUT
           fi
 
       - name: Push version commit and tag
         if: steps.bump.outputs.bumped == 'true'
-        run: git push origin main --follow-tags
+        run: |
+          TAG=$(git describe --tags --abbrev=0)
+          git push origin main "$TAG"
 
       - name: Output version
         id: version
