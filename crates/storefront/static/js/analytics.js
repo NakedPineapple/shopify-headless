@@ -192,7 +192,7 @@
 
     // Set custom variables for user segmentation in Crazy Egg
     // CE2.set() allows filtering heatmaps/recordings by user attributes
-    if (crazyEggId && window.CE2) {
+    if (crazyEggId && window.CE2 && typeof CE2.set === 'function') {
         // Slot 1: User login state - useful for comparing logged-in vs anonymous behavior
         var isLoggedIn = mixpanelUserId ? 'yes' : 'no';
         CE2.set(1, 'logged_in', isLoggedIn);
@@ -258,7 +258,7 @@
         }
 
         // Crazy Egg - notify of SPA-style page transition for heatmap/recording accuracy
-        if (crazyEggId && window.CE2) {
+        if (crazyEggId && window.CE2 && typeof CE2.virtualPageview === 'function') {
             CE2.virtualPageview();
         }
     }
