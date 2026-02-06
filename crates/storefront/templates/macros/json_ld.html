@@ -3,17 +3,17 @@
 
     Usage:
     {% import "macros/json_ld.html" as json_ld %}
-    {{ json_ld::organization(base_url=base_url, logo_url=logo_url) }}
+    {{ json_ld::organization(logo_url=logo_url) }}
 #}
 
 {# Organization schema - for homepage #}
-{% macro organization(base_url, logo_url) %}
+{% macro organization(logo_url) %}
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@type": "Organization",
   "name": "Naked Pineapple",
-  "url": "{{ base_url }}",
+  "url": "{{ site.base_url }}",
   "logo": "{{ logo_url }}",
   "sameAs": [
     "https://instagram.com/nakedpineappleskincare",
@@ -25,7 +25,7 @@
 {% endmacro %}
 
 {# Product schema - for product detail pages #}
-{% macro product(base_url, product) %}
+{% macro product(product) %}
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -44,14 +44,14 @@
     "price": "{{ product.price|strip_currency }}",
     "priceCurrency": "USD",
     "availability": "https://schema.org/InStock",
-    "url": "{{ base_url }}/products/{{ product.handle }}"
+    "url": "{{ site.base_url }}/products/{{ product.handle }}"
   }
 }
 </script>
 {% endmacro %}
 
 {# Article schema - for blog posts #}
-{% macro article(base_url, post, logo_url) %}
+{% macro article(post, logo_url) %}
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -61,7 +61,7 @@
   "description": "{{ desc }}",
   {% endif %}
   {% if let Some(image) = post.featured_image.as_ref() %}
-  "image": "{{ base_url }}{{ image }}",
+  "image": "{{ site.base_url }}{{ image }}",
   {% endif %}
   "datePublished": "{{ post.published_at }}",
   "author": {
@@ -78,14 +78,14 @@
   },
   "mainEntityOfPage": {
     "@type": "WebPage",
-    "@id": "{{ base_url }}/blog/{{ post.slug }}"
+    "@id": "{{ site.base_url }}/blog/{{ post.slug }}"
   }
 }
 </script>
 {% endmacro %}
 
 {# Breadcrumb schema #}
-{% macro breadcrumbs(base_url, items) %}
+{% macro breadcrumbs(items) %}
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -96,7 +96,7 @@
       "@type": "ListItem",
       "position": {{ loop.index }},
       "name": "{{ item.name }}"{% if let Some(url) = item.url.as_ref() %},
-      "item": "{{ base_url }}{{ url }}"{% endif %}
+      "item": "{{ site.base_url }}{{ url }}"{% endif %}
     }{% if !loop.last %},{% endif %}
     {% endfor %}
   ]

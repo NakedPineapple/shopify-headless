@@ -53,8 +53,12 @@ fn generate_random_string(length: usize) -> String {
 /// # Route
 ///
 /// `GET /auth/shopify/login`
-#[instrument(skip(state, session))]
-pub async fn login(State(state): State<AppState>, session: Session) -> Response {
+#[instrument(skip(state, session, site))]
+pub async fn login(
+    State(state): State<AppState>,
+    session: Session,
+    site: crate::middleware::SiteContext,
+) -> Response {
     debug!("Initiating Shopify Customer Account OAuth login flow");
 
     // Generate CSRF state and OpenID nonce
@@ -78,8 +82,8 @@ pub async fn login(State(state): State<AppState>, session: Session) -> Response 
         return Redirect::to("/auth/login?error=session").into_response();
     }
 
-    // Build the redirect URI
-    let redirect_uri = format!("{}/auth/shopify/callback", state.config().base_url);
+    // Build the redirect URI from the current domain
+    let redirect_uri = format!("{}/auth/shopify/callback", site.base_url);
 
     // Generate and redirect to authorization URL
     let auth_url = state
@@ -98,10 +102,11 @@ pub async fn login(State(state): State<AppState>, session: Session) -> Response 
 /// # Route
 ///
 /// `GET /auth/shopify/callback`
-#[instrument(skip(state, session, query))]
+#[instrument(skip(state, session, query, site))]
 pub async fn callback(
     State(state): State<AppState>,
     session: Session,
+    site: crate::middleware::SiteContext,
     Query(query): Query<CallbackQuery>,
 ) -> Response {
     debug!("Processing Shopify OAuth callback");
@@ -151,7 +156,7 @@ pub async fn callback(
         .await;
 
     // Build redirect URI (must match the one used in authorization request)
-    let redirect_uri = format!("{}/auth/shopify/callback", state.config().base_url);
+    let redirect_uri = format!("{}/auth/shopify/callback", site.base_url);
 
     debug!("Exchanging authorization code for access tokens");
 
@@ -193,8 +198,12 @@ pub async fn callback(
 /// # Route
 ///
 /// `POST /auth/shopify/logout`
-#[instrument(skip(state, session))]
-pub async fn logout(State(state): State<AppState>, session: Session) -> Response {
+#[instrument(skip(state, session, site))]
+pub async fn logout(
+    State(state): State<AppState>,
+    session: Session,
+    site: crate::middleware::SiteContext,
+) -> Response {
     debug!("Processing Shopify customer logout request");
 
     // Get the current token to extract id_token for Shopify logout
@@ -216,7 +225,7 @@ pub async fn logout(State(state): State<AppState>, session: Session) -> Response
     if let Some(token) = token
         && let Some(id_token) = token.id_token
     {
-        let post_logout_uri = format!("{}/?logged_out=1", state.config().base_url);
+        let post_logout_uri = format!("{}/?logged_out=1", site.base_url);
         let logout_url = state.customer().logout_url(&id_token, &post_logout_uri);
         info!("Redirecting to Shopify logout endpoint for full session termination");
         return Redirect::to(&logout_url).into_response();

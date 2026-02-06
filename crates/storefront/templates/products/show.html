@@ -8,7 +8,7 @@
 
 {% block title %}{{ product.title }} | Naked Pineapple{% endblock %}
 
-{% block canonical %}<link rel="canonical" href="{{ base_url }}/products/{{ product.handle }}">{% endblock %}
+{% block canonical %}<link rel="canonical" href="{{ site.base_url }}/products/{{ product.handle }}">{% endblock %}
 
 {% block description %}{{ product.description|striptags|truncate(160) }}{% endblock %}
 
@@ -16,7 +16,7 @@
 {% block og_description %}{{ product.description|striptags|truncate(200) }}{% endblock %}
 {% block og_type %}product{% endblock %}
 {% block og_image %}{% if let Some(image) = product.featured_image %}{{ image.url|shopify_cdn_url(1200) }}{% endif %}{% endblock %}
-{% block og_url %}{{ base_url }}/products/{{ product.handle }}{% endblock %}
+{% block og_url %}{{ site.base_url }}/products/{{ product.handle }}{% endblock %}
 {% block og_product %}
 <meta property="product:price:amount" content="{{ product.price|strip_currency }}">
 <meta property="product:price:currency" content="USD">
@@ -28,8 +28,8 @@
 {% block twitter_image %}{% if let Some(image) = product.featured_image %}<meta name="twitter:image" content="{{ image.url|shopify_cdn_url(1200) }}">{% endif %}{% endblock %}
 
 {% block json_ld %}
-{{ json_ld::product(base_url=base_url, product=product) }}
-{{ json_ld::breadcrumbs(base_url=base_url, items=breadcrumbs) }}
+{{ json_ld::product(product=product) }}
+{{ json_ld::breadcrumbs(items=breadcrumbs) }}
 {% endblock %}
 
 {% block content %}
@@ -364,7 +364,7 @@
                                  id="share-popup">
                                 <p class="text-sm font-medium text-foreground mb-3 text-center">Share this product</p>
                                 <div class="flex items-center justify-center gap-2 mb-3">
-                                    <a href="https://www.facebook.com/sharer/sharer.php?u={{ base_url }}/products/{{ product.handle }}"
+                                    <a href="https://www.facebook.com/sharer/sharer.php?u={{ site.base_url }}/products/{{ product.handle }}"
                                        target="_blank"
                                        rel="noopener noreferrer"
                                        class="flex items-center justify-center w-9 h-9 rounded-full hover:bg-muted transition-colors"
@@ -372,7 +372,7 @@
                                        aria-label="Share on Facebook">
                                         <i class="ph ph-facebook-logo text-lg"></i>
                                     </a>
-                                    <a href="https://twitter.com/intent/tweet?url={{ base_url }}/products/{{ product.handle }}&text={{ product.title }}"
+                                    <a href="https://twitter.com/intent/tweet?url={{ site.base_url }}/products/{{ product.handle }}&text={{ product.title }}"
                                        target="_blank"
                                        rel="noopener noreferrer"
                                        class="flex items-center justify-center w-9 h-9 rounded-full hover:bg-muted transition-colors"
@@ -380,7 +380,7 @@
                                        aria-label="Share on X">
                                         <i class="ph ph-x-logo text-lg"></i>
                                     </a>
-                                    <a href="https://pinterest.com/pin/create/button/?url={{ base_url }}/products/{{ product.handle }}&description={{ product.title }}"
+                                    <a href="https://pinterest.com/pin/create/button/?url={{ site.base_url }}/products/{{ product.handle }}&description={{ product.title }}"
                                        target="_blank"
                                        rel="noopener noreferrer"
                                        class="flex items-center justify-center w-9 h-9 rounded-full hover:bg-muted transition-colors"
@@ -388,7 +388,7 @@
                                        aria-label="Share on Pinterest">
                                         <i class="ph ph-pinterest-logo text-lg"></i>
                                     </a>
-                                    <a href="mailto:?subject={{ product.title }}&body=Check out {{ product.title }}: {{ base_url }}/products/{{ product.handle }}"
+                                    <a href="mailto:?subject={{ product.title }}&body=Check out {{ product.title }}: {{ site.base_url }}/products/{{ product.handle }}"
                                        class="flex items-center justify-center w-9 h-9 rounded-full hover:bg-muted transition-colors"
                                        title="Email"
                                        aria-label="Share via Email">
@@ -400,7 +400,7 @@
                                            readonly
                                            class="flex-1 px-3 py-2 text-xs bg-muted border border-border rounded text-muted-foreground select-all"
                                            id="share-permalink"
-                                           value="{{ base_url }}/products/{{ product.handle }}">
+                                           value="{{ site.base_url }}/products/{{ product.handle }}">
                                     <button type="button"
                                             class="flex items-center justify-center w-8 h-8 rounded border border-border hover:bg-muted transition-colors flex-shrink-0"
                                             data-action="copy-product-link"
@@ -862,7 +862,7 @@
         var input = document.getElementById('share-permalink');
         if (!input) return;
 
-        var baseUrl = '{{ base_url }}/products/{{ product.handle }}';
+        var baseUrl = '{{ site.base_url }}/products/{{ product.handle }}';
         var variantId = document.getElementById('selected-variant')?.value;
 
         if (variantId) {

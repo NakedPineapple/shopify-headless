@@ -20,6 +20,7 @@ pub mod request_id;
 pub mod security_headers;
 pub mod session;
 pub mod shopify_customer;
+pub mod site_context;
 
 pub use auth::{OptionalAuth, RequireAuth, clear_current_customer, set_current_customer};
 pub use csp::{CspNonce, csp_nonce_middleware};
@@ -32,3 +33,4 @@ pub use shopify_customer::{
     OptionalShopifyCustomer, RequireShopifyCustomer, clear_shopify_customer_token,
     set_shopify_customer_token,
 };
+pub use site_context::SiteContext;

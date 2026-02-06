@@ -74,6 +74,7 @@ pub struct AccountIndexTemplate {
     pub subscription_count: u32,
     pub analytics: AnalyticsConfig,
     pub analytics_user_info: AnalyticsUserInfo,
+    pub site: crate::middleware::SiteContext,
     pub nonce: String,
 }
 
@@ -84,6 +85,7 @@ pub struct OrdersTemplate {
     pub orders: Vec<Order>,
     pub analytics: AnalyticsConfig,
     pub analytics_user_info: AnalyticsUserInfo,
+    pub site: crate::middleware::SiteContext,
     pub nonce: String,
 }
 
@@ -95,6 +97,7 @@ pub struct AddressesTemplate {
     pub default_address_id: Option<String>,
     pub analytics: AnalyticsConfig,
     pub analytics_user_info: AnalyticsUserInfo,
+    pub site: crate::middleware::SiteContext,
     pub nonce: String,
 }
 
@@ -118,6 +121,7 @@ pub struct AddressFormTemplate {
     pub error: Option<String>,
     pub analytics: AnalyticsConfig,
     pub analytics_user_info: AnalyticsUserInfo,
+    pub site: crate::middleware::SiteContext,
     pub nonce: String,
 }
 
@@ -172,6 +176,7 @@ pub async fn index(
     RequireShopifyCustomer(token): RequireShopifyCustomer,
     OptionalAuth(current_customer): OptionalAuth,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
+    site: crate::middleware::SiteContext,
 ) -> impl IntoResponse {
     let analytics_user_info = AnalyticsUserInfo::from_customer(current_customer.as_ref());
 
@@ -244,6 +249,7 @@ pub async fn index(
         analytics: state.config().analytics.clone(),
         analytics_user_info,
         nonce,
+        site,
     }
     .into_response()
 }
@@ -259,6 +265,7 @@ pub async fn orders(
     RequireShopifyCustomer(token): RequireShopifyCustomer,
     OptionalAuth(customer): OptionalAuth,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
+    site: crate::middleware::SiteContext,
 ) -> impl IntoResponse {
     debug!("Fetching order history page");
 
@@ -283,6 +290,7 @@ pub async fn orders(
         analytics: state.config().analytics.clone(),
         analytics_user_info: AnalyticsUserInfo::from_customer(customer.as_ref()),
         nonce,
+        site,
     }
 }
 
@@ -297,6 +305,7 @@ pub async fn addresses(
     RequireShopifyCustomer(token): RequireShopifyCustomer,
     OptionalAuth(customer): OptionalAuth,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
+    site: crate::middleware::SiteContext,
 ) -> impl IntoResponse {
     debug!("Fetching addresses list page");
 
@@ -345,6 +354,7 @@ pub async fn addresses(
         analytics: state.config().analytics.clone(),
         analytics_user_info: AnalyticsUserInfo::from_customer(customer.as_ref()),
         nonce,
+        site,
     }
 }
 
@@ -359,6 +369,7 @@ pub async fn new_address(
     RequireShopifyCustomer(_token): RequireShopifyCustomer,
     OptionalAuth(customer): OptionalAuth,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
+    site: crate::middleware::SiteContext,
 ) -> impl IntoResponse {
     debug!("Rendering new address form");
 
@@ -372,6 +383,7 @@ pub async fn new_address(
         analytics: state.config().analytics.clone(),
         analytics_user_info: AnalyticsUserInfo::from_customer(customer.as_ref()),
         nonce,
+        site,
     }
 }
 
@@ -386,6 +398,7 @@ pub async fn create_address(
     RequireShopifyCustomer(token): RequireShopifyCustomer,
     OptionalAuth(customer): OptionalAuth,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
+    site: crate::middleware::SiteContext,
     Form(form): Form<AddressForm>,
 ) -> Response {
     debug!("Creating new address");
@@ -411,6 +424,7 @@ pub async fn create_address(
                 analytics: state.config().analytics.clone(),
                 analytics_user_info: AnalyticsUserInfo::from_customer(customer.as_ref()),
                 nonce,
+                site,
             }
             .into_response()
         }
@@ -429,6 +443,7 @@ pub async fn edit_address(
     OptionalAuth(customer): OptionalAuth,
     Path(address_id): Path<String>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
+    site: crate::middleware::SiteContext,
 ) -> Response {
     debug!("Rendering edit address form");
 
@@ -466,6 +481,7 @@ pub async fn edit_address(
         analytics: state.config().analytics.clone(),
         analytics_user_info: AnalyticsUserInfo::from_customer(customer.as_ref()),
         nonce,
+        site,
     }
     .into_response()
 }
@@ -482,6 +498,7 @@ pub async fn update_address(
     OptionalAuth(customer): OptionalAuth,
     Path(address_id): Path<String>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
+    site: crate::middleware::SiteContext,
     Form(form): Form<AddressForm>,
 ) -> Response {
     debug!("Updating existing address");
@@ -515,6 +532,7 @@ pub async fn update_address(
                 analytics: state.config().analytics.clone(),
                 analytics_user_info: AnalyticsUserInfo::from_customer(customer.as_ref()),
                 nonce,
+                site,
             }
             .into_response()
         }

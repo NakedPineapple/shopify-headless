@@ -7,19 +7,19 @@
 
 {% block title %}Naked Pineapple - Natural Skincare{% endblock %}
 
-{% block canonical %}<link rel="canonical" href="{{ base_url }}/">{% endblock %}
+{% block canonical %}<link rel="canonical" href="{{ site.base_url }}/">{% endblock %}
 
 {% block description %}Discover Naked Pineapple, an authentic skincare brand that empowers confidence with high-quality, natural ingredients like pineapple extract and vegan collagen.{% endblock %}
 
 {% block og_title %}Naked Pineapple - Natural Skincare{% endblock %}
 {% block og_description %}Discover Naked Pineapple, an authentic skincare brand that empowers confidence with high-quality, natural ingredients like pineapple extract and vegan collagen.{% endblock %}
-{% block og_url %}{{ base_url }}/{% endblock %}
+{% block og_url %}{{ site.base_url }}/{% endblock %}
 
 {% block twitter_title %}<meta name="twitter:title" content="Naked Pineapple - Natural Skincare">{% endblock %}
 {% block twitter_description %}<meta name="twitter:description" content="Discover Naked Pineapple, an authentic skincare brand with natural ingredients like pineapple extract and vegan collagen.">{% endblock %}
 
 {% block json_ld %}
-{{ json_ld::organization(base_url=base_url, logo_url=logo_url) }}
+{{ json_ld::organization(logo_url=logo_url) }}
 {% endblock %}
 
 {% block content %}
@@ -303,7 +303,7 @@
 
                 {# CTA with signature-style tagline #}
                 <div class="mt-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                    <a href="/pages/about" class="btn btn-primary group">
+                    <a href="/about" class="btn btn-primary group">
                         The Naked Truth
                         <svg class="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" viewBox="0 0 20 20" fill="none">
                             <path d="M7.5 3.75L13.75 10L7.5 16.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -471,7 +471,7 @@
 
         {# CTA Button #}
         <div class="text-center mt-12 md:mt-16 relative z-30">
-            <a href="/pages/model-program" class="btn btn-primary btn-large group">
+            <a href="/model-program" class="btn btn-primary btn-large group">
                 Join the Program
                 <svg class="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" viewBox="0 0 20 20" fill="none">
                     <path d="M7.5 3.75L13.75 10L7.5 16.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -873,7 +873,7 @@
         {# Bottom CTA #}
         <div class="text-center mt-12">
             <p class="text-muted-foreground mb-4">Together, we're building a community rooted in empowerment, positivity, and radiant confidence.</p>
-            <a href="/pages/collabs" class="btn btn-primary">
+            <a href="/collabs" class="btn btn-primary">
                 Apply
                 <i class="ph ph-arrow-right"></i>
             </a>

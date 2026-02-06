@@ -91,7 +91,7 @@ impl Default for HeroConfig {
                     title: None,
                     subtitle: None,
                     button_text: Some("Join the Model Program".to_string()),
-                    button_url: Some("/pages/model-program".to_string()),
+                    button_url: Some("/model-program".to_string()),
                     image_path: "/static/images/original/hero/hero-glow-better.png".to_string(),
                     image_alt: "Join the Model Program".to_string(),
                     button_position: ButtonPosition::BottomLeft,
@@ -307,10 +307,10 @@ pub struct HomeTemplate {
     pub analytics: AnalyticsConfig,
     /// Per-request user identity for analytics.
     pub analytics_user_info: AnalyticsUserInfo,
+    /// Per-request site context (base URL, beacon token).
+    pub site: crate::middleware::SiteContext,
     /// CSP nonce for inline scripts.
     pub nonce: String,
-    /// Base URL for canonical links and structured data.
-    pub base_url: String,
     /// Logo URL for Organization schema.
     pub logo_url: String,
 }
@@ -323,10 +323,11 @@ const SKINCARE_COLLECTION: &str = "frontpage";
 const MERCH_COLLECTION: &str = "merch";
 
 /// Display the home page.
-#[instrument(skip(state, nonce))]
+#[instrument(skip(state, nonce, site))]
 pub async fn home(
     State(state): State<AppState>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
+    site: crate::middleware::SiteContext,
     OptionalAuth(customer): OptionalAuth,
 ) -> impl IntoResponse {
     debug!("Rendering home page with hero carousel and product collections");
@@ -393,8 +394,7 @@ pub async fn home(
             },
         );
 
-    let base_url = state.config().base_url.clone();
-    let logo_url = crate::filters::get_logo_url(&base_url);
+    let logo_url = crate::filters::get_logo_url(&site.base_url);
 
     info!(
         skincare_count = skincare_products.len(),
@@ -409,8 +409,8 @@ pub async fn home(
         featured_reviews: get_featured_reviews(),
         analytics: state.config().analytics.clone(),
         analytics_user_info: AnalyticsUserInfo::from_customer(customer.as_ref()),
+        site,
         nonce,
-        base_url,
         logo_url,
     }
 }

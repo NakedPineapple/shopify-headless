@@ -774,9 +774,8 @@
     {% endblock %}
 
     <!-- Cloudflare Web Analytics (production only) -->
-    {% let cf_token = ""|cf_beacon_token %}
-    {% if !cf_token.is_empty() %}
-    <script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "{{ cf_token }}"}' nonce="{{ nonce }}"></script>
+    {% if !site.cf_beacon_token.is_empty() %}
+    <script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "{{ site.cf_beacon_token }}"}' nonce="{{ nonce }}"></script>
     {% endif %}
 </body>
 </html>

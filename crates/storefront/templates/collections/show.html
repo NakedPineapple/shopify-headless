@@ -8,14 +8,14 @@
 
 {% block title %}{{ collection.title }} | Naked Pineapple{% endblock %}
 
-{% block canonical %}<link rel="canonical" href="{{ base_url }}/collections/{{ collection.handle }}">{% endblock %}
+{% block canonical %}<link rel="canonical" href="{{ site.base_url }}/collections/{{ collection.handle }}">{% endblock %}
 
 {% block description %}{% if let Some(desc) = collection.description %}{{ desc }}{% else %}Shop our {{ collection.title }} collection.{% endif %}{% endblock %}
 
 {% block og_title %}{{ collection.title }}{% endblock %}
 {% block og_description %}{% if let Some(desc) = collection.description %}{{ desc }}{% else %}Shop our {{ collection.title }} collection at Naked Pineapple.{% endif %}{% endblock %}
 {% block og_image %}{% if let Some(image) = collection.image %}{{ image.url|shopify_cdn_url(1200) }}{% endif %}{% endblock %}
-{% block og_url %}{{ base_url }}/collections/{{ collection.handle }}{% endblock %}
+{% block og_url %}{{ site.base_url }}/collections/{{ collection.handle }}{% endblock %}
 
 {% block twitter_card %}summary_large_image{% endblock %}
 {% block twitter_title %}<meta name="twitter:title" content="{{ collection.title }}">{% endblock %}
@@ -23,7 +23,7 @@
 {% block twitter_image %}{% if let Some(image) = collection.image %}<meta name="twitter:image" content="{{ image.url|shopify_cdn_url(1200) }}">{% endif %}{% endblock %}
 
 {% block json_ld %}
-{{ json_ld::breadcrumbs(base_url=base_url, items=breadcrumbs) }}
+{{ json_ld::breadcrumbs(items=breadcrumbs) }}
 {% endblock %}
 
 {% block content %}

@@ -8,7 +8,7 @@ primary_region = "sjc"
   STOREFRONT_HOST = "0.0.0.0"
   STOREFRONT_PORT = "8080"
   RUST_LOG = "info,naked_pineapple_storefront=debug,tower_http=info,reqwest=warn,sqlx::query=warn,rustls=warn,h2=warn,hyper_util=warn"
-  STOREFRONT_BASE_URL = "https://new.nakedpineapple.co"
+  STOREFRONT_BASE_URLS = "https://nakedpineapple.co,https://pineappleskinco.com"
   SHOPIFY_STORE = "nakedpineapple.myshopify.com"
   SHOPIFY_CUSTOMER_SHOP_ID = "71655391511"
   SHOPIFY_API_VERSION = "2026-01"
@@ -23,6 +23,7 @@ primary_region = "sjc"
   META_PIXEL_ID = "1977321279788404"
   PINTEREST_TAG_ID = "2614124776925"
   TIKTOK_PIXEL_ID = "CST5MDBC77U0O0P8B5Q0"
+  CRAZY_EGG_ACCOUNT_ID = "0132/0524"
 
 [http_service]
   internal_port = 8080

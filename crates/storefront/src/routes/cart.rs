@@ -209,6 +209,7 @@ pub struct CartShowTemplate {
     pub has_pending_gwp_selection: bool,
     pub analytics: AnalyticsConfig,
     pub analytics_user_info: AnalyticsUserInfo,
+    pub site: crate::middleware::SiteContext,
     pub nonce: String,
 }
 
@@ -239,12 +240,13 @@ pub struct OrderSummaryTemplate {
 }
 
 /// Display cart page.
-#[instrument(skip(state, session, nonce, customer))]
+#[instrument(skip(state, session, nonce, customer, site))]
 pub async fn show(
     State(state): State<AppState>,
     session: Session,
     OptionalAuth(customer): OptionalAuth,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
+    site: crate::middleware::SiteContext,
 ) -> Response {
     debug!("Displaying cart page");
 
@@ -258,6 +260,7 @@ pub async fn show(
             CartView::empty(),
             nonce,
             analytics_user_info.clone(),
+            site,
         )
         .await;
     };
@@ -269,7 +272,8 @@ pub async fn show(
         Ok(cart) => cart,
         Err(e) => {
             warn!(cart_id = %cart_id, error = %e, "Failed to fetch cart from Shopify");
-            return render_cart_page(&state, CartView::empty(), nonce, analytics_user_info).await;
+            return render_cart_page(&state, CartView::empty(), nonce, analytics_user_info, site)
+                .await;
         }
     };
 
@@ -348,6 +352,7 @@ pub async fn show(
         has_pending_gwp_selection,
         analytics: state.config().analytics.clone(),
         analytics_user_info,
+        site,
         nonce,
     };
 
@@ -370,6 +375,7 @@ async fn render_cart_page(
     cart: CartView,
     nonce: String,
     analytics_user_info: AnalyticsUserInfo,
+    site: crate::middleware::SiteContext,
 ) -> Response {
     let promotions = state
         .storefront()
@@ -400,6 +406,7 @@ async fn render_cart_page(
         has_pending_gwp_selection: false,
         analytics: state.config().analytics.clone(),
         analytics_user_info,
+        site,
         nonce,
     };
 

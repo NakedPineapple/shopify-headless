@@ -41,7 +41,7 @@ pub fn create_session_layer(
         .expect("valid table name");
 
     // Determine if we're in production (HTTPS)
-    let is_secure = config.base_url.starts_with("https://");
+    let is_secure = config.default_base_url.starts_with("https://");
 
     SessionManagerLayer::new(store)
         .with_name(SESSION_COOKIE_NAME)

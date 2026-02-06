@@ -86,6 +86,7 @@ pub struct SearchPageTemplate {
     pub filter_price_lte: Option<u64>,
     pub analytics: AnalyticsConfig,
     pub analytics_user_info: AnalyticsUserInfo,
+    pub site: crate::middleware::SiteContext,
     pub nonce: String,
 }
 
@@ -134,13 +135,14 @@ pub async fn suggest(
 }
 
 /// Full search page.
-#[instrument(skip(state, nonce, customer))]
+#[instrument(skip(state, nonce, customer, site))]
 #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
 pub async fn search_page(
     State(state): State<AppState>,
     OptionalAuth(customer): OptionalAuth,
     Query(query): Query<SearchPageQuery>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
+    site: crate::middleware::SiteContext,
 ) -> impl IntoResponse {
     add_breadcrumb("search", "Searched", Some(&[("query", query.q.trim())]));
     debug!("Handling full search page request");
@@ -192,6 +194,7 @@ pub async fn search_page(
         filter_price_lte: filters.max_price_cents,
         analytics: state.config().analytics.clone(),
         analytics_user_info: AnalyticsUserInfo::from_customer(customer.as_ref()),
+        site,
         nonce,
     }
     .into_response()

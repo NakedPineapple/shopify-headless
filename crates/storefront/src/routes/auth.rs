@@ -136,6 +136,7 @@ pub struct LoginTemplate {
     pub success: Option<String>,
     pub analytics: AnalyticsConfig,
     pub analytics_user_info: AnalyticsUserInfo,
+    pub site: crate::middleware::SiteContext,
     pub nonce: String,
 }
 
@@ -146,6 +147,7 @@ pub struct RegisterTemplate {
     pub error: Option<String>,
     pub analytics: AnalyticsConfig,
     pub analytics_user_info: AnalyticsUserInfo,
+    pub site: crate::middleware::SiteContext,
     pub nonce: String,
 }
 
@@ -156,6 +158,7 @@ pub struct RegisterSuccessTemplate {
     pub email: String,
     pub analytics: AnalyticsConfig,
     pub analytics_user_info: AnalyticsUserInfo,
+    pub site: crate::middleware::SiteContext,
     pub nonce: String,
 }
 
@@ -167,6 +170,7 @@ pub struct ForgotPasswordTemplate {
     pub success: Option<String>,
     pub analytics: AnalyticsConfig,
     pub analytics_user_info: AnalyticsUserInfo,
+    pub site: crate::middleware::SiteContext,
     pub nonce: String,
 }
 
@@ -178,6 +182,7 @@ pub struct ResetPasswordTemplate {
     pub reset_url: String,
     pub analytics: AnalyticsConfig,
     pub analytics_user_info: AnalyticsUserInfo,
+    pub site: crate::middleware::SiteContext,
     pub nonce: String,
 }
 
@@ -189,6 +194,7 @@ pub struct ActivateTemplate {
     pub activation_url: String,
     pub analytics: AnalyticsConfig,
     pub analytics_user_info: AnalyticsUserInfo,
+    pub site: crate::middleware::SiteContext,
     pub nonce: String,
 }
 
@@ -197,11 +203,12 @@ pub struct ActivateTemplate {
 // =============================================================================
 
 /// Display the login page.
-#[instrument(skip(state, nonce))]
+#[instrument(skip(state, nonce, site))]
 pub async fn login_page(
     State(state): State<AppState>,
     Query(query): Query<MessageQuery>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
+    site: crate::middleware::SiteContext,
 ) -> impl IntoResponse {
     debug!("Rendering login page");
     LoginTemplate {
@@ -209,6 +216,7 @@ pub async fn login_page(
         success: query.success,
         analytics: state.config().analytics.clone(),
         analytics_user_info: AnalyticsUserInfo::default(),
+        site,
         nonce,
     }
 }
@@ -283,17 +291,19 @@ pub async fn login(
 // =============================================================================
 
 /// Display the registration page.
-#[instrument(skip(state, nonce))]
+#[instrument(skip(state, nonce, site))]
 pub async fn register_page(
     State(state): State<AppState>,
     Query(query): Query<MessageQuery>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
+    site: crate::middleware::SiteContext,
 ) -> impl IntoResponse {
     debug!("Rendering registration page");
     RegisterTemplate {
         error: query.error,
         analytics: state.config().analytics.clone(),
         analytics_user_info: AnalyticsUserInfo::default(),
+        site,
         nonce,
     }
 }
@@ -302,10 +312,11 @@ pub async fn register_page(
 ///
 /// Creates customer via Shopify Storefront API `customerCreate` mutation.
 /// Shopify automatically sends an activation email.
-#[instrument(skip(state, nonce, form), fields(email = %form.email))]
+#[instrument(skip(state, nonce, site, form), fields(email = %form.email))]
 pub async fn register(
     State(state): State<AppState>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
+    site: crate::middleware::SiteContext,
     Form(form): Form<RegisterForm>,
 ) -> Response {
     debug!("Processing registration request");
@@ -347,6 +358,7 @@ pub async fn register(
                 email: customer.email.unwrap_or_else(|| form.email.clone()),
                 analytics: state.config().analytics.clone(),
                 analytics_user_info: AnalyticsUserInfo::default(),
+                site,
                 nonce,
             }
             .into_response()
@@ -363,6 +375,7 @@ pub async fn register(
                 email: form.email.clone(),
                 analytics: state.config().analytics.clone(),
                 analytics_user_info: AnalyticsUserInfo::default(),
+                site,
                 nonce,
             }
             .into_response()
@@ -377,11 +390,12 @@ pub async fn register(
 /// Display the account activation page.
 ///
 /// Called when user clicks the activation link in Shopify's email.
-#[instrument(skip(state, nonce))]
+#[instrument(skip(state, nonce, site))]
 pub async fn activate_page(
     State(state): State<AppState>,
     Query(query): Query<CallbackQuery>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
+    site: crate::middleware::SiteContext,
 ) -> Response {
     debug!("Rendering account activation page");
     if let Some(url) = query.url {
@@ -391,6 +405,7 @@ pub async fn activate_page(
             activation_url: url,
             analytics: state.config().analytics.clone(),
             analytics_user_info: AnalyticsUserInfo::default(),
+            site,
             nonce,
         }
         .into_response()
@@ -489,11 +504,12 @@ pub async fn activate(
 // =============================================================================
 
 /// Display the forgot password page.
-#[instrument(skip(state, nonce))]
+#[instrument(skip(state, nonce, site))]
 pub async fn forgot_password_page(
     State(state): State<AppState>,
     Query(query): Query<MessageQuery>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
+    site: crate::middleware::SiteContext,
 ) -> impl IntoResponse {
     debug!("Rendering forgot password page");
     ForgotPasswordTemplate {
@@ -501,6 +517,7 @@ pub async fn forgot_password_page(
         success: query.success,
         analytics: state.config().analytics.clone(),
         analytics_user_info: AnalyticsUserInfo::default(),
+        site,
         nonce,
     }
 }
@@ -529,11 +546,12 @@ pub async fn forgot_password(
 /// Display the reset password page.
 ///
 /// Called when user clicks the reset link in Shopify's email.
-#[instrument(skip(state, nonce))]
+#[instrument(skip(state, nonce, site))]
 pub async fn reset_password_page(
     State(state): State<AppState>,
     Query(query): Query<CallbackQuery>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
+    site: crate::middleware::SiteContext,
 ) -> Response {
     debug!("Rendering reset password page");
     if let Some(url) = query.url {
@@ -543,6 +561,7 @@ pub async fn reset_password_page(
             reset_url: url,
             analytics: state.config().analytics.clone(),
             analytics_user_info: AnalyticsUserInfo::default(),
+            site,
             nonce,
         }
         .into_response()

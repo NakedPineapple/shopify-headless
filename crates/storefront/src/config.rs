@@ -4,7 +4,7 @@
 //!
 //! ## Required
 //! - `STOREFRONT_DATABASE_URL` - `PostgreSQL` connection string
-//! - `STOREFRONT_BASE_URL` - Public URL for the storefront
+//! - `STOREFRONT_BASE_URLS` - Comma-separated public base URLs (e.g., `https://a.com,https://b.com`)
 //! - `STOREFRONT_SESSION_SECRET` - Session signing secret (min 32 chars, high entropy)
 //! - `SHOPIFY_STORE` - Shopify store domain (e.g., your-store.myshopify.com)
 //! - `SHOPIFY_STOREFRONT_PUBLIC_TOKEN` - Storefront API public access token
@@ -73,8 +73,12 @@ pub struct StorefrontConfig {
     pub host: IpAddr,
     /// Port to listen on
     pub port: u16,
-    /// Public base URL for the storefront
-    pub base_url: String,
+    /// Base URLs keyed by host (e.g., `"nakedpineapple.co"` → `"https://nakedpineapple.co"`)
+    pub base_urls: HashMap<String, String>,
+    /// Default base URL (first entry in `STOREFRONT_BASE_URLS`)
+    pub default_base_url: String,
+    /// Cloudflare Web Analytics beacon tokens keyed by host
+    pub cf_beacon_tokens: HashMap<String, String>,
     /// Session signing secret
     pub session_secret: SecretString,
     /// Shopify Storefront API configuration
@@ -241,7 +245,8 @@ impl StorefrontConfig {
             .map_err(|e| {
                 ConfigError::InvalidEnvVar("STOREFRONT_PORT".to_string(), e.to_string())
             })?;
-        let base_url = get_required_env("STOREFRONT_BASE_URL")?;
+        let (base_urls, default_base_url) = parse_base_urls()?;
+        let cf_beacon_tokens = parse_cf_beacon_tokens()?;
         let session_secret = get_validated_secret("STOREFRONT_SESSION_SECRET")?;
         validate_session_secret(&session_secret, "STOREFRONT_SESSION_SECRET")?;
 
@@ -264,7 +269,9 @@ impl StorefrontConfig {
             database_url,
             host,
             port,
-            base_url,
+            base_urls,
+            default_base_url,
+            cf_beacon_tokens,
             session_secret,
             shopify,
             analytics,
@@ -358,6 +365,59 @@ fn get_database_url(primary_key: &str) -> Result<SecretString, ConfigError> {
         return Ok(SecretString::from(value));
     }
     Err(ConfigError::MissingEnvVar(primary_key.to_string()))
+}
+
+/// Parse `STOREFRONT_BASE_URLS` into a `host→base_url` map and the default base URL.
+///
+/// The value is a comma-separated list of full base URLs (e.g.,
+/// `https://nakedpineapple.co,https://pineappleskinco.com`). At least one URL is required.
+fn parse_base_urls() -> Result<(HashMap<String, String>, String), ConfigError> {
+    let raw = get_required_env("STOREFRONT_BASE_URLS")?;
+    let mut map = HashMap::new();
+    let mut default = None;
+
+    for url_str in raw.split(',') {
+        let url_str = url_str.trim();
+        let url = url::Url::parse(url_str).map_err(|e| {
+            ConfigError::InvalidEnvVar("STOREFRONT_BASE_URLS".to_string(), e.to_string())
+        })?;
+        let host = url
+            .host_str()
+            .ok_or_else(|| {
+                ConfigError::InvalidEnvVar(
+                    "STOREFRONT_BASE_URLS".to_string(),
+                    format!("URL has no host: {url_str}"),
+                )
+            })?
+            .to_owned();
+        let base_url = format!("{}://{}", url.scheme(), host);
+        if default.is_none() {
+            default = Some(base_url.clone());
+        }
+        map.insert(host, base_url);
+    }
+
+    let default = default.ok_or_else(|| {
+        ConfigError::InvalidEnvVar(
+            "STOREFRONT_BASE_URLS".to_string(),
+            "must contain at least one URL".to_string(),
+        )
+    })?;
+
+    Ok((map, default))
+}
+
+/// Parse `CF_BEACON_TOKENS` JSON into a host→token map.
+///
+/// The value is a JSON object mapping domains to Cloudflare beacon tokens (e.g.,
+/// `{"nakedpineapple.co":"abc","pineappleskinco.com":"def"}`).
+/// Returns an empty map if unset.
+fn parse_cf_beacon_tokens() -> Result<HashMap<String, String>, ConfigError> {
+    let Some(raw) = get_optional_env("CF_BEACON_TOKENS") else {
+        return Ok(HashMap::new());
+    };
+    serde_json::from_str(&raw)
+        .map_err(|e| ConfigError::InvalidEnvVar("CF_BEACON_TOKENS".to_string(), e.to_string()))
 }
 
 /// Get an optional environment variable.
@@ -522,7 +582,12 @@ mod tests {
             database_url: SecretString::from("postgres://localhost/test"),
             host: "127.0.0.1".parse().unwrap(),
             port: 3000,
-            base_url: "http://localhost:3000".to_string(),
+            base_urls: HashMap::from([(
+                "localhost".to_string(),
+                "http://localhost:3000".to_string(),
+            )]),
+            default_base_url: "http://localhost:3000".to_string(),
+            cf_beacon_tokens: HashMap::new(),
             session_secret: SecretString::from("x".repeat(32)),
             shopify: ShopifyStorefrontConfig {
                 store: "test.myshopify.com".to_string(),

@@ -29,6 +29,7 @@
 //! POST /newsletter/subscribe   - Subscribe to newsletter (HTMX fragment)
 //!
 //! # Contact
+//! GET  /contact                  - Contact page
 //! POST /contact/product-question - Submit product question (JSON API)
 //!
 //! # Auth

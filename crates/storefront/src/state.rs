@@ -1,5 +1,6 @@
 //! Application state shared across handlers.
 
+use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -15,10 +16,10 @@ use crate::shopify::{CustomerClient, StorefrontClient};
 /// Error creating application state.
 #[derive(Debug, thiserror::Error)]
 pub enum AppStateError {
-    #[error("invalid base_url: {0}")]
+    #[error("invalid base URL: {0}")]
     InvalidUrl(#[from] url::ParseError),
-    #[error("base_url must have a host")]
-    MissingHost,
+    #[error("base URL must have a host: {0}")]
+    MissingHost(String),
     #[error("webauthn error: {0}")]
     WebAuthn(#[from] WebauthnError),
     #[error("content error: {0}")]
@@ -39,7 +40,8 @@ struct AppStateInner {
     pool: PgPool,
     storefront: StorefrontClient,
     customer: CustomerClient,
-    webauthn: Webauthn,
+    webauthn_map: HashMap<String, Webauthn>,
+    default_webauthn: Webauthn,
     content: ContentStore,
     search: SearchIndex,
 }
@@ -63,7 +65,7 @@ impl AppState {
     ) -> Result<Self, AppStateError> {
         let storefront = StorefrontClient::new(&config.shopify);
         let customer = CustomerClient::new(&config.shopify);
-        let webauthn = create_webauthn(&config)?;
+        let (webauthn_map, default_webauthn) = create_webauthn_map(&config)?;
         let content = ContentStore::load(content_dir)?;
         let search = SearchIndex::new();
 
@@ -73,7 +75,8 @@ impl AppState {
                 pool,
                 storefront,
                 customer,
-                webauthn,
+                webauthn_map,
+                default_webauthn,
                 content,
                 search,
             }),
@@ -104,10 +107,15 @@ impl AppState {
         &self.inner.customer
     }
 
-    /// Get a reference to the `WebAuthn` configuration.
+    /// Get the `WebAuthn` instance for a given host.
+    ///
+    /// Falls back to the default instance if the host is not found.
     #[must_use]
-    pub fn webauthn(&self) -> &Webauthn {
-        &self.inner.webauthn
+    pub fn webauthn_for_host(&self, host: &str) -> &Webauthn {
+        self.inner
+            .webauthn_map
+            .get(host)
+            .unwrap_or(&self.inner.default_webauthn)
     }
 
     /// Get a reference to the content store.
@@ -136,16 +144,45 @@ impl AppState {
     }
 }
 
-/// Create a `WebAuthn` instance from configuration.
-fn create_webauthn(config: &StorefrontConfig) -> Result<Webauthn, AppStateError> {
-    // Parse the base URL to get the origin and RP ID
-    let url = Url::parse(&config.base_url)?;
+/// Build a `WebAuthn` instance per configured domain.
+///
+/// Returns a map of host → `Webauthn` and the default instance (first entry).
+fn create_webauthn_map(
+    config: &StorefrontConfig,
+) -> Result<(HashMap<String, Webauthn>, Webauthn), AppStateError> {
+    let mut map = HashMap::new();
+    let mut default = None;
 
-    let rp_id = url.host_str().ok_or(AppStateError::MissingHost)?.to_owned();
+    for (host, base_url) in &config.base_urls {
+        let url = Url::parse(base_url)?;
+        let rp_id = url
+            .host_str()
+            .ok_or_else(|| AppStateError::MissingHost(base_url.clone()))?
+            .to_owned();
 
-    let builder = WebauthnBuilder::new(&rp_id, &url)?
-        .rp_name("Naked Pineapple")
-        .allow_subdomains(false);
+        let webauthn = WebauthnBuilder::new(&rp_id, &url)?
+            .rp_name("Naked Pineapple")
+            .allow_subdomains(false)
+            .build()?;
 
-    Ok(builder.build()?)
+        if default.is_none() {
+            default = Some(webauthn.clone());
+        }
+        map.insert(host.clone(), webauthn);
+    }
+
+    // default_base_url is guaranteed to have at least one entry (validated in config),
+    // so we can safely build from it as a fallback.
+    let default = default.unwrap_or_else(|| {
+        let url = Url::parse(&config.default_base_url).expect("default_base_url already validated");
+        let rp_id = url.host_str().expect("default_base_url has host");
+        WebauthnBuilder::new(rp_id, &url)
+            .expect("valid webauthn config")
+            .rp_name("Naked Pineapple")
+            .allow_subdomains(false)
+            .build()
+            .expect("valid webauthn build")
+    });
+
+    Ok((map, default))
 }

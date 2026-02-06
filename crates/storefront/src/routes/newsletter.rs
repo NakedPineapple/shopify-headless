@@ -63,6 +63,7 @@ pub struct UnsubscribeTemplate {
     pub email: String,
     pub unsubscribe_email: bool,
     pub unsubscribe_sms: bool,
+    pub site: crate::middleware::SiteContext,
     pub nonce: String,
 }
 
@@ -71,6 +72,7 @@ pub struct UnsubscribeTemplate {
 #[template(path = "newsletter/unsubscribe_success.html")]
 pub struct UnsubscribeSuccessTemplate {
     pub email: String,
+    pub site: crate::middleware::SiteContext,
     pub nonce: String,
 }
 
@@ -80,6 +82,7 @@ pub struct UnsubscribeSuccessTemplate {
 pub struct UnsubscribeErrorTemplate {
     pub message: String,
     pub email: String,
+    pub site: crate::middleware::SiteContext,
     pub nonce: String,
 }
 
@@ -229,11 +232,12 @@ pub async fn subscribe(
 /// Show unsubscribe page.
 ///
 /// GET /newsletter/unsubscribe?email=xxx
-#[instrument(skip(state, nonce))]
+#[instrument(skip(state, nonce, site))]
 pub async fn unsubscribe_page(
     State(state): State<AppState>,
     Query(query): Query<UnsubscribeQuery>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
+    site: crate::middleware::SiteContext,
 ) -> impl IntoResponse {
     debug!("Rendering unsubscribe page");
     let email = query.email.unwrap_or_default();
@@ -247,6 +251,7 @@ pub async fn unsubscribe_page(
                 message: "Unsubscribe service is not available. Please contact support."
                     .to_string(),
                 email,
+                site,
                 nonce,
             }
             .render()
@@ -261,6 +266,7 @@ pub async fn unsubscribe_page(
             email,
             unsubscribe_email: true,
             unsubscribe_sms: false,
+            site,
             nonce,
         }
         .render()
@@ -272,10 +278,11 @@ pub async fn unsubscribe_page(
 /// Process unsubscribe request.
 ///
 /// POST /newsletter/unsubscribe
-#[instrument(skip(state, nonce), fields(email = %form.email))]
+#[instrument(skip(state, nonce, site), fields(email = %form.email))]
 pub async fn unsubscribe(
     State(state): State<AppState>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
+    site: crate::middleware::SiteContext,
     Form(form): Form<UnsubscribeForm>,
 ) -> impl IntoResponse {
     debug!("Processing unsubscribe request");
@@ -290,7 +297,12 @@ pub async fn unsubscribe(
     // Validate email
     if !is_valid_email(&email) {
         warn!(email = %email, "Invalid email format for unsubscribe");
-        return render_unsubscribe_error("Please enter a valid email address.", &email, &nonce);
+        return render_unsubscribe_error(
+            "Please enter a valid email address.",
+            &email,
+            &nonce,
+            &site,
+        );
     }
 
     // Check if at least one option is selected
@@ -300,6 +312,7 @@ pub async fn unsubscribe(
             "Please select at least one option to unsubscribe from.",
             &email,
             &nonce,
+            &site,
         );
     }
 
@@ -310,6 +323,7 @@ pub async fn unsubscribe(
             "Unsubscribe service is not available. Please contact support.",
             &email,
             &nonce,
+            &site,
         );
     };
 
@@ -323,13 +337,14 @@ pub async fn unsubscribe(
                 "Something went wrong. Please try again later.",
                 &email,
                 &nonce,
+                &site,
             );
         }
     };
 
     // Process the unsubscribe request
     debug!(email = %email, "Delegating to process_unsubscribe");
-    process_unsubscribe(&client, &email, &form, &nonce).await
+    process_unsubscribe(&client, &email, &form, &nonce, &site).await
 }
 
 /// Process the unsubscribe request after validation.
@@ -338,6 +353,7 @@ async fn process_unsubscribe(
     email: &str,
     form: &UnsubscribeForm,
     nonce: &str,
+    site: &crate::middleware::SiteContext,
 ) -> axum::response::Response {
     debug!(email = %email, "Looking up Klaviyo profile");
     // Find profile by email
@@ -349,7 +365,7 @@ async fn process_unsubscribe(
         Err(crate::services::KlaviyoError::ProfileNotFound(_)) => {
             // Profile not found - show success anyway (don't reveal if email exists)
             info!(email = %email, "Profile not found - showing success");
-            return render_unsubscribe_success(email, nonce);
+            return render_unsubscribe_success(email, nonce, site);
         }
         Err(e) => {
             error!(email = %email, error = %e, "Failed to find profile");
@@ -357,6 +373,7 @@ async fn process_unsubscribe(
                 "Something went wrong. Please try again later.",
                 email,
                 nonce,
+                site,
             );
         }
     };
@@ -382,7 +399,7 @@ async fn process_unsubscribe(
 
     if errors.is_empty() {
         info!(email = %email, "Unsubscribe successful");
-        render_unsubscribe_success(email, nonce)
+        render_unsubscribe_success(email, nonce, site)
     } else {
         warn!(email = %email, failed_channels = ?errors, "Partial unsubscribe failure");
         render_unsubscribe_error(
@@ -392,15 +409,21 @@ async fn process_unsubscribe(
             ),
             email,
             nonce,
+            site,
         )
     }
 }
 
 /// Render the unsubscribe success page.
-fn render_unsubscribe_success(email: &str, nonce: &str) -> axum::response::Response {
+fn render_unsubscribe_success(
+    email: &str,
+    nonce: &str,
+    site: &crate::middleware::SiteContext,
+) -> axum::response::Response {
     Html(
         UnsubscribeSuccessTemplate {
             email: email.to_string(),
+            site: site.clone(),
             nonce: nonce.to_string(),
         }
         .render()
@@ -410,11 +433,17 @@ fn render_unsubscribe_success(email: &str, nonce: &str) -> axum::response::Respo
 }
 
 /// Render the unsubscribe error page.
-fn render_unsubscribe_error(message: &str, email: &str, nonce: &str) -> axum::response::Response {
+fn render_unsubscribe_error(
+    message: &str,
+    email: &str,
+    nonce: &str,
+    site: &crate::middleware::SiteContext,
+) -> axum::response::Response {
     Html(
         UnsubscribeErrorTemplate {
             message: message.to_string(),
             email: email.to_string(),
+            site: site.clone(),
             nonce: nonce.to_string(),
         }
         .render()

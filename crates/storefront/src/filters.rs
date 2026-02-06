@@ -319,11 +319,6 @@ static SENTRY_ENVIRONMENT: LazyLock<String> = LazyLock::new(|| {
     std::env::var("SENTRY_ENVIRONMENT").unwrap_or_else(|_| "production".to_string())
 });
 
-/// Cloudflare Web Analytics beacon token, read from `CF_BEACON_TOKEN` env var.
-/// Returns empty string if not set (development).
-static CF_BEACON_TOKEN: LazyLock<String> =
-    LazyLock::new(|| std::env::var("CF_BEACON_TOKEN").unwrap_or_default());
-
 /// Returns the Sentry public DSN for client-side error reporting.
 ///
 /// Returns empty string in development (when `SENTRY_DSN_PUBLIC` is not set).
@@ -358,21 +353,6 @@ pub fn sentry_environment(
     _env: &dyn askama::Values,
 ) -> askama::Result<String> {
     Ok(SENTRY_ENVIRONMENT.clone())
-}
-
-/// Returns the Cloudflare beacon token for Web Analytics.
-///
-/// Returns empty string in development (when `CF_BEACON_TOKEN` is not set).
-///
-/// Usage in templates: `{% let cf_token = ""|cf_beacon_token %}`
-///
-/// # Errors
-///
-/// This filter is infallible, however Askama requires filters return `askama::Result`.
-#[allow(clippy::unnecessary_wraps)]
-#[askama::filter_fn]
-pub fn cf_beacon_token(_value: impl Display, _env: &dyn askama::Values) -> askama::Result<String> {
-    Ok(CF_BEACON_TOKEN.clone())
 }
 
 /// Renders inline markdown to HTML.

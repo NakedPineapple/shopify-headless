@@ -285,9 +285,8 @@ pub struct ProductsIndexTemplate {
     pub has_more_pages: bool,
     pub analytics: AnalyticsConfig,
     pub analytics_user_info: AnalyticsUserInfo,
+    pub site: crate::middleware::SiteContext,
     pub nonce: String,
-    /// Base URL for canonical links.
-    pub base_url: String,
 }
 
 /// Product detail page template.
@@ -298,9 +297,8 @@ pub struct ProductShowTemplate {
     pub related_products: Vec<ProductView>,
     pub analytics: AnalyticsConfig,
     pub analytics_user_info: AnalyticsUserInfo,
+    pub site: crate::middleware::SiteContext,
     pub nonce: String,
-    /// Base URL for canonical links and structured data.
-    pub base_url: String,
     /// Breadcrumb trail for SEO.
     pub breadcrumbs: Vec<BreadcrumbItem>,
     /// Shopify store URL for Shop Pay button (e.g., "your-store.myshopify.com").
@@ -326,6 +324,7 @@ pub async fn index(
     OptionalAuth(customer): OptionalAuth,
     Query(query): Query<PaginationQuery>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
+    site: crate::middleware::SiteContext,
 ) -> Response {
     debug!("Fetching product listing page");
     let current_page = query.page.unwrap_or(1);
@@ -361,8 +360,8 @@ pub async fn index(
                 has_more_pages: has_more,
                 analytics: state.config().analytics.clone(),
                 analytics_user_info: AnalyticsUserInfo::from_customer(customer.as_ref()),
+                site,
                 nonce,
-                base_url: state.config().base_url.clone(),
             }
             .into_response()
         }
@@ -376,31 +375,37 @@ pub async fn index(
                 has_more_pages: false,
                 analytics: state.config().analytics.clone(),
                 analytics_user_info: AnalyticsUserInfo::from_customer(customer.as_ref()),
+                site,
                 nonce,
-                base_url: state.config().base_url.clone(),
             }
             .into_response()
         }
     }
 }
 
-/// Build an error product template response.
-fn build_error_product_template(
+/// Parameters for building an error product template.
+struct ProductErrorParams {
     status: StatusCode,
     handle: String,
-    title: &str,
-    description: &str,
+    title: &'static str,
+    description: &'static str,
+}
+
+/// Build an error product template response.
+fn build_error_product_template(
+    params: ProductErrorParams,
     state: &AppState,
     nonce: String,
     analytics_user_info: AnalyticsUserInfo,
+    site: crate::middleware::SiteContext,
 ) -> Response {
     (
-        status,
+        params.status,
         ProductShowTemplate {
             product: ProductView {
-                handle,
-                title: title.to_string(),
-                description: description.to_string(),
+                handle: params.handle,
+                title: params.title.to_string(),
+                description: params.description.to_string(),
                 product_type: String::new(),
                 price: "$0.00".to_string(),
                 compare_at_price: None,
@@ -421,8 +426,8 @@ fn build_error_product_template(
             related_products: Vec::new(),
             analytics: state.config().analytics.clone(),
             analytics_user_info,
+            site,
             nonce,
-            base_url: state.config().base_url.clone(),
             breadcrumbs: Vec::new(),
             store_url: state.config().shopify.store.clone(),
         },
@@ -437,6 +442,7 @@ pub async fn show(
     OptionalAuth(customer): OptionalAuth,
     Path(handle): Path<String>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
+    site: crate::middleware::SiteContext,
 ) -> Response {
     add_breadcrumb("product", "Viewed product", Some(&[("handle", &handle)]));
     debug!(handle = %handle, "Fetching product detail page");
@@ -481,8 +487,8 @@ pub async fn show(
                 related_products,
                 analytics: state.config().analytics.clone(),
                 analytics_user_info,
+                site,
                 nonce,
-                base_url: state.config().base_url.clone(),
                 breadcrumbs,
                 store_url: state.config().shopify.store.clone(),
             }
@@ -491,25 +497,31 @@ pub async fn show(
         Err(ShopifyError::NotFound(_)) => {
             warn!(handle = %handle, "Product not found");
             build_error_product_template(
-                StatusCode::NOT_FOUND,
-                handle,
-                "Product Not Found",
-                "This product could not be found.",
+                ProductErrorParams {
+                    status: StatusCode::NOT_FOUND,
+                    handle,
+                    title: "Product Not Found",
+                    description: "This product could not be found.",
+                },
                 &state,
                 nonce,
                 analytics_user_info.clone(),
+                site,
             )
         }
         Err(e) => {
             tracing::error!(handle = %handle, error = %e, "Failed to fetch product from Shopify");
             build_error_product_template(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                handle,
-                "Error",
-                "An error occurred loading this product.",
+                ProductErrorParams {
+                    status: StatusCode::INTERNAL_SERVER_ERROR,
+                    handle,
+                    title: "Error",
+                    description: "An error occurred loading this product.",
+                },
                 &state,
                 nonce,
                 analytics_user_info,
+                site,
             )
         }
     }

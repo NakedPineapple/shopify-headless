@@ -77,9 +77,8 @@ pub struct CollectionsIndexTemplate {
     pub collections: Vec<CollectionView>,
     pub analytics: AnalyticsConfig,
     pub analytics_user_info: AnalyticsUserInfo,
+    pub site: crate::middleware::SiteContext,
     pub nonce: String,
-    /// Base URL for canonical links.
-    pub base_url: String,
 }
 
 /// Collection detail page template.
@@ -93,9 +92,8 @@ pub struct CollectionShowTemplate {
     pub has_more_pages: bool,
     pub analytics: AnalyticsConfig,
     pub analytics_user_info: AnalyticsUserInfo,
+    pub site: crate::middleware::SiteContext,
     pub nonce: String,
-    /// Base URL for canonical links and structured data.
-    pub base_url: String,
     /// Breadcrumb trail for SEO.
     pub breadcrumbs: Vec<BreadcrumbItem>,
     /// Current sort option value.
@@ -119,6 +117,7 @@ pub async fn index(
     State(state): State<AppState>,
     OptionalAuth(customer): OptionalAuth,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
+    site: crate::middleware::SiteContext,
 ) -> Response {
     debug!("Fetching all collections from Shopify Storefront API");
 
@@ -145,8 +144,8 @@ pub async fn index(
                 collections,
                 analytics: state.config().analytics.clone(),
                 analytics_user_info: AnalyticsUserInfo::from_customer(customer.as_ref()),
+                site,
                 nonce,
-                base_url: state.config().base_url.clone(),
             }
             .into_response()
         }
@@ -156,8 +155,8 @@ pub async fn index(
                 collections: Vec::new(),
                 analytics: state.config().analytics.clone(),
                 analytics_user_info: AnalyticsUserInfo::from_customer(customer.as_ref()),
+                site,
                 nonce,
-                base_url: state.config().base_url.clone(),
             }
             .into_response()
         }
@@ -304,6 +303,7 @@ fn error_template(
     state: &AppState,
     nonce: String,
     analytics_user_info: AnalyticsUserInfo,
+    site: crate::middleware::SiteContext,
 ) -> Response {
     let has_price_filter = params.filters.has_price_filter();
     (
@@ -322,8 +322,8 @@ fn error_template(
             has_more_pages: false,
             analytics: state.config().analytics.clone(),
             analytics_user_info,
+            site,
             nonce,
-            base_url: state.config().base_url.clone(),
             breadcrumbs: Vec::new(),
             current_sort: params.filters.current_sort,
             filter_available: params.filters.filter_available,
@@ -364,6 +364,7 @@ fn build_collection_response(
     state: &AppState,
     nonce: String,
     analytics_user_info: AnalyticsUserInfo,
+    site: crate::middleware::SiteContext,
 ) -> Response {
     let collection = CollectionView::from(shopify_collection);
     let products: Vec<ProductView> = shopify_collection
@@ -395,8 +396,8 @@ fn build_collection_response(
         has_more_pages: has_more,
         analytics: state.config().analytics.clone(),
         analytics_user_info,
+        site,
         nonce,
-        base_url: state.config().base_url.clone(),
         current_sort: filters.current_sort,
         filter_available: filters.filter_available,
         filter_price_min: filters.filter_price_min,
@@ -407,13 +408,14 @@ fn build_collection_response(
 }
 
 /// Display collection detail page with products.
-#[instrument(skip(state, nonce, customer), fields(handle = %handle))]
+#[instrument(skip(state, nonce, customer, site), fields(handle = %handle))]
 pub async fn show(
     State(state): State<AppState>,
     Path(handle): Path<String>,
     OptionalAuth(customer): OptionalAuth,
     Query(query): Query<PaginationQuery>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
+    site: crate::middleware::SiteContext,
 ) -> Response {
     add_breadcrumb(
         "collection",
@@ -482,6 +484,7 @@ pub async fn show(
             &state,
             nonce,
             analytics_user_info,
+            site,
         ),
         Err(ShopifyError::NotFound(_)) => {
             warn!(handle = %handle, "Collection not found");
@@ -490,6 +493,7 @@ pub async fn show(
                 &state,
                 nonce,
                 analytics_user_info,
+                site,
             )
         }
         Err(e) => {
@@ -503,6 +507,7 @@ pub async fn show(
                 &state,
                 nonce,
                 analytics_user_info,
+                site,
             )
         }
     }

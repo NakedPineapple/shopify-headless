@@ -56,9 +56,8 @@ pub struct BlogIndexTemplate {
     pub posts: Vec<PostView>,
     pub analytics: AnalyticsConfig,
     pub analytics_user_info: AnalyticsUserInfo,
+    pub site: crate::middleware::SiteContext,
     pub nonce: String,
-    /// Base URL for canonical links.
-    pub base_url: String,
 }
 
 /// Blog post detail template.
@@ -69,9 +68,8 @@ pub struct BlogShowTemplate {
     pub recent_posts: Vec<PostView>,
     pub analytics: AnalyticsConfig,
     pub analytics_user_info: AnalyticsUserInfo,
+    pub site: crate::middleware::SiteContext,
     pub nonce: String,
-    /// Base URL for canonical links and structured data.
-    pub base_url: String,
     /// Logo URL for publisher in Article schema.
     pub logo_url: String,
     /// Breadcrumb trail for SEO.
@@ -82,11 +80,12 @@ pub struct BlogShowTemplate {
 const RECENT_POSTS_COUNT: usize = 3;
 
 /// Display the blog index page with all published posts.
-#[instrument(skip(state, nonce, customer))]
+#[instrument(skip(state, nonce, customer, site))]
 pub async fn index(
     State(state): State<AppState>,
     OptionalAuth(customer): OptionalAuth,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
+    site: crate::middleware::SiteContext,
 ) -> impl IntoResponse {
     debug!("Rendering blog index page");
 
@@ -102,8 +101,8 @@ pub async fn index(
         posts,
         analytics: state.config().analytics.clone(),
         analytics_user_info: AnalyticsUserInfo::from_customer(customer.as_ref()),
+        site,
         nonce,
-        base_url: state.config().base_url.clone(),
     }
 }
 
@@ -112,12 +111,13 @@ pub async fn index(
 /// # Errors
 ///
 /// Returns 404 if the post doesn't exist or is a draft.
-#[instrument(skip(state, nonce, customer))]
+#[instrument(skip(state, nonce, customer, site))]
 pub async fn show(
     State(state): State<AppState>,
     OptionalAuth(customer): OptionalAuth,
     Path(slug): Path<String>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
+    site: crate::middleware::SiteContext,
 ) -> Result<impl IntoResponse, StatusCode> {
     debug!(slug = %slug, "Loading blog post");
 
@@ -164,8 +164,7 @@ pub async fn show(
         },
     ];
 
-    let base_url = state.config().base_url.clone();
-    let logo_url = crate::filters::get_logo_url(&base_url);
+    let logo_url = crate::filters::get_logo_url(&site.base_url);
 
     info!(slug = %slug, title = %post_view.title, "Blog post rendered successfully");
 
@@ -174,8 +173,8 @@ pub async fn show(
         recent_posts,
         analytics: state.config().analytics.clone(),
         analytics_user_info: AnalyticsUserInfo::from_customer(customer.as_ref()),
+        site,
         nonce,
-        base_url,
         logo_url,
         breadcrumbs,
     })

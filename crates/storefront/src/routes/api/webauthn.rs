@@ -69,9 +69,10 @@ pub struct StartRegistrationResponse {
 pub async fn start_registration(
     State(state): State<AppState>,
     session: Session,
+    site: crate::middleware::SiteContext,
     RequireAuth(current_customer): RequireAuth,
 ) -> Result<Json<StartRegistrationResponse>, ApiError> {
-    let auth = AuthService::new(state.pool(), state.webauthn());
+    let auth = AuthService::new(state.pool(), state.webauthn_for_host(&site.host));
 
     // Get existing credentials for this Shopify customer
     let credentials = auth
@@ -123,6 +124,7 @@ pub struct FinishRegistrationResponse {
 pub async fn finish_registration(
     State(state): State<AppState>,
     session: Session,
+    site: crate::middleware::SiteContext,
     RequireAuth(current_customer): RequireAuth,
     Json(req): Json<FinishRegistrationRequest>,
 ) -> Result<Json<FinishRegistrationResponse>, ApiError> {
@@ -138,7 +140,7 @@ pub async fn finish_registration(
         .remove::<PasskeyRegistration>(session_keys::WEBAUTHN_REG)
         .await;
 
-    let auth = AuthService::new(state.pool(), state.webauthn());
+    let auth = AuthService::new(state.pool(), state.webauthn_for_host(&site.host));
 
     // Finish registration
     let passkey = auth
@@ -193,9 +195,10 @@ pub struct StartAuthenticationResponse {
 pub async fn start_authentication(
     State(state): State<AppState>,
     session: Session,
+    site: crate::middleware::SiteContext,
     Json(req): Json<StartAuthenticationRequest>,
 ) -> Result<Json<StartAuthenticationResponse>, ApiError> {
-    let auth = AuthService::new(state.pool(), state.webauthn());
+    let auth = AuthService::new(state.pool(), state.webauthn_for_host(&site.host));
 
     // Start authentication - this looks up credentials by email
     // and returns the Shopify customer ID for verification after auth
@@ -243,6 +246,7 @@ pub struct FinishAuthenticationResponse {
 pub async fn finish_authentication(
     State(state): State<AppState>,
     session: Session,
+    site: crate::middleware::SiteContext,
     Json(req): Json<FinishAuthenticationRequest>,
 ) -> Result<Json<FinishAuthenticationResponse>, ApiError> {
     // Get authentication state from session
@@ -257,7 +261,7 @@ pub async fn finish_authentication(
         .remove::<(PasskeyAuthentication, String)>(session_keys::WEBAUTHN_AUTH)
         .await;
 
-    let auth = AuthService::new(state.pool(), state.webauthn());
+    let auth = AuthService::new(state.pool(), state.webauthn_for_host(&site.host));
 
     // Finish authentication - verifies the passkey response
     auth.finish_passkey_authentication_for_shopify_customer(

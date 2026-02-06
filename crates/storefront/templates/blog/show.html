@@ -7,24 +7,24 @@
 
 {% block title %}{{ post.title }} - Beyond the Skin{% endblock %}
 
-{% block canonical %}<link rel="canonical" href="{{ base_url }}/blog/{{ post.slug }}">{% endblock %}
+{% block canonical %}<link rel="canonical" href="{{ site.base_url }}/blog/{{ post.slug }}">{% endblock %}
 
 {% block description %}{% if let Some(desc) = post.description.as_ref() %}{{ desc }}{% else %}{{ post.title }} - Read more on the Naked Pineapple blog.{% endif %}{% endblock %}
 
 {% block og_title %}{{ post.title }}{% endblock %}
 {% block og_description %}{% if let Some(desc) = post.description.as_ref() %}{{ desc }}{% else %}{{ post.title }}{% endif %}{% endblock %}
 {% block og_type %}article{% endblock %}
-{% block og_image %}{% if let Some(image) = post.featured_image.as_ref() %}{{ base_url }}/static/images/derived/{{ image }}{% endif %}{% endblock %}
-{% block og_url %}{{ base_url }}/blog/{{ post.slug }}{% endblock %}
+{% block og_image %}{% if let Some(image) = post.featured_image.as_ref() %}{{ site.base_url }}/static/images/derived/{{ image }}{% endif %}{% endblock %}
+{% block og_url %}{{ site.base_url }}/blog/{{ post.slug }}{% endblock %}
 
 {% block twitter_card %}summary_large_image{% endblock %}
 {% block twitter_title %}<meta name="twitter:title" content="{{ post.title }}">{% endblock %}
 {% block twitter_description %}<meta name="twitter:description" content="{% if let Some(desc) = post.description.as_ref() %}{{ desc }}{% else %}{{ post.title }}{% endif %}">{% endblock %}
-{% block twitter_image %}{% if let Some(image) = post.featured_image.as_ref() %}<meta name="twitter:image" content="{{ base_url }}/static/images/derived/{{ image }}">{% endif %}{% endblock %}
+{% block twitter_image %}{% if let Some(image) = post.featured_image.as_ref() %}<meta name="twitter:image" content="{{ site.base_url }}/static/images/derived/{{ image }}">{% endif %}{% endblock %}
 
 {% block json_ld %}
-{{ json_ld::article(base_url=base_url, post=post, logo_url=logo_url) }}
-{{ json_ld::breadcrumbs(base_url=base_url, items=breadcrumbs) }}
+{{ json_ld::article(post=post, logo_url=logo_url) }}
+{{ json_ld::breadcrumbs(items=breadcrumbs) }}
 {% endblock %}
 
 {% block content %}
