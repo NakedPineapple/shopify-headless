@@ -148,19 +148,30 @@ impl CustomerClient {
     /// The full authorization URL to redirect the customer to.
     #[must_use]
     pub fn authorization_url(&self, redirect_uri: &str, state: &str, nonce: &str) -> String {
+        // Shopify Customer Account API accepts exactly three scope values.
+        // Granular permissions (customer_read_orders, etc.) are configured
+        // at the app level in Shopify admin, not in the OAuth request.
+        let scopes = [
+            "openid",
+            "email",
+            "https://api.customers.com/auth/customer.graphql",
+        ]
+        .join(" ");
+
         format!(
-            "https://shopify.com/{}/auth/oauth/authorize?\
-            client_id={}&\
+            "https://shopify.com/{store}/auth/oauth/authorize?\
+            client_id={client_id}&\
             response_type=code&\
-            redirect_uri={}&\
-            scope=openid%20email%20customer-account-api:full&\
-            state={}&\
-            nonce={}",
-            self.inner.store_id,
-            urlencoding::encode(&self.inner.client_id),
-            urlencoding::encode(redirect_uri),
-            urlencoding::encode(state),
-            urlencoding::encode(nonce)
+            redirect_uri={redirect_uri}&\
+            scope={scopes}&\
+            state={state}&\
+            nonce={nonce}",
+            store = self.inner.store_id,
+            client_id = urlencoding::encode(&self.inner.client_id),
+            redirect_uri = urlencoding::encode(redirect_uri),
+            scopes = urlencoding::encode(&scopes),
+            state = urlencoding::encode(state),
+            nonce = urlencoding::encode(nonce),
         )
     }
 
