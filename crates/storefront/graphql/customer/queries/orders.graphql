@@ -1,0 +1,137 @@
+fragment MoneyFields on MoneyV2 {
+  amount
+  currencyCode
+}
+
+query GetOrders($first: Int!) {
+  customer {
+    orders(first: $first, sortKey: PROCESSED_AT, reverse: true) {
+      edges {
+        node {
+          id
+          name
+          number
+          processedAt
+          financialStatus
+          fulfillmentStatus
+          totalPrice {
+            ...MoneyFields
+          }
+        }
+      }
+    }
+  }
+}
+
+query GetOrder($id: ID!) {
+  order(id: $id) {
+    id
+    name
+    number
+    processedAt
+    financialStatus
+    fulfillmentStatus
+    totalPrice {
+      ...MoneyFields
+    }
+    subtotal {
+      ...MoneyFields
+    }
+    totalShipping {
+      ...MoneyFields
+    }
+    totalTax {
+      ...MoneyFields
+    }
+    lineItems(first: 50) {
+      edges {
+        node {
+          id
+          title
+          quantity
+          unitPrice {
+            price {
+              ...MoneyFields
+            }
+          }
+          totalPrice {
+            ...MoneyFields
+          }
+          image {
+            url
+            altText
+          }
+          variantTitle
+        }
+      }
+    }
+    shippingAddress {
+      id
+      firstName
+      lastName
+      company
+      address1
+      address2
+      city
+      province
+      zoneCode
+      country
+      territoryCode
+      zip
+      phoneNumber
+    }
+    returns(first: 10) {
+      edges {
+        node {
+          id
+          name
+          status
+        }
+      }
+    }
+  }
+}
+
+query GetOrderForReturn($id: ID!) {
+  order(id: $id) {
+    id
+    name
+    lineItems(first: 50) {
+      edges {
+        node {
+          id
+          title
+          quantity
+          image {
+            url
+            altText
+          }
+          variantTitle
+          suggestedReturnReasonDefinitions(first: 20) {
+            edges {
+              node {
+                id
+                name
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+mutation OrderRequestReturn($orderId: ID!, $items: [RequestedLineItemInput!]!) {
+  orderRequestReturn(orderId: $orderId, requestedLineItems: $items) {
+    return {
+      id
+      name
+      status
+    }
+    userErrors {
+      field
+      message
+      code
+    }
+  }
+}

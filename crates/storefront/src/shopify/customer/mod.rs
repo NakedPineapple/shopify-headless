@@ -10,74 +10,37 @@
 //! 3. Shopify redirects back with authorization code
 //! 4. Exchange code for tokens with `exchange_code()`
 //! 5. Use access token for customer-scoped API calls
-//!
-//! # Example
-//!
-//! ```rust,ignore
-//! use naked_pineapple_storefront::shopify::CustomerClient;
-//!
-//! // Create client
-//! let client = CustomerClient::new(&config.shopify);
-//!
-//! // Generate login URL
-//! let state = generate_random_state();
-//! let nonce = generate_random_nonce();
-//! let auth_url = client.authorization_url("https://example.com/callback", &state, &nonce);
-//!
-//! // After OAuth callback, exchange code for token
-//! let token = client.exchange_code(&code, "https://example.com/callback").await?;
-//!
-//! // Use token for API calls
-//! let customer = client.get_customer(&token.access_token).await?;
-//! ```
 
+mod conversions;
+mod queries;
 mod types;
 
 pub use types::*;
 
 use std::sync::Arc;
 
+use graphql_client::{GraphQLQuery, Response};
 use secrecy::ExposeSecret;
-use serde::{Deserialize, Serialize, de::DeserializeOwned};
+use serde::Deserialize;
+use tracing::{debug, instrument, warn};
 
 use crate::config::ShopifyStorefrontConfig;
 use crate::shopify::ShopifyError;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// GraphQL Types
-// ─────────────────────────────────────────────────────────────────────────────
-
-#[derive(Debug, Serialize)]
-struct GraphQLRequest {
-    query: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    variables: Option<serde_json::Value>,
-}
-
-#[derive(Debug, Deserialize)]
-struct GraphQLResponse<T> {
-    data: Option<T>,
-    errors: Option<Vec<GraphQLErrorResponse>>,
-}
-
-#[derive(Debug, Deserialize)]
-struct GraphQLErrorResponse {
-    message: String,
-}
-
-impl<T> GraphQLResponse<T> {
-    fn into_result(self) -> Result<T, ShopifyError> {
-        if let Some(errors) = self.errors
-            && !errors.is_empty()
-        {
-            let messages: Vec<_> = errors.iter().map(|e| e.message.as_str()).collect();
-            return Err(ShopifyError::OAuth(messages.join("; ")));
-        }
-
-        self.data
-            .ok_or_else(|| ShopifyError::OAuth("No data in response".to_string()))
-    }
-}
+use conversions::{
+    convert_activate_subscription, convert_address_create, convert_address_delete,
+    convert_address_update, convert_cancel_subscription, convert_customer_update,
+    convert_get_addresses, convert_get_customer, convert_get_order, convert_get_order_for_return,
+    convert_get_orders, convert_get_store_credit, convert_get_subscription,
+    convert_get_subscriptions, convert_get_upcoming_billing_cycles, convert_order_request_return,
+    convert_pause_subscription, convert_skip_billing_cycle, convert_unskip_billing_cycle,
+};
+use queries::{
+    ActivateSubscription, CancelSubscription, CustomerAddressCreate, CustomerAddressDelete,
+    CustomerAddressUpdate, CustomerUpdate, GetAddresses, GetCustomer, GetOrder, GetOrderForReturn,
+    GetOrders, GetStoreCredit, GetSubscription, GetSubscriptions, GetUpcomingBillingCycles,
+    OrderRequestReturn, PauseSubscription, SkipBillingCycle, UnskipBillingCycle,
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Customer Account Client
@@ -208,11 +171,6 @@ impl CustomerClient {
 
     /// Exchange an authorization code for access tokens.
     ///
-    /// # Arguments
-    ///
-    /// * `code` - The authorization code from the OAuth callback
-    /// * `redirect_uri` - The same redirect URI used in the authorization request
-    ///
     /// # Errors
     ///
     /// Returns an error if the token exchange fails.
@@ -256,10 +214,6 @@ impl CustomerClient {
 
     /// Refresh an access token using a refresh token.
     ///
-    /// # Arguments
-    ///
-    /// * `refresh_token` - The refresh token from a previous authentication
-    ///
     /// # Errors
     ///
     /// Returns an error if the token refresh fails.
@@ -302,21 +256,28 @@ impl CustomerClient {
     // ─────────────────────────────────────────────────────────────────────────
 
     /// Execute a GraphQL query against the Customer Account API.
-    async fn query<T: DeserializeOwned>(
+    #[instrument(skip(self, access_token, variables))]
+    async fn execute<Q: GraphQLQuery>(
         &self,
         access_token: &str,
-        query: &str,
-        variables: Option<serde_json::Value>,
-    ) -> Result<T, ShopifyError> {
+        variables: Q::Variables,
+    ) -> Result<Q::ResponseData, ShopifyError>
+    where
+        Q::Variables: serde::Serialize,
+    {
+        let query_name = std::any::type_name::<Q>()
+            .split("::")
+            .last()
+            .unwrap_or("Unknown");
+        debug!(query = %query_name, "Executing Customer Account GraphQL query");
+
+        let start = std::time::Instant::now();
         let url = format!(
             "https://shopify.com/{}/account/customer/api/{}/graphql",
             self.inner.store_id, self.inner.api_version
         );
 
-        let request = GraphQLRequest {
-            query: query.to_string(),
-            variables,
-        };
+        let request_body = Q::build_query(variables);
 
         let response = self
             .inner
@@ -324,20 +285,64 @@ impl CustomerClient {
             .post(&url)
             .header("Authorization", access_token)
             .header("Content-Type", "application/json")
-            .json(&request)
+            .json(&request_body)
             .send()
             .await?;
 
-        if !response.status().is_success() {
-            let status = response.status();
-            let text = response.text().await.unwrap_or_default();
+        let status = response.status();
+        let response_text = response.text().await?;
+
+        if !status.is_success() {
+            let body_preview: String = response_text.chars().take(500).collect();
+            warn!(
+                query = %query_name,
+                status = %status,
+                body = %body_preview,
+                duration_ms = %start.elapsed().as_millis(),
+                "Customer Account API returned non-success status"
+            );
             return Err(ShopifyError::OAuth(format!(
-                "Customer API request failed ({status}): {text}"
+                "Customer API request failed ({status}): {}",
+                response_text.chars().take(200).collect::<String>()
             )));
         }
 
-        let gql_response: GraphQLResponse<T> = response.json().await?;
-        gql_response.into_result()
+        let gql_response: Response<Q::ResponseData> = serde_json::from_str(&response_text)
+            .map_err(|e| {
+                let body_preview: String = response_text.chars().take(500).collect();
+                warn!(
+                    query = %query_name,
+                    error = %e,
+                    body = %body_preview,
+                    duration_ms = %start.elapsed().as_millis(),
+                    "Failed to parse Customer Account GraphQL response"
+                );
+                ShopifyError::Parse(e)
+            })?;
+
+        if let Some(errors) = gql_response.errors
+            && !errors.is_empty()
+        {
+            let error_messages: Vec<_> = errors.iter().map(|e| e.message.as_str()).collect();
+            warn!(
+                query = %query_name,
+                errors = ?error_messages,
+                duration_ms = %start.elapsed().as_millis(),
+                "GraphQL errors in Customer Account API response"
+            );
+            let messages = error_messages.join("; ");
+            return Err(ShopifyError::OAuth(messages));
+        }
+
+        debug!(
+            query = %query_name,
+            duration_ms = %start.elapsed().as_millis(),
+            "Customer Account GraphQL query completed successfully"
+        );
+
+        gql_response
+            .data
+            .ok_or_else(|| ShopifyError::OAuth("No data in response".to_string()))
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -350,41 +355,10 @@ impl CustomerClient {
     ///
     /// Returns an error if the API request fails.
     pub async fn get_customer(&self, access_token: &str) -> Result<Customer, ShopifyError> {
-        #[derive(Deserialize)]
-        struct Response {
-            customer: Customer,
-        }
-
-        const QUERY: &str = r"
-            query getCustomer {
-                customer {
-                    id
-                    email
-                    firstName
-                    lastName
-                    phone
-                    acceptsMarketing
-                    defaultAddress {
-                        id
-                        firstName
-                        lastName
-                        company
-                        address1
-                        address2
-                        city
-                        province
-                        provinceCode
-                        country
-                        countryCode
-                        zip
-                        phone
-                    }
-                }
-            }
-        ";
-
-        let response: Response = self.query(access_token, QUERY, None).await?;
-        Ok(response.customer)
+        let data = self
+            .execute::<GetCustomer>(access_token, queries::get_customer::Variables)
+            .await?;
+        Ok(convert_get_customer(data))
     }
 
     /// Update the current customer's information.
@@ -397,71 +371,16 @@ impl CustomerClient {
         access_token: &str,
         input: CustomerUpdateInput,
     ) -> Result<Customer, ShopifyError> {
-        #[derive(Deserialize)]
-        struct Response {
-            #[serde(rename = "customerUpdate")]
-            customer_update: CustomerUpdateResult,
-        }
-
-        #[derive(Deserialize)]
-        struct CustomerUpdateResult {
-            customer: Option<Customer>,
-            #[serde(rename = "userErrors")]
-            user_errors: Vec<CustomerUserError>,
-        }
-
-        const QUERY: &str = r"
-            mutation customerUpdate($input: CustomerUpdateInput!) {
-                customerUpdate(input: $input) {
-                    customer {
-                        id
-                        email
-                        firstName
-                        lastName
-                        phone
-                        acceptsMarketing
-                        defaultAddress {
-                            id
-                            firstName
-                            lastName
-                            company
-                            address1
-                            address2
-                            city
-                            province
-                            provinceCode
-                            country
-                            countryCode
-                            zip
-                            phone
-                        }
-                    }
-                    userErrors {
-                        field
-                        message
-                        code
-                    }
-                }
-            }
-        ";
-
-        let variables = serde_json::json!({ "input": input });
-        let response: Response = self.query(access_token, QUERY, Some(variables)).await?;
-
-        if !response.customer_update.user_errors.is_empty() {
-            let messages: Vec<_> = response
-                .customer_update
-                .user_errors
-                .iter()
-                .map(|e| e.message.as_str())
-                .collect();
-            return Err(ShopifyError::UserError(messages.join(", ")));
-        }
-
-        response
-            .customer_update
-            .customer
-            .ok_or_else(|| ShopifyError::OAuth("No customer returned".to_string()))
+        let variables = queries::customer_update::Variables {
+            input: queries::customer_update::CustomerUpdateInput {
+                first_name: input.first_name,
+                last_name: input.last_name,
+            },
+        };
+        let data = self
+            .execute::<CustomerUpdate>(access_token, variables)
+            .await?;
+        convert_customer_update(data).map_err(|e| ShopifyError::UserError(e.join(", ")))
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -469,11 +388,6 @@ impl CustomerClient {
     // ─────────────────────────────────────────────────────────────────────────
 
     /// Get the customer's order history.
-    ///
-    /// # Arguments
-    ///
-    /// * `access_token` - The customer's access token
-    /// * `first` - The number of orders to retrieve
     ///
     /// # Errors
     ///
@@ -483,59 +397,11 @@ impl CustomerClient {
         access_token: &str,
         first: u32,
     ) -> Result<Vec<Order>, ShopifyError> {
-        #[derive(Deserialize)]
-        struct Response {
-            customer: CustomerWithOrders,
-        }
-
-        #[derive(Deserialize)]
-        struct CustomerWithOrders {
-            orders: OrderConnection,
-        }
-
-        #[derive(Deserialize)]
-        struct OrderConnection {
-            edges: Vec<OrderEdge>,
-        }
-
-        #[derive(Deserialize)]
-        struct OrderEdge {
-            node: Order,
-        }
-
-        const QUERY: &str = r"
-            query getOrders($first: Int!) {
-                customer {
-                    orders(first: $first, sortKey: PROCESSED_AT, reverse: true) {
-                        edges {
-                            node {
-                                id
-                                name
-                                orderNumber
-                                processedAt
-                                financialStatus
-                                fulfillmentStatus
-                                totalPrice {
-                                    amount
-                                    currencyCode
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        ";
-
-        let variables = serde_json::json!({ "first": first });
-        let response: Response = self.query(access_token, QUERY, Some(variables)).await?;
-
-        Ok(response
-            .customer
-            .orders
-            .edges
-            .into_iter()
-            .map(|e| e.node)
-            .collect())
+        let variables = queries::get_orders::Variables {
+            first: i64::from(first),
+        };
+        let data = self.execute::<GetOrders>(access_token, variables).await?;
+        Ok(convert_get_orders(&data))
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -543,11 +409,6 @@ impl CustomerClient {
     // ─────────────────────────────────────────────────────────────────────────
 
     /// Get the customer's addresses.
-    ///
-    /// # Arguments
-    ///
-    /// * `access_token` - The customer's access token
-    /// * `first` - The number of addresses to retrieve
     ///
     /// # Errors
     ///
@@ -557,62 +418,13 @@ impl CustomerClient {
         access_token: &str,
         first: u32,
     ) -> Result<Vec<Address>, ShopifyError> {
-        #[derive(Deserialize)]
-        struct Response {
-            customer: CustomerWithAddresses,
-        }
-
-        #[derive(Deserialize)]
-        struct CustomerWithAddresses {
-            addresses: AddressConnection,
-        }
-
-        #[derive(Deserialize)]
-        struct AddressConnection {
-            edges: Vec<AddressEdge>,
-        }
-
-        #[derive(Deserialize)]
-        struct AddressEdge {
-            node: Address,
-        }
-
-        const QUERY: &str = r"
-            query getAddresses($first: Int!) {
-                customer {
-                    addresses(first: $first) {
-                        edges {
-                            node {
-                                id
-                                firstName
-                                lastName
-                                company
-                                address1
-                                address2
-                                city
-                                province
-                                provinceCode
-                                country
-                                countryCode
-                                zip
-                                phone
-                            }
-                        }
-                    }
-                }
-            }
-        ";
-
-        let variables = serde_json::json!({ "first": first });
-        let response: Response = self.query(access_token, QUERY, Some(variables)).await?;
-
-        Ok(response
-            .customer
-            .addresses
-            .edges
-            .into_iter()
-            .map(|e| e.node)
-            .collect())
+        let variables = queries::get_addresses::Variables {
+            first: i64::from(first),
+        };
+        let data = self
+            .execute::<GetAddresses>(access_token, variables)
+            .await?;
+        Ok(convert_get_addresses(&data))
     }
 
     /// Create a new address for the customer.
@@ -625,64 +437,13 @@ impl CustomerClient {
         access_token: &str,
         address: AddressInput,
     ) -> Result<Address, ShopifyError> {
-        #[derive(Deserialize)]
-        struct Response {
-            #[serde(rename = "customerAddressCreate")]
-            address_create: AddressCreateResult,
-        }
-
-        #[derive(Deserialize)]
-        struct AddressCreateResult {
-            #[serde(rename = "customerAddress")]
-            address: Option<Address>,
-            #[serde(rename = "userErrors")]
-            user_errors: Vec<CustomerUserError>,
-        }
-
-        const QUERY: &str = r"
-            mutation createAddress($address: CustomerAddressInput!) {
-                customerAddressCreate(address: $address) {
-                    customerAddress {
-                        id
-                        firstName
-                        lastName
-                        company
-                        address1
-                        address2
-                        city
-                        province
-                        provinceCode
-                        country
-                        countryCode
-                        zip
-                        phone
-                    }
-                    userErrors {
-                        field
-                        message
-                        code
-                    }
-                }
-            }
-        ";
-
-        let variables = serde_json::json!({ "address": address });
-        let response: Response = self.query(access_token, QUERY, Some(variables)).await?;
-
-        if !response.address_create.user_errors.is_empty() {
-            let messages: Vec<_> = response
-                .address_create
-                .user_errors
-                .iter()
-                .map(|e| e.message.as_str())
-                .collect();
-            return Err(ShopifyError::UserError(messages.join(", ")));
-        }
-
-        response
-            .address_create
-            .address
-            .ok_or_else(|| ShopifyError::OAuth("No address returned".to_string()))
+        let variables = queries::customer_address_create::Variables {
+            address: to_gql_address_input_create(address),
+        };
+        let data = self
+            .execute::<CustomerAddressCreate>(access_token, variables)
+            .await?;
+        convert_address_create(data).map_err(|e| ShopifyError::UserError(e.join(", ")))
     }
 
     /// Update an existing address.
@@ -696,67 +457,33 @@ impl CustomerClient {
         address_id: &str,
         address: AddressInput,
     ) -> Result<Address, ShopifyError> {
-        #[derive(Deserialize)]
-        struct Response {
-            #[serde(rename = "customerAddressUpdate")]
-            address_update: AddressUpdateResult,
-        }
+        let variables = queries::customer_address_update::Variables {
+            address_id: address_id.to_string(),
+            address: to_gql_address_input_update(address),
+        };
+        let data = self
+            .execute::<CustomerAddressUpdate>(access_token, variables)
+            .await?;
+        convert_address_update(data).map_err(|e| ShopifyError::UserError(e.join(", ")))
+    }
 
-        #[derive(Deserialize)]
-        struct AddressUpdateResult {
-            #[serde(rename = "customerAddress")]
-            address: Option<Address>,
-            #[serde(rename = "userErrors")]
-            user_errors: Vec<CustomerUserError>,
-        }
-
-        const QUERY: &str = r"
-            mutation updateAddress($addressId: ID!, $address: CustomerAddressInput!) {
-                customerAddressUpdate(addressId: $addressId, address: $address) {
-                    customerAddress {
-                        id
-                        firstName
-                        lastName
-                        company
-                        address1
-                        address2
-                        city
-                        province
-                        provinceCode
-                        country
-                        countryCode
-                        zip
-                        phone
-                    }
-                    userErrors {
-                        field
-                        message
-                        code
-                    }
-                }
-            }
-        ";
-
-        let variables = serde_json::json!({
-            "addressId": address_id,
-            "address": address
-        });
-        let response: Response = self.query(access_token, QUERY, Some(variables)).await?;
-
-        if !response.address_update.user_errors.is_empty() {
-            let messages: Vec<_> = response
-                .address_update
-                .user_errors
-                .iter()
-                .map(|e| e.message.as_str())
-                .collect();
-            return Err(ShopifyError::UserError(messages.join(", ")));
-        }
-
-        response
-            .address_update
-            .address
-            .ok_or_else(|| ShopifyError::OAuth("No address returned".to_string()))
+    /// Delete an address.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails or if there are validation errors.
+    pub async fn delete_address(
+        &self,
+        access_token: &str,
+        address_id: &str,
+    ) -> Result<(), ShopifyError> {
+        let variables = queries::customer_address_delete::Variables {
+            address_id: address_id.to_string(),
+        };
+        let data = self
+            .execute::<CustomerAddressDelete>(access_token, variables)
+            .await?;
+        convert_address_delete(data).map_err(|e| ShopifyError::UserError(e.join(", ")))
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -764,11 +491,6 @@ impl CustomerClient {
     // ─────────────────────────────────────────────────────────────────────────
 
     /// Get the customer's subscription contracts.
-    ///
-    /// # Arguments
-    ///
-    /// * `access_token` - The customer's access token
-    /// * `first` - The number of subscriptions to retrieve
     ///
     /// # Errors
     ///
@@ -778,85 +500,13 @@ impl CustomerClient {
         access_token: &str,
         first: u32,
     ) -> Result<Vec<SubscriptionContract>, ShopifyError> {
-        #[derive(Deserialize)]
-        struct Response {
-            customer: CustomerWithSubscriptions,
-        }
-
-        #[derive(Deserialize)]
-        struct CustomerWithSubscriptions {
-            #[serde(rename = "subscriptionContracts")]
-            subscription_contracts: SubscriptionContractConnection,
-        }
-
-        #[derive(Deserialize)]
-        struct SubscriptionContractConnection {
-            edges: Vec<SubscriptionContractEdge>,
-        }
-
-        #[derive(Deserialize)]
-        struct SubscriptionContractEdge {
-            node: SubscriptionContract,
-        }
-
-        const QUERY: &str = r"
-            query getSubscriptions($first: Int!) {
-                customer {
-                    subscriptionContracts(
-                        first: $first,
-                        sortKey: CREATED_AT,
-                        reverse: true
-                    ) {
-                        edges {
-                            node {
-                                id
-                                status
-                                createdAt
-                                nextBillingDate
-                                billingPolicy {
-                                    interval
-                                    intervalCount {
-                                        count
-                                    }
-                                }
-                                deliveryPrice {
-                                    amount
-                                    currencyCode
-                                }
-                                lines(first: 10) {
-                                    edges {
-                                        node {
-                                            id
-                                            name
-                                            quantity
-                                            currentPrice {
-                                                amount
-                                                currencyCode
-                                            }
-                                            image {
-                                                url
-                                                altText
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        ";
-
-        let variables = serde_json::json!({ "first": first });
-        let response: Response = self.query(access_token, QUERY, Some(variables)).await?;
-
-        Ok(response
-            .customer
-            .subscription_contracts
-            .edges
-            .into_iter()
-            .map(|e| e.node)
-            .collect())
+        let variables = queries::get_subscriptions::Variables {
+            first: i64::from(first),
+        };
+        let data = self
+            .execute::<GetSubscriptions>(access_token, variables)
+            .await?;
+        Ok(convert_get_subscriptions(&data))
     }
 
     /// Get a specific subscription contract by ID.
@@ -869,61 +519,11 @@ impl CustomerClient {
         access_token: &str,
         id: &str,
     ) -> Result<Option<SubscriptionContract>, ShopifyError> {
-        #[derive(Deserialize)]
-        struct Response {
-            customer: CustomerWithSubscription,
-        }
-
-        #[derive(Deserialize)]
-        struct CustomerWithSubscription {
-            #[serde(rename = "subscriptionContract")]
-            subscription_contract: Option<SubscriptionContract>,
-        }
-
-        const QUERY: &str = r"
-            query getSubscription($id: ID!) {
-                customer {
-                    subscriptionContract(id: $id) {
-                        id
-                        status
-                        createdAt
-                        nextBillingDate
-                        billingPolicy {
-                            interval
-                            intervalCount {
-                                count
-                            }
-                        }
-                        deliveryPrice {
-                            amount
-                            currencyCode
-                        }
-                        lines(first: 10) {
-                            edges {
-                                node {
-                                    id
-                                    name
-                                    quantity
-                                    currentPrice {
-                                        amount
-                                        currencyCode
-                                    }
-                                    image {
-                                        url
-                                        altText
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        ";
-
-        let variables = serde_json::json!({ "id": id });
-        let response: Response = self.query(access_token, QUERY, Some(variables)).await?;
-
-        Ok(response.customer.subscription_contract)
+        let variables = queries::get_subscription::Variables { id: id.to_string() };
+        let data = self
+            .execute::<GetSubscription>(access_token, variables)
+            .await?;
+        Ok(convert_get_subscription(&data))
     }
 
     /// Pause a subscription contract.
@@ -936,48 +536,11 @@ impl CustomerClient {
         access_token: &str,
         id: &str,
     ) -> Result<(), ShopifyError> {
-        #[derive(Deserialize)]
-        struct Response {
-            #[serde(rename = "subscriptionContractPause")]
-            result: MutationResult,
-        }
-
-        #[derive(Deserialize)]
-        struct MutationResult {
-            #[serde(rename = "userErrors")]
-            user_errors: Vec<CustomerUserError>,
-        }
-
-        const QUERY: &str = r"
-            mutation pauseSubscription($id: ID!) {
-                subscriptionContractPause(subscriptionContractId: $id) {
-                    contract {
-                        id
-                        status
-                    }
-                    userErrors {
-                        field
-                        message
-                        code
-                    }
-                }
-            }
-        ";
-
-        let variables = serde_json::json!({ "id": id });
-        let response: Response = self.query(access_token, QUERY, Some(variables)).await?;
-
-        if !response.result.user_errors.is_empty() {
-            let messages: Vec<_> = response
-                .result
-                .user_errors
-                .iter()
-                .map(|e| e.message.as_str())
-                .collect();
-            return Err(ShopifyError::UserError(messages.join(", ")));
-        }
-
-        Ok(())
+        let variables = queries::pause_subscription::Variables { id: id.to_string() };
+        let data = self
+            .execute::<PauseSubscription>(access_token, variables)
+            .await?;
+        convert_pause_subscription(data).map_err(|e| ShopifyError::UserError(e.join(", ")))
     }
 
     /// Cancel a subscription contract.
@@ -990,48 +553,11 @@ impl CustomerClient {
         access_token: &str,
         id: &str,
     ) -> Result<(), ShopifyError> {
-        #[derive(Deserialize)]
-        struct Response {
-            #[serde(rename = "subscriptionContractCancel")]
-            result: MutationResult,
-        }
-
-        #[derive(Deserialize)]
-        struct MutationResult {
-            #[serde(rename = "userErrors")]
-            user_errors: Vec<CustomerUserError>,
-        }
-
-        const QUERY: &str = r"
-            mutation cancelSubscription($id: ID!) {
-                subscriptionContractCancel(subscriptionContractId: $id) {
-                    contract {
-                        id
-                        status
-                    }
-                    userErrors {
-                        field
-                        message
-                        code
-                    }
-                }
-            }
-        ";
-
-        let variables = serde_json::json!({ "id": id });
-        let response: Response = self.query(access_token, QUERY, Some(variables)).await?;
-
-        if !response.result.user_errors.is_empty() {
-            let messages: Vec<_> = response
-                .result
-                .user_errors
-                .iter()
-                .map(|e| e.message.as_str())
-                .collect();
-            return Err(ShopifyError::UserError(messages.join(", ")));
-        }
-
-        Ok(())
+        let variables = queries::cancel_subscription::Variables { id: id.to_string() };
+        let data = self
+            .execute::<CancelSubscription>(access_token, variables)
+            .await?;
+        convert_cancel_subscription(data).map_err(|e| ShopifyError::UserError(e.join(", ")))
     }
 
     /// Activate (resume) a paused subscription contract.
@@ -1044,106 +570,11 @@ impl CustomerClient {
         access_token: &str,
         id: &str,
     ) -> Result<(), ShopifyError> {
-        #[derive(Deserialize)]
-        struct Response {
-            #[serde(rename = "subscriptionContractActivate")]
-            result: MutationResult,
-        }
-
-        #[derive(Deserialize)]
-        struct MutationResult {
-            #[serde(rename = "userErrors")]
-            user_errors: Vec<CustomerUserError>,
-        }
-
-        const QUERY: &str = r"
-            mutation activateSubscription($id: ID!) {
-                subscriptionContractActivate(subscriptionContractId: $id) {
-                    contract {
-                        id
-                        status
-                    }
-                    userErrors {
-                        field
-                        message
-                        code
-                    }
-                }
-            }
-        ";
-
-        let variables = serde_json::json!({ "id": id });
-        let response: Response = self.query(access_token, QUERY, Some(variables)).await?;
-
-        if !response.result.user_errors.is_empty() {
-            let messages: Vec<_> = response
-                .result
-                .user_errors
-                .iter()
-                .map(|e| e.message.as_str())
-                .collect();
-            return Err(ShopifyError::UserError(messages.join(", ")));
-        }
-
-        Ok(())
-    }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Address Operations
-    // ─────────────────────────────────────────────────────────────────────────
-
-    /// Delete an address.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the API request fails or if there are validation errors.
-    pub async fn delete_address(
-        &self,
-        access_token: &str,
-        address_id: &str,
-    ) -> Result<(), ShopifyError> {
-        #[derive(Deserialize)]
-        struct Response {
-            #[serde(rename = "customerAddressDelete")]
-            address_delete: AddressDeleteResult,
-        }
-
-        #[derive(Deserialize)]
-        struct AddressDeleteResult {
-            #[serde(rename = "deletedAddressId")]
-            #[allow(dead_code)]
-            deleted_address_id: Option<String>,
-            #[serde(rename = "userErrors")]
-            user_errors: Vec<CustomerUserError>,
-        }
-
-        const QUERY: &str = r"
-            mutation deleteAddress($addressId: ID!) {
-                customerAddressDelete(addressId: $addressId) {
-                    deletedAddressId
-                    userErrors {
-                        field
-                        message
-                        code
-                    }
-                }
-            }
-        ";
-
-        let variables = serde_json::json!({ "addressId": address_id });
-        let response: Response = self.query(access_token, QUERY, Some(variables)).await?;
-
-        if !response.address_delete.user_errors.is_empty() {
-            let messages: Vec<_> = response
-                .address_delete
-                .user_errors
-                .iter()
-                .map(|e| e.message.as_str())
-                .collect();
-            return Err(ShopifyError::UserError(messages.join(", ")));
-        }
-
-        Ok(())
+        let variables = queries::activate_subscription::Variables { id: id.to_string() };
+        let data = self
+            .execute::<ActivateSubscription>(access_token, variables)
+            .await?;
+        convert_activate_subscription(data).map_err(|e| ShopifyError::UserError(e.join(", ")))
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -1160,76 +591,9 @@ impl CustomerClient {
         access_token: &str,
         id: &str,
     ) -> Result<Option<OrderDetail>, ShopifyError> {
-        #[derive(Deserialize)]
-        struct Response {
-            customer: CustomerWithOrder,
-        }
-
-        #[derive(Deserialize)]
-        struct CustomerWithOrder {
-            order: Option<OrderDetail>,
-        }
-
-        const QUERY: &str = r"
-            query getOrder($id: ID!) {
-                customer {
-                    order(id: $id) {
-                        id
-                        name
-                        orderNumber
-                        processedAt
-                        financialStatus
-                        fulfillmentStatus
-                        totalPrice { amount currencyCode }
-                        subtotal { amount currencyCode }
-                        totalShipping { amount currencyCode }
-                        totalTax { amount currencyCode }
-                        lineItems(first: 50) {
-                            edges {
-                                node {
-                                    id
-                                    title
-                                    quantity
-                                    unitPrice { amount currencyCode }
-                                    totalPrice { amount currencyCode }
-                                    image { url altText }
-                                    variantTitle
-                                }
-                            }
-                        }
-                        shippingAddress {
-                            id
-                            firstName
-                            lastName
-                            company
-                            address1
-                            address2
-                            city
-                            province
-                            provinceCode
-                            country
-                            countryCode
-                            zip
-                            phone
-                        }
-                        returns(first: 10) {
-                            edges {
-                                node {
-                                    id
-                                    name
-                                    status
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        ";
-
-        let variables = serde_json::json!({ "id": id });
-        let response: Response = self.query(access_token, QUERY, Some(variables)).await?;
-
-        Ok(response.customer.order)
+        let variables = queries::get_order::Variables { id: id.to_string() };
+        let data = self.execute::<GetOrder>(access_token, variables).await?;
+        Ok(convert_get_order(data))
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -1246,50 +610,13 @@ impl CustomerClient {
         access_token: &str,
         order_id: &str,
     ) -> Result<Option<OrderForReturn>, ShopifyError> {
-        #[derive(Deserialize)]
-        struct Response {
-            customer: CustomerWithOrderForReturn,
-        }
-
-        #[derive(Deserialize)]
-        struct CustomerWithOrderForReturn {
-            order: Option<OrderForReturn>,
-        }
-
-        const QUERY: &str = r"
-            query getOrderForReturn($id: ID!) {
-                customer {
-                    order(id: $id) {
-                        id
-                        name
-                        lineItems(first: 50) {
-                            edges {
-                                node {
-                                    id
-                                    title
-                                    quantity
-                                    image { url altText }
-                                    variantTitle
-                                    suggestedReturnReasonDefinitions(first: 20) {
-                                        edges {
-                                            node {
-                                                id
-                                                name
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        ";
-
-        let variables = serde_json::json!({ "id": order_id });
-        let response: Response = self.query(access_token, QUERY, Some(variables)).await?;
-
-        Ok(response.customer.order)
+        let variables = queries::get_order_for_return::Variables {
+            id: order_id.to_string(),
+        };
+        let data = self
+            .execute::<GetOrderForReturn>(access_token, variables)
+            .await?;
+        Ok(convert_get_order_for_return(data))
     }
 
     /// Request a return on an order.
@@ -1303,52 +630,26 @@ impl CustomerClient {
         order_id: &str,
         items: &[ReturnRequestLineItemInput],
     ) -> Result<(), ShopifyError> {
-        #[derive(Deserialize)]
-        struct Response {
-            #[serde(rename = "orderRequestReturn")]
-            result: ReturnResult,
-        }
+        let gql_items: Vec<_> = items
+            .iter()
+            .map(
+                |item| queries::order_request_return::RequestedLineItemInput {
+                    line_item_id: item.line_item_id.clone(),
+                    quantity: i64::from(item.quantity),
+                    return_reason_definition_id: item.reason_id.clone(),
+                    customer_note: item.note.clone(),
+                },
+            )
+            .collect();
 
-        #[derive(Deserialize)]
-        struct ReturnResult {
-            #[serde(rename = "userErrors")]
-            user_errors: Vec<CustomerUserError>,
-        }
-
-        const QUERY: &str = r"
-            mutation requestReturn($orderId: ID!, $items: [RequestedLineItemInput!]!) {
-                orderRequestReturn(orderId: $orderId, requestedLineItems: $items) {
-                    return {
-                        id
-                        name
-                        status
-                    }
-                    userErrors {
-                        field
-                        message
-                        code
-                    }
-                }
-            }
-        ";
-
-        let variables = serde_json::json!({
-            "orderId": order_id,
-            "items": items,
-        });
-        let response: Response = self.query(access_token, QUERY, Some(variables)).await?;
-
-        if !response.result.user_errors.is_empty() {
-            let messages: Vec<_> = response
-                .result
-                .user_errors
-                .iter()
-                .map(|e| e.message.as_str())
-                .collect();
-            return Err(ShopifyError::UserError(messages.join(", ")));
-        }
-
-        Ok(())
+        let variables = queries::order_request_return::Variables {
+            order_id: order_id.to_string(),
+            items: gql_items,
+        };
+        let data = self
+            .execute::<OrderRequestReturn>(access_token, variables)
+            .await?;
+        convert_order_request_return(data).map_err(|e| ShopifyError::UserError(e.join(", ")))
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -1366,52 +667,10 @@ impl CustomerClient {
         &self,
         access_token: &str,
     ) -> Result<Option<crate::shopify::types::Money>, ShopifyError> {
-        #[derive(Deserialize)]
-        struct Response {
-            customer: CustomerWithStoreCredit,
-        }
-
-        #[derive(Deserialize)]
-        struct CustomerWithStoreCredit {
-            #[serde(rename = "storeCreditAccounts")]
-            store_credit_accounts: StoreCreditConnection,
-        }
-
-        #[derive(Deserialize)]
-        struct StoreCreditConnection {
-            edges: Vec<StoreCreditEdge>,
-        }
-
-        #[derive(Deserialize)]
-        struct StoreCreditEdge {
-            node: StoreCreditAccount,
-        }
-
-        const QUERY: &str = r"
-            query getStoreCredit {
-                customer {
-                    storeCreditAccounts(first: 1) {
-                        edges {
-                            node {
-                                balance {
-                                    amount
-                                    currencyCode
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        ";
-
-        let response: Response = self.query(access_token, QUERY, None).await?;
-
-        Ok(response
-            .customer
-            .store_credit_accounts
-            .edges
-            .first()
-            .map(|e| e.node.balance.clone()))
+        let data = self
+            .execute::<GetStoreCredit>(access_token, queries::get_store_credit::Variables)
+            .await?;
+        Ok(convert_get_store_credit(&data))
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -1429,66 +688,14 @@ impl CustomerClient {
         contract_id: &str,
         first: u32,
     ) -> Result<Vec<SubscriptionBillingCycle>, ShopifyError> {
-        #[derive(Deserialize)]
-        struct Response {
-            customer: CustomerWithContract,
-        }
-
-        #[derive(Deserialize)]
-        struct CustomerWithContract {
-            #[serde(rename = "subscriptionContract")]
-            subscription_contract: Option<ContractWithCycles>,
-        }
-
-        #[derive(Deserialize)]
-        struct ContractWithCycles {
-            #[serde(rename = "upcomingBillingCycles")]
-            upcoming_billing_cycles: BillingCycleConnection,
-        }
-
-        #[derive(Deserialize)]
-        struct BillingCycleConnection {
-            edges: Vec<BillingCycleEdge>,
-        }
-
-        #[derive(Deserialize)]
-        struct BillingCycleEdge {
-            node: SubscriptionBillingCycle,
-        }
-
-        const QUERY: &str = r"
-            query getUpcomingBillingCycles($id: ID!, $first: Int!) {
-                customer {
-                    subscriptionContract(id: $id) {
-                        upcomingBillingCycles(first: $first) {
-                            edges {
-                                node {
-                                    billingAttemptExpectedDate
-                                    cycleIndex
-                                    skipped
-                                    status
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        ";
-
-        let variables = serde_json::json!({ "id": contract_id, "first": first });
-        let response: Response = self.query(access_token, QUERY, Some(variables)).await?;
-
-        Ok(response
-            .customer
-            .subscription_contract
-            .map(|c| {
-                c.upcoming_billing_cycles
-                    .edges
-                    .into_iter()
-                    .map(|e| e.node)
-                    .collect()
-            })
-            .unwrap_or_default())
+        let variables = queries::get_upcoming_billing_cycles::Variables {
+            id: contract_id.to_string(),
+            first: i64::from(first),
+        };
+        let data = self
+            .execute::<GetUpcomingBillingCycles>(access_token, variables)
+            .await?;
+        Ok(convert_get_upcoming_billing_cycles(data))
     }
 
     /// Skip a billing cycle.
@@ -1502,53 +709,19 @@ impl CustomerClient {
         contract_id: &str,
         cycle_index: i64,
     ) -> Result<(), ShopifyError> {
-        #[derive(Deserialize)]
-        struct Response {
-            #[serde(rename = "subscriptionBillingCycleSkip")]
-            result: BillingCycleMutationResult,
-        }
-
-        #[derive(Deserialize)]
-        struct BillingCycleMutationResult {
-            #[serde(rename = "userErrors")]
-            user_errors: Vec<CustomerUserError>,
-        }
-
-        const QUERY: &str = r"
-            mutation skipBillingCycle($input: SubscriptionBillingCycleInput!) {
-                subscriptionBillingCycleSkip(billingCycleInput: $input) {
-                    billingCycle {
-                        cycleIndex
-                        skipped
-                    }
-                    userErrors {
-                        field
-                        message
-                        code
-                    }
-                }
-            }
-        ";
-
-        let variables = serde_json::json!({
-            "input": {
-                "contractId": contract_id,
-                "selector": { "index": cycle_index }
-            }
-        });
-        let response: Response = self.query(access_token, QUERY, Some(variables)).await?;
-
-        if !response.result.user_errors.is_empty() {
-            let messages: Vec<_> = response
-                .result
-                .user_errors
-                .iter()
-                .map(|e| e.message.as_str())
-                .collect();
-            return Err(ShopifyError::UserError(messages.join(", ")));
-        }
-
-        Ok(())
+        let variables = queries::skip_billing_cycle::Variables {
+            input: queries::skip_billing_cycle::SubscriptionBillingCycleInput {
+                contract_id: contract_id.to_string(),
+                selector: queries::skip_billing_cycle::SubscriptionBillingCycleSelector {
+                    index: Some(cycle_index),
+                    date: None,
+                },
+            },
+        };
+        let data = self
+            .execute::<SkipBillingCycle>(access_token, variables)
+            .await?;
+        convert_skip_billing_cycle(data).map_err(|e| ShopifyError::UserError(e.join(", ")))
     }
 
     /// Unskip a billing cycle.
@@ -1562,52 +735,56 @@ impl CustomerClient {
         contract_id: &str,
         cycle_index: i64,
     ) -> Result<(), ShopifyError> {
-        #[derive(Deserialize)]
-        struct Response {
-            #[serde(rename = "subscriptionBillingCycleUnskip")]
-            result: BillingCycleMutationResult,
-        }
+        let variables = queries::unskip_billing_cycle::Variables {
+            input: queries::unskip_billing_cycle::SubscriptionBillingCycleInput {
+                contract_id: contract_id.to_string(),
+                selector: queries::unskip_billing_cycle::SubscriptionBillingCycleSelector {
+                    index: Some(cycle_index),
+                    date: None,
+                },
+            },
+        };
+        let data = self
+            .execute::<UnskipBillingCycle>(access_token, variables)
+            .await?;
+        convert_unskip_billing_cycle(data).map_err(|e| ShopifyError::UserError(e.join(", ")))
+    }
+}
 
-        #[derive(Deserialize)]
-        struct BillingCycleMutationResult {
-            #[serde(rename = "userErrors")]
-            user_errors: Vec<CustomerUserError>,
-        }
+// ─────────────────────────────────────────────────────────────────────────────
+// Input Helpers
+// ─────────────────────────────────────────────────────────────────────────────
 
-        const QUERY: &str = r"
-            mutation unskipBillingCycle($input: SubscriptionBillingCycleInput!) {
-                subscriptionBillingCycleUnskip(billingCycleInput: $input) {
-                    billingCycle {
-                        cycleIndex
-                        skipped
-                    }
-                    userErrors {
-                        field
-                        message
-                        code
-                    }
-                }
-            }
-        ";
+fn to_gql_address_input_create(
+    input: AddressInput,
+) -> queries::customer_address_create::CustomerAddressInput {
+    queries::customer_address_create::CustomerAddressInput {
+        first_name: input.first_name,
+        last_name: input.last_name,
+        company: input.company,
+        address1: input.address1,
+        address2: input.address2,
+        city: input.city,
+        zone_code: input.province,
+        territory_code: input.country,
+        zip: input.zip,
+        phone_number: input.phone,
+    }
+}
 
-        let variables = serde_json::json!({
-            "input": {
-                "contractId": contract_id,
-                "selector": { "index": cycle_index }
-            }
-        });
-        let response: Response = self.query(access_token, QUERY, Some(variables)).await?;
-
-        if !response.result.user_errors.is_empty() {
-            let messages: Vec<_> = response
-                .result
-                .user_errors
-                .iter()
-                .map(|e| e.message.as_str())
-                .collect();
-            return Err(ShopifyError::UserError(messages.join(", ")));
-        }
-
-        Ok(())
+fn to_gql_address_input_update(
+    input: AddressInput,
+) -> queries::customer_address_update::CustomerAddressInput {
+    queries::customer_address_update::CustomerAddressInput {
+        first_name: input.first_name,
+        last_name: input.last_name,
+        company: input.company,
+        address1: input.address1,
+        address2: input.address2,
+        city: input.city,
+        zone_code: input.province,
+        territory_code: input.country,
+        zip: input.zip,
+        phone_number: input.phone,
     }
 }

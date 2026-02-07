@@ -147,7 +147,6 @@ pub struct ProfileView {
     pub first_name: String,
     pub last_name: String,
     pub phone: String,
-    pub accepts_marketing: bool,
 }
 
 /// Order detail display data for templates.
@@ -307,8 +306,6 @@ pub struct ReturnFormTemplate {
 pub struct ProfileForm {
     pub first_name: String,
     pub last_name: String,
-    pub phone: Option<String>,
-    pub accepts_marketing: Option<String>,
 }
 
 /// Query parameters for the profile page.
@@ -775,8 +772,8 @@ pub async fn delete_address(
 /// Convert a `SubscriptionContract` to a `SubscriptionView`.
 fn subscription_to_view(contract: &SubscriptionContract) -> SubscriptionView {
     let line_items = contract
-        .line_items()
-        .into_iter()
+        .lines
+        .iter()
         .map(|line| SubscriptionLineView {
             name: line.name.clone(),
             quantity: line.quantity,
@@ -1035,8 +1032,7 @@ pub async fn profile_page(
         email: customer.email.clone().unwrap_or_default(),
         first_name: customer.first_name.clone().unwrap_or_default(),
         last_name: customer.last_name.clone().unwrap_or_default(),
-        phone: customer.phone.clone().unwrap_or_default(),
-        accepts_marketing: customer.accepts_marketing,
+        phone: customer.phone.unwrap_or_default(),
     };
 
     info!("Successfully rendered profile page");
@@ -1069,8 +1065,6 @@ pub async fn update_profile(
     let input = crate::shopify::customer::CustomerUpdateInput {
         first_name: Some(form.first_name),
         last_name: Some(form.last_name),
-        phone: form.phone,
-        accepts_marketing: Some(form.accepts_marketing.is_some()),
     };
 
     match state
@@ -1344,16 +1338,24 @@ fn format_money(money: &Money) -> String {
 fn build_order_detail_view(detail: &crate::shopify::customer::OrderDetail) -> OrderDetailView {
     let line_items = detail
         .line_items
-        .edges
         .iter()
-        .map(|edge| {
-            let item = &edge.node;
+        .map(|item| {
+            let unit_price = item
+                .unit_price
+                .as_ref()
+                .map(format_money)
+                .unwrap_or_default();
+            let total = item
+                .total_price
+                .as_ref()
+                .map(format_money)
+                .unwrap_or_default();
             OrderLineItemView {
                 title: item.title.clone(),
                 variant_title: item.variant_title.clone(),
                 quantity: item.quantity,
-                unit_price: format_money(&item.unit_price),
-                total: format_money(&item.total_price),
+                unit_price,
+                total,
                 image_url: item.image.as_ref().map(|img| img.url.clone()),
             }
         })
@@ -1361,20 +1363,17 @@ fn build_order_detail_view(detail: &crate::shopify::customer::OrderDetail) -> Or
 
     let returns: Vec<ReturnSummaryView> = detail
         .returns
-        .edges
         .iter()
-        .map(|edge| ReturnSummaryView {
-            name: edge.node.name.clone(),
-            status_label: edge.node.status.label().to_string(),
+        .map(|r| ReturnSummaryView {
+            name: r.name.clone(),
+            status_label: r.status.label().to_string(),
         })
         .collect();
 
-    let has_pending_return = detail.returns.edges.iter().any(|edge| {
-        matches!(
-            edge.node.status,
-            ReturnStatus::Requested | ReturnStatus::Open
-        )
-    });
+    let has_pending_return = detail
+        .returns
+        .iter()
+        .any(|r| matches!(r.status, ReturnStatus::Requested | ReturnStatus::Open));
 
     let is_fulfilled = detail
         .fulfillment_status
@@ -1385,6 +1384,17 @@ fn build_order_detail_view(detail: &crate::shopify::customer::OrderDetail) -> Or
 
     let shipping_address = detail.shipping_address.as_ref().map(format_address);
 
+    let subtotal = detail
+        .subtotal
+        .as_ref()
+        .map(format_money)
+        .unwrap_or_default();
+    let tax = detail
+        .total_tax
+        .as_ref()
+        .map(format_money)
+        .unwrap_or_default();
+
     OrderDetailView {
         id: detail.id.clone(),
         name: detail.name.clone(),
@@ -1392,9 +1402,9 @@ fn build_order_detail_view(detail: &crate::shopify::customer::OrderDetail) -> Or
         financial_status_label: format_status_label(detail.financial_status.as_deref()),
         fulfillment_status_label: format_status_label(detail.fulfillment_status.as_deref()),
         total: format_money(&detail.total_price),
-        subtotal: format_money(&detail.subtotal),
+        subtotal,
         shipping: format_money(&detail.total_shipping),
-        tax: format_money(&detail.total_tax),
+        tax,
         line_items,
         shipping_address,
         returns,
@@ -1408,17 +1418,14 @@ fn build_return_form_items(
 ) -> Vec<ReturnFormLineItem> {
     order
         .line_items
-        .edges
         .iter()
-        .map(|edge| {
-            let item = &edge.node;
+        .map(|item| {
             let reasons = item
                 .suggested_reasons
-                .edges
                 .iter()
                 .map(|r| ReturnReasonView {
-                    id: r.node.id.clone(),
-                    name: r.node.name.clone(),
+                    id: r.id.clone(),
+                    name: r.name.clone(),
                 })
                 .collect();
 

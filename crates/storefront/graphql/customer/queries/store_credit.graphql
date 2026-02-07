@@ -1,0 +1,18 @@
+fragment MoneyFields on MoneyV2 {
+  amount
+  currencyCode
+}
+
+query GetStoreCredit {
+  customer {
+    storeCreditAccounts(first: 1) {
+      edges {
+        node {
+          balance {
+            ...MoneyFields
+          }
+        }
+      }
+    }
+  }
+}
