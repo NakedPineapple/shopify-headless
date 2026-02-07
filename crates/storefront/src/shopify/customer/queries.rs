@@ -24,7 +24,7 @@ type UnsignedInt64 = String;
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "graphql/customer/schema.json",
-    query_path = "graphql/customer/queries/customer.graphql",
+    query_path = "graphql/customer/queries/get_customer.graphql",
     response_derives = "Debug, Clone"
 )]
 pub struct GetCustomer;
@@ -32,7 +32,7 @@ pub struct GetCustomer;
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "graphql/customer/schema.json",
-    query_path = "graphql/customer/queries/customer.graphql",
+    query_path = "graphql/customer/queries/customer_update.graphql",
     response_derives = "Debug, Clone"
 )]
 pub struct CustomerUpdate;
@@ -44,7 +44,7 @@ pub struct CustomerUpdate;
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "graphql/customer/schema.json",
-    query_path = "graphql/customer/queries/addresses.graphql",
+    query_path = "graphql/customer/queries/get_addresses.graphql",
     response_derives = "Debug, Clone"
 )]
 pub struct GetAddresses;
@@ -52,7 +52,7 @@ pub struct GetAddresses;
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "graphql/customer/schema.json",
-    query_path = "graphql/customer/queries/addresses.graphql",
+    query_path = "graphql/customer/queries/customer_address_create.graphql",
     response_derives = "Debug, Clone"
 )]
 pub struct CustomerAddressCreate;
@@ -60,7 +60,7 @@ pub struct CustomerAddressCreate;
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "graphql/customer/schema.json",
-    query_path = "graphql/customer/queries/addresses.graphql",
+    query_path = "graphql/customer/queries/customer_address_update.graphql",
     response_derives = "Debug, Clone"
 )]
 pub struct CustomerAddressUpdate;
@@ -68,7 +68,7 @@ pub struct CustomerAddressUpdate;
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "graphql/customer/schema.json",
-    query_path = "graphql/customer/queries/addresses.graphql",
+    query_path = "graphql/customer/queries/customer_address_delete.graphql",
     response_derives = "Debug, Clone"
 )]
 pub struct CustomerAddressDelete;
@@ -80,7 +80,7 @@ pub struct CustomerAddressDelete;
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "graphql/customer/schema.json",
-    query_path = "graphql/customer/queries/orders.graphql",
+    query_path = "graphql/customer/queries/get_orders.graphql",
     response_derives = "Debug, Clone"
 )]
 pub struct GetOrders;
@@ -88,7 +88,7 @@ pub struct GetOrders;
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "graphql/customer/schema.json",
-    query_path = "graphql/customer/queries/orders.graphql",
+    query_path = "graphql/customer/queries/get_order.graphql",
     response_derives = "Debug, Clone"
 )]
 pub struct GetOrder;
@@ -96,7 +96,7 @@ pub struct GetOrder;
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "graphql/customer/schema.json",
-    query_path = "graphql/customer/queries/orders.graphql",
+    query_path = "graphql/customer/queries/get_order_for_return.graphql",
     response_derives = "Debug, Clone"
 )]
 pub struct GetOrderForReturn;
@@ -104,7 +104,7 @@ pub struct GetOrderForReturn;
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "graphql/customer/schema.json",
-    query_path = "graphql/customer/queries/orders.graphql",
+    query_path = "graphql/customer/queries/order_request_return.graphql",
     response_derives = "Debug, Clone"
 )]
 pub struct OrderRequestReturn;
@@ -116,7 +116,7 @@ pub struct OrderRequestReturn;
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "graphql/customer/schema.json",
-    query_path = "graphql/customer/queries/subscriptions.graphql",
+    query_path = "graphql/customer/queries/get_subscriptions.graphql",
     response_derives = "Debug, Clone"
 )]
 pub struct GetSubscriptions;
@@ -124,7 +124,7 @@ pub struct GetSubscriptions;
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "graphql/customer/schema.json",
-    query_path = "graphql/customer/queries/subscriptions.graphql",
+    query_path = "graphql/customer/queries/get_subscription.graphql",
     response_derives = "Debug, Clone"
 )]
 pub struct GetSubscription;
@@ -132,7 +132,7 @@ pub struct GetSubscription;
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "graphql/customer/schema.json",
-    query_path = "graphql/customer/queries/subscriptions.graphql",
+    query_path = "graphql/customer/queries/pause_subscription.graphql",
     response_derives = "Debug, Clone"
 )]
 pub struct PauseSubscription;
@@ -140,7 +140,7 @@ pub struct PauseSubscription;
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "graphql/customer/schema.json",
-    query_path = "graphql/customer/queries/subscriptions.graphql",
+    query_path = "graphql/customer/queries/cancel_subscription.graphql",
     response_derives = "Debug, Clone"
 )]
 pub struct CancelSubscription;
@@ -148,7 +148,7 @@ pub struct CancelSubscription;
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "graphql/customer/schema.json",
-    query_path = "graphql/customer/queries/subscriptions.graphql",
+    query_path = "graphql/customer/queries/activate_subscription.graphql",
     response_derives = "Debug, Clone"
 )]
 pub struct ActivateSubscription;
@@ -156,7 +156,7 @@ pub struct ActivateSubscription;
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "graphql/customer/schema.json",
-    query_path = "graphql/customer/queries/subscriptions.graphql",
+    query_path = "graphql/customer/queries/get_upcoming_billing_cycles.graphql",
     response_derives = "Debug, Clone"
 )]
 pub struct GetUpcomingBillingCycles;
@@ -164,7 +164,7 @@ pub struct GetUpcomingBillingCycles;
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "graphql/customer/schema.json",
-    query_path = "graphql/customer/queries/subscriptions.graphql",
+    query_path = "graphql/customer/queries/skip_billing_cycle.graphql",
     response_derives = "Debug, Clone"
 )]
 pub struct SkipBillingCycle;
@@ -172,7 +172,7 @@ pub struct SkipBillingCycle;
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "graphql/customer/schema.json",
-    query_path = "graphql/customer/queries/subscriptions.graphql",
+    query_path = "graphql/customer/queries/unskip_billing_cycle.graphql",
     response_derives = "Debug, Clone"
 )]
 pub struct UnskipBillingCycle;

@@ -1,0 +1,13 @@
+mutation CancelSubscription($id: ID!) {
+  subscriptionContractCancel(subscriptionContractId: $id) {
+    contract {
+      id
+      status
+    }
+    userErrors {
+      field
+      message
+      code
+    }
+  }
+}

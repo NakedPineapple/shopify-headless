@@ -1,0 +1,24 @@
+fragment MoneyFields on MoneyV2 {
+  amount
+  currencyCode
+}
+
+query GetOrders($first: Int!) {
+  customer {
+    orders(first: $first, sortKey: PROCESSED_AT, reverse: true) {
+      edges {
+        node {
+          id
+          name
+          number
+          processedAt
+          financialStatus
+          fulfillmentStatus
+          totalPrice {
+            ...MoneyFields
+          }
+        }
+      }
+    }
+  }
+}

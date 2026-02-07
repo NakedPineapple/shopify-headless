@@ -1,0 +1,13 @@
+mutation ActivateSubscription($id: ID!) {
+  subscriptionContractActivate(subscriptionContractId: $id) {
+    contract {
+      id
+      status
+    }
+    userErrors {
+      field
+      message
+      code
+    }
+  }
+}

@@ -1,0 +1,28 @@
+query GetOrderForReturn($id: ID!) {
+  order(id: $id) {
+    id
+    name
+    lineItems(first: 50) {
+      edges {
+        node {
+          id
+          title
+          quantity
+          image {
+            url
+            altText
+          }
+          variantTitle
+          suggestedReturnReasonDefinitions(first: 20) {
+            edges {
+              node {
+                id
+                name
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

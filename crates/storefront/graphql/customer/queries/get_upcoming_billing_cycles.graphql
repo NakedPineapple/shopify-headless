@@ -1,0 +1,16 @@
+query GetUpcomingBillingCycles($id: ID!, $first: Int!) {
+  customer {
+    subscriptionContract(id: $id) {
+      upcomingBillingCycles(first: $first) {
+        edges {
+          node {
+            billingAttemptExpectedDate
+            cycleIndex
+            skipped
+            status
+          }
+        }
+      }
+    }
+  }
+}

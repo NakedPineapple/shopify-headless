@@ -1,0 +1,48 @@
+fragment MoneyFields on MoneyV2 {
+  amount
+  currencyCode
+}
+
+fragment SubscriptionLineFields on SubscriptionLine {
+  id
+  name
+  quantity
+  currentPrice {
+    ...MoneyFields
+  }
+  image {
+    url
+    altText
+  }
+}
+
+fragment SubscriptionFields on SubscriptionContract {
+  id
+  status
+  createdAt
+  nextBillingDate
+  billingPolicy {
+    interval
+    intervalCount {
+      count
+    }
+  }
+  deliveryPrice {
+    ...MoneyFields
+  }
+  lines(first: 10) {
+    edges {
+      node {
+        ...SubscriptionLineFields
+      }
+    }
+  }
+}
+
+query GetSubscription($id: ID!) {
+  customer {
+    subscriptionContract(id: $id) {
+      ...SubscriptionFields
+    }
+  }
+}

@@ -1,0 +1,13 @@
+mutation SkipBillingCycle($input: SubscriptionBillingCycleInput!) {
+  subscriptionBillingCycleSkip(billingCycleInput: $input) {
+    billingCycle {
+      cycleIndex
+      skipped
+    }
+    userErrors {
+      field
+      message
+      code
+    }
+  }
+}

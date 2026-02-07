@@ -279,13 +279,27 @@ impl CustomerClient {
 
         let request_body = Q::build_query(variables);
 
+        // Build the request body matching Shopify Hydrogen's format: only
+        // `query` and `variables` (no `operationName`), with `variables`
+        // always an object (never null).
+        let variables = serde_json::to_value(&request_body.variables)
+            .unwrap_or_else(|_| serde_json::Value::Object(serde_json::Map::default()));
+        let body = serde_json::json!({
+            "query": request_body.query,
+            "variables": if variables.is_null() {
+                serde_json::Value::Object(serde_json::Map::default())
+            } else {
+                variables
+            },
+        });
+
         let response = self
             .inner
             .client
             .post(&url)
             .header("Authorization", access_token)
             .header("Content-Type", "application/json")
-            .json(&request_body)
+            .json(&body)
             .send()
             .await?;
 

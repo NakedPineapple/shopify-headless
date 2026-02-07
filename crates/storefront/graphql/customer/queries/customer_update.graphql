@@ -1,8 +1,3 @@
-fragment MoneyFields on MoneyV2 {
-  amount
-  currencyCode
-}
-
 fragment AddressFields on CustomerAddress {
   id
   firstName
@@ -17,24 +12,6 @@ fragment AddressFields on CustomerAddress {
   territoryCode
   zip
   phoneNumber
-}
-
-query GetCustomer {
-  customer {
-    id
-    emailAddress {
-      emailAddress
-      marketingState
-    }
-    firstName
-    lastName
-    phoneNumber {
-      phoneNumber
-    }
-    defaultAddress {
-      ...AddressFields
-    }
-  }
 }
 
 mutation CustomerUpdate($input: CustomerUpdateInput!) {

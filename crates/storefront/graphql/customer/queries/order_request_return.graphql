@@ -1,0 +1,14 @@
+mutation OrderRequestReturn($orderId: ID!, $items: [RequestedLineItemInput!]!) {
+  orderRequestReturn(orderId: $orderId, requestedLineItems: $items) {
+    return {
+      id
+      name
+      status
+    }
+    userErrors {
+      field
+      message
+      code
+    }
+  }
+}

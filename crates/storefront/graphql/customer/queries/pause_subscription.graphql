@@ -1,0 +1,13 @@
+mutation PauseSubscription($id: ID!) {
+  subscriptionContractPause(subscriptionContractId: $id) {
+    contract {
+      id
+      status
+    }
+    userErrors {
+      field
+      message
+      code
+    }
+  }
+}
