@@ -5,7 +5,7 @@
 use axum::{
     Router,
     http::{StatusCode, header},
-    response::{IntoResponse, Redirect},
+    response::IntoResponse,
     routing::get,
 };
 
@@ -15,7 +15,6 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/gpc.json", get(gpc_json))
         .route("/security.txt", get(security_txt))
-        .route("/change-password", get(change_password))
 }
 
 /// GPC support resource ([Global Privacy Control specification]).
@@ -43,13 +42,4 @@ async fn security_txt() -> impl IntoResponse {
          Expires: 2027-02-05T00:00:00z\n\
          Preferred-Languages: en\n",
     )
-}
-
-/// Password change well-known URL ([W3C specification]).
-///
-/// Browsers and password managers redirect users here to change their password.
-///
-/// [W3C specification]: https://w3c.github.io/webappsec-change-password-url/
-async fn change_password() -> Redirect {
-    Redirect::to("/account/change-password")
 }

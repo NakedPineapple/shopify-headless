@@ -199,9 +199,6 @@
                 case 'copy-link':
                     navigator.clipboard.writeText(window.location.href);
                     break;
-                case 'passkey-login':
-                    window.handlePasskeyLogin();
-                    break;
                 case 'clear-search-input':
                     var form = target.closest('form');
                     if (form) {

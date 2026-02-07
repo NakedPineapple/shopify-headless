@@ -32,25 +32,12 @@
 //! GET  /contact                  - Contact page
 //! POST /contact/product-question - Submit product question (JSON API)
 //!
-//! # Auth
-//! GET  /auth/login             - Login page
-//! POST /auth/login             - Login action
-//! GET  /auth/register          - Register page
-//! POST /auth/register          - Register action
-//! POST /auth/logout            - Logout action
-//!
 //! # Shopify Customer OAuth
 //! GET  /auth/shopify/login     - Redirect to Shopify OAuth
 //! GET  /auth/shopify/callback  - Handle OAuth callback
 //! POST /auth/shopify/logout    - Logout from Shopify
 //!
-//! # `WebAuthn` API
-//! POST /api/auth/webauthn/register/start      - Start passkey registration
-//! POST /api/auth/webauthn/register/finish     - Finish passkey registration
-//! POST /api/auth/webauthn/authenticate/start  - Start passkey authentication
-//! POST /api/auth/webauthn/authenticate/finish - Finish passkey authentication
-//!
-//! # Account (requires auth)
+//! # Account (requires Shopify OAuth)
 //! GET  /account                          - Account overview
 //! GET  /account/profile                  - Profile editing
 //! POST /account/profile                  - Update profile
@@ -58,11 +45,7 @@
 //! GET  /account/orders/:id               - Order detail
 //! GET  /account/orders/:id/return        - Return request form
 //! POST /account/orders/:id/return        - Submit return request
-//! GET  /account/change-password          - Change password page
-//! POST /account/change-password          - Change password action
 //! GET  /account/addresses                - Address list
-//! GET  /account/passkeys                 - Passkey management
-//! DELETE /account/passkeys/:id           - Delete passkey
 //! GET  /account/subscriptions            - Subscription list
 //! GET  /account/subscriptions/:id        - Subscription detail
 //! POST /account/subscriptions/:id/skip/:idx   - Skip billing cycle
@@ -70,7 +53,6 @@
 //! ```
 
 pub mod account;
-pub mod api;
 pub mod auth;
 pub mod blog;
 pub mod cart;
@@ -100,43 +82,9 @@ use crate::state::AppState;
 /// Rate limited to ~10 requests per minute per IP to prevent brute force attacks.
 pub fn auth_routes() -> Router<AppState> {
     Router::new()
-        // Login/Register/Logout
-        .route("/login", get(auth::login_page).post(auth::login))
-        .route("/register", get(auth::register_page).post(auth::register))
-        .route("/logout", post(auth::logout))
-        // Account activation (from Shopify email link)
-        .route("/activate", get(auth::activate_page).post(auth::activate))
-        // Password reset
-        .route(
-            "/forgot-password",
-            get(auth::forgot_password_page).post(auth::forgot_password),
-        )
-        .route(
-            "/reset-password",
-            get(auth::reset_password_page).post(auth::reset_password),
-        )
-        // Shopify Customer Account OAuth (alternative login method)
         .route("/shopify/login", get(shopify_auth::login))
         .route("/shopify/callback", get(shopify_auth::callback))
         .route("/shopify/logout", post(shopify_auth::logout))
-        .layer(auth_rate_limiter())
-}
-
-/// Create the `WebAuthn` API routes router.
-///
-/// Rate limited to ~10 requests per minute per IP to prevent credential enumeration.
-pub fn webauthn_api_routes() -> Router<AppState> {
-    Router::new()
-        .route("/register/start", post(api::webauthn::start_registration))
-        .route("/register/finish", post(api::webauthn::finish_registration))
-        .route(
-            "/authenticate/start",
-            post(api::webauthn::start_authentication),
-        )
-        .route(
-            "/authenticate/finish",
-            post(api::webauthn::finish_authentication),
-        )
         .layer(auth_rate_limiter())
 }
 
@@ -179,8 +127,6 @@ pub fn cart_routes() -> Router<AppState> {
 
 /// Create the account routes router.
 pub fn account_routes() -> Router<AppState> {
-    use axum::routing::delete;
-
     Router::new()
         .route("/", get(account::index))
         .route(
@@ -192,10 +138,6 @@ pub fn account_routes() -> Router<AppState> {
         .route(
             "/orders/{id}/return",
             get(account::return_form).post(account::request_return),
-        )
-        .route(
-            "/change-password",
-            get(account::change_password_page).post(account::change_password),
         )
         .route(
             "/addresses",
@@ -229,8 +171,6 @@ pub fn account_routes() -> Router<AppState> {
             "/subscriptions/{id}/unskip/{cycle_index}",
             post(account::unskip_billing_cycle),
         )
-        .route("/passkeys", get(account::passkeys))
-        .route("/passkeys/{id}", delete(account::delete_passkey))
 }
 
 /// Create all routes for the storefront.
@@ -240,7 +180,7 @@ pub fn routes() -> Router<AppState> {
         .route("/", get(home::home))
         // Web app manifest
         .route("/manifest.webmanifest", get(manifest::webmanifest))
-        // Well-known endpoints (GPC, security.txt, change-password)
+        // Well-known endpoints (GPC, security.txt)
         .nest("/.well-known", well_known::router())
         // Shopify image proxy (for Cloudflare Image Resizing)
         .route("/images/shopify/{*path}", get(images::proxy_shopify_image))
@@ -260,12 +200,10 @@ pub fn routes() -> Router<AppState> {
         .route("/checkout", get(cart::checkout))
         // Search routes
         .nest("/search", search::router())
-        // Account routes (TODO: add auth middleware)
+        // Account routes
         .nest("/account", account_routes())
         // Auth routes
         .nest("/auth", auth_routes())
-        // `WebAuthn` API
-        .nest("/api/auth/webauthn", webauthn_api_routes())
         // Newsletter routes
         .route("/newsletter/subscribe", post(newsletter::subscribe))
         .route(

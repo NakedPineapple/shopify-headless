@@ -50,7 +50,7 @@ pub use customer::{CustomerAccessToken, CustomerClient};
 pub use storefront::queries::get_collection_by_handle::{
     PriceRangeFilter, ProductCollectionSortKeys, ProductFilter,
 };
-pub use storefront::{StorefrontAccessToken, StorefrontClient, StorefrontCustomer};
+pub use storefront::{StorefrontClient, StorefrontCustomer};
 pub use types::*;
 
 use thiserror::Error;

@@ -15,7 +15,6 @@ use tracing::{debug, info, instrument, warn};
 use crate::config::{AnalyticsConfig, AnalyticsUserInfo};
 use crate::content::Post;
 use crate::filters;
-use crate::middleware::OptionalAuth;
 use crate::routes::products::BreadcrumbItem;
 use crate::state::AppState;
 
@@ -80,10 +79,9 @@ pub struct BlogShowTemplate {
 const RECENT_POSTS_COUNT: usize = 3;
 
 /// Display the blog index page with all published posts.
-#[instrument(skip(state, nonce, customer, site))]
+#[instrument(skip(state, nonce, site))]
 pub async fn index(
     State(state): State<AppState>,
-    OptionalAuth(customer): OptionalAuth,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
     site: crate::middleware::SiteContext,
 ) -> impl IntoResponse {
@@ -100,7 +98,7 @@ pub async fn index(
     BlogIndexTemplate {
         posts,
         analytics: state.config().analytics.clone(),
-        analytics_user_info: AnalyticsUserInfo::from_customer(customer.as_ref()),
+        analytics_user_info: AnalyticsUserInfo::default(),
         site,
         nonce,
     }
@@ -111,10 +109,9 @@ pub async fn index(
 /// # Errors
 ///
 /// Returns 404 if the post doesn't exist or is a draft.
-#[instrument(skip(state, nonce, customer, site))]
+#[instrument(skip(state, nonce, site))]
 pub async fn show(
     State(state): State<AppState>,
-    OptionalAuth(customer): OptionalAuth,
     Path(slug): Path<String>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
     site: crate::middleware::SiteContext,
@@ -172,7 +169,7 @@ pub async fn show(
         post: post_view,
         recent_posts,
         analytics: state.config().analytics.clone(),
-        analytics_user_info: AnalyticsUserInfo::from_customer(customer.as_ref()),
+        analytics_user_info: AnalyticsUserInfo::default(),
         site,
         nonce,
         logo_url,

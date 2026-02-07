@@ -21,7 +21,6 @@ use tracing::{debug, info, instrument, warn};
 use crate::config::{AnalyticsConfig, AnalyticsUserInfo};
 use crate::error::add_breadcrumb;
 use crate::filters;
-use crate::middleware::OptionalAuth;
 use crate::models::session_keys;
 use crate::routes::products::ProductView;
 use crate::services::discount_matcher::{self, DiscountMatchResult, DiscountSuggestion, GwpAction};
@@ -240,17 +239,16 @@ pub struct OrderSummaryTemplate {
 }
 
 /// Display cart page.
-#[instrument(skip(state, session, nonce, customer, site))]
+#[instrument(skip(state, session, nonce, site))]
 pub async fn show(
     State(state): State<AppState>,
     session: Session,
-    OptionalAuth(customer): OptionalAuth,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
     site: crate::middleware::SiteContext,
 ) -> Response {
     debug!("Displaying cart page");
 
-    let analytics_user_info = AnalyticsUserInfo::from_customer(customer.as_ref());
+    let analytics_user_info = AnalyticsUserInfo::default();
 
     // Get cart ID from session
     let Some(cart_id) = get_cart_id(&session).await else {

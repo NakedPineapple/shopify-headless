@@ -11,7 +11,6 @@ use tracing::{debug, info, instrument, warn};
 
 use crate::config::{AnalyticsConfig, AnalyticsUserInfo};
 use crate::filters;
-use crate::middleware::OptionalAuth;
 use crate::state::AppState;
 
 // =============================================================================
@@ -150,10 +149,9 @@ fn serve_content_page(
 // =============================================================================
 
 /// Display the About page.
-#[instrument(skip(state, nonce, customer))]
+#[instrument(skip(state, nonce))]
 pub async fn about(
     State(state): State<AppState>,
-    OptionalAuth(customer): OptionalAuth,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
     site: crate::middleware::SiteContext,
 ) -> AboutTemplate {
@@ -161,17 +159,16 @@ pub async fn about(
     info!("Serving About page");
     AboutTemplate {
         analytics: state.config().analytics.clone(),
-        analytics_user_info: AnalyticsUserInfo::from_customer(customer.as_ref()),
+        analytics_user_info: AnalyticsUserInfo::default(),
         site,
         nonce,
     }
 }
 
 /// Display the Wholesale page.
-#[instrument(skip(state, nonce, customer))]
+#[instrument(skip(state, nonce))]
 pub async fn wholesale(
     State(state): State<AppState>,
-    OptionalAuth(customer): OptionalAuth,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
     site: crate::middleware::SiteContext,
 ) -> WholesaleTemplate {
@@ -179,17 +176,16 @@ pub async fn wholesale(
     info!("Serving Wholesale page");
     WholesaleTemplate {
         analytics: state.config().analytics.clone(),
-        analytics_user_info: AnalyticsUserInfo::from_customer(customer.as_ref()),
+        analytics_user_info: AnalyticsUserInfo::default(),
         site,
         nonce,
     }
 }
 
 /// Display the Model Program page.
-#[instrument(skip(state, nonce, customer))]
+#[instrument(skip(state, nonce))]
 pub async fn model_program(
     State(state): State<AppState>,
-    OptionalAuth(customer): OptionalAuth,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
     site: crate::middleware::SiteContext,
 ) -> ModelProgramTemplate {
@@ -197,17 +193,16 @@ pub async fn model_program(
     info!("Serving Model Program page");
     ModelProgramTemplate {
         analytics: state.config().analytics.clone(),
-        analytics_user_info: AnalyticsUserInfo::from_customer(customer.as_ref()),
+        analytics_user_info: AnalyticsUserInfo::default(),
         site,
         nonce,
     }
 }
 
 /// Display the Affiliate Program page.
-#[instrument(skip(state, nonce, customer))]
+#[instrument(skip(state, nonce))]
 pub async fn affiliate_program(
     State(state): State<AppState>,
-    OptionalAuth(customer): OptionalAuth,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
     site: crate::middleware::SiteContext,
 ) -> AffiliateTemplate {
@@ -215,17 +210,16 @@ pub async fn affiliate_program(
     info!("Serving Affiliate Program page");
     AffiliateTemplate {
         analytics: state.config().analytics.clone(),
-        analytics_user_info: AnalyticsUserInfo::from_customer(customer.as_ref()),
+        analytics_user_info: AnalyticsUserInfo::default(),
         site,
         nonce,
     }
 }
 
 /// Display the Teen Program page.
-#[instrument(skip(state, nonce, customer))]
+#[instrument(skip(state, nonce))]
 pub async fn teen_program(
     State(state): State<AppState>,
-    OptionalAuth(customer): OptionalAuth,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
     site: crate::middleware::SiteContext,
 ) -> TeenProgramTemplate {
@@ -233,17 +227,16 @@ pub async fn teen_program(
     info!("Serving Teen Program page");
     TeenProgramTemplate {
         analytics: state.config().analytics.clone(),
-        analytics_user_info: AnalyticsUserInfo::from_customer(customer.as_ref()),
+        analytics_user_info: AnalyticsUserInfo::default(),
         site,
         nonce,
     }
 }
 
 /// Display the Contact page.
-#[instrument(skip(state, nonce, customer))]
+#[instrument(skip(state, nonce))]
 pub async fn contact(
     State(state): State<AppState>,
-    OptionalAuth(customer): OptionalAuth,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
     site: crate::middleware::SiteContext,
 ) -> ContactTemplate {
@@ -251,17 +244,16 @@ pub async fn contact(
     info!("Serving Contact page");
     ContactTemplate {
         analytics: state.config().analytics.clone(),
-        analytics_user_info: AnalyticsUserInfo::from_customer(customer.as_ref()),
+        analytics_user_info: AnalyticsUserInfo::default(),
         site,
         nonce,
     }
 }
 
 /// Display the Subscriptions page.
-#[instrument(skip(state, nonce, customer))]
+#[instrument(skip(state, nonce))]
 pub async fn subscriptions(
     State(state): State<AppState>,
-    OptionalAuth(customer): OptionalAuth,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
     site: crate::middleware::SiteContext,
 ) -> SubscriptionsTemplate {
@@ -269,17 +261,16 @@ pub async fn subscriptions(
     info!("Serving Subscriptions page");
     SubscriptionsTemplate {
         analytics: state.config().analytics.clone(),
-        analytics_user_info: AnalyticsUserInfo::from_customer(customer.as_ref()),
+        analytics_user_info: AnalyticsUserInfo::default(),
         site,
         nonce,
     }
 }
 
 /// Display the Data Request page.
-#[instrument(skip(state, nonce, customer))]
+#[instrument(skip(state, nonce))]
 pub async fn data_request(
     State(state): State<AppState>,
-    OptionalAuth(customer): OptionalAuth,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
     site: crate::middleware::SiteContext,
 ) -> DataRequestTemplate {
@@ -287,7 +278,7 @@ pub async fn data_request(
     info!("Serving Data Request page");
     DataRequestTemplate {
         analytics: state.config().analytics.clone(),
-        analytics_user_info: AnalyticsUserInfo::from_customer(customer.as_ref()),
+        analytics_user_info: AnalyticsUserInfo::default(),
         site,
         nonce,
     }
@@ -302,21 +293,14 @@ pub async fn data_request(
 /// # Errors
 ///
 /// Returns 404 if the page doesn't exist.
-#[instrument(skip(state, nonce, customer))]
+#[instrument(skip(state, nonce))]
 pub async fn terms(
     State(state): State<AppState>,
-    OptionalAuth(customer): OptionalAuth,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
     site: crate::middleware::SiteContext,
 ) -> Result<impl IntoResponse, StatusCode> {
     debug!("Handling request for Terms of Service page");
-    serve_content_page(
-        &state,
-        "terms",
-        AnalyticsUserInfo::from_customer(customer.as_ref()),
-        site,
-        nonce,
-    )
+    serve_content_page(&state, "terms", AnalyticsUserInfo::default(), site, nonce)
 }
 
 /// Display the Privacy Policy page.
@@ -324,21 +308,14 @@ pub async fn terms(
 /// # Errors
 ///
 /// Returns 404 if the page doesn't exist.
-#[instrument(skip(state, nonce, customer))]
+#[instrument(skip(state, nonce))]
 pub async fn privacy(
     State(state): State<AppState>,
-    OptionalAuth(customer): OptionalAuth,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
     site: crate::middleware::SiteContext,
 ) -> Result<impl IntoResponse, StatusCode> {
     debug!("Handling request for Privacy Policy page");
-    serve_content_page(
-        &state,
-        "privacy",
-        AnalyticsUserInfo::from_customer(customer.as_ref()),
-        site,
-        nonce,
-    )
+    serve_content_page(&state, "privacy", AnalyticsUserInfo::default(), site, nonce)
 }
 
 /// Display the Accessibility page.
@@ -346,10 +323,9 @@ pub async fn privacy(
 /// # Errors
 ///
 /// Returns 404 if the page doesn't exist.
-#[instrument(skip(state, nonce, customer))]
+#[instrument(skip(state, nonce))]
 pub async fn accessibility(
     State(state): State<AppState>,
-    OptionalAuth(customer): OptionalAuth,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
     site: crate::middleware::SiteContext,
 ) -> Result<impl IntoResponse, StatusCode> {
@@ -357,7 +333,7 @@ pub async fn accessibility(
     serve_content_page(
         &state,
         "accessibility",
-        AnalyticsUserInfo::from_customer(customer.as_ref()),
+        AnalyticsUserInfo::default(),
         site,
         nonce,
     )
@@ -368,21 +344,14 @@ pub async fn accessibility(
 /// # Errors
 ///
 /// Returns 404 if the page doesn't exist.
-#[instrument(skip(state, nonce, customer))]
+#[instrument(skip(state, nonce))]
 pub async fn faq(
     State(state): State<AppState>,
-    OptionalAuth(customer): OptionalAuth,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
     site: crate::middleware::SiteContext,
 ) -> Result<impl IntoResponse, StatusCode> {
     debug!("Handling request for FAQ page");
-    serve_content_page(
-        &state,
-        "faq",
-        AnalyticsUserInfo::from_customer(customer.as_ref()),
-        site,
-        nonce,
-    )
+    serve_content_page(&state, "faq", AnalyticsUserInfo::default(), site, nonce)
 }
 
 /// Display the Shipping & Delivery Policy page.
@@ -390,10 +359,9 @@ pub async fn faq(
 /// # Errors
 ///
 /// Returns 404 if the page doesn't exist.
-#[instrument(skip(state, nonce, customer))]
+#[instrument(skip(state, nonce))]
 pub async fn shipping(
     State(state): State<AppState>,
-    OptionalAuth(customer): OptionalAuth,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
     site: crate::middleware::SiteContext,
 ) -> Result<impl IntoResponse, StatusCode> {
@@ -401,7 +369,7 @@ pub async fn shipping(
     serve_content_page(
         &state,
         "shipping",
-        AnalyticsUserInfo::from_customer(customer.as_ref()),
+        AnalyticsUserInfo::default(),
         site,
         nonce,
     )
@@ -412,21 +380,14 @@ pub async fn shipping(
 /// # Errors
 ///
 /// Returns 404 if the page doesn't exist.
-#[instrument(skip(state, nonce, customer))]
+#[instrument(skip(state, nonce))]
 pub async fn returns(
     State(state): State<AppState>,
-    OptionalAuth(customer): OptionalAuth,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
     site: crate::middleware::SiteContext,
 ) -> Result<impl IntoResponse, StatusCode> {
     debug!("Handling request for Return Policy page");
-    serve_content_page(
-        &state,
-        "returns",
-        AnalyticsUserInfo::from_customer(customer.as_ref()),
-        site,
-        nonce,
-    )
+    serve_content_page(&state, "returns", AnalyticsUserInfo::default(), site, nonce)
 }
 
 /// Display the Cookie Notice page.
@@ -434,21 +395,14 @@ pub async fn returns(
 /// # Errors
 ///
 /// Returns 404 if the page doesn't exist.
-#[instrument(skip(state, nonce, customer))]
+#[instrument(skip(state, nonce))]
 pub async fn cookies(
     State(state): State<AppState>,
-    OptionalAuth(customer): OptionalAuth,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
     site: crate::middleware::SiteContext,
 ) -> Result<impl IntoResponse, StatusCode> {
     debug!("Handling request for Cookie Notice page");
-    serve_content_page(
-        &state,
-        "cookies",
-        AnalyticsUserInfo::from_customer(customer.as_ref()),
-        site,
-        nonce,
-    )
+    serve_content_page(&state, "cookies", AnalyticsUserInfo::default(), site, nonce)
 }
 
 /// Display the Data Sharing Opt-Out page.
@@ -456,10 +410,9 @@ pub async fn cookies(
 /// # Errors
 ///
 /// Returns 404 if the page doesn't exist.
-#[instrument(skip(state, nonce, customer))]
+#[instrument(skip(state, nonce))]
 pub async fn data_sharing_opt_out(
     State(state): State<AppState>,
-    OptionalAuth(customer): OptionalAuth,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
     site: crate::middleware::SiteContext,
 ) -> Result<impl IntoResponse, StatusCode> {
@@ -467,7 +420,7 @@ pub async fn data_sharing_opt_out(
     serve_content_page(
         &state,
         "data-sharing-opt-out",
-        AnalyticsUserInfo::from_customer(customer.as_ref()),
+        AnalyticsUserInfo::default(),
         site,
         nonce,
     )
@@ -478,10 +431,9 @@ pub async fn data_sharing_opt_out(
 /// # Errors
 ///
 /// Returns 404 if the page doesn't exist.
-#[instrument(skip(state, nonce, customer))]
+#[instrument(skip(state, nonce))]
 pub async fn directions(
     State(state): State<AppState>,
-    OptionalAuth(customer): OptionalAuth,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
     site: crate::middleware::SiteContext,
 ) -> Result<impl IntoResponse, StatusCode> {
@@ -489,7 +441,7 @@ pub async fn directions(
     serve_content_page(
         &state,
         "directions",
-        AnalyticsUserInfo::from_customer(customer.as_ref()),
+        AnalyticsUserInfo::default(),
         site,
         nonce,
     )
@@ -500,21 +452,14 @@ pub async fn directions(
 /// # Errors
 ///
 /// Returns 404 if the page doesn't exist.
-#[instrument(skip(state, nonce, customer))]
+#[instrument(skip(state, nonce))]
 pub async fn collabs(
     State(state): State<AppState>,
-    OptionalAuth(customer): OptionalAuth,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
     site: crate::middleware::SiteContext,
 ) -> Result<impl IntoResponse, StatusCode> {
     debug!("Handling request for Collabs page");
-    serve_content_page(
-        &state,
-        "collabs",
-        AnalyticsUserInfo::from_customer(customer.as_ref()),
-        site,
-        nonce,
-    )
+    serve_content_page(&state, "collabs", AnalyticsUserInfo::default(), site, nonce)
 }
 
 // =============================================================================

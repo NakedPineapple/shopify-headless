@@ -30,8 +30,6 @@ use std::net::{IpAddr, SocketAddr};
 use secrecy::{ExposeSecret, SecretString};
 use thiserror::Error;
 
-use crate::models::CurrentCustomer;
-
 const MIN_SESSION_SECRET_LENGTH: usize = 32;
 const MIN_ENTROPY_BITS_PER_CHAR: f64 = 3.3;
 
@@ -206,19 +204,6 @@ pub struct AnalyticsUserInfo {
     pub first_name: Option<String>,
     /// Customer last name.
     pub last_name: Option<String>,
-}
-
-impl AnalyticsUserInfo {
-    /// Create from an optional [`CurrentCustomer`].
-    #[must_use]
-    pub fn from_customer(customer: Option<&CurrentCustomer>) -> Self {
-        customer.map_or_else(Self::default, |c| Self {
-            user_id: Some(c.shopify_customer_id.clone()),
-            email: Some(c.email.clone()),
-            first_name: c.first_name.clone(),
-            last_name: c.last_name.clone(),
-        })
-    }
 }
 
 impl StorefrontConfig {

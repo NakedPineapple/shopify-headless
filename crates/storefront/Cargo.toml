@@ -42,12 +42,9 @@ serde_json = { workspace = true }
 graphql_client = { workspace = true }
 reqwest = { workspace = true }
 
-# Auth
-webauthn-rs = { workspace = true }
-webauthn-rs-proto = { workspace = true }
+# Sessions
 tower-sessions = { workspace = true }
 tower-sessions-sqlx-store = { workspace = true }
-argon2 = "0.5"
 
 # Error tracking
 sentry = { workspace = true }

@@ -71,7 +71,7 @@ pub async fn login(
         .await
     {
         error!("Failed to store OAuth state in session: {}", e);
-        return Redirect::to("/auth/login?error=session").into_response();
+        return Redirect::to("/auth/shopify/login").into_response();
     }
 
     if let Err(e) = session
@@ -79,7 +79,7 @@ pub async fn login(
         .await
     {
         error!("Failed to store OAuth nonce in session: {}", e);
-        return Redirect::to("/auth/login?error=session").into_response();
+        return Redirect::to("/auth/shopify/login").into_response();
     }
 
     // Build the redirect URI from the current domain
@@ -119,19 +119,19 @@ pub async fn callback(
             error_description = %description,
             "Shopify OAuth authorization denied"
         );
-        return Redirect::to("/auth/login?error=shopify_denied").into_response();
+        return Redirect::to("/auth/shopify/login").into_response();
     }
 
     // Verify we have an authorization code
     let Some(code) = query.code else {
         warn!("Shopify OAuth callback missing authorization code");
-        return Redirect::to("/auth/login?error=missing_code").into_response();
+        return Redirect::to("/auth/shopify/login").into_response();
     };
 
     // Verify state parameter (CSRF protection)
     let Some(returned_state) = query.state else {
         warn!("Shopify OAuth callback missing state parameter");
-        return Redirect::to("/auth/login?error=missing_state").into_response();
+        return Redirect::to("/auth/shopify/login").into_response();
     };
 
     let stored_state: Option<String> = session
@@ -142,7 +142,7 @@ pub async fn callback(
 
     if stored_state.as_ref() != Some(&returned_state) {
         warn!("Shopify OAuth state mismatch - possible CSRF attack");
-        return Redirect::to("/auth/login?error=invalid_state").into_response();
+        return Redirect::to("/auth/shopify/login").into_response();
     }
 
     debug!("OAuth state validated, clearing one-time use tokens");
@@ -165,14 +165,14 @@ pub async fn callback(
         Ok(token) => token,
         Err(e) => {
             error!(error = %e, "Failed to exchange Shopify OAuth code for tokens");
-            return Redirect::to("/auth/login?error=token_exchange").into_response();
+            return Redirect::to("/auth/shopify/login").into_response();
         }
     };
 
     // Regenerate session ID to prevent session fixation attacks
     if let Err(e) = session.cycle_id().await {
         error!(error = %e, "Failed to regenerate session ID after OAuth");
-        return Redirect::to("/auth/login?error=session").into_response();
+        return Redirect::to("/auth/shopify/login").into_response();
     }
 
     // Store the customer token in the session
@@ -181,7 +181,7 @@ pub async fn callback(
         .await
     {
         error!(error = %e, "Failed to store Shopify customer token in session");
-        return Redirect::to("/auth/login?error=session").into_response();
+        return Redirect::to("/auth/shopify/login").into_response();
     }
 
     info!("Shopify customer authenticated successfully");

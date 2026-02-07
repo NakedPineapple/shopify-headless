@@ -8,7 +8,7 @@ The storefront binary serves the customer-facing website on port 3000. It provid
 
 - Product browsing and search
 - Shopping cart with HTMX-powered interactions
-- User authentication (password + WebAuthn passkeys)
+- User authentication (Shopify OAuth via Customer Account API)
 - Account management and order history
 - Blog and static content pages
 

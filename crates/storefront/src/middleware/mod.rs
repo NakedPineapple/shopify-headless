@@ -12,7 +12,6 @@
 //! 8. Rate limiting (governor)
 //! 9. CSRF protection (double-submit cookie pattern)
 
-pub mod auth;
 pub mod csp;
 pub mod csrf;
 pub mod rate_limit;
@@ -22,7 +21,6 @@ pub mod session;
 pub mod shopify_customer;
 pub mod site_context;
 
-pub use auth::{OptionalAuth, RequireAuth, clear_current_customer, set_current_customer};
 pub use csp::{CspNonce, csp_nonce_middleware};
 pub use csrf::{CsrfToken, csrf_protection, get_or_create_csrf_token};
 pub use rate_limit::{api_rate_limiter, auth_rate_limiter, gwp_rate_limiter};

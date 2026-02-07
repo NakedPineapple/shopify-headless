@@ -13,7 +13,6 @@ use tracing::{debug, info, instrument, warn};
 use crate::config::{AnalyticsConfig, AnalyticsUserInfo};
 use crate::error::add_breadcrumb;
 use crate::filters;
-use crate::middleware::OptionalAuth;
 use crate::shopify::ShopifyError;
 use crate::shopify::types::{
     Money, Product as ShopifyProduct, ProductRecommendationIntent, SellingPlanPriceAdjustmentValue,
@@ -318,10 +317,9 @@ pub struct QuickViewTemplate {
 const PRODUCTS_PER_PAGE: i64 = 12;
 
 /// Display product listing page.
-#[instrument(skip(state, nonce, customer))]
+#[instrument(skip(state, nonce))]
 pub async fn index(
     State(state): State<AppState>,
-    OptionalAuth(customer): OptionalAuth,
     Query(query): Query<PaginationQuery>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
     site: crate::middleware::SiteContext,
@@ -359,7 +357,7 @@ pub async fn index(
                 },
                 has_more_pages: has_more,
                 analytics: state.config().analytics.clone(),
-                analytics_user_info: AnalyticsUserInfo::from_customer(customer.as_ref()),
+                analytics_user_info: AnalyticsUserInfo::default(),
                 site,
                 nonce,
             }
@@ -374,7 +372,7 @@ pub async fn index(
                 total_pages: 1,
                 has_more_pages: false,
                 analytics: state.config().analytics.clone(),
-                analytics_user_info: AnalyticsUserInfo::from_customer(customer.as_ref()),
+                analytics_user_info: AnalyticsUserInfo::default(),
                 site,
                 nonce,
             }
@@ -436,17 +434,16 @@ fn build_error_product_template(
 }
 
 /// Display product detail page.
-#[instrument(skip(state, nonce, customer))]
+#[instrument(skip(state, nonce))]
 pub async fn show(
     State(state): State<AppState>,
-    OptionalAuth(customer): OptionalAuth,
     Path(handle): Path<String>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
     site: crate::middleware::SiteContext,
 ) -> Response {
     add_breadcrumb("product", "Viewed product", Some(&[("handle", &handle)]));
     debug!(handle = %handle, "Fetching product detail page");
-    let analytics_user_info = AnalyticsUserInfo::from_customer(customer.as_ref());
+    let analytics_user_info = AnalyticsUserInfo::default();
     let result = state.storefront().get_product_by_handle(&handle).await;
 
     match result {

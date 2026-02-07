@@ -3,7 +3,5 @@
 //! These types represent validated domain objects used throughout the application.
 
 pub mod session;
-pub mod user;
 
-pub use session::{CurrentCustomer, keys as session_keys};
-pub use user::{User, UserCredential};
+pub use session::keys as session_keys;

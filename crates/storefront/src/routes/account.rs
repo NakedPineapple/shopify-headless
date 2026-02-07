@@ -1,7 +1,6 @@
 //! Account route handlers.
 //!
 //! These routes require authentication via Shopify Customer OAuth.
-//! The change password route uses Storefront API auth (`RequireAuth`) instead.
 //!
 //! # Routes
 //!
@@ -12,8 +11,6 @@
 //! - `GET /account/orders/:id` - Order detail
 //! - `GET /account/orders/:id/return` - Return request form
 //! - `POST /account/orders/:id/return` - Submit return request
-//! - `GET /account/change-password` - Change password page
-//! - `POST /account/change-password` - Change password action
 //! - `GET /account/addresses` - Address list
 //! - `GET /account/addresses/new` - New address form
 //! - `POST /account/addresses` - Create address
@@ -27,8 +24,6 @@
 //! - `POST /account/subscriptions/:id/activate` - Activate subscription
 //! - `POST /account/subscriptions/:id/skip/:cycle_index` - Skip billing cycle
 //! - `POST /account/subscriptions/:id/unskip/:cycle_index` - Unskip billing cycle
-//! - `GET /account/passkeys` - Passkey management
-//! - `DELETE /account/passkeys/:id` - Delete passkey
 
 use askama::Template;
 use askama_web::WebTemplate;
@@ -38,16 +33,12 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Redirect, Response},
 };
-use secrecy::{ExposeSecret, SecretString};
 use serde::Deserialize;
-use tower_sessions::Session;
 use tracing::{debug, error, info, instrument, warn};
 
 use crate::config::{AnalyticsConfig, AnalyticsUserInfo};
 use crate::filters;
-use crate::middleware::{OptionalAuth, RequireAuth, RequireShopifyCustomer, set_current_customer};
-use crate::models::CurrentCustomer;
-use crate::services::auth::AuthService;
+use crate::middleware::RequireShopifyCustomer;
 use crate::shopify::Money;
 use crate::shopify::customer::{
     Address, AddressInput, Order, ReturnRequestLineItemInput, ReturnStatus, SubscriptionContract,
@@ -93,7 +84,6 @@ pub struct AddressView {
 pub struct AccountIndexTemplate {
     pub user: UserView,
     pub recent_orders: Vec<OrderView>,
-    pub passkey_count: u32,
     pub default_address: Option<AddressView>,
     pub subscription_count: u32,
     pub store_credit_balance: Option<String>,
@@ -158,14 +148,6 @@ pub struct ProfileView {
     pub last_name: String,
     pub phone: String,
     pub accepts_marketing: bool,
-}
-
-/// Passkey display data for templates.
-#[derive(Clone)]
-pub struct PasskeyView {
-    pub id: i32,
-    pub name: String,
-    pub created_at: String,
 }
 
 /// Order detail display data for templates.
@@ -291,17 +273,6 @@ pub struct ProfileTemplate {
     pub nonce: String,
 }
 
-/// Passkeys management page template.
-#[derive(Template, WebTemplate)]
-#[template(path = "account/passkeys.html")]
-pub struct PasskeysTemplate {
-    pub passkeys: Vec<PasskeyView>,
-    pub analytics: AnalyticsConfig,
-    pub analytics_user_info: AnalyticsUserInfo,
-    pub site: crate::middleware::SiteContext,
-    pub nonce: String,
-}
-
 /// Order detail page template.
 #[derive(Template, WebTemplate)]
 #[template(path = "account/order_detail.html")]
@@ -327,36 +298,9 @@ pub struct ReturnFormTemplate {
     pub nonce: String,
 }
 
-/// Change password page template.
-#[derive(Template, WebTemplate)]
-#[template(path = "account/change_password.html")]
-pub struct ChangePasswordTemplate {
-    pub error: Option<String>,
-    pub success: Option<String>,
-    pub analytics: AnalyticsConfig,
-    pub analytics_user_info: AnalyticsUserInfo,
-    pub site: crate::middleware::SiteContext,
-    pub nonce: String,
-}
-
 // =============================================================================
 // Form Data
 // =============================================================================
-
-/// Change password form data.
-#[derive(Debug, Deserialize)]
-pub struct ChangePasswordForm {
-    pub current_password: String,
-    pub new_password: String,
-    pub new_password_confirm: String,
-}
-
-/// Query parameters for the change password page.
-#[derive(Debug, Deserialize)]
-pub struct ChangePasswordQuery {
-    pub error: Option<String>,
-    pub success: Option<String>,
-}
 
 /// Profile form data.
 #[derive(Debug, Deserialize)]
@@ -431,16 +375,13 @@ impl From<AddressForm> for AddressInput {
 /// # Route
 ///
 /// `GET /account`
-#[instrument(skip(state, token, current_customer, nonce))]
+#[instrument(skip(state, token, nonce))]
 pub async fn index(
     State(state): State<AppState>,
     RequireShopifyCustomer(token): RequireShopifyCustomer,
-    OptionalAuth(current_customer): OptionalAuth,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
     site: crate::middleware::SiteContext,
 ) -> impl IntoResponse {
-    let analytics_user_info = AnalyticsUserInfo::from_customer(current_customer.as_ref());
-
     debug!("Rendering account overview page");
 
     // Fetch customer data from Shopify
@@ -455,22 +396,10 @@ pub async fn index(
         }
     };
 
-    // Fetch orders, subscriptions, passkeys, and store credit concurrently
-    let shopify_customer_id = current_customer
-        .as_ref()
-        .map(|c| c.shopify_customer_id.clone());
-
-    let (orders_result, subscriptions_result, passkey_result, store_credit_result) = tokio::join!(
+    // Fetch orders, subscriptions, and store credit concurrently
+    let (orders_result, subscriptions_result, store_credit_result) = tokio::join!(
         state.customer().get_orders(&token.access_token, 3),
         state.customer().get_subscriptions(&token.access_token, 50),
-        async {
-            if let Some(id) = &shopify_customer_id {
-                let auth = AuthService::new(state.pool(), state.webauthn_for_host(&site.host));
-                auth.get_credentials_by_shopify_customer_id(id).await.ok()
-            } else {
-                None
-            }
-        },
         state.customer().get_store_credit(&token.access_token),
     );
 
@@ -506,8 +435,6 @@ pub async fn index(
         }
     };
 
-    let passkey_count = passkey_result.map_or(0, |creds| u32::try_from(creds.len()).unwrap_or(0));
-
     let store_credit_balance = match store_credit_result {
         Ok(Some(balance)) => Some(format_money(&balance)),
         _ => None,
@@ -521,12 +448,11 @@ pub async fn index(
     AccountIndexTemplate {
         user,
         recent_orders,
-        passkey_count,
         default_address,
         subscription_count,
         store_credit_balance,
         analytics: state.config().analytics.clone(),
-        analytics_user_info,
+        analytics_user_info: AnalyticsUserInfo::default(),
         nonce,
         site,
     }
@@ -538,11 +464,10 @@ pub async fn index(
 /// # Route
 ///
 /// `GET /account/orders`
-#[instrument(skip(state, token, customer, nonce))]
+#[instrument(skip(state, token, nonce))]
 pub async fn orders(
     State(state): State<AppState>,
     RequireShopifyCustomer(token): RequireShopifyCustomer,
-    OptionalAuth(customer): OptionalAuth,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
     site: crate::middleware::SiteContext,
 ) -> impl IntoResponse {
@@ -567,7 +492,7 @@ pub async fn orders(
     OrdersTemplate {
         orders,
         analytics: state.config().analytics.clone(),
-        analytics_user_info: AnalyticsUserInfo::from_customer(customer.as_ref()),
+        analytics_user_info: AnalyticsUserInfo::default(),
         nonce,
         site,
     }
@@ -578,11 +503,10 @@ pub async fn orders(
 /// # Route
 ///
 /// `GET /account/addresses`
-#[instrument(skip(state, token, customer, nonce))]
+#[instrument(skip(state, token, nonce))]
 pub async fn addresses(
     State(state): State<AppState>,
     RequireShopifyCustomer(token): RequireShopifyCustomer,
-    OptionalAuth(customer): OptionalAuth,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
     site: crate::middleware::SiteContext,
 ) -> impl IntoResponse {
@@ -631,7 +555,7 @@ pub async fn addresses(
         addresses,
         default_address_id,
         analytics: state.config().analytics.clone(),
-        analytics_user_info: AnalyticsUserInfo::from_customer(customer.as_ref()),
+        analytics_user_info: AnalyticsUserInfo::default(),
         nonce,
         site,
     }
@@ -642,11 +566,10 @@ pub async fn addresses(
 /// # Route
 ///
 /// `GET /account/addresses/new`
-#[instrument(skip(state, _token, customer, nonce))]
+#[instrument(skip(state, _token, nonce))]
 pub async fn new_address(
     State(state): State<AppState>,
     RequireShopifyCustomer(_token): RequireShopifyCustomer,
-    OptionalAuth(customer): OptionalAuth,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
     site: crate::middleware::SiteContext,
 ) -> impl IntoResponse {
@@ -660,7 +583,7 @@ pub async fn new_address(
         address: None,
         error: None,
         analytics: state.config().analytics.clone(),
-        analytics_user_info: AnalyticsUserInfo::from_customer(customer.as_ref()),
+        analytics_user_info: AnalyticsUserInfo::default(),
         nonce,
         site,
     }
@@ -671,11 +594,10 @@ pub async fn new_address(
 /// # Route
 ///
 /// `POST /account/addresses`
-#[instrument(skip(state, token, customer, nonce, form))]
+#[instrument(skip(state, token, nonce, form))]
 pub async fn create_address(
     State(state): State<AppState>,
     RequireShopifyCustomer(token): RequireShopifyCustomer,
-    OptionalAuth(customer): OptionalAuth,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
     site: crate::middleware::SiteContext,
     Form(form): Form<AddressForm>,
@@ -701,7 +623,7 @@ pub async fn create_address(
                 address: None,
                 error: Some(e.to_string()),
                 analytics: state.config().analytics.clone(),
-                analytics_user_info: AnalyticsUserInfo::from_customer(customer.as_ref()),
+                analytics_user_info: AnalyticsUserInfo::default(),
                 nonce,
                 site,
             }
@@ -715,11 +637,10 @@ pub async fn create_address(
 /// # Route
 ///
 /// `GET /account/addresses/:id/edit`
-#[instrument(skip(state, token, customer, nonce), fields(address_id = %address_id))]
+#[instrument(skip(state, token, nonce), fields(address_id = %address_id))]
 pub async fn edit_address(
     State(state): State<AppState>,
     RequireShopifyCustomer(token): RequireShopifyCustomer,
-    OptionalAuth(customer): OptionalAuth,
     Path(address_id): Path<String>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
     site: crate::middleware::SiteContext,
@@ -758,7 +679,7 @@ pub async fn edit_address(
         address: Some(addr),
         error: None,
         analytics: state.config().analytics.clone(),
-        analytics_user_info: AnalyticsUserInfo::from_customer(customer.as_ref()),
+        analytics_user_info: AnalyticsUserInfo::default(),
         nonce,
         site,
     }
@@ -770,11 +691,10 @@ pub async fn edit_address(
 /// # Route
 ///
 /// `POST /account/addresses/:id`
-#[instrument(skip(state, token, customer, nonce, form), fields(address_id = %address_id))]
+#[instrument(skip(state, token, nonce, form), fields(address_id = %address_id))]
 pub async fn update_address(
     State(state): State<AppState>,
     RequireShopifyCustomer(token): RequireShopifyCustomer,
-    OptionalAuth(customer): OptionalAuth,
     Path(address_id): Path<String>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
     site: crate::middleware::SiteContext,
@@ -809,7 +729,7 @@ pub async fn update_address(
                 address,
                 error: Some(e.to_string()),
                 analytics: state.config().analytics.clone(),
-                analytics_user_info: AnalyticsUserInfo::from_customer(customer.as_ref()),
+                analytics_user_info: AnalyticsUserInfo::default(),
                 nonce,
                 site,
             }
@@ -883,11 +803,10 @@ fn subscription_to_view(contract: &SubscriptionContract) -> SubscriptionView {
 /// # Route
 ///
 /// `GET /account/subscriptions`
-#[instrument(skip(state, token, customer, nonce, site))]
+#[instrument(skip(state, token, nonce, site))]
 pub async fn subscriptions(
     State(state): State<AppState>,
     RequireShopifyCustomer(token): RequireShopifyCustomer,
-    OptionalAuth(customer): OptionalAuth,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
     site: crate::middleware::SiteContext,
 ) -> impl IntoResponse {
@@ -918,7 +837,7 @@ pub async fn subscriptions(
     SubscriptionsTemplate {
         subscriptions,
         analytics: state.config().analytics.clone(),
-        analytics_user_info: AnalyticsUserInfo::from_customer(customer.as_ref()),
+        analytics_user_info: AnalyticsUserInfo::default(),
         nonce,
         site,
     }
@@ -929,11 +848,10 @@ pub async fn subscriptions(
 /// # Route
 ///
 /// `GET /account/subscriptions/:id`
-#[instrument(skip(state, token, customer, nonce, site), fields(subscription_id = %id))]
+#[instrument(skip(state, token, nonce, site), fields(subscription_id = %id))]
 pub async fn subscription_detail(
     State(state): State<AppState>,
     RequireShopifyCustomer(token): RequireShopifyCustomer,
-    OptionalAuth(customer): OptionalAuth,
     Path(id): Path<String>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
     site: crate::middleware::SiteContext,
@@ -992,7 +910,7 @@ pub async fn subscription_detail(
         created_at,
         upcoming_cycles,
         analytics: state.config().analytics.clone(),
-        analytics_user_info: AnalyticsUserInfo::from_customer(customer.as_ref()),
+        analytics_user_info: AnalyticsUserInfo::default(),
         nonce,
         site,
     }
@@ -1095,11 +1013,10 @@ pub async fn activate_subscription(
 /// # Route
 ///
 /// `GET /account/profile`
-#[instrument(skip(state, token, current_customer, nonce, site))]
+#[instrument(skip(state, token, nonce, site))]
 pub async fn profile_page(
     State(state): State<AppState>,
     RequireShopifyCustomer(token): RequireShopifyCustomer,
-    OptionalAuth(current_customer): OptionalAuth,
     Query(query): Query<ProfileQuery>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
     site: crate::middleware::SiteContext,
@@ -1129,7 +1046,7 @@ pub async fn profile_page(
         error: query.error,
         success: query.success,
         analytics: state.config().analytics.clone(),
-        analytics_user_info: AnalyticsUserInfo::from_customer(current_customer.as_ref()),
+        analytics_user_info: AnalyticsUserInfo::default(),
         nonce,
         site,
     }
@@ -1173,102 +1090,6 @@ pub async fn update_profile(
 }
 
 // =============================================================================
-// Passkeys
-// =============================================================================
-
-/// Display passkeys management page.
-///
-/// # Route
-///
-/// `GET /account/passkeys`
-#[instrument(skip(state, _token, current_customer, nonce, site))]
-pub async fn passkeys(
-    State(state): State<AppState>,
-    RequireShopifyCustomer(_token): RequireShopifyCustomer,
-    OptionalAuth(current_customer): OptionalAuth,
-    crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
-    site: crate::middleware::SiteContext,
-) -> Response {
-    debug!("Rendering passkeys page");
-
-    let shopify_customer_id = current_customer
-        .as_ref()
-        .map(|c| c.shopify_customer_id.clone());
-
-    let passkeys = if let Some(id) = &shopify_customer_id {
-        let auth = AuthService::new(state.pool(), state.webauthn_for_host(&site.host));
-        match auth.get_credentials_by_shopify_customer_id(id).await {
-            Ok(creds) => creds
-                .into_iter()
-                .map(|c| PasskeyView {
-                    id: c.id.as_i32(),
-                    name: c.name,
-                    created_at: c.created_at.format("%b %d, %Y").to_string(),
-                })
-                .collect(),
-            Err(e) => {
-                warn!("Failed to fetch passkeys: {}", e);
-                Vec::new()
-            }
-        }
-    } else {
-        Vec::new()
-    };
-
-    info!(count = passkeys.len(), "Rendered passkeys page");
-
-    PasskeysTemplate {
-        passkeys,
-        analytics: state.config().analytics.clone(),
-        analytics_user_info: AnalyticsUserInfo::from_customer(current_customer.as_ref()),
-        nonce,
-        site,
-    }
-    .into_response()
-}
-
-/// Delete a passkey.
-///
-/// # Route
-///
-/// `DELETE /account/passkeys/:id`
-#[instrument(skip(state, _token, current_customer, site), fields(passkey_id = %id))]
-pub async fn delete_passkey(
-    State(state): State<AppState>,
-    RequireShopifyCustomer(_token): RequireShopifyCustomer,
-    OptionalAuth(current_customer): OptionalAuth,
-    Path(id): Path<i32>,
-    site: crate::middleware::SiteContext,
-) -> Response {
-    debug!("Deleting passkey");
-
-    let Some(customer) = current_customer else {
-        return StatusCode::FORBIDDEN.into_response();
-    };
-
-    let auth = AuthService::new(state.pool(), state.webauthn_for_host(&site.host));
-    let credential_id = naked_pineapple_core::CredentialId::new(id);
-
-    match auth
-        .delete_credential_for_shopify_customer(&customer.shopify_customer_id, credential_id)
-        .await
-    {
-        Ok(true) => {
-            info!("Successfully deleted passkey");
-            StatusCode::OK.into_response()
-        }
-        Ok(false) => {
-            warn!("Passkey not found for deletion");
-            StatusCode::NOT_FOUND.into_response()
-        }
-        Err(e) => {
-            error!("Failed to delete passkey: {}", e);
-            StatusCode::INTERNAL_SERVER_ERROR.into_response()
-        }
-    }
-}
-
-// =============================================================================
 // Order Detail & Returns
 // =============================================================================
 
@@ -1277,11 +1098,10 @@ pub async fn delete_passkey(
 /// # Route
 ///
 /// `GET /account/orders/:id`
-#[instrument(skip(state, token, customer, nonce, site), fields(order_id = %id))]
+#[instrument(skip(state, token, nonce, site), fields(order_id = %id))]
 pub async fn order_detail(
     State(state): State<AppState>,
     RequireShopifyCustomer(token): RequireShopifyCustomer,
-    OptionalAuth(customer): OptionalAuth,
     Path(id): Path<String>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
     site: crate::middleware::SiteContext,
@@ -1307,7 +1127,7 @@ pub async fn order_detail(
     OrderDetailTemplate {
         order,
         analytics: state.config().analytics.clone(),
-        analytics_user_info: AnalyticsUserInfo::from_customer(customer.as_ref()),
+        analytics_user_info: AnalyticsUserInfo::default(),
         nonce,
         site,
     }
@@ -1319,11 +1139,10 @@ pub async fn order_detail(
 /// # Route
 ///
 /// `GET /account/orders/:id/return`
-#[instrument(skip(state, token, customer, nonce, site), fields(order_id = %id))]
+#[instrument(skip(state, token, nonce, site), fields(order_id = %id))]
 pub async fn return_form(
     State(state): State<AppState>,
     RequireShopifyCustomer(token): RequireShopifyCustomer,
-    OptionalAuth(customer): OptionalAuth,
     Path(id): Path<String>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
     site: crate::middleware::SiteContext,
@@ -1356,7 +1175,7 @@ pub async fn return_form(
         line_items,
         error: None,
         analytics: state.config().analytics.clone(),
-        analytics_user_info: AnalyticsUserInfo::from_customer(customer.as_ref()),
+        analytics_user_info: AnalyticsUserInfo::default(),
         nonce,
         site,
     }
@@ -1472,124 +1291,6 @@ pub async fn unskip_billing_cycle(
     }
 
     Redirect::to(&format!("/account/subscriptions/{id}")).into_response()
-}
-
-// =============================================================================
-// Change Password
-// =============================================================================
-
-/// Display change password page.
-///
-/// # Route
-///
-/// `GET /account/change-password`
-#[instrument(skip(state, _customer, nonce, site))]
-pub async fn change_password_page(
-    State(state): State<AppState>,
-    RequireAuth(_customer): RequireAuth,
-    Query(query): Query<ChangePasswordQuery>,
-    crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
-    site: crate::middleware::SiteContext,
-) -> impl IntoResponse {
-    debug!("Rendering change password page");
-
-    ChangePasswordTemplate {
-        error: query.error,
-        success: query.success,
-        analytics: state.config().analytics.clone(),
-        analytics_user_info: AnalyticsUserInfo::default(),
-        site,
-        nonce,
-    }
-}
-
-/// Handle change password form submission.
-///
-/// Verifies current password, then updates via Shopify `customerUpdate` mutation.
-/// Updates the session with the new access token since password change
-/// invalidates all existing tokens.
-///
-/// # Route
-///
-/// `POST /account/change-password`
-#[instrument(skip(state, session, customer, form))]
-pub async fn change_password(
-    State(state): State<AppState>,
-    session: Session,
-    RequireAuth(customer): RequireAuth,
-    Form(form): Form<ChangePasswordForm>,
-) -> Response {
-    debug!("Processing change password request");
-
-    // Validate new passwords match
-    if form.new_password != form.new_password_confirm {
-        return Redirect::to("/account/change-password?error=password_mismatch").into_response();
-    }
-
-    // Validate new password complexity
-    if let Err(code) = crate::routes::auth::validate_password_complexity(&form.new_password) {
-        return Redirect::to(&format!(
-            "/account/change-password?error={}",
-            urlencoding::encode(code)
-        ))
-        .into_response();
-    }
-
-    // Verify current password by creating a fresh access token.
-    // This also gives us a known-good token for the customerUpdate call,
-    // which handles passkey-authenticated users who may have empty session tokens.
-    let fresh_token = match state
-        .storefront()
-        .create_access_token(&customer.email, &form.current_password)
-        .await
-    {
-        Ok(token) => token,
-        Err(e) => {
-            warn!(
-                "Change password: current password verification failed: {}",
-                e
-            );
-            return Redirect::to("/account/change-password?error=invalid_current_password")
-                .into_response();
-        }
-    };
-
-    // Update password via Shopify customerUpdate mutation
-    match state
-        .storefront()
-        .update_customer_password(&fresh_token.access_token, &form.new_password)
-        .await
-    {
-        Ok((updated_customer, new_token)) => {
-            // Update session with new access token (old ones are invalidated)
-            let updated = CurrentCustomer::new(
-                updated_customer.id,
-                updated_customer
-                    .email
-                    .unwrap_or_else(|| customer.email.clone()),
-                updated_customer
-                    .first_name
-                    .or_else(|| customer.first_name.clone()),
-                updated_customer
-                    .last_name
-                    .or_else(|| customer.last_name.clone()),
-                SecretString::from(new_token.access_token),
-                new_token.expires_at,
-            );
-
-            if let Err(e) = set_current_customer(&session, &updated).await {
-                error!("Failed to update session after password change: {}", e);
-                return Redirect::to("/account/change-password?error=session").into_response();
-            }
-
-            info!("Customer password changed successfully");
-            Redirect::to("/account/change-password?success=password_changed").into_response()
-        }
-        Err(e) => {
-            warn!("Password change failed: {}", e);
-            Redirect::to("/account/change-password?error=update_failed").into_response()
-        }
-    }
 }
 
 // =============================================================================

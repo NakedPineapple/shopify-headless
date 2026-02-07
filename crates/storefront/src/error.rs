@@ -10,7 +10,6 @@ use axum::{
 use thiserror::Error;
 
 use crate::db::RepositoryError;
-use crate::services::auth::AuthError;
 use crate::shopify::ShopifyError;
 
 /// Application-level error type for the storefront.
@@ -23,10 +22,6 @@ pub enum AppError {
     /// Shopify API operation failed.
     #[error("Shopify error: {0}")]
     Shopify(#[from] ShopifyError),
-
-    /// Authentication operation failed.
-    #[error("Auth error: {0}")]
-    Auth(#[from] AuthError),
 
     /// Resource not found.
     #[error("Not found: {0}")]
@@ -67,16 +62,6 @@ impl IntoResponse for AppError {
         let status = match &self {
             Self::Database(_) | Self::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
             Self::Shopify(_) => StatusCode::BAD_GATEWAY,
-            Self::Auth(err) => match err {
-                AuthError::InvalidCredentials | AuthError::UserNotFound => StatusCode::UNAUTHORIZED,
-                AuthError::UserAlreadyExists => StatusCode::CONFLICT,
-                AuthError::WeakPassword(_) | AuthError::InvalidEmail(_) => StatusCode::BAD_REQUEST,
-                AuthError::InvalidSessionState | AuthError::NoCredentials => {
-                    StatusCode::UNAUTHORIZED
-                }
-                AuthError::CredentialNotFound => StatusCode::NOT_FOUND,
-                _ => StatusCode::INTERNAL_SERVER_ERROR,
-            },
             Self::NotFound(_) => StatusCode::NOT_FOUND,
             Self::Unauthorized(_) => StatusCode::UNAUTHORIZED,
             Self::BadRequest(_) => StatusCode::BAD_REQUEST,
@@ -87,20 +72,6 @@ impl IntoResponse for AppError {
         let message = match &self {
             Self::Database(_) | Self::Internal(_) => "Internal server error".to_string(),
             Self::Shopify(_) => "External service error".to_string(),
-            Self::Auth(err) => match err {
-                AuthError::InvalidCredentials | AuthError::UserNotFound => {
-                    "Invalid credentials".to_string()
-                }
-                AuthError::UserAlreadyExists => {
-                    "An account with this email already exists".to_string()
-                }
-                AuthError::WeakPassword(msg) => msg.clone(),
-                AuthError::InvalidEmail(_) => "Invalid email address".to_string(),
-                AuthError::NoCredentials => "No passkeys registered for this account".to_string(),
-                AuthError::CredentialNotFound => "Credential not found".to_string(),
-                AuthError::InvalidSessionState => "Session expired, please try again".to_string(),
-                _ => "Authentication error".to_string(),
-            },
             _ => self.to_string(),
         };
 

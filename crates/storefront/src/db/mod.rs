@@ -6,12 +6,7 @@
 //!
 //! ## Tables
 //!
-//! - `users` - Site authentication (separate from Shopify customers)
 //! - `sessions` - Tower-sessions storage
-//! - `user_credentials` - `WebAuthn` passkeys
-//! - `password_reset_tokens`
-//! - `email_verification_codes`
-//! - `addresses` - User shipping/billing addresses
 //! - `shopify_cart_cache` - Persist Shopify cart IDs across sessions
 //!
 //! # Migrations
@@ -20,8 +15,6 @@
 //! ```bash
 //! cargo run -p naked-pineapple-cli -- migrate storefront
 //! ```
-
-pub mod users;
 
 use std::time::Duration;
 

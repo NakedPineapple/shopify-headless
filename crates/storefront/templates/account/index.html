@@ -36,7 +36,7 @@
                     Welcome back, {% if let Some(name) = user.name %}{{ name }}{% else %}{{ user.email }}{% endif %}
                 </p>
             </div>
-            <form action="/auth/logout" method="post" class="animate-fade-in" style="opacity: 0; animation-delay: 300ms;">
+            <form action="/auth/shopify/logout" method="post" class="animate-fade-in" style="opacity: 0; animation-delay: 300ms;">
                 <button type="submit" class="btn btn-outline">
                     <i class="ph ph-sign-out mr-2"></i>
                     Sign Out
@@ -44,7 +44,7 @@
             </form>
         </div>
 
-        <div class="grid md:grid-cols-3 gap-6 md:gap-8 animate-slide-up" style="opacity: 0; animation-delay: 350ms;">
+        <div class="grid md:grid-cols-2 gap-6 md:gap-8 animate-slide-up" style="opacity: 0; animation-delay: 350ms;">
             {# Account Overview #}
             <div class="card rounded-2xl p-6 shadow-lg">
                 <div class="flex items-center gap-4 mb-4">
@@ -95,28 +95,6 @@
                 </a>
             </div>
 
-            {# Passkeys #}
-            <div class="card rounded-2xl p-6 shadow-lg">
-                <div class="flex items-center gap-4 mb-4">
-                    <div class="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center">
-                        <i class="ph ph-key text-2xl text-accent"></i>
-                    </div>
-                    <div>
-                        <h2 class="font-semibold text-foreground">Passkeys</h2>
-                        <p class="text-sm text-muted-foreground">Passwordless login</p>
-                    </div>
-                </div>
-                <p class="text-sm text-muted-foreground mb-4">
-                    {% if passkey_count > 0 %}
-                    {{ passkey_count }} passkey(s) registered
-                    {% else %}
-                    No passkeys registered yet
-                    {% endif %}
-                </p>
-                <a href="/account/passkeys" class="btn btn-outline w-full justify-center">
-                    Manage Passkeys
-                </a>
-            </div>
         </div>
 
         {# Account Actions #}
@@ -180,21 +158,6 @@
             </div>
             {% endif %}
 
-            {# Security #}
-            <div class="card rounded-2xl p-6 shadow-lg">
-                <div class="flex items-center justify-between mb-4">
-                    <div class="flex items-center gap-3">
-                        <i class="ph ph-lock text-xl text-muted-foreground"></i>
-                        <h3 class="font-semibold text-foreground">Security</h3>
-                    </div>
-                    <a href="/account/change-password" class="text-primary text-sm font-medium hover:underline">
-                        Change Password
-                    </a>
-                </div>
-                <p class="text-sm text-muted-foreground">
-                    Keep your account secure by updating your password regularly.
-                </p>
-            </div>
         </div>
     </div>
 </section>

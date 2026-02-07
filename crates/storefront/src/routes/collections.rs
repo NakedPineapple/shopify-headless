@@ -13,7 +13,7 @@ use tracing::{debug, info, instrument, warn};
 use crate::config::{AnalyticsConfig, AnalyticsUserInfo};
 use crate::error::add_breadcrumb;
 use crate::filters;
-use crate::middleware::OptionalAuth;
+
 use crate::shopify::types::Collection as ShopifyCollection;
 use crate::shopify::{PriceRangeFilter, ProductCollectionSortKeys, ProductFilter, ShopifyError};
 use crate::state::AppState;
@@ -115,7 +115,6 @@ const PRODUCTS_PER_PAGE: usize = 12;
 #[instrument(skip_all)]
 pub async fn index(
     State(state): State<AppState>,
-    OptionalAuth(customer): OptionalAuth,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
     site: crate::middleware::SiteContext,
 ) -> Response {
@@ -143,7 +142,7 @@ pub async fn index(
             CollectionsIndexTemplate {
                 collections,
                 analytics: state.config().analytics.clone(),
-                analytics_user_info: AnalyticsUserInfo::from_customer(customer.as_ref()),
+                analytics_user_info: AnalyticsUserInfo::default(),
                 site,
                 nonce,
             }
@@ -154,7 +153,7 @@ pub async fn index(
             CollectionsIndexTemplate {
                 collections: Vec::new(),
                 analytics: state.config().analytics.clone(),
-                analytics_user_info: AnalyticsUserInfo::from_customer(customer.as_ref()),
+                analytics_user_info: AnalyticsUserInfo::default(),
                 site,
                 nonce,
             }
@@ -408,11 +407,10 @@ fn build_collection_response(
 }
 
 /// Display collection detail page with products.
-#[instrument(skip(state, nonce, customer, site), fields(handle = %handle))]
+#[instrument(skip(state, nonce, site), fields(handle = %handle))]
 pub async fn show(
     State(state): State<AppState>,
     Path(handle): Path<String>,
-    OptionalAuth(customer): OptionalAuth,
     Query(query): Query<PaginationQuery>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
     site: crate::middleware::SiteContext,
@@ -466,7 +464,7 @@ pub async fn show(
         filter_price_max,
     };
 
-    let analytics_user_info = AnalyticsUserInfo::from_customer(customer.as_ref());
+    let analytics_user_info = AnalyticsUserInfo::default();
 
     let err_params = |status, title, desc| ErrorParams {
         status,

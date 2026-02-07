@@ -7,7 +7,6 @@ use tracing::{debug, info, instrument};
 
 use crate::config::{AnalyticsConfig, AnalyticsUserInfo};
 use crate::filters;
-use crate::middleware::OptionalAuth;
 use crate::shopify::types::{Money, Product as ShopifyProduct};
 use crate::state::AppState;
 
@@ -328,7 +327,6 @@ pub async fn home(
     State(state): State<AppState>,
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
     site: crate::middleware::SiteContext,
-    OptionalAuth(customer): OptionalAuth,
 ) -> impl IntoResponse {
     debug!("Rendering home page with hero carousel and product collections");
 
@@ -408,7 +406,7 @@ pub async fn home(
         merch_products,
         featured_reviews: get_featured_reviews(),
         analytics: state.config().analytics.clone(),
-        analytics_user_info: AnalyticsUserInfo::from_customer(customer.as_ref()),
+        analytics_user_info: AnalyticsUserInfo::default(),
         site,
         nonce,
         logo_url,
