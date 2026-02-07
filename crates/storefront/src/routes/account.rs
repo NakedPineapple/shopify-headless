@@ -642,6 +642,7 @@ pub async fn edit_address(
     crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
     site: crate::middleware::SiteContext,
 ) -> Response {
+    let gid = format!("gid://shopify/CustomerAddress/{address_id}");
     debug!("Rendering edit address form");
 
     // Fetch addresses and find the one we want
@@ -663,8 +664,8 @@ pub async fn edit_address(
         }
     };
 
-    let Some(addr) = addresses.into_iter().find(|a| a.id == address_id) else {
-        warn!(address_id = %address_id, "Address not found");
+    let Some(addr) = addresses.into_iter().find(|a| a.id == gid) else {
+        warn!(address_id = %gid, "Address not found");
         return Redirect::to("/account/addresses").into_response();
     };
 
@@ -697,13 +698,14 @@ pub async fn update_address(
     site: crate::middleware::SiteContext,
     Form(form): Form<AddressForm>,
 ) -> Response {
+    let gid = format!("gid://shopify/CustomerAddress/{address_id}");
     debug!("Updating existing address");
 
     let input: AddressInput = form.into();
 
     match state
         .customer()
-        .update_address(&token.access_token, &address_id, input)
+        .update_address(&token.access_token, &gid, input)
         .await
     {
         Ok(_) => {
@@ -718,11 +720,11 @@ pub async fn update_address(
                 .get_addresses(&token.access_token, 50)
                 .await
                 .unwrap_or_default();
-            let address = addresses.into_iter().find(|a| a.id == address_id);
+            let address = addresses.into_iter().find(|a| a.id == gid);
 
             AddressFormTemplate {
                 is_edit: true,
-                address_id: Some(address_id),
+                address_id: Some(gid),
                 address,
                 error: Some(e.to_string()),
                 analytics: state.config().analytics.clone(),
@@ -746,11 +748,12 @@ pub async fn delete_address(
     RequireShopifyCustomer(token): RequireShopifyCustomer,
     Path(address_id): Path<String>,
 ) -> Response {
+    let gid = format!("gid://shopify/CustomerAddress/{address_id}");
     debug!("Deleting address");
 
     match state
         .customer()
-        .delete_address(&token.access_token, &address_id)
+        .delete_address(&token.access_token, &gid)
         .await
     {
         Ok(()) => {

@@ -41,6 +41,24 @@ pub fn get_logo_url(base_url: &str) -> String {
     }
 }
 
+/// Extract the numeric ID from a Shopify GID.
+///
+/// Examples:
+/// - `gid://shopify/Collection/123` -> `123`
+/// - `gid://shopify/Product/456` -> `456`
+/// - `123` -> `123` (already numeric)
+///
+/// Usage in templates: `{{ id|extract_id }}`
+///
+/// # Errors
+///
+/// This filter is infallible, however Askama requires filters return `askama::Result`.
+#[allow(clippy::unnecessary_wraps)]
+#[askama::filter_fn]
+pub fn extract_id(gid: &str, _env: &dyn askama::Values) -> askama::Result<String> {
+    Ok(gid.split('/').next_back().unwrap_or(gid).to_string())
+}
+
 /// Returns the current year.
 ///
 /// Usage in templates: `{{ ""|current_year }}`

@@ -46,7 +46,7 @@
         {% endif %}
 
         <div class="card rounded-2xl p-8 md:p-10 shadow-lg animate-slide-up" style="opacity: 0; animation-delay: 300ms;">
-            <form action="{% if let Some(id) = address_id %}/account/addresses/{{ id }}{% else %}/account/addresses{% endif %}"
+            <form action="{% if let Some(id) = address_id %}/account/addresses/{{ id|extract_id }}{% else %}/account/addresses{% endif %}"
                   method="post"
                   class="space-y-5"
                   hx-boost="false">
