@@ -103,11 +103,20 @@ struct CustomerClientInner {
 
 impl CustomerClient {
     /// Create a new Customer Account API client.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the HTTP client cannot be built (invalid TLS backend).
     #[must_use]
     pub fn new(config: &ShopifyStorefrontConfig) -> Self {
+        let client = reqwest::Client::builder()
+            .user_agent("NakedPineapple/1.0")
+            .build()
+            .expect("reqwest client with default user-agent builds successfully");
+
         Self {
             inner: Arc::new(CustomerClientInner {
-                client: reqwest::Client::new(),
+                client,
                 store: config.store.clone(),
                 store_id: config.customer_shop_id.clone(),
                 api_version: config.api_version.clone(),
@@ -315,7 +324,6 @@ impl CustomerClient {
             .post(&url)
             .header("Authorization", access_token)
             .header("Content-Type", "application/json")
-            .header("User-Agent", "NakedPineapple/1.0")
             .json(&request)
             .send()
             .await?;

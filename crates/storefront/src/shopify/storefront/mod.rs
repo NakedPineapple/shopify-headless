@@ -78,6 +78,10 @@ struct StorefrontClientInner {
 
 impl StorefrontClient {
     /// Create a new Storefront API client.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the HTTP client cannot be built (invalid TLS backend).
     #[must_use]
     pub fn new(config: &ShopifyStorefrontConfig) -> Self {
         let cache = Cache::builder()
@@ -90,9 +94,14 @@ impl StorefrontClient {
             config.store, config.api_version
         );
 
+        let client = reqwest::Client::builder()
+            .user_agent("NakedPineapple/1.0")
+            .build()
+            .expect("reqwest client with default user-agent builds successfully");
+
         Self {
             inner: Arc::new(StorefrontClientInner {
-                client: reqwest::Client::new(),
+                client,
                 endpoint,
                 access_token: config.storefront_private_token.expose_secret().to_string(),
                 cache,

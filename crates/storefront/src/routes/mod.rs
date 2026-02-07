@@ -79,13 +79,20 @@ use crate::state::AppState;
 
 /// Create the auth routes router.
 ///
-/// Rate limited to ~10 requests per minute per IP to prevent brute force attacks.
+/// Login and logout are rate limited to ~10 requests per minute per IP.
+/// The callback is excluded from rate limiting because it is a one-time
+/// redirect from Shopify with a short-lived authorization code and cannot
+/// be meaningfully abused. Sharing the rate limiter caused the normal
+/// OAuth round-trip (login + callback) to consume burst tokens too quickly.
 pub fn auth_routes() -> Router<AppState> {
-    Router::new()
+    let rate_limited = Router::new()
         .route("/shopify/login", get(shopify_auth::login))
-        .route("/shopify/callback", get(shopify_auth::callback))
         .route("/shopify/logout", post(shopify_auth::logout))
-        .layer(auth_rate_limiter())
+        .layer(auth_rate_limiter());
+
+    Router::new()
+        .route("/shopify/callback", get(shopify_auth::callback))
+        .merge(rate_limited)
 }
 
 /// Create the product routes router.
