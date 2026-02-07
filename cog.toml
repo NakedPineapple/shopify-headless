@@ -37,8 +37,11 @@ pre_bump_hooks = [
 ]
 
 # Move [skip ci] from the subject line to the commit body for a cleaner history.
+# After amending, move the tag to the new commit (amend changes the hash,
+# orphaning the tag cocogitto created on the pre-amend commit).
 post_bump_hooks = [
     """git commit --amend -m "$(git log -1 --format=%s)" -m "[skip ci]" """,
+    "git tag -fa v{{version}} -m 'v{{version}}'",
 ]
 
 [commit_types]
