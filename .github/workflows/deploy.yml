@@ -274,13 +274,13 @@ jobs:
         if: inputs.target != 'admin'
         run: |
           docker pull ${{ steps.staging-storefront.outputs.image }}
-          PROD_TAG=${{ env.REGISTRY }}/nakedpineapple-storefront:${{ github.run_id }}
           VERSION_TAG=${{ env.REGISTRY }}/nakedpineapple-storefront:${{ steps.version.outputs.version }}
-          docker tag ${{ steps.staging-storefront.outputs.image }} $PROD_TAG
+          LATEST_TAG=${{ env.REGISTRY }}/nakedpineapple-storefront:latest
           docker tag ${{ steps.staging-storefront.outputs.image }} $VERSION_TAG
-          docker push $PROD_TAG
+          docker tag ${{ steps.staging-storefront.outputs.image }} $LATEST_TAG
           docker push $VERSION_TAG
-          echo "STOREFRONT_PROD_IMAGE=$PROD_TAG" >> $GITHUB_ENV
+          docker push $LATEST_TAG
+          echo "STOREFRONT_PROD_IMAGE=$VERSION_TAG" >> $GITHUB_ENV
 
       - name: Get staging admin image
         id: staging-admin
@@ -294,13 +294,13 @@ jobs:
         if: inputs.target != 'storefront'
         run: |
           docker pull ${{ steps.staging-admin.outputs.image }}
-          PROD_TAG=${{ env.REGISTRY }}/nakedpineapple-admin:${{ github.run_id }}
           VERSION_TAG=${{ env.REGISTRY }}/nakedpineapple-admin:${{ steps.version.outputs.version }}
-          docker tag ${{ steps.staging-admin.outputs.image }} $PROD_TAG
+          LATEST_TAG=${{ env.REGISTRY }}/nakedpineapple-admin:latest
           docker tag ${{ steps.staging-admin.outputs.image }} $VERSION_TAG
-          docker push $PROD_TAG
+          docker tag ${{ steps.staging-admin.outputs.image }} $LATEST_TAG
           docker push $VERSION_TAG
-          echo "ADMIN_PROD_IMAGE=$PROD_TAG" >> $GITHUB_ENV
+          docker push $LATEST_TAG
+          echo "ADMIN_PROD_IMAGE=$VERSION_TAG" >> $GITHUB_ENV
 
       - name: Deploy storefront to production
         if: inputs.target != 'admin'
