@@ -1,7 +1,7 @@
 # =============================================================================
 # Stage 1: Chef base image with cargo-chef installed
 # =============================================================================
-FROM rust:1.93.0-trixie AS chef
+FROM rust:1.93.0-trixie@sha256:e35d0f677e0e0be6f4b4f93bf16e6f93ab4f427dc440a0ef12511026f8b7d7e3 AS chef
 RUN cargo install cargo-chef --locked
 WORKDIR /app
 
@@ -19,10 +19,10 @@ RUN cargo chef prepare --recipe-path recipe.json
 FROM chef AS deps-builder
 
 # Install build dependencies including mold linker for faster linking
-RUN apt-get update && apt-get install -y \
-    pkg-config \
-    libssl-dev \
-    mold \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    pkg-config=1.8.1-4 \
+    libssl-dev=3.5.4-1~deb13u2 \
+    mold=2.37.1+dfsg-1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Use mold linker for faster linking
@@ -37,8 +37,11 @@ RUN cargo chef cook --release --recipe-path recipe.json
 # =============================================================================
 FROM deps-builder AS builder
 
-# Install Tailwind CSS CLI
-RUN curl -sLO https://github.com/tailwindlabs/tailwindcss/releases/download/v4.0.0/tailwindcss-linux-x64 \
+# Install Tailwind CSS CLI with checksum verification
+ARG TAILWIND_VERSION=4.1.18
+ARG TAILWIND_SHA256=737becf8d4ad1115ea98df69fa94026d402ca8feb91306a035b5b004167da8dd
+RUN curl -sLO https://github.com/tailwindlabs/tailwindcss/releases/download/v${TAILWIND_VERSION}/tailwindcss-linux-x64 \
+    && echo "${TAILWIND_SHA256}  tailwindcss-linux-x64" | sha256sum -c - \
     && chmod +x tailwindcss-linux-x64 && mv tailwindcss-linux-x64 /usr/local/bin/tailwindcss
 
 # Use sqlx offline mode (reads from .sqlx cache instead of live database)
@@ -51,13 +54,13 @@ COPY . .
 RUN tailwindcss -i ./crates/storefront/static/css/input.css \
     -o ./crates/storefront/static/css/main.css --minify
 
-# Build the binaries (dependencies already compiled in deps-builder)
-RUN cargo build --release -p naked-pineapple-storefront -p naked-pineapple-cli
+# Build the binary (dependencies already compiled in deps-builder)
+RUN cargo build --release --locked -p naked-pineapple-storefront
 
 # =============================================================================
-# Stage 5: Runtime - minimal image for production
+# Stage 5: Runtime - distroless image for production
 # =============================================================================
-FROM debian:trixie-slim AS runtime
+FROM gcr.io/distroless/cc-debian13@sha256:d7ac2f9af248f31fe6270002755722afdf6875e0e49cd52b9150208e6a23875c AS runtime
 
 # OCI image metadata (values injected by CI via --build-arg or Docker --label)
 ARG VERSION=0.1.0
@@ -72,29 +75,26 @@ LABEL org.opencontainers.image.title="Naked Pineapple Storefront" \
       org.opencontainers.image.source="https://github.com/NakedPineapple/shopify-headless" \
       org.opencontainers.image.revision="${COMMIT_SHA}" \
       org.opencontainers.image.created="${BUILD_DATE}" \
-      org.opencontainers.image.vendor="Pineapple Skin Co LLC"
-
-RUN apt-get update && apt-get install -y ca-certificates libssl3 && rm -rf /var/lib/apt/lists/*
+      org.opencontainers.image.vendor="Pineapple Skin Co LLC" \
+      org.opencontainers.image.base.name="gcr.io/distroless/cc-debian13" \
+      org.opencontainers.image.security.no-new-privileges="true"
 
 WORKDIR /app
 
-# Image CDN URL - defaults to Cloudflare R2 CDN
-ARG IMAGE_BASE_URL=https://images.nakedpineapple.com
-ENV IMAGE_BASE_URL=${IMAGE_BASE_URL}
-
-# Copy binaries
-COPY --from=builder /app/target/release/naked-pineapple-storefront /app/server
-COPY --from=builder /app/target/release/np-cli /app/np-cli
+# Copy binary
+COPY --from=builder --chown=nonroot:nonroot /app/target/release/naked-pineapple-storefront /app/server
 
 # Copy templates and content
-COPY --from=builder /app/crates/storefront/templates /app/crates/storefront/templates
-COPY --from=builder /app/crates/storefront/content /app/crates/storefront/content
+COPY --from=builder --chown=nonroot:nonroot /app/crates/storefront/templates /app/crates/storefront/templates
+COPY --from=builder --chown=nonroot:nonroot /app/crates/storefront/content /app/crates/storefront/content
 
 # Copy static assets (CSS, JS, vendor, fonts) - images served from CDN
-COPY --from=builder /app/crates/storefront/static/css /app/crates/storefront/static/css
-COPY --from=builder /app/crates/storefront/static/js /app/crates/storefront/static/js
-COPY --from=builder /app/crates/storefront/static/vendor /app/crates/storefront/static/vendor
-COPY --from=builder /app/crates/storefront/static/fonts /app/crates/storefront/static/fonts
+COPY --from=builder --chown=nonroot:nonroot /app/crates/storefront/static/css /app/crates/storefront/static/css
+COPY --from=builder --chown=nonroot:nonroot /app/crates/storefront/static/js /app/crates/storefront/static/js
+COPY --from=builder --chown=nonroot:nonroot /app/crates/storefront/static/vendor /app/crates/storefront/static/vendor
+COPY --from=builder --chown=nonroot:nonroot /app/crates/storefront/static/fonts /app/crates/storefront/static/fonts
 
-EXPOSE 8080
-CMD ["/app/server"]
+USER nonroot
+
+EXPOSE 8080 9090
+ENTRYPOINT ["/app/server"]

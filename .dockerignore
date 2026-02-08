@@ -18,10 +18,24 @@ target/
 
 # Documentation
 *.md
+!crates/storefront/content/**/*.md
 LICENSE*
 
 # CI/CD
 .github/
+
+# Claude Code settings
+.claude/
+
+# Fly configs (not needed in build)
+fly/
+
+# Docker configs (not needed inside build context)
+docker/
+
+# Dev tooling configs
+lefthook.yml
+cog.toml
 
 # Local development
 docker-compose/
@@ -38,3 +52,6 @@ crates/storefront/static/images/derived/
 # Node modules (reinstalled in Docker)
 node_modules/
 scripts/image-optimizer/node_modules/
+
+# Integration test sources (workspace manifest needed, test sources not)
+crates/integration-tests/tests/

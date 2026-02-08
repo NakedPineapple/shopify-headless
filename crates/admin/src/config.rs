@@ -83,6 +83,8 @@ pub struct AdminConfig {
     pub host: IpAddr,
     /// Port to listen on
     pub port: u16,
+    /// Port for plain HTTP health checks (Fly.io internal network only)
+    pub health_port: u16,
     /// Public base URL for the admin panel
     pub base_url: String,
     /// Session signing secret
@@ -329,6 +331,11 @@ impl AdminConfig {
         let port = get_env_or_default("ADMIN_PORT", "3001")
             .parse::<u16>()
             .map_err(|e| ConfigError::InvalidEnvVar("ADMIN_PORT".to_string(), e.to_string()))?;
+        let health_port = get_env_or_default("ADMIN_HEALTH_PORT", "9091")
+            .parse::<u16>()
+            .map_err(|e| {
+                ConfigError::InvalidEnvVar("ADMIN_HEALTH_PORT".to_string(), e.to_string())
+            })?;
         let base_url = get_required_env("ADMIN_BASE_URL")?;
         let session_secret = get_validated_secret("ADMIN_SESSION_SECRET")?;
         validate_session_secret(&session_secret, "ADMIN_SESSION_SECRET")?;
@@ -353,6 +360,7 @@ impl AdminConfig {
             database_url,
             host,
             port,
+            health_port,
             base_url,
             session_secret,
             shopify,
@@ -675,6 +683,7 @@ mod tests {
             database_url: SecretString::from("postgres://localhost/test"),
             host: "127.0.0.1".parse().unwrap(),
             port: 3001,
+            health_port: 9091,
             base_url: "http://localhost:3001".to_string(),
             session_secret: SecretString::from("x".repeat(32)),
             shopify: ShopifyAdminConfig {

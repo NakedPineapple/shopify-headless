@@ -1,0 +1,10 @@
+app = "nakedpineapple-pg-backup"
+primary_region = "sjc"
+
+[build]
+  dockerfile = "../docker/Dockerfile.pg-backup"
+
+[[vm]]
+  memory = "256mb"
+  cpu_kind = "shared"
+  cpus = 1

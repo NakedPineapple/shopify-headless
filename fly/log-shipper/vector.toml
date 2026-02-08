@@ -27,8 +27,7 @@ source = '''
 . = parse_json!(.message)
 '''
 
-# Final transform: must be named "log_json" so auto-generated sinks can consume it
-[transforms.log_json]
+[transforms.parse_app_logs]
 type = "remap"
 inputs = ["parse_fly_logs"]
 source = '''
@@ -79,5 +78,34 @@ if exists(.error) && is_string(.error) {
 }
 if exists(.classification) {
     ."error.message" = del(.classification)
+}
+'''
+
+# Final transform: must be named "log_json" so auto-generated sinks can consume it.
+# Detects OOM kills and tags them for alerting.
+[transforms.log_json]
+type = "remap"
+inputs = ["parse_app_logs"]
+source = '''
+# Detect OOM kills: exit code 137 (SIGKILL) or explicit OOM messages from Fly
+is_oom = false
+
+if exists(.event) && is_object(.event) {
+    exit_code = get(.event.exit_code) ?? null
+    if exit_code == 137 {
+        is_oom = true
+    }
+}
+
+if is_string(.message) {
+    msg = downcase(string!(.message))
+    if contains(msg, "out of memory") || contains(msg, "oom") {
+        is_oom = true
+    }
+}
+
+if is_oom {
+    .alert_type = "oom_kill"
+    .log.level = "error"
 }
 '''

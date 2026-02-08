@@ -1,5 +1,7 @@
 app = "nakedpineapple-admin"
 primary_region = "sjc"
+kill_signal = "SIGTERM"
+kill_timeout = 30
 
 [build]
   dockerfile = "../docker/Dockerfile.admin"
@@ -11,24 +13,40 @@ primary_region = "sjc"
 [env]
   ADMIN_HOST = "0.0.0.0"
   ADMIN_PORT = "443"
-  RUST_LOG = "warn,naked_pineapple_admin=info,tower_http=info"
+  RUST_LOG = "warn,naked_pineapple_admin=info,tower_http=info,sqlx::query=warn,rustls=warn,h2=warn,hyper_util=warn"
   ADMIN_BASE_URL = "https://admin.nakedpineapple.co"
   SHOPIFY_STORE = "nakedpineapple.myshopify.com"
   SHOPIFY_API_VERSION = "2026-01"
   SHOPIFY_ADMIN_CLIENT_ID = "43890b19705271a1369762cb0fea3e4b"
   SMTP_HOST = "outbound.mailhop.org"
-  SMTP_USERNAME = "Qm49khKp "
+  SMTP_USERNAME = "Qm49khKp"
   SMTP_FROM = "noreply@nakedpineapple.co"
+  ADMIN_HEALTH_PORT = "9091"
 
 # No http_service - traffic comes via Tailscale, not Fly proxy
 
 [checks]
   [checks.health]
-    port = 443
-    type = "tcp"
+    port = 9091
+    type = "http"
+    method = "GET"
+    path = "/health"
     interval = "30s"
     timeout = "5s"
     grace_period = "10s"
+
+  [checks.readiness]
+    port = 9091
+    type = "http"
+    method = "GET"
+    path = "/health/ready"
+    interval = "60s"
+    timeout = "10s"
+    grace_period = "30s"
+
+[metrics]
+  port = 9090
+  path = "/metrics"
 
 [[vm]]
   count = 1

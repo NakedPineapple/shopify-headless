@@ -26,5 +26,5 @@ done
 # Disable any previous tailscale serve config (app serves HTTPS directly now)
 /app/tailscale --socket=/var/run/tailscale/tailscaled.sock serve --https=443 off 2>/dev/null || true
 
-# Start the application (serves HTTPS directly with TLS certificates)
-exec /app/server
+# Start the application as non-root user (serves HTTPS directly with TLS certificates)
+exec su -s /bin/sh appuser -c "/app/server"

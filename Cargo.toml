@@ -100,5 +100,8 @@ secrecy = "0.10"
 # Async utilities
 futures = "0.3"
 
+# Metrics
+axum-prometheus = "0.10"
+
 # JSON Schema validation
-jsonschema = "0.40"
+jsonschema = "0.41"

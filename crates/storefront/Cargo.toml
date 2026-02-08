@@ -46,6 +46,9 @@ reqwest = { workspace = true }
 tower-sessions = { workspace = true }
 tower-sessions-sqlx-store = { workspace = true }
 
+# Metrics
+axum-prometheus = { workspace = true }
+
 # Error tracking
 sentry = { workspace = true }
 sentry-tower = { workspace = true }

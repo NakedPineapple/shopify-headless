@@ -1,5 +1,7 @@
 app = "nakedpineapple-storefront-staging"
 primary_region = "sjc"
+kill_signal = "SIGTERM"
+kill_timeout = 30
 
 [build]
   dockerfile = "../docker/Dockerfile.storefront"
@@ -9,11 +11,13 @@ primary_region = "sjc"
   STOREFRONT_PORT = "8080"
   RUST_LOG = "info,naked_pineapple_storefront=debug,tower_http=info,reqwest=warn,sqlx::query=warn,rustls=warn,h2=warn,hyper_util=warn"
   STOREFRONT_BASE_URLS = "https://staging.nakedpineapple.co,https://staging.pineappleskinco.com"
+  IMAGE_BASE_URL = "https://images.nakedpineapple.com"
   SHOPIFY_STORE = "nakedpineapple.myshopify.com"
   SHOPIFY_CUSTOMER_SHOP_ID = "71655391511"
   SHOPIFY_API_VERSION = "2026-01"
   SHOPIFY_CUSTOMER_CLIENT_ID = "d87e8c38-17a3-4ac1-981a-981ddd43d305"
   SHOPIFY_STOREFRONT_PUBLIC_TOKEN = "acbc485b80b86144aacb8d573e521e51"
+  SENTRY_ENVIRONMENT = "staging"
 
 [http_service]
   internal_port = 8080
@@ -36,6 +40,10 @@ primary_region = "sjc"
   method = "GET"
   path = "/health/ready"
   timeout = "10s"
+
+[metrics]
+  port = 9090
+  path = "/metrics"
 
 [[vm]]
   memory = "512mb"

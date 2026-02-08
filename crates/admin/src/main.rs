@@ -29,13 +29,17 @@
 #![allow(dead_code)]
 #![allow(unused_imports)]
 
+use std::net::SocketAddr;
+
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::middleware::from_fn;
 use axum::{Router, routing::get};
+use axum_prometheus::PrometheusMetricLayer;
 use axum_server::Handle;
 use axum_server::tls_rustls::RustlsConfig;
 use secrecy::ExposeSecret;
+use sqlx::PgPool;
 use tower_http::catch_panic::CatchPanicLayer;
 use tower_http::services::ServeDir;
 use tower_http::trace::TraceLayer;
@@ -125,8 +129,14 @@ async fn main() {
         .expect("Failed to create database pool");
     tracing::info!("Database pool created");
 
+    tokio::spawn(spawn_health_listener(pool.clone(), config.health_port));
+
     // NOTE: Migrations are NOT run automatically on startup.
     // Run them explicitly via: cargo run -p naked-pineapple-cli -- migrate admin
+
+    // Create metrics layer
+    let (prometheus_layer, metric_handle) = PrometheusMetricLayer::pair();
+    tokio::spawn(serve_metrics(metric_handle));
 
     // Create session layer (PostgreSQL-backed with SameSite=Strict)
     let session_layer = create_session_layer(&pool, &config);
@@ -147,6 +157,7 @@ async fn main() {
             middleware::security_headers_middleware,
         ))
         .layer(from_fn(middleware::request_id_middleware))
+        .layer(prometheus_layer)
         .layer(
             TraceLayer::new_for_http()
                 .make_span_with(logging::make_http_span)
@@ -217,6 +228,46 @@ async fn health() -> &'static str {
 /// Returns 503 Service Unavailable if the database is not reachable.
 async fn readiness(State(state): State<AppState>) -> StatusCode {
     match sqlx::query("SELECT 1").fetch_one(state.pool()).await {
+        Ok(_) => StatusCode::OK,
+        Err(_) => StatusCode::SERVICE_UNAVAILABLE,
+    }
+}
+
+async fn serve_metrics(handle: axum_prometheus::metrics_exporter_prometheus::PrometheusHandle) {
+    let app = Router::new().route("/metrics", get(|| async move { handle.render() }));
+    let addr = SocketAddr::from(([0, 0, 0, 0], 9090));
+    tracing::info!(%addr, "metrics endpoint started");
+    let listener = tokio::net::TcpListener::bind(addr)
+        .await
+        .expect("Failed to bind metrics listener");
+    axum::serve(listener, app)
+        .await
+        .expect("Metrics listener error");
+}
+
+/// Spawn a plain HTTP health check listener for Fly.io.
+///
+/// Accessible only on Fly's internal network (not through Tailscale).
+async fn spawn_health_listener(pool: PgPool, port: u16) {
+    let app = Router::new()
+        .route("/health", get(health))
+        .route("/health/ready", get(health_readiness_check))
+        .with_state(pool);
+
+    let addr = SocketAddr::from(([0, 0, 0, 0], port));
+    tracing::info!(%addr, "health check listener started");
+
+    let listener = tokio::net::TcpListener::bind(addr)
+        .await
+        .expect("Failed to bind health check listener");
+
+    axum::serve(listener, app)
+        .await
+        .expect("Health check listener error");
+}
+
+async fn health_readiness_check(State(pool): State<PgPool>) -> StatusCode {
+    match sqlx::query("SELECT 1").fetch_one(&pool).await {
         Ok(_) => StatusCode::OK,
         Err(_) => StatusCode::SERVICE_UNAVAILABLE,
     }

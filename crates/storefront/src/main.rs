@@ -26,6 +26,7 @@
 #![allow(dead_code)]
 #![allow(unused_imports)]
 
+use std::net::SocketAddr;
 use std::path::Path;
 
 use axum::extract::State;
@@ -33,6 +34,7 @@ use axum::http::StatusCode;
 use axum::http::header::{CACHE_CONTROL, HeaderValue};
 use axum::middleware::from_fn;
 use axum::{Router, routing::get};
+use axum_prometheus::PrometheusMetricLayer;
 use tower::ServiceBuilder;
 use tower_http::catch_panic::CatchPanicLayer;
 use tower_http::services::ServeDir;
@@ -217,6 +219,10 @@ async fn main() {
     state.start_search_indexing();
     tracing::info!("Search index build started (async)");
 
+    // Create metrics layer
+    let (prometheus_layer, metric_handle) = PrometheusMetricLayer::pair();
+    tokio::spawn(serve_metrics(metric_handle));
+
     // Create session layer
     let session_layer = middleware::create_session_layer(state.pool(), state.config());
 
@@ -232,6 +238,7 @@ async fn main() {
         ))
         .layer(axum::middleware::from_fn(middleware::csp_nonce_middleware))
         .layer(from_fn(middleware::request_id_middleware))
+        .layer(prometheus_layer)
         .layer(
             TraceLayer::new_for_http()
                 .make_span_with(logging::make_http_span)
@@ -277,6 +284,18 @@ async fn readiness(State(state): State<AppState>) -> StatusCode {
         Ok(_) => StatusCode::OK,
         Err(_) => StatusCode::SERVICE_UNAVAILABLE,
     }
+}
+
+async fn serve_metrics(handle: axum_prometheus::metrics_exporter_prometheus::PrometheusHandle) {
+    let app = Router::new().route("/metrics", get(|| async move { handle.render() }));
+    let addr = SocketAddr::from(([0, 0, 0, 0], 9090));
+    tracing::info!(%addr, "metrics endpoint started");
+    let listener = tokio::net::TcpListener::bind(addr)
+        .await
+        .expect("Failed to bind metrics listener");
+    axum::serve(listener, app)
+        .await
+        .expect("Metrics listener error");
 }
 
 /// Wait for shutdown signal (Ctrl+C or SIGTERM).

@@ -1,7 +1,7 @@
 # =============================================================================
 # Stage 1: Chef base image with cargo-chef installed
 # =============================================================================
-FROM rust:1.93.0-trixie AS chef
+FROM rust:1.93.0-alpine3.21@sha256:abbc7e0cf48d328ddd8ea4aca498dd1061306dd2253307c3fae073d931840098 AS chef
 RUN cargo install cargo-chef --locked
 WORKDIR /app
 
@@ -19,11 +19,7 @@ RUN cargo chef prepare --recipe-path recipe.json
 FROM chef AS deps-builder
 
 # Install build dependencies including mold linker for faster linking
-RUN apt-get update && apt-get install -y \
-    pkg-config \
-    libssl-dev \
-    mold \
-    && rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache pkgconf=2.3.0-r0 openssl-dev=3.3.6-r0 mold=2.34.1-r1
 
 # Use mold linker for faster linking
 ENV RUSTFLAGS="-C link-arg=-fuse-ld=mold"
@@ -44,12 +40,12 @@ ENV SQLX_OFFLINE=true
 COPY . .
 
 # Build the binaries (dependencies already compiled in deps-builder)
-RUN cargo build --release -p naked-pineapple-admin -p naked-pineapple-cli
+RUN cargo build --release --locked -p naked-pineapple-admin -p naked-pineapple-cli
 
 # =============================================================================
 # Stage 5: Runtime with Tailscale
 # =============================================================================
-FROM debian:trixie-slim AS runtime
+FROM alpine:3.21@sha256:c3f8e73fdb79deaebaa2037150150191b9dcbfba68b4a46d70103204c53f4709 AS runtime
 
 # OCI image metadata (values injected by CI via --build-arg or Docker --label)
 ARG VERSION=0.1.0
@@ -64,17 +60,17 @@ LABEL org.opencontainers.image.title="Naked Pineapple Admin" \
       org.opencontainers.image.source="https://github.com/NakedPineapple/shopify-headless" \
       org.opencontainers.image.revision="${COMMIT_SHA}" \
       org.opencontainers.image.created="${BUILD_DATE}" \
-      org.opencontainers.image.vendor="Pineapple Skin Co LLC"
+      org.opencontainers.image.vendor="Pineapple Skin Co LLC" \
+      org.opencontainers.image.base.name="alpine:3.21" \
+      org.opencontainers.image.security.no-new-privileges="true"
 
-RUN apt-get update && apt-get install -y \
-    ca-certificates \
-    libssl3 \
-    iptables \
-    && rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache ca-certificates=20250911-r0 libssl3=3.3.6-r0 iptables=1.8.11-r1
 
-# Copy Tailscale binaries from official image
-COPY --from=docker.io/tailscale/tailscale:stable /usr/local/bin/tailscaled /app/tailscaled
-COPY --from=docker.io/tailscale/tailscale:stable /usr/local/bin/tailscale /app/tailscale
+RUN addgroup -g 1001 appuser && adduser -u 1001 -G appuser -D appuser
+
+# Copy Tailscale binaries from pinned official image
+COPY --from=docker.io/tailscale/tailscale:v1.94.1@sha256:21df0b5a84efa35c0a507f4dd2340e1b1295683634a28968707354d5bd991d9c /usr/local/bin/tailscaled /app/tailscaled
+COPY --from=docker.io/tailscale/tailscale:v1.94.1@sha256:21df0b5a84efa35c0a507f4dd2340e1b1295683634a28968707354d5bd991d9c /usr/local/bin/tailscale /app/tailscale
 
 # Create Tailscale state directories
 RUN mkdir -p /var/run/tailscale /var/cache/tailscale /var/lib/tailscale
@@ -90,5 +86,5 @@ COPY --from=builder /app/crates/admin/templates /app/crates/admin/templates
 COPY scripts/start-admin.sh /app/start.sh
 RUN chmod +x /app/start.sh
 
-EXPOSE 443
+EXPOSE 443 9090 9091
 CMD ["/app/start.sh"]
