@@ -20,7 +20,7 @@ kill_timeout = 30
   SHOPIFY_ADMIN_CLIENT_ID = "43890b19705271a1369762cb0fea3e4b"
   SMTP_HOST = "outbound.mailhop.org"
   SMTP_USERNAME = "Qm49khKp"
-  SMTP_FROM = "noreply@nakedpineapple.co"
+  SMTP_FROM = "noreply@pineappleskinco.com"
   KLAVIYO_LIST_ID="UHyqYT"
   ADMIN_HEALTH_PORT = "9091"
 
