@@ -4,6 +4,9 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    commit-message:
+      prefix: "chore"
+      include: "scope"
     groups:
       rust-dependencies:
         patterns:
@@ -23,6 +26,9 @@ updates:
     directory: /scripts/image-optimizer
     schedule:
       interval: weekly
+    commit-message:
+      prefix: "chore"
+      include: "scope"
     groups:
       npm-dependencies:
         patterns:
@@ -32,6 +38,9 @@ updates:
     directory: /docker
     schedule:
       interval: weekly
+    commit-message:
+      prefix: "chore"
+      include: "scope"
     ignore:
       # Fly.io managed Postgres (flyio/postgres-flex) is on PG 17. Cannot bump
       # the pg-backup client to 18 until Fly supports PG 18.
@@ -42,6 +51,9 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    commit-message:
+      prefix: "chore"
+      include: "scope"
     groups:
       github-actions:
         patterns:
