@@ -28,6 +28,7 @@
 
 use std::net::SocketAddr;
 use std::path::Path;
+use std::time::Duration;
 
 use axum::extract::State;
 use axum::http::StatusCode;
@@ -219,6 +220,9 @@ async fn main() {
     state.start_search_indexing();
     tracing::info!("Search index build started (async)");
 
+    // Spawn dedicated health check listener (plain HTTP, no middleware)
+    tokio::spawn(spawn_health_listener(state.clone(), config.health_port));
+
     // Create metrics layer
     let (prometheus_layer, metric_handle) = PrometheusMetricLayer::pair();
     tokio::spawn(serve_metrics(metric_handle));
@@ -228,8 +232,6 @@ async fn main() {
 
     // Build router with cache-controlled static file serving
     let app = Router::new()
-        .route("/health", get(health))
-        .route("/health/ready", get(readiness))
         .merge(routes::routes())
         .merge(build_static_routes())
         .layer(session_layer)
@@ -277,13 +279,56 @@ async fn health() -> &'static str {
 
 /// Readiness health check endpoint.
 ///
-/// Verifies database connectivity before returning OK.
-/// Returns 503 Service Unavailable if the database is not reachable.
-async fn readiness(State(state): State<AppState>) -> StatusCode {
-    match sqlx::query("SELECT 1").fetch_one(state.pool()).await {
-        Ok(_) => StatusCode::OK,
-        Err(_) => StatusCode::SERVICE_UNAVAILABLE,
+/// Verifies database connectivity (with a 5-second timeout) and search index
+/// availability before returning OK. Returns 503 with a diagnostic body if
+/// any dependency is unhealthy.
+async fn readiness(State(state): State<AppState>) -> (StatusCode, &'static str) {
+    match tokio::time::timeout(
+        Duration::from_secs(5),
+        sqlx::query("SELECT 1").fetch_one(state.pool()),
+    )
+    .await
+    {
+        Ok(Ok(_)) => {}
+        Ok(Err(e)) => {
+            tracing::warn!(error = %e, "Readiness check: database query failed");
+            return (StatusCode::SERVICE_UNAVAILABLE, "database unavailable");
+        }
+        Err(_) => {
+            tracing::warn!("Readiness check: database query timed out (5s)");
+            return (StatusCode::SERVICE_UNAVAILABLE, "database timeout");
+        }
     }
+
+    if !state.search().is_ready() {
+        tracing::warn!("Readiness check: search index not ready");
+        return (StatusCode::SERVICE_UNAVAILABLE, "search index not ready");
+    }
+
+    (StatusCode::OK, "ok")
+}
+
+/// Spawn a plain HTTP health check listener for Fly.io.
+///
+/// Runs on a dedicated port without session, security, or tracing middleware.
+/// This ensures health checks are fast, low-overhead, and never blocked by
+/// middleware issues.
+async fn spawn_health_listener(state: AppState, port: u16) {
+    let app = Router::new()
+        .route("/health", get(health))
+        .route("/health/ready", get(readiness))
+        .with_state(state);
+
+    let addr = SocketAddr::from(([0, 0, 0, 0], port));
+    tracing::info!(%addr, "health check listener started");
+
+    let listener = tokio::net::TcpListener::bind(addr)
+        .await
+        .expect("Failed to bind health check listener");
+
+    axum::serve(listener, app)
+        .await
+        .expect("Health check listener error");
 }
 
 async fn serve_metrics(handle: axum_prometheus::metrics_exporter_prometheus::PrometheusHandle) {

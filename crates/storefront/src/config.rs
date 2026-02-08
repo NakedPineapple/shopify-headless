@@ -71,6 +71,8 @@ pub struct StorefrontConfig {
     pub host: IpAddr,
     /// Port to listen on
     pub port: u16,
+    /// Port for plain HTTP health checks (Fly.io internal network only)
+    pub health_port: u16,
     /// Base URLs keyed by host (e.g., `"nakedpineapple.co"` → `"https://nakedpineapple.co"`)
     pub base_urls: HashMap<String, String>,
     /// Default base URL (first entry in `STOREFRONT_BASE_URLS`)
@@ -230,6 +232,11 @@ impl StorefrontConfig {
             .map_err(|e| {
                 ConfigError::InvalidEnvVar("STOREFRONT_PORT".to_string(), e.to_string())
             })?;
+        let health_port = get_env_or_default("STOREFRONT_HEALTH_PORT", "9091")
+            .parse::<u16>()
+            .map_err(|e| {
+                ConfigError::InvalidEnvVar("STOREFRONT_HEALTH_PORT".to_string(), e.to_string())
+            })?;
         let (base_urls, default_base_url) = parse_base_urls()?;
         let cf_beacon_tokens = parse_cf_beacon_tokens()?;
         let session_secret = get_validated_secret("STOREFRONT_SESSION_SECRET")?;
@@ -254,6 +261,7 @@ impl StorefrontConfig {
             database_url,
             host,
             port,
+            health_port,
             base_urls,
             default_base_url,
             cf_beacon_tokens,
@@ -567,6 +575,7 @@ mod tests {
             database_url: SecretString::from("postgres://localhost/test"),
             host: "127.0.0.1".parse().unwrap(),
             port: 3000,
+            health_port: 9091,
             base_urls: HashMap::from([(
                 "localhost".to_string(),
                 "http://localhost:3000".to_string(),

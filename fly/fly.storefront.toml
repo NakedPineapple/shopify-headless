@@ -29,6 +29,7 @@ kill_timeout = 30
   PINTEREST_TAG_ID = "2614124776925"
   TIKTOK_PIXEL_ID = "CST5MDBC77U0O0P8B5Q0"
   CRAZY_EGG_ACCOUNT_ID = "0132/0524"
+  STOREFRONT_HEALTH_PORT = "9091"
 
 [http_service]
   internal_port = 8080
@@ -38,24 +39,29 @@ kill_timeout = 30
   min_machines_running = 1
   processes = ["app"]
 
-[[http_service.checks]]
-  grace_period = "10s"
-  interval = "30s"
-  method = "GET"
-  path = "/health"
-  timeout = "5s"
-
-[[http_service.checks]]
-  grace_period = "30s"
-  interval = "60s"
-  method = "GET"
-  path = "/health/ready"
-  timeout = "10s"
-
 [http_service.concurrency]
   type = "requests"
   soft_limit = 150
   hard_limit = 250
+
+[checks]
+  [checks.health]
+    port = 9091
+    type = "http"
+    method = "GET"
+    path = "/health"
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "10s"
+
+  [checks.readiness]
+    port = 9091
+    type = "http"
+    method = "GET"
+    path = "/health/ready"
+    interval = "60s"
+    timeout = "10s"
+    grace_period = "30s"
 
 [metrics]
   port = 9090

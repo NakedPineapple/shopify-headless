@@ -30,6 +30,7 @@
 #![allow(unused_imports)]
 
 use std::net::SocketAddr;
+use std::time::Duration;
 
 use axum::extract::State;
 use axum::http::StatusCode;
@@ -148,8 +149,6 @@ async fn main() {
 
     // Build router
     let app = Router::new()
-        .route("/health", get(health))
-        .route("/health/ready", get(readiness))
         .merge(routes::routes())
         .nest_service("/static", ServeDir::new("crates/admin/static"))
         .layer(session_layer)
@@ -222,17 +221,6 @@ async fn health() -> &'static str {
     "ok"
 }
 
-/// Readiness health check endpoint.
-///
-/// Verifies database connectivity before returning OK.
-/// Returns 503 Service Unavailable if the database is not reachable.
-async fn readiness(State(state): State<AppState>) -> StatusCode {
-    match sqlx::query("SELECT 1").fetch_one(state.pool()).await {
-        Ok(_) => StatusCode::OK,
-        Err(_) => StatusCode::SERVICE_UNAVAILABLE,
-    }
-}
-
 async fn serve_metrics(handle: axum_prometheus::metrics_exporter_prometheus::PrometheusHandle) {
     let app = Router::new().route("/metrics", get(|| async move { handle.render() }));
     let addr = SocketAddr::from(([0, 0, 0, 0], 9090));
@@ -266,10 +254,22 @@ async fn spawn_health_listener(pool: PgPool, port: u16) {
         .expect("Health check listener error");
 }
 
-async fn health_readiness_check(State(pool): State<PgPool>) -> StatusCode {
-    match sqlx::query("SELECT 1").fetch_one(&pool).await {
-        Ok(_) => StatusCode::OK,
-        Err(_) => StatusCode::SERVICE_UNAVAILABLE,
+async fn health_readiness_check(State(pool): State<PgPool>) -> (StatusCode, &'static str) {
+    match tokio::time::timeout(
+        Duration::from_secs(5),
+        sqlx::query("SELECT 1").fetch_one(&pool),
+    )
+    .await
+    {
+        Ok(Ok(_)) => (StatusCode::OK, "ok"),
+        Ok(Err(e)) => {
+            tracing::warn!(error = %e, "Readiness check: database query failed");
+            (StatusCode::SERVICE_UNAVAILABLE, "database unavailable")
+        }
+        Err(_) => {
+            tracing::warn!("Readiness check: database query timed out (5s)");
+            (StatusCode::SERVICE_UNAVAILABLE, "database timeout")
+        }
     }
 }
 
