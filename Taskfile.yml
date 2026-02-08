@@ -66,6 +66,11 @@ tasks:
       - css:watch:admin
       - rust:run:dev:admin
 
+  dev:email-automation:
+    desc: "Run email automation service with auto-reload"
+    cmds:
+      - cargo watch -x 'run -p naked-pineapple-email-automation'
+
   check:
     desc: "Run all checks (fmt, lint, audit, deny)"
     cmds:

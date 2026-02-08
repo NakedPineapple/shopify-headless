@@ -2651,6 +2651,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "naked-pineapple-email-automation"
+version = "0.4.4"
+dependencies = [
+ "axum",
+ "chrono",
+ "dotenvy",
+ "naked-pineapple-services",
+ "reqwest 0.13.2",
+ "secrecy",
+ "sentry",
+ "sentry-tower",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "naked-pineapple-integration-tests"
 version = "0.4.4"
 dependencies = [
