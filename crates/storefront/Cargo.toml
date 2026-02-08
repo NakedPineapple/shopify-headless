@@ -72,7 +72,7 @@ comrak = { version = "0.50", default-features = false }
 gray_matter = "0.3"
 
 # Caching
-moka = { workspace = true }
+moka = { version = "0.12", features = ["future"] }
 
 # Rate limiting
 governor = "0.10"
@@ -81,14 +81,14 @@ tower_governor = "0.8"
 # Security
 secrecy = { workspace = true }
 ammonia = "4"
-hmac = "0.12"
-sha2 = "0.10"
+hmac = { workspace = true }
+sha2 = { workspace = true }
 
 # Async utilities
 futures = { workspace = true }
 
 # URL encoding
-urlencoding = "2.1"
+urlencoding = { workspace = true }
 
 # Search
 tantivy = "0.25"
@@ -98,4 +98,4 @@ regex = "1.12"
 jsonschema = { workspace = true }
 
 [build-dependencies]
-sha2 = "0.10"
+sha2 = { workspace = true }

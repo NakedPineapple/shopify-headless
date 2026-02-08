@@ -38,15 +38,15 @@ askama_web = { workspace = true }
 # Serialization
 serde = { workspace = true }
 serde_json = { workspace = true }
-serde_yaml_ng = "0.10"
+serde_yaml_ng = { workspace = true }
 
 # GraphQL client
 graphql_client = { workspace = true }
 reqwest = { workspace = true }
 
 # Auth
-webauthn-rs = { workspace = true }
-webauthn-rs-proto = { workspace = true }
+webauthn-rs = { version = "0.5", features = ["danger-allow-state-serialisation", "conditional-ui"] }
+webauthn-rs-proto = "0.5"
 tower-sessions = { workspace = true }
 tower-sessions-sqlx-store = { workspace = true }
 
@@ -62,7 +62,7 @@ tracing-subscriber = { workspace = true }
 # Utilities
 dotenvy = { workspace = true }
 url = { workspace = true }
-urlencoding = "2"
+urlencoding = { workspace = true }
 base64 = { workspace = true }
 uuid = { workspace = true }
 chrono = { workspace = true }
@@ -80,13 +80,13 @@ secrecy = { workspace = true }
 
 # TLS
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
-hmac = "0.12"
-sha2 = "0.10"
+hmac = { workspace = true }
+sha2 = { workspace = true }
 hex = "0.4"
 
 # Streaming
 async-stream = "0.3"
-futures = "0.3"
+futures = { workspace = true }
 
 # JSON Schema validation
 jsonschema = { workspace = true }

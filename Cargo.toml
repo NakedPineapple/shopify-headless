@@ -45,6 +45,7 @@ naked-pineapple-core = { path = "crates/core" }
 # Serialization
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+serde_yaml_ng = "0.10"
 
 # Types
 rust_decimal = { version = "1", features = ["serde-with-str"] }
@@ -72,8 +73,6 @@ graphql_client = "0.16"
 reqwest = { version = "0.13", features = ["json", "stream", "form", "multipart"] }
 
 # Auth
-webauthn-rs = { version = "0.5", features = ["danger-allow-state-serialisation", "conditional-ui"] }
-webauthn-rs-proto = "0.5"
 # NOTE: tower-sessions pinned to 0.14 because tower-sessions-sqlx-store 0.15.0
 # depends on tower-sessions-core 0.14.0, causing version conflict with tower-sessions 0.15.0
 tower-sessions = "0.14"
@@ -90,9 +89,11 @@ dotenvy = "0.15"
 url = "2"
 base64 = "0.22"
 rand = "0.9"
+urlencoding = "2.1"
 
-# Caching
-moka = { version = "0.12", features = ["future"] }
+# Cryptography
+hmac = "0.12"
+sha2 = "0.10"
 
 # Security
 secrecy = "0.10"
