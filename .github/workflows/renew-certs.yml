@@ -39,8 +39,8 @@ jobs:
           sudo certbot certonly --dns-cloudflare \
             --dns-cloudflare-credentials ~/.secrets/cloudflare.ini \
             --non-interactive --agree-tos \
-            --email admin@nakedpineapple.co \
-            -d staging.admin.nakedpineapple.co
+            --email hostmaster@pineappleskinco.com \
+            -d staging.admin.pineappleskinco.com
 
       - name: Install flyctl
         uses: superfly/flyctl-actions/setup-flyctl@master
@@ -48,8 +48,8 @@ jobs:
       - name: Update Fly.io secrets
         run: |
           flyctl secrets set \
-            ADMIN_TLS_CERT="$(sudo cat /etc/letsencrypt/live/staging.admin.nakedpineapple.co/fullchain.pem)" \
-            ADMIN_TLS_KEY="$(sudo cat /etc/letsencrypt/live/staging.admin.nakedpineapple.co/privkey.pem)" \
+            ADMIN_TLS_CERT="$(sudo cat /etc/letsencrypt/live/staging.admin.pineappleskinco.com/fullchain.pem)" \
+            ADMIN_TLS_KEY="$(sudo cat /etc/letsencrypt/live/staging.admin.pineappleskinco.com/privkey.pem)" \
             --app nakedpineapple-admin-staging
 
       - name: Restart app to pick up new certs
@@ -76,8 +76,8 @@ jobs:
           sudo certbot certonly --dns-cloudflare \
             --dns-cloudflare-credentials ~/.secrets/cloudflare.ini \
             --non-interactive --agree-tos \
-            --email admin@nakedpineapple.co \
-            -d admin.nakedpineapple.co
+            --email hostmaster@pineappleskinco.com \
+            -d admin.pineappleskinco.com
 
       - name: Install flyctl
         uses: superfly/flyctl-actions/setup-flyctl@master
@@ -85,8 +85,8 @@ jobs:
       - name: Update Fly.io secrets
         run: |
           flyctl secrets set \
-            ADMIN_TLS_CERT="$(sudo cat /etc/letsencrypt/live/admin.nakedpineapple.co/fullchain.pem)" \
-            ADMIN_TLS_KEY="$(sudo cat /etc/letsencrypt/live/admin.nakedpineapple.co/privkey.pem)" \
+            ADMIN_TLS_CERT="$(sudo cat /etc/letsencrypt/live/admin.pineappleskinco.com/fullchain.pem)" \
+            ADMIN_TLS_KEY="$(sudo cat /etc/letsencrypt/live/admin.pineappleskinco.com/privkey.pem)" \
             --app nakedpineapple-admin
 
       - name: Restart app to pick up new certs
