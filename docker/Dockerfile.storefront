@@ -28,7 +28,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Use mold linker for faster linking
 ENV RUSTFLAGS="-C link-arg=-fuse-ld=mold"
 
-# Copy recipe and build dependencies
 COPY --from=planner /app/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
 
@@ -36,6 +35,8 @@ RUN cargo chef cook --release --recipe-path recipe.json
 # Stage 4: Builder - compiles actual source code (deps already cached)
 # =============================================================================
 FROM deps-builder AS builder
+
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # Install Tailwind CSS CLI with checksum verification
 ARG TAILWIND_VERSION=4.1.18
@@ -47,15 +48,12 @@ RUN curl -sLO https://github.com/tailwindlabs/tailwindcss/releases/download/v${T
 # Use sqlx offline mode (reads from .sqlx cache instead of live database)
 ENV SQLX_OFFLINE=true
 
-# Copy full source
 COPY . .
 
-# Build Tailwind CSS
+# Build application
 RUN tailwindcss -i ./crates/storefront/static/css/input.css \
-    -o ./crates/storefront/static/css/main.css --minify
-
-# Build the binary (dependencies already compiled in deps-builder)
-RUN cargo build --release --locked -p naked-pineapple-storefront
+    -o ./crates/storefront/static/css/main.css --minify \
+    && cargo build --release --locked -p naked-pineapple-storefront
 
 # =============================================================================
 # Stage 5: Runtime - distroless image for production
@@ -81,14 +79,10 @@ LABEL org.opencontainers.image.title="Naked Pineapple Storefront" \
 
 WORKDIR /app
 
-# Copy binary
 COPY --from=builder --chown=nonroot:nonroot /app/target/release/naked-pineapple-storefront /app/server
-
-# Copy templates and content
 COPY --from=builder --chown=nonroot:nonroot /app/crates/storefront/templates /app/crates/storefront/templates
 COPY --from=builder --chown=nonroot:nonroot /app/crates/storefront/content /app/crates/storefront/content
-
-# Copy static assets (CSS, JS, vendor, fonts) - images served from CDN
+# Images served from CDN — only CSS, JS, vendor, and fonts are bundled
 COPY --from=builder --chown=nonroot:nonroot /app/crates/storefront/static/css /app/crates/storefront/static/css
 COPY --from=builder --chown=nonroot:nonroot /app/crates/storefront/static/js /app/crates/storefront/static/js
 COPY --from=builder --chown=nonroot:nonroot /app/crates/storefront/static/vendor /app/crates/storefront/static/vendor

@@ -21,7 +21,6 @@ FROM chef AS deps-builder
 # Install build dependencies (no mold — incompatible with musl static linking)
 RUN apk add --no-cache pkgconf=2.3.0-r0 openssl-dev=3.3.6-r0 openssl-libs-static=3.3.6-r0
 
-# Copy recipe and build dependencies
 COPY --from=planner /app/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
 
@@ -33,10 +32,8 @@ FROM deps-builder AS builder
 # Use sqlx offline mode (reads from .sqlx cache instead of live database)
 ENV SQLX_OFFLINE=true
 
-# Copy full source
 COPY . .
 
-# Build the binaries (dependencies already compiled in deps-builder)
 RUN cargo build --release --locked -p naked-pineapple-admin -p naked-pineapple-cli
 
 # =============================================================================
@@ -61,7 +58,11 @@ LABEL org.opencontainers.image.title="Naked Pineapple Admin" \
       org.opencontainers.image.base.name="alpine:3.21" \
       org.opencontainers.image.security.no-new-privileges="true"
 
-RUN apk add --no-cache ca-certificates=20250911-r0 libssl3=3.3.6-r0 iptables=1.8.11-r1
+RUN apk add --no-cache \
+    ca-certificates=20250911-r0 \
+    libssl3=3.3.6-r0 \
+    iptables=1.8.11-r1 \
+    libcap-utils=2.71-r0
 
 RUN addgroup -g 1001 appuser && adduser -u 1001 -G appuser -D appuser
 
@@ -69,17 +70,16 @@ RUN addgroup -g 1001 appuser && adduser -u 1001 -G appuser -D appuser
 COPY --from=docker.io/tailscale/tailscale:v1.94.1@sha256:21df0b5a84efa35c0a507f4dd2340e1b1295683634a28968707354d5bd991d9c /usr/local/bin/tailscaled /app/tailscaled
 COPY --from=docker.io/tailscale/tailscale:v1.94.1@sha256:21df0b5a84efa35c0a507f4dd2340e1b1295683634a28968707354d5bd991d9c /usr/local/bin/tailscale /app/tailscale
 
-# Create Tailscale state directories
 RUN mkdir -p /var/run/tailscale /var/cache/tailscale /var/lib/tailscale
 
 WORKDIR /app
 
 COPY --from=builder /app/target/release/naked-pineapple-admin /app/server
+RUN setcap cap_net_bind_service+ep /app/server
 COPY --from=builder /app/target/release/np-cli /app/np-cli
 COPY --from=builder /app/crates/admin/static /app/crates/admin/static
 COPY --from=builder /app/crates/admin/templates /app/crates/admin/templates
 
-# Copy start script
 COPY scripts/start-admin.sh /app/start.sh
 RUN chmod +x /app/start.sh
 
