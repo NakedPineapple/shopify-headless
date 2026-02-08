@@ -22,7 +22,7 @@ use crate::error::set_sentry_user;
 use crate::filters;
 use crate::middleware::{RequireAdminAuth, set_current_admin};
 use crate::models::CurrentAdmin;
-use crate::services::{AdminAuthService, EmailService, generate_verification_code};
+use crate::services::{AdminAuthService, AdminEmailExt, EmailService, generate_verification_code};
 use crate::state::AppState;
 
 use super::dashboard::AdminUserView;

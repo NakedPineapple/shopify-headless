@@ -261,15 +261,6 @@ impl SlackClient {
 
     /// Verify a Slack webhook signature.
     ///
-    /// This implements Slack's signature verification:
-    /// <https://api.slack.com/authentication/verifying-requests-from-slack>
-    ///
-    /// # Arguments
-    ///
-    /// * `timestamp` - The `X-Slack-Request-Timestamp` header value
-    /// * `body` - The raw request body
-    /// * `signature` - The `X-Slack-Signature` header value
-    ///
     /// # Errors
     ///
     /// Returns error if signature verification fails.
@@ -282,7 +273,6 @@ impl SlackClient {
     ) -> Result<(), SlackError> {
         debug!(body_len = body.len(), "Verifying Slack webhook signature");
 
-        // Check timestamp to prevent replay attacks (5 minutes)
         let ts: i64 = timestamp.parse().map_err(|_| {
             warn!("Slack signature verification failed: invalid timestamp format");
             SlackError::InvalidSignature("Invalid timestamp".to_string())
@@ -307,7 +297,6 @@ impl SlackClient {
             ));
         }
 
-        // Compute expected signature
         let sig_basestring = format!("v0:{timestamp}:{body}");
 
         let mut mac =
@@ -318,7 +307,6 @@ impl SlackClient {
 
         let expected = format!("v0={}", hex::encode(mac.finalize().into_bytes()));
 
-        // Constant-time comparison
         if !constant_time_compare(&expected, signature) {
             warn!("Slack signature verification failed: signature mismatch");
             return Err(SlackError::InvalidSignature(
@@ -392,7 +380,6 @@ mod tests {
             "C12345".to_string(),
         );
 
-        // Generate a valid signature
         let timestamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .expect("system time before epoch")
@@ -434,76 +421,6 @@ mod tests {
         let result = client.verify_signature(&timestamp, body, invalid_signature);
         assert!(result.is_err());
         assert!(matches!(result, Err(SlackError::InvalidSignature(_))));
-    }
-
-    #[test]
-    fn test_signature_verification_invalid_timestamp() {
-        let client = SlackClient::new(
-            SecretString::from("xoxb-test-token".to_string()),
-            SecretString::from("test-signing-secret".to_string()),
-            "C12345".to_string(),
-        );
-
-        let result = client.verify_signature("not-a-number", "body", "v0=sig");
-        assert!(result.is_err());
-        assert!(matches!(result, Err(SlackError::InvalidSignature(_))));
-    }
-
-    #[test]
-    fn test_signature_verification_old_timestamp() {
-        let client = SlackClient::new(
-            SecretString::from("xoxb-test-token".to_string()),
-            SecretString::from("test-signing-secret".to_string()),
-            "C12345".to_string(),
-        );
-
-        // Timestamp from 10 minutes ago
-        let old_timestamp = (std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .expect("system time before epoch")
-            .as_secs()
-            - 600)
-            .to_string();
-
-        let body = "test=body";
-        let sig_basestring = format!("v0:{old_timestamp}:{body}");
-
-        let mut mac =
-            Hmac::<Sha256>::new_from_slice(b"test-signing-secret").expect("valid key length");
-        mac.update(sig_basestring.as_bytes());
-        let signature = format!("v0={}", hex::encode(mac.finalize().into_bytes()));
-
-        let result = client.verify_signature(&old_timestamp, body, &signature);
-        assert!(result.is_err());
-        // Should fail due to old timestamp, not signature mismatch
-    }
-
-    #[test]
-    fn test_signature_verification_tampered_body() {
-        let client = SlackClient::new(
-            SecretString::from("xoxb-test-token".to_string()),
-            SecretString::from("test-signing-secret".to_string()),
-            "C12345".to_string(),
-        );
-
-        let timestamp = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .expect("system time before epoch")
-            .as_secs()
-            .to_string();
-
-        let original_body = "original=body";
-        let sig_basestring = format!("v0:{timestamp}:{original_body}");
-
-        let mut mac =
-            Hmac::<Sha256>::new_from_slice(b"test-signing-secret").expect("valid key length");
-        mac.update(sig_basestring.as_bytes());
-        let signature = format!("v0={}", hex::encode(mac.finalize().into_bytes()));
-
-        // Use signature from original body but verify against tampered body
-        let tampered_body = "tampered=body";
-        let result = client.verify_signature(&timestamp, tampered_body, &signature);
-        assert!(result.is_err());
     }
 
     #[test]

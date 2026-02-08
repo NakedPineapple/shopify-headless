@@ -17,5 +17,5 @@ pub mod klaviyo;
 pub use action_queue::{ActionQueueService, EnqueueParams, EnqueueResult};
 pub use auth::{AdminAuthError, AdminAuthService};
 pub use chat::{ChatError, ChatService, ChatStreamEvent, stream_chat_message};
-pub use email::{EmailError, EmailService, generate_verification_code};
+pub use email::{AdminEmailExt, EmailError, EmailService, generate_verification_code};
 pub use klaviyo::{KlaviyoClient, KlaviyoError};

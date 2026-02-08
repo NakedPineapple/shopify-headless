@@ -15,13 +15,6 @@ use super::{
 impl KlaviyoClient {
     /// List all campaigns with optional filters.
     ///
-    /// Returns campaigns sorted by creation date (newest first).
-    ///
-    /// # Arguments
-    ///
-    /// * `status` - Optional status filter (Draft, Sent, etc.)
-    /// * `channel` - Optional channel filter (Email, Sms)
-    ///
     /// # Errors
     ///
     /// Returns error if the API request fails.
@@ -70,13 +63,6 @@ impl KlaviyoClient {
     }
 
     /// Create a new email campaign.
-    ///
-    /// # Arguments
-    ///
-    /// * `name` - Campaign name (internal identifier)
-    /// * `subject` - Email subject line
-    /// * `from_email` - Sender email address
-    /// * `from_name` - Sender display name
     ///
     /// # Errors
     ///
@@ -130,11 +116,6 @@ impl KlaviyoClient {
 
     /// Create a new SMS campaign.
     ///
-    /// # Arguments
-    ///
-    /// * `name` - Campaign name (internal identifier)
-    /// * `body` - SMS message body (160 chars standard, 70 with emoji)
-    ///
     /// # Errors
     ///
     /// Returns error if the API request fails.
@@ -144,8 +125,6 @@ impl KlaviyoClient {
         name: &str,
         body: &str,
     ) -> Result<Campaign, KlaviyoError> {
-        // SMS campaigns use a different message structure
-        // The body goes in a "definition" object instead of "content"
         let input = serde_json::json!({
             "data": {
                 "type": "campaign",
@@ -213,8 +192,6 @@ impl KlaviyoClient {
 
     /// Delete a draft campaign.
     ///
-    /// Only draft campaigns can be deleted.
-    ///
     /// # Errors
     ///
     /// Returns error if the campaign is not found, not a draft, or API request fails.
@@ -225,8 +202,6 @@ impl KlaviyoClient {
     }
 
     /// Send a campaign immediately.
-    ///
-    /// The campaign must be in draft status.
     ///
     /// # Errors
     ///
@@ -264,10 +239,6 @@ impl KlaviyoClient {
     /// Returns error if the API request fails.
     #[instrument(skip(self))]
     pub async fn get_subscriber_stats(&self) -> Result<SubscriberStats, KlaviyoError> {
-        // Fetch profiles with subscription info
-        // Note: This is a simplified implementation that fetches a batch.
-        // For accurate counts, you'd need to paginate through all profiles
-        // or use Klaviyo's metrics/reporting endpoints.
         let path = format!(
             "/lists/{}/profiles?page[size]=100&additional-fields[profile]=subscriptions",
             self.list_id()
@@ -279,13 +250,11 @@ impl KlaviyoClient {
 
         for profile in &response.data {
             if let Some(subs) = &profile.attributes.subscriptions {
-                // Count email subscribers
                 if let Some(email) = &subs.email
                     && email.marketing.consent == "SUBSCRIBED"
                 {
                     stats.email_subscribers += 1;
                 }
-                // Count SMS subscribers
                 if let Some(sms) = &subs.sms
                     && sms.marketing.consent == "SUBSCRIBED"
                 {
@@ -298,11 +267,6 @@ impl KlaviyoClient {
     }
 
     /// Get profiles (subscribers) from the newsletter list.
-    ///
-    /// # Arguments
-    ///
-    /// * `limit` - Maximum number of profiles to return (1-100)
-    /// * `cursor` - Pagination cursor for next page
     ///
     /// # Errors
     ///
@@ -324,7 +288,6 @@ impl KlaviyoClient {
 
         let next_cursor = response.links.and_then(|l| {
             l.next.and_then(|url| {
-                // Extract cursor from URL
                 url.split("page%5Bcursor%5D=")
                     .nth(1)
                     .or_else(|| url.split("page[cursor]=").nth(1))

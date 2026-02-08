@@ -20,6 +20,7 @@ workspace = true
 
 [dependencies]
 naked-pineapple-core = { workspace = true, features = ["postgres"] }
+naked-pineapple-services = { workspace = true }
 
 # Web framework
 axum = { workspace = true }

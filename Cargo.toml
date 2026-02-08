@@ -2,6 +2,7 @@
 resolver = "3"
 members = [
     "crates/core",
+    "crates/services",
     "crates/storefront",
     "crates/admin",
     "crates/cli",
@@ -41,6 +42,7 @@ multiple-crate-versions = "allow" # handled by Cargo-deny
 [workspace.dependencies]
 # Internal crates
 naked-pineapple-core = { path = "crates/core" }
+naked-pineapple-services = { path = "crates/services" }
 
 # Serialization
 serde = { version = "1", features = ["derive"] }

@@ -1,0 +1,43 @@
+[package]
+name = "naked-pineapple-services"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "Shared service clients for Naked Pineapple (Claude, Klaviyo, Slack, Email)"
+publish = false
+
+[lints]
+workspace = true
+
+[dependencies]
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# HTTP
+reqwest = { workspace = true }
+
+# Async
+async-stream = "0.3"
+futures = { workspace = true }
+tokio = { workspace = true }
+
+# Email
+lettre = { version = "0.11", features = ["tokio1-native-tls", "builder"] }
+
+# Error handling
+thiserror = { workspace = true }
+
+# Security
+secrecy = { workspace = true }
+hmac = { workspace = true }
+sha2 = { workspace = true }
+hex = "0.4"
+
+# Logging
+tracing = { workspace = true }
+
+# Utilities
+uuid = { workspace = true }

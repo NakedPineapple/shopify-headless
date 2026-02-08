@@ -1,4 +1,4 @@
-//! Slack message builders for the AI chat confirmation flow.
+//! Slack message builders for confirmation flows.
 //!
 //! Provides factory functions for building Block Kit messages for:
 //! - Tool execution confirmation requests
@@ -9,14 +9,7 @@ use uuid::Uuid;
 
 use super::types::{ActionElement, Block, ButtonStyle, ContextElement, PlainText, Text};
 
-/// Build a confirmation request message for a pending tool execution.
-///
-/// The message includes:
-/// - Header with tool icon
-/// - Tool name and description
-/// - Input parameters (formatted)
-/// - Requested by context
-/// - Approve/Reject buttons
+/// Build a confirmation request message for a pending action.
 #[must_use]
 pub fn build_confirmation_message(
     action_id: Uuid,
@@ -29,29 +22,23 @@ pub fn build_confirmation_message(
     let formatted_input = format_tool_input(tool_input);
 
     vec![
-        // Header
         Block::Header {
             text: PlainText::new(format!("{emoji} AI Action Request")),
         },
-        // Tool name
         Block::Section {
             text: Text::mrkdwn(format!("*Tool:* `{tool_name}`")),
             accessory: None,
         },
-        // Input parameters
         Block::Section {
             text: Text::mrkdwn(format!("*Parameters:*\n```\n{formatted_input}\n```")),
             accessory: None,
         },
-        // Context: who requested
         Block::Context {
             elements: vec![ContextElement::Mrkdwn {
                 text: format!("Requested by *{admin_name}* • Just now"),
             }],
         },
-        // Divider
         Block::Divider,
-        // Action buttons
         Block::Actions {
             elements: vec![
                 ActionElement::Button {
@@ -172,16 +159,15 @@ fn domain_emoji(domain: &str) -> &'static str {
         "fulfillment" => "🚚",
         "finance" => "💰",
         "order_editing" => "✏️",
+        "email" => "📧",
         _ => "🔧",
     }
 }
 
 /// Format tool input as a readable string.
 fn format_tool_input(input: &serde_json::Value) -> String {
-    // Pretty-print JSON, but limit length
     let formatted = serde_json::to_string_pretty(input).unwrap_or_else(|_| input.to_string());
 
-    // Truncate if too long (Slack has limits)
     if formatted.len() > 2000 {
         format!("{}...\n(truncated)", &formatted[..2000])
     } else {
@@ -205,10 +191,8 @@ mod tests {
             "orders",
         );
 
-        // Should have header, two sections, context, divider, and actions
         assert_eq!(blocks.len(), 6);
 
-        // Last block should be actions
         let last_block = blocks.get(5).expect("Expected 6 blocks");
         match last_block {
             Block::Actions { elements } => {
@@ -222,6 +206,7 @@ mod tests {
     fn test_domain_emoji() {
         assert_eq!(domain_emoji("orders"), "📦");
         assert_eq!(domain_emoji("customers"), "👤");
+        assert_eq!(domain_emoji("email"), "📧");
         assert_eq!(domain_emoji("unknown"), "🔧");
     }
 }

@@ -26,7 +26,7 @@ use crate::error::set_sentry_user;
 use crate::filters;
 use crate::middleware::set_current_admin;
 use crate::models::{CurrentAdmin, session_keys};
-use crate::services::{AdminAuthService, EmailService, generate_verification_code};
+use crate::services::{AdminAuthService, AdminEmailExt, EmailService, generate_verification_code};
 use crate::state::AppState;
 
 /// Session keys for setup flow.
