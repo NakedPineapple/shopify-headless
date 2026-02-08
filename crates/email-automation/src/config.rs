@@ -19,15 +19,14 @@
 //! - `AUTOMATION_CART_CHECK_INTERVAL_SECS` - Cart check interval (default: 900)
 //! - `AUTOMATION_STOCK_CHECK_INTERVAL_SECS` - Stock check interval (default: 3600)
 //! - `AUTOMATION_SEGMENT_SYNC_INTERVAL_SECS` - Segment sync interval (default: 86400)
-//! - `AUTOMATION_AUTO_RESPOND_THRESHOLD` - AI confidence threshold (default: 0.85)
 //! - `AUTOMATION_HEALTH_PORT` - Health check port (default: 9092)
 //! - `SENTRY_DSN` - Sentry error tracking DSN
 
 use secrecy::SecretString;
 
 pub use naked_pineapple_services::config::{
-    ClaudeConfig, ConfigError, EmailConfig, KlaviyoConfig, SlackConfig, get_database_url,
-    get_env_or_default, get_optional_env, get_required_env, get_validated_secret,
+    ClaudeConfig, ConfigError, KlaviyoConfig, SlackConfig, get_database_url, get_env_or_default,
+    get_optional_env, get_required_env, get_validated_secret,
 };
 
 /// Email automation service configuration.
@@ -39,12 +38,12 @@ pub struct AutomationConfig {
     pub m365: M365Config,
     /// Claude AI configuration.
     pub claude: ClaudeConfig,
-    /// Email (SMTP) configuration.
-    pub email: EmailConfig,
     /// Slack configuration (optional).
     pub slack: Option<SlackConfig>,
     /// Klaviyo configuration (optional).
     pub klaviyo: Option<KlaviyoConfig>,
+    /// Shopify Admin API configuration (optional, enables order/product lookups).
+    pub shopify: Option<ShopifyConfig>,
     /// Scheduler timing configuration.
     pub scheduler: SchedulerConfig,
     /// Health check port.
@@ -55,6 +54,15 @@ pub struct AutomationConfig {
     pub sentry_environment: Option<String>,
     /// Sentry error sample rate (0.0 to 1.0).
     pub sentry_sample_rate: f32,
+}
+
+/// Shopify Admin API configuration for order/product lookups.
+#[derive(Debug, Clone)]
+pub struct ShopifyConfig {
+    /// Shopify store domain (e.g., `your-store.myshopify.com`).
+    pub store: String,
+    /// Shopify API version (e.g., "2026-01").
+    pub api_version: String,
 }
 
 /// Microsoft 365 Graph API configuration.
@@ -108,6 +116,10 @@ impl M365Config {
 
 /// Scheduler timing configuration.
 #[derive(Debug, Clone)]
+#[expect(
+    clippy::struct_field_names,
+    reason = "the `_secs` suffix documents the unit on each interval field"
+)]
 pub struct SchedulerConfig {
     /// Email poll interval in seconds.
     pub email_poll_interval_secs: u64,
@@ -119,8 +131,6 @@ pub struct SchedulerConfig {
     pub segment_sync_interval_secs: u64,
     /// Outbound email queue processing interval in seconds.
     pub outbound_interval_secs: u64,
-    /// AI classification confidence threshold for auto-responses.
-    pub auto_respond_threshold: f64,
 }
 
 impl SchedulerConfig {
@@ -134,10 +144,15 @@ impl SchedulerConfig {
                 86400,
             ),
             outbound_interval_secs: parse_env_u64("AUTOMATION_OUTBOUND_INTERVAL_SECS", 30),
-            auto_respond_threshold: get_env_or_default("AUTOMATION_AUTO_RESPOND_THRESHOLD", "0.85")
-                .parse()
-                .unwrap_or(0.85),
         }
+    }
+}
+
+impl ShopifyConfig {
+    fn from_env() -> Option<Self> {
+        let store = get_optional_env("SHOPIFY_STORE")?;
+        let api_version = get_env_or_default("SHOPIFY_API_VERSION", "2026-01");
+        Some(Self { store, api_version })
     }
 }
 
@@ -159,9 +174,9 @@ impl AutomationConfig {
         let database_url = get_database_url("ADMIN_DATABASE_URL")?;
         let m365 = M365Config::from_env()?;
         let claude = ClaudeConfig::from_env()?;
-        let email = EmailConfig::from_env()?;
         let slack = SlackConfig::from_env();
         let klaviyo = KlaviyoConfig::from_env()?;
+        let shopify = ShopifyConfig::from_env();
         let scheduler = SchedulerConfig::from_env();
 
         let health_port = get_env_or_default("AUTOMATION_HEALTH_PORT", "9092")
@@ -180,9 +195,9 @@ impl AutomationConfig {
             database_url,
             m365,
             claude,
-            email,
             slack,
             klaviyo,
+            shopify,
             scheduler,
             health_port,
             sentry_dsn,
@@ -221,6 +236,5 @@ mod tests {
         assert_eq!(config.stock_check_interval_secs, 3600);
         assert_eq!(config.segment_sync_interval_secs, 86400);
         assert_eq!(config.outbound_interval_secs, 30);
-        assert!((config.auto_respond_threshold - 0.85).abs() < f64::EPSILON);
     }
 }

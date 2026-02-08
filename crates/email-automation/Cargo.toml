@@ -44,6 +44,11 @@ tracing-subscriber = { workspace = true }
 # Utilities
 dotenvy = { workspace = true }
 chrono = { workspace = true }
+time = "0.3"
 
 # Security
 secrecy = { workspace = true }
+
+# Utilities (Slack webhook URL encoding)
+urlencoding = { workspace = true }
+uuid = { workspace = true }

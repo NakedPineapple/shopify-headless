@@ -52,14 +52,12 @@ pub struct GraphMessage {
     pub from: Option<EmailAddressWrapper>,
     pub to_recipients: Option<Vec<EmailAddressWrapper>>,
     pub received_date_time: Option<DateTime<Utc>>,
-    pub is_read: Option<bool>,
 }
 
 /// Message body with content type and content.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MessageBody {
-    pub content_type: Option<String>,
     pub content: Option<String>,
 }
 
@@ -81,25 +79,6 @@ pub struct EmailAddress {
 #[derive(Debug, Deserialize)]
 pub struct MessageListResponse {
     pub value: Vec<GraphMessage>,
-    #[serde(rename = "@odata.nextLink")]
-    pub next_link: Option<String>,
-}
-
-/// Request body for sending an email via Graph API.
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SendMailRequest {
-    pub message: OutboundMessage,
-    pub save_to_sent_items: bool,
-}
-
-/// Outbound message structure for Graph API.
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct OutboundMessage {
-    pub subject: String,
-    pub body: OutboundBody,
-    pub to_recipients: Vec<OutboundRecipient>,
 }
 
 /// Body of an outbound message.

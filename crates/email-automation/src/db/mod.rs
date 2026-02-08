@@ -4,6 +4,8 @@
 //! New tables for email triage, automation logs, and outbound queues
 //! are added via admin's migration directory.
 
+pub mod inbound_email;
+
 use std::time::Duration;
 
 use secrecy::ExposeSecret;
@@ -21,10 +23,6 @@ pub enum RepositoryError {
     /// Requested entity was not found.
     #[error("not found")]
     NotFound,
-
-    /// Constraint violation (e.g., unique message ID).
-    #[error("constraint violation: {0}")]
-    Conflict(String),
 }
 
 /// Create a `PostgreSQL` connection pool.

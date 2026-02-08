@@ -10,6 +10,7 @@
 //! - Polls M365 shared mailboxes on a configurable interval
 //! - Runs periodic tasks via a scheduler (abandoned carts, low stock, etc.)
 //! - Exposes a health check endpoint on port 9092
+//! - Accepts Slack interactive webhooks for approve/reject actions
 //!
 //! # Security
 //!
@@ -17,17 +18,16 @@
 //! - Single instance deployment (no duplicate processing)
 
 #![cfg_attr(not(test), forbid(unsafe_code))]
-// Allow dead code during incremental development - many features are not yet wired up
-#![allow(dead_code)]
-#![allow(unused_imports)]
 
 use std::net::SocketAddr;
 use std::time::Duration;
 
 use axum::extract::State;
 use axum::http::StatusCode;
-use axum::{Router, routing::get};
-use sqlx::PgPool;
+use axum::{Router, routing::get, routing::post};
+use naked_pineapple_services::claude::ClaudeClient;
+use naked_pineapple_services::klaviyo::KlaviyoClient;
+use naked_pineapple_services::slack::SlackClient;
 
 mod config;
 mod db;
@@ -35,7 +35,10 @@ mod error;
 mod logging;
 mod microsoft_graph;
 mod scheduler;
+mod shopify;
+mod slack;
 mod state;
+mod triage;
 
 use config::AutomationConfig;
 use microsoft_graph::M365Client;
@@ -86,14 +89,61 @@ async fn main() {
         "Microsoft Graph client initialized"
     );
 
+    let claude = ClaudeClient::new(&config.claude);
+    tracing::info!("Claude AI client initialized");
+
+    let slack_client = config.slack.as_ref().map(|slack_config| {
+        let client = SlackClient::new(
+            slack_config.bot_token.clone(),
+            slack_config.signing_secret.clone(),
+            slack_config.channel_id.clone(),
+        );
+        tracing::info!("Slack client initialized");
+        client
+    });
+
+    let klaviyo_client = config.klaviyo.as_ref().and_then(|klaviyo_config| {
+        match KlaviyoClient::new(klaviyo_config) {
+            Ok(client) => {
+                tracing::info!("Klaviyo client initialized");
+                Some(client)
+            }
+            Err(e) => {
+                tracing::warn!(error = %e, "failed to initialize Klaviyo client, continuing without");
+                None
+            }
+        }
+    });
+
+    let shopify_client = if let Some(shopify_config) = &config.shopify {
+        let client = shopify::ShopifyClient::new(shopify_config);
+        if let Err(e) = client.load_token(&pool).await {
+            tracing::warn!(error = %e, "failed to load Shopify token, continuing without");
+        } else {
+            tracing::info!("Shopify client initialized");
+        }
+        Some(client)
+    } else {
+        tracing::info!("Shopify not configured, order/product lookups disabled");
+        None
+    };
+
     let health_port = config.health_port;
-    let state = AppState::new(config, pool.clone(), m365);
+    let state = AppState::new(state::AppStateParams {
+        config,
+        pool: pool.clone(),
+        m365,
+        claude,
+        slack: slack_client,
+        klaviyo: klaviyo_client,
+        shopify: shopify_client,
+    });
 
     // Graceful shutdown channel
     let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
 
-    // Spawn health check listener
-    tokio::spawn(spawn_health_listener(pool, health_port));
+    // Spawn HTTP listener (health checks + Slack webhook)
+    tokio::spawn(spawn_http_listener(state.clone(), health_port));
 
     // Spawn scheduler
     let scheduler = Scheduler::new(state);
@@ -120,10 +170,10 @@ async fn health() -> &'static str {
 }
 
 /// Readiness check — verifies database connectivity.
-async fn health_readiness(State(pool): State<PgPool>) -> (StatusCode, &'static str) {
+async fn health_readiness(State(state): State<AppState>) -> (StatusCode, &'static str) {
     match tokio::time::timeout(
         Duration::from_secs(5),
-        sqlx::query("SELECT 1").fetch_one(&pool),
+        sqlx::query("SELECT 1").fetch_one(state.pool()),
     )
     .await
     {
@@ -139,23 +189,27 @@ async fn health_readiness(State(pool): State<PgPool>) -> (StatusCode, &'static s
     }
 }
 
-/// Spawn a health check HTTP listener.
-async fn spawn_health_listener(pool: PgPool, port: u16) {
+/// Spawn the HTTP listener for health checks and Slack webhooks.
+async fn spawn_http_listener(state: AppState, port: u16) {
     let app = Router::new()
         .route("/health", get(health))
         .route("/health/ready", get(health_readiness))
-        .with_state(pool);
+        .route(
+            "/slack/interactions",
+            post(slack::webhook::handle_interaction),
+        )
+        .with_state(state);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
-    tracing::info!(%addr, "health check listener started");
+    tracing::info!(%addr, "HTTP listener started (health + webhook)");
 
     let listener = tokio::net::TcpListener::bind(addr)
         .await
-        .expect("Failed to bind health check listener");
+        .expect("Failed to bind HTTP listener");
 
     axum::serve(listener, app)
         .await
-        .expect("Health check listener error");
+        .expect("HTTP listener error");
 }
 
 /// Wait for shutdown signal (Ctrl+C or SIGTERM).

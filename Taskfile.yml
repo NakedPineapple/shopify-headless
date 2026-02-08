@@ -291,7 +291,7 @@ tasks:
 
   db:reset:
     desc: "Reset database (drop and recreate)"
-    dir: docker-compose
+    dir: docker/docker-compose
     cmds:
       - docker compose -f docker-compose.infra.yml stop postgres
       - docker compose -f docker-compose.infra.yml rm -f postgres
@@ -304,6 +304,7 @@ tasks:
     cmds:
       - task: sqlx:prepare:storefront
       - task: sqlx:prepare:admin
+      - task: sqlx:prepare:email-automation
       - task: sqlx:prepare:cli
 
   sqlx:prepare:storefront:
@@ -317,6 +318,14 @@ tasks:
   sqlx:prepare:admin:
     desc: "Generate sqlx offline cache for admin"
     dir: crates/admin
+    cmds:
+      - cargo sqlx prepare
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/np_admin
+
+  sqlx:prepare:email-automation:
+    desc: "Generate sqlx offline cache for email-automation"
+    dir: crates/email-automation
     cmds:
       - cargo sqlx prepare
     env:

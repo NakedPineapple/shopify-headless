@@ -1,5 +1,8 @@
 -- Inbound email tracking and AI classification results.
-CREATE TABLE inbound_email (
+
+SET search_path TO admin, public;
+
+CREATE TABLE admin.inbound_email (
     id                  SERIAL PRIMARY KEY,
     m365_message_id     TEXT NOT NULL UNIQUE,
     conversation_id     TEXT NOT NULL,
@@ -28,11 +31,16 @@ CREATE TABLE inbound_email (
     reviewed_by         TEXT,
     reviewed_at         TIMESTAMPTZ,
     error               TEXT,
-    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'utc'),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'utc')
 );
 
-CREATE INDEX idx_inbound_email_status ON inbound_email(status);
-CREATE INDEX idx_inbound_email_conversation ON inbound_email(conversation_id);
-CREATE INDEX idx_inbound_email_received ON inbound_email(received_at DESC);
-CREATE INDEX idx_inbound_email_from ON inbound_email(from_address);
+CREATE INDEX idx_inbound_email_status ON admin.inbound_email(status);
+CREATE INDEX idx_inbound_email_conversation ON admin.inbound_email(conversation_id);
+CREATE INDEX idx_inbound_email_received ON admin.inbound_email(received_at DESC);
+CREATE INDEX idx_inbound_email_from ON admin.inbound_email(from_address);
+
+CREATE TRIGGER inbound_email_updated_at
+    BEFORE UPDATE ON admin.inbound_email
+    FOR EACH ROW
+    EXECUTE FUNCTION admin.update_updated_at_column();

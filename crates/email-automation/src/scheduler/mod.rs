@@ -13,6 +13,7 @@ use tokio::sync::watch;
 use tokio::time::interval;
 
 use crate::state::AppState;
+use crate::triage;
 
 /// Scheduler that runs periodic automation tasks.
 pub struct Scheduler {
@@ -65,20 +66,31 @@ impl Scheduler {
         tracing::info!("scheduler stopped");
     }
 
-    /// Poll shared mailboxes for unread emails.
+    /// Poll shared mailboxes for unread emails and run the triage pipeline.
     async fn poll_emails(&self) {
         let mailboxes = self.state.m365().mailboxes().to_vec();
         for mailbox in &mailboxes {
             match self.state.m365().list_unread(mailbox).await {
                 Ok(messages) => {
-                    if !messages.is_empty() {
-                        tracing::info!(
-                            mailbox = %mailbox,
-                            count = messages.len(),
-                            "found unread messages"
-                        );
+                    if messages.is_empty() {
+                        continue;
                     }
-                    // Phase 2 will add triage pipeline here
+                    tracing::info!(
+                        mailbox = %mailbox,
+                        count = messages.len(),
+                        "found unread messages"
+                    );
+
+                    let clients = triage::TriageClients {
+                        pool: self.state.pool(),
+                        m365: self.state.m365(),
+                        claude: self.state.claude(),
+                        slack: self.state.slack(),
+                        klaviyo: self.state.klaviyo(),
+                        shopify: self.state.shopify(),
+                    };
+
+                    triage::process_messages(&clients, mailbox, messages).await;
                 }
                 Err(e) => {
                     tracing::error!(

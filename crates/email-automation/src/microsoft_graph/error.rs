@@ -24,8 +24,4 @@ pub enum M365Error {
     /// Failed to parse response.
     #[error("failed to parse response: {0}")]
     Parse(String),
-
-    /// Token is not available (not yet acquired).
-    #[error("no access token available — call authenticate() first")]
-    NoToken,
 }

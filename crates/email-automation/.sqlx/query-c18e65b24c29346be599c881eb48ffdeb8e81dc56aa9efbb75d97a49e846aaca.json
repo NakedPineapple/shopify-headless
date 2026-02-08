@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE admin.inbound_email\n        SET response_approved = FALSE,\n            reviewed_by = $1,\n            reviewed_at = NOW(),\n            status = $2,\n            updated_at = NOW()\n        WHERE id = $3\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c18e65b24c29346be599c881eb48ffdeb8e81dc56aa9efbb75d97a49e846aaca"
+}

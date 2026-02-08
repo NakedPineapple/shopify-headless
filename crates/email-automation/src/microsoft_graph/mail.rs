@@ -5,9 +5,8 @@
 
 use super::error::M365Error;
 use super::types::{
-    GraphErrorResponse, GraphMessage, MessageListResponse, MoveRequest, OutboundBody,
-    OutboundEmailAddress, OutboundMessage, OutboundRecipient, ReplyBody, ReplyRequest,
-    SendMailRequest,
+    GraphErrorResponse, GraphMessage, MessageListResponse, MoveRequest, OutboundBody, ReplyBody,
+    ReplyRequest,
 };
 use crate::microsoft_graph::M365Client;
 
@@ -36,20 +35,6 @@ impl M365Client {
 
         let response: MessageListResponse = self.graph_get(&url).await?;
         Ok(response.value)
-    }
-
-    /// Get a single message by ID.
-    ///
-    /// # Errors
-    ///
-    /// Returns `M365Error` if the request fails.
-    pub async fn get_message(
-        &self,
-        mailbox: &str,
-        message_id: &str,
-    ) -> Result<GraphMessage, M365Error> {
-        let url = format!("https://graph.microsoft.com/v1.0/users/{mailbox}/messages/{message_id}");
-        self.graph_get(&url).await
     }
 
     /// Mark a message as read.
@@ -86,41 +71,6 @@ impl M365Client {
                 },
                 to_recipients: None,
             },
-        };
-
-        self.graph_post(&url, &body).await
-    }
-
-    /// Send a new email from a shared mailbox.
-    ///
-    /// # Errors
-    ///
-    /// Returns `M365Error` if the request fails.
-    pub async fn send_mail(
-        &self,
-        mailbox: &str,
-        to_address: &str,
-        to_name: Option<&str>,
-        subject: &str,
-        html_body: &str,
-    ) -> Result<(), M365Error> {
-        let url = format!("https://graph.microsoft.com/v1.0/users/{mailbox}/sendMail");
-
-        let body = SendMailRequest {
-            message: OutboundMessage {
-                subject: subject.to_string(),
-                body: OutboundBody {
-                    content_type: "HTML".to_string(),
-                    content: html_body.to_string(),
-                },
-                to_recipients: vec![OutboundRecipient {
-                    email_address: OutboundEmailAddress {
-                        address: to_address.to_string(),
-                        name: to_name.map(String::from),
-                    },
-                }],
-            },
-            save_to_sent_items: true,
         };
 
         self.graph_post(&url, &body).await

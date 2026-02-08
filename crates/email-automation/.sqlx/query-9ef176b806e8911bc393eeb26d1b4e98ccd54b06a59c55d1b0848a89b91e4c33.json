@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE admin.inbound_email\n        SET classification = $1,\n            sub_category = $2,\n            confidence = $3,\n            reasoning = $4,\n            status = $5,\n            updated_at = NOW()\n        WHERE id = $6\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Float4",
+        "Text",
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9ef176b806e8911bc393eeb26d1b4e98ccd54b06a59c55d1b0848a89b91e4c33"
+}
