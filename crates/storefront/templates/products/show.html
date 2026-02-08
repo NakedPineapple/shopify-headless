@@ -827,11 +827,18 @@
 
         var selectedDisplay = dropdown.querySelector('.selling-plan-selected');
         if (selectedDisplay) {
-            var html = '<span class="text-foreground">' + name + '</span>';
+            selectedDisplay.textContent = '';
+            var nameSpan = document.createElement('span');
+            nameSpan.className = 'text-foreground';
+            nameSpan.textContent = name;
+            selectedDisplay.appendChild(nameSpan);
             if (discount) {
-                html += ' <span class="px-1.5 py-0.5 text-xs font-semibold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded">' + discount + '</span>';
+                selectedDisplay.appendChild(document.createTextNode(' '));
+                var discountSpan = document.createElement('span');
+                discountSpan.className = 'px-1.5 py-0.5 text-xs font-semibold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded';
+                discountSpan.textContent = discount;
+                selectedDisplay.appendChild(discountSpan);
             }
-            selectedDisplay.innerHTML = html;
         }
 
         dropdown.querySelectorAll('.selling-plan-option').forEach(function(opt) {

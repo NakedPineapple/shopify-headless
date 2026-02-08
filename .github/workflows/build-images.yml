@@ -5,6 +5,9 @@ on:
     # Manual trigger for when new images are added to R2
     # Images are stored in R2, not git, so this must be triggered manually
 
+permissions:
+  contents: write
+
 concurrency:
   group: build-images-${{ github.ref }}
   cancel-in-progress: true

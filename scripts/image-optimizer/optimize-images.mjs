@@ -511,9 +511,9 @@ pub fn get_image_max_width(base_path: &str) -> u32 {
   console.log(`\n📝 Generated Rust manifest: ${MANIFEST_PATH}`);
 
   // Run rustfmt to ensure proper formatting
-  const { execSync } = await import("node:child_process");
+  const { execFileSync } = await import("node:child_process");
   try {
-    execSync(`rustfmt ${MANIFEST_PATH}`, { stdio: "inherit" });
+    execFileSync("rustfmt", [MANIFEST_PATH], { stdio: "inherit" });
     console.log("   ✓ Formatted with rustfmt");
   } catch {
     console.log("   ⚠️  rustfmt not available, skipping formatting");
