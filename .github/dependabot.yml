@@ -8,6 +8,16 @@ updates:
       rust-dependencies:
         patterns:
           - "*"
+    ignore:
+      # rand 0.10 requires rand_core 0.9, which is incompatible with RustCrypto's
+      # CryptoRngCore trait (needs rand_core 0.6). See deny.toml skip list and
+      # https://github.com/RustCrypto/elliptic-curves/issues/1058
+      - dependency-name: "rand"
+        versions: [">=0.10"]
+      # tower-sessions 0.15 depends on thiserror 2.x; blocked until graphql-parser
+      # and webauthn-rs also migrate. See deny.toml skip list.
+      - dependency-name: "tower-sessions"
+        versions: [">=0.15"]
 
   - package-ecosystem: npm
     directory: /scripts/image-optimizer
@@ -22,6 +32,11 @@ updates:
     directory: /docker
     schedule:
       interval: weekly
+    ignore:
+      # Fly.io managed Postgres (flyio/postgres-flex) is on PG 17. Cannot bump
+      # the pg-backup client to 18 until Fly supports PG 18.
+      - dependency-name: "postgres"
+        versions: [">=18"]
 
   - package-ecosystem: github-actions
     directory: /
