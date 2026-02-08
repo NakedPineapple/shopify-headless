@@ -39,7 +39,7 @@ RUN cargo build --release --locked -p naked-pineapple-admin -p naked-pineapple-c
 # =============================================================================
 # Stage 5: Runtime with Tailscale
 # =============================================================================
-FROM alpine:3.21@sha256:c3f8e73fdb79deaebaa2037150150191b9dcbfba68b4a46d70103204c53f4709 AS runtime
+FROM alpine:3.23@sha256:25109184c71bdad752c8312a8623239686a9a2071e8825f20acb8f2198c3f659 AS runtime
 
 # OCI image metadata (values injected by CI via --build-arg or Docker --label)
 ARG VERSION=0.1.0
