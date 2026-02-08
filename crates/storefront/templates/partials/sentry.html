@@ -22,7 +22,7 @@
         tracesSampleRate: 1.0,
         // Use the page origin so trace headers are attached to same-origin
         // requests (HTMX, fetch) on all storefront domains, not just
-        // *.nakedpineapple.com.
+        // *.nakedpineapple.co.
         tracePropagationTargets: ['localhost', location.origin],
         beforeSend: function(event) {
             // Filter out known non-errors
@@ -103,7 +103,7 @@
         if (!src) return;
 
         // Only track failures from our CDN sources
-        var isR2 = src.indexOf('images.nakedpineapple.com') !== -1;
+        var isR2 = src.indexOf('images.nakedpineapple.co') !== -1;
         var isShopify = src.indexOf('cdn.shopify.com') !== -1;
 
         if (!isR2 && !isShopify) return;
