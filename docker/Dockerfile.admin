@@ -18,11 +18,8 @@ RUN cargo chef prepare --recipe-path recipe.json
 # =============================================================================
 FROM chef AS deps-builder
 
-# Install build dependencies including mold linker for faster linking
-RUN apk add --no-cache pkgconf=2.3.0-r0 openssl-dev=3.3.6-r0 mold=2.34.1-r1
-
-# Use mold linker for faster linking
-ENV RUSTFLAGS="-C link-arg=-fuse-ld=mold"
+# Install build dependencies (no mold — incompatible with musl static linking)
+RUN apk add --no-cache pkgconf=2.3.0-r0 openssl-dev=3.3.6-r0
 
 # Copy recipe and build dependencies
 COPY --from=planner /app/recipe.json recipe.json
