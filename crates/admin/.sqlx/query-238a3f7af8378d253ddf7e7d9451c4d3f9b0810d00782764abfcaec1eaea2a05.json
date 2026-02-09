@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE admin.request_board_item\n            SET position = position + 1\n            WHERE status = $1 AND position >= $2 AND id != $3\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        {
+          "Custom": {
+            "name": "admin.request_status",
+            "kind": {
+              "Enum": [
+                "new",
+                "under_review",
+                "in_progress",
+                "done",
+                "closed"
+              ]
+            }
+          }
+        },
+        "Int4",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "238a3f7af8378d253ddf7e7d9451c4d3f9b0810d00782764abfcaec1eaea2a05"
+}

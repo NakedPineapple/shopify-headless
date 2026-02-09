@@ -140,6 +140,11 @@
                             <i class="ph ph-chats-circle text-xl"></i>
                             <span class="sidebar-text">AI Chat</span>
                         </a>
+                        <a href="/requests"
+                           class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors {% if current_path.starts_with("/requests") %}bg-coral text-white{% else %}text-sidebar-foreground hover:bg-sidebar-accent hover:text-white{% endif %}">
+                            <i class="ph ph-kanban text-xl"></i>
+                            <span class="sidebar-text">Request Board</span>
+                        </a>
                         <a href="/settings"
                            class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors {% if current_path.starts_with("/settings") %}bg-coral text-white{% else %}text-sidebar-foreground hover:bg-sidebar-accent hover:text-white{% endif %}">
                             <i class="ph ph-gear text-xl"></i>

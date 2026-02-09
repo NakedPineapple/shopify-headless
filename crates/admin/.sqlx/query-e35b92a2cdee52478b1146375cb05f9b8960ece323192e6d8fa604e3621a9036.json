@@ -1,0 +1,126 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE admin.request_board_item\n            SET status = $2, position = $3\n            WHERE id = $1\n            RETURNING\n                id, title, description,\n                request_type as \"request_type: RequestType\",\n                priority as \"priority: RequestPriority\",\n                status as \"status: RequestStatus\",\n                position, created_by,\n                created_at as \"created_at: DateTime<Utc>\",\n                updated_at as \"updated_at: DateTime<Utc>\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "request_type: RequestType",
+        "type_info": {
+          "Custom": {
+            "name": "admin.request_type",
+            "kind": {
+              "Enum": [
+                "bug_report",
+                "feature_request"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "priority: RequestPriority",
+        "type_info": {
+          "Custom": {
+            "name": "admin.request_priority",
+            "kind": {
+              "Enum": [
+                "low",
+                "medium",
+                "high",
+                "critical"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "status: RequestStatus",
+        "type_info": {
+          "Custom": {
+            "name": "admin.request_status",
+            "kind": {
+              "Enum": [
+                "new",
+                "under_review",
+                "in_progress",
+                "done",
+                "closed"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "position",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 7,
+        "name": "created_by",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 8,
+        "name": "created_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "updated_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        {
+          "Custom": {
+            "name": "admin.request_status",
+            "kind": {
+              "Enum": [
+                "new",
+                "under_review",
+                "in_progress",
+                "done",
+                "closed"
+              ]
+            }
+          }
+        },
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "e35b92a2cdee52478b1146375cb05f9b8960ece323192e6d8fa604e3621a9036"
+}

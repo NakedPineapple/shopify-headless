@@ -1,0 +1,60 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            WITH new_comment AS (\n                INSERT INTO admin.request_board_comment (item_id, admin_user_id, body)\n                VALUES ($1, $2, $3)\n                RETURNING id, item_id, admin_user_id, body, created_at, updated_at\n            )\n            SELECT\n                nc.id, nc.item_id, nc.admin_user_id, nc.body,\n                nc.created_at as \"created_at: DateTime<Utc>\",\n                nc.updated_at as \"updated_at: DateTime<Utc>\",\n                u.name as \"author_name!\"\n            FROM new_comment nc\n            JOIN admin.admin_user u ON u.id = nc.admin_user_id\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "item_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "admin_user_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "body",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "updated_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "author_name!",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Int4",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "439eb20c8bb7292c2606f834ab2945137261542dbb819c92523efb3071dafc55"
+}

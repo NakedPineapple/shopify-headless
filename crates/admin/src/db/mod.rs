@@ -26,6 +26,7 @@ pub mod chat;
 pub mod inventory_lot;
 pub mod manufacturing;
 pub mod pending_actions;
+pub mod request_board;
 pub mod settings;
 pub mod shiphero;
 pub mod shopify;
@@ -43,6 +44,7 @@ pub use admin_users::AdminUserRepository;
 pub use chat::ChatRepository;
 pub use inventory_lot::InventoryLotRepository;
 pub use manufacturing::ManufacturingRepository;
+pub use request_board::RequestBoardRepository;
 pub use shiphero::{SaveCredentialsParams, ShipHeroCredentials, ShipHeroCredentialsRepository};
 pub use shopify::ShopifyTokenRepository;
 

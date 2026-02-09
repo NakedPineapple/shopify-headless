@@ -4,6 +4,7 @@ pub mod admin_user;
 pub mod chat;
 pub mod inventory_lot;
 pub mod manufacturing;
+pub mod request_board;
 pub mod session;
 
 pub use admin_user::{AdminCredential, AdminRole, AdminUser};
@@ -15,5 +16,10 @@ pub use inventory_lot::{
 pub use manufacturing::{
     BatchFilter, BatchMetadata, CreateBatchInput, ManufacturingBatch,
     ManufacturingBatchWithDetails, UpdateBatchInput,
+};
+pub use request_board::{
+    CreateCommentInput, CreateRequestInput, MoveRequestInput, RequestBoardComment,
+    RequestBoardCommentWithAuthor, RequestBoardItem, RequestBoardItemSummary, RequestPriority,
+    RequestStatus, RequestType, UpdateRequestInput,
 };
 pub use session::{CurrentAdmin, keys as session_keys};

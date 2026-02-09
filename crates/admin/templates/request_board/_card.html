@@ -1,0 +1,49 @@
+{# Card partial for kanban board. Receives `card` variable (RequestCardView). #}
+<div class="bg-card rounded-lg border border-border shadow-sm hover:shadow-md transition-shadow cursor-grab active:cursor-grabbing"
+     data-item-id="{{ card.id }}">
+    {# Priority color indicator bar #}
+    <div class="h-1 rounded-t-lg {% match card.priority_slug.as_str() %}{% when "critical" %}bg-red-500{% when "high" %}bg-orange-500{% when "medium" %}bg-yellow-500{% when "low" %}bg-blue-500{% when _ %}bg-muted{% endmatch %}"></div>
+
+    <div class="p-3 space-y-2">
+        {# Type and priority badges #}
+        <div class="flex items-center gap-1.5 flex-wrap">
+            {% if card.request_type_slug == "bug_report" %}
+            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs font-medium rounded bg-red-500/10 text-red-500">
+                <i class="ph ph-bug text-xs"></i>
+                Bug
+            </span>
+            {% else %}
+            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs font-medium rounded bg-green-500/10 text-green-500">
+                <i class="ph ph-lightbulb text-xs"></i>
+                Feature
+            </span>
+            {% endif %}
+            <span class="inline-flex items-center px-1.5 py-0.5 text-xs font-medium rounded {% match card.priority_slug.as_str() %}{% when "critical" %}bg-red-500/10 text-red-500{% when "high" %}bg-orange-500/10 text-orange-500{% when "medium" %}bg-yellow-500/10 text-yellow-500{% when "low" %}bg-blue-500/10 text-blue-500{% when _ %}bg-muted text-muted-foreground{% endmatch %}">
+                {{ card.priority }}
+            </span>
+        </div>
+
+        {# Title #}
+        <a href="/requests/{{ card.id }}"
+           class="block text-sm font-medium text-foreground hover:text-coral transition-colors line-clamp-2"
+           onclick="event.stopPropagation()">
+            {{ card.title }}
+        </a>
+
+        {# Footer: creator + comment count #}
+        <div class="flex items-center justify-between pt-1 border-t border-border/50">
+            <div class="flex items-center gap-1.5">
+                <div class="w-5 h-5 rounded-full bg-muted flex items-center justify-center">
+                    <i class="ph ph-user text-[0.6rem] text-muted-foreground"></i>
+                </div>
+                <span class="text-xs text-muted-foreground truncate max-w-[100px]">{{ card.creator_name }}</span>
+            </div>
+            {% if card.comment_count > 0 %}
+            <div class="flex items-center gap-1 text-xs text-muted-foreground">
+                <i class="ph ph-chat-circle text-xs"></i>
+                {{ card.comment_count }}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>

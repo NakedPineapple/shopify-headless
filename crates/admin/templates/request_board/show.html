@@ -1,0 +1,261 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}{{ request.title }}{% endblock %}
+
+{% block page_title %}
+<div class="flex items-center justify-between">
+    <div class="flex items-center gap-4">
+        <a href="/requests" class="text-muted-foreground hover:text-foreground transition-colors">
+            <i class="ph ph-arrow-left text-xl"></i>
+        </a>
+        <div>
+            <h1 class="text-2xl font-semibold text-foreground">{{ request.title }}</h1>
+            <p class="text-sm text-muted-foreground mt-1">Request #{{ request.id }}</p>
+        </div>
+    </div>
+    <div class="flex items-center gap-2">
+        <a href="/requests/{{ request.id }}/edit"
+           class="inline-flex items-center gap-2 px-3 py-2 text-sm bg-muted text-foreground rounded-lg hover:bg-accent transition-colors">
+            <i class="ph ph-pencil"></i>
+            Edit
+        </a>
+        <form action="/requests/{{ request.id }}/delete" method="POST" class="inline"
+              onsubmit="return confirm('Are you sure you want to delete this request?')">
+            <button type="submit" class="inline-flex items-center gap-2 px-3 py-2 text-sm bg-destructive/10 text-destructive rounded-lg hover:bg-destructive/20 transition-colors">
+                <i class="ph ph-trash"></i>
+                Delete
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block head %}
+<style>
+/* Markdown content styling */
+.markdown-content {
+    line-height: 1.6;
+}
+.markdown-content p {
+    margin-bottom: 0.75rem;
+}
+.markdown-content p:last-child {
+    margin-bottom: 0;
+}
+.markdown-content h1, .markdown-content h2, .markdown-content h3,
+.markdown-content h4, .markdown-content h5, .markdown-content h6 {
+    font-weight: 600;
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+}
+.markdown-content h1 { font-size: 1.5rem; }
+.markdown-content h2 { font-size: 1.25rem; }
+.markdown-content h3 { font-size: 1.125rem; }
+.markdown-content ul, .markdown-content ol {
+    margin: 0.5rem 0;
+    padding-left: 1.5rem;
+}
+.markdown-content ul { list-style-type: disc; }
+.markdown-content ol { list-style-type: decimal; }
+.markdown-content li { margin-bottom: 0.25rem; }
+.markdown-content code:not(pre code) {
+    background: hsl(var(--muted));
+    padding: 0.125rem 0.375rem;
+    border-radius: 0.25rem;
+    font-size: 0.875em;
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+.markdown-content pre {
+    margin: 0.75rem 0;
+    border-radius: 0.5rem;
+    overflow-x: auto;
+}
+.markdown-content pre code {
+    display: block;
+    padding: 1rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+.markdown-content blockquote {
+    border-left: 3px solid hsl(var(--border));
+    padding-left: 1rem;
+    margin: 0.75rem 0;
+    color: hsl(var(--muted-foreground));
+}
+.markdown-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.75rem 0;
+}
+.markdown-content th, .markdown-content td {
+    border: 1px solid hsl(var(--border));
+    padding: 0.5rem;
+    text-align: left;
+}
+.markdown-content th {
+    background: hsl(var(--muted));
+    font-weight: 600;
+}
+.markdown-content a {
+    color: hsl(var(--primary));
+    text-decoration: underline;
+}
+.markdown-content a:hover {
+    opacity: 0.8;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="grid gap-6 lg:grid-cols-3">
+    {# Main Content #}
+    <div class="lg:col-span-2 space-y-6">
+        {# Badges #}
+        <div class="flex items-center gap-2 flex-wrap">
+            {# Type badge #}
+            {% if request.request_type_slug == "bug_report" %}
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 text-sm font-medium rounded-full bg-red-500/10 text-red-500">
+                <i class="ph ph-bug"></i>
+                Bug Report
+            </span>
+            {% else %}
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 text-sm font-medium rounded-full bg-green-500/10 text-green-500">
+                <i class="ph ph-lightbulb"></i>
+                Feature Request
+            </span>
+            {% endif %}
+
+            {# Priority badge #}
+            <span class="inline-flex items-center px-2.5 py-1 text-sm font-medium rounded-full {% match request.priority_slug.as_str() %}{% when "critical" %}bg-red-500/10 text-red-500{% when "high" %}bg-orange-500/10 text-orange-500{% when "medium" %}bg-yellow-500/10 text-yellow-500{% when "low" %}bg-blue-500/10 text-blue-500{% when _ %}bg-muted text-muted-foreground{% endmatch %}">
+                {{ request.priority }}
+            </span>
+
+            {# Status badge #}
+            <span class="inline-flex items-center px-2.5 py-1 text-sm font-medium rounded-full bg-muted text-foreground">
+                {{ request.status }}
+            </span>
+        </div>
+
+        {# Description card #}
+        <div class="bg-card rounded-xl border border-border p-6">
+            <h2 class="text-lg font-medium text-foreground mb-4">Description</h2>
+            <div class="markdown-content text-foreground"
+                 data-raw-content="{{ request.description }}">
+                {{ request.description }}
+            </div>
+        </div>
+
+        {# Comments section #}
+        <div class="bg-card rounded-xl border border-border overflow-hidden">
+            <div class="px-6 py-4 border-b border-border">
+                <h2 class="text-lg font-medium text-foreground">Comments ({{ comments.len() }})</h2>
+            </div>
+
+            {# Existing comments #}
+            <div id="comments-list" class="divide-y divide-border px-6">
+                {% if comments.is_empty() %}
+                <div class="py-8 text-center text-sm text-muted-foreground">
+                    No comments yet. Be the first to comment.
+                </div>
+                {% else %}
+                {% for comment in comments %}
+                {% include "request_board/_comment.html" %}
+                {% endfor %}
+                {% endif %}
+            </div>
+
+            {# Add comment form #}
+            <div class="px-6 py-4 border-t border-border bg-muted/30">
+                <form hx-post="/requests/{{ request.id }}/comments"
+                      hx-target="#comments-list"
+                      hx-swap="beforeend"
+                      hx-on::after-request="if(event.detail.successful) this.reset()">
+                    <label for="comment-body" class="block text-sm font-medium text-foreground mb-2">Add a comment</label>
+                    <textarea id="comment-body" name="body" rows="3" required
+                              class="w-full px-3 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-colors resize-none text-sm"
+                              placeholder="Write a comment (markdown supported)..."></textarea>
+                    <div class="mt-2 flex justify-end">
+                        <button type="submit"
+                                class="inline-flex items-center gap-2 px-4 py-2 text-sm bg-coral text-white rounded-lg hover:bg-coral/90 transition-colors">
+                            <i class="ph ph-paper-plane-tilt"></i>
+                            Comment
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    {# Sidebar - Metadata #}
+    <div class="space-y-6">
+        <div class="bg-card rounded-xl border border-border p-6">
+            <h2 class="text-lg font-medium text-foreground mb-4">Details</h2>
+            <dl class="space-y-3">
+                <div>
+                    <dt class="text-sm text-muted-foreground">Created by</dt>
+                    <dd class="text-foreground flex items-center gap-2 mt-0.5">
+                        <div class="w-6 h-6 rounded-full bg-muted flex items-center justify-center">
+                            <i class="ph ph-user text-xs text-muted-foreground"></i>
+                        </div>
+                        {{ request.creator_name }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="text-sm text-muted-foreground">Created</dt>
+                    <dd class="text-sm text-foreground mt-0.5">{{ request.created_at }}</dd>
+                </div>
+                <div>
+                    <dt class="text-sm text-muted-foreground">Last updated</dt>
+                    <dd class="text-sm text-foreground mt-0.5">{{ request.updated_at }}</dd>
+                </div>
+            </dl>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/vendor/marked.min.js"></script>
+<script src="/static/vendor/dompurify.min.js"></script>
+<script>
+(function() {
+    // Configure marked
+    marked.setOptions({
+        breaks: true,
+        gfm: true
+    });
+
+    function renderMarkdown(text) {
+        if (!text) return '';
+        var html = marked.parse(text);
+        return DOMPurify.sanitize(html, {
+            ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'b', 'i', 'code', 'pre', 'ul', 'ol', 'li',
+                          'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'a', 'table',
+                          'thead', 'tbody', 'tr', 'th', 'td', 'span', 'div'],
+            ALLOWED_ATTR: ['href', 'class', 'target', 'rel'],
+            ADD_ATTR: ['target'],
+            FORBID_TAGS: ['style', 'script', 'iframe', 'form', 'input'],
+            ALLOW_DATA_ATTR: false
+        });
+    }
+
+    // Render all markdown content blocks
+    document.querySelectorAll('.markdown-content[data-raw-content]').forEach(function(el) {
+        var raw = el.getAttribute('data-raw-content');
+        if (raw) {
+            el.innerHTML = renderMarkdown(raw);
+        }
+    });
+
+    // Re-render markdown after HTMX swaps (for new comments)
+    document.body.addEventListener('htmx:afterSwap', function(evt) {
+        evt.detail.target.querySelectorAll('.markdown-content[data-raw-content]').forEach(function(el) {
+            var raw = el.getAttribute('data-raw-content');
+            if (raw) {
+                el.innerHTML = renderMarkdown(raw);
+            }
+        });
+    });
+})();
+</script>
+{% endblock %}

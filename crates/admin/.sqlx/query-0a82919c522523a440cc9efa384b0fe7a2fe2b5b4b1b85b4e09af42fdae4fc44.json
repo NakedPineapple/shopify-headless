@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM admin.request_board_item WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0a82919c522523a440cc9efa384b0fe7a2fe2b5b4b1b85b4e09af42fdae4fc44"
+}

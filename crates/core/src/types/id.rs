@@ -120,6 +120,10 @@ define_id!(BatchMetadataId);
 define_id!(InventoryLotId);
 define_id!(LotAllocationId);
 
+// Request Board
+define_id!(RequestBoardItemId);
+define_id!(RequestBoardCommentId);
+
 /// A generic placeholder ID type for migration purposes.
 ///
 /// Prefer using specific ID types like `UserId`, `OrderId`, etc.

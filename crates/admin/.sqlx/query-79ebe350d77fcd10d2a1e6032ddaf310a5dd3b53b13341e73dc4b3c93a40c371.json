@@ -1,0 +1,111 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                id, title, description,\n                request_type as \"request_type: RequestType\",\n                priority as \"priority: RequestPriority\",\n                status as \"status: RequestStatus\",\n                position, created_by,\n                created_at as \"created_at: DateTime<Utc>\",\n                updated_at as \"updated_at: DateTime<Utc>\"\n            FROM admin.request_board_item\n            WHERE id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "request_type: RequestType",
+        "type_info": {
+          "Custom": {
+            "name": "admin.request_type",
+            "kind": {
+              "Enum": [
+                "bug_report",
+                "feature_request"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "priority: RequestPriority",
+        "type_info": {
+          "Custom": {
+            "name": "admin.request_priority",
+            "kind": {
+              "Enum": [
+                "low",
+                "medium",
+                "high",
+                "critical"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "status: RequestStatus",
+        "type_info": {
+          "Custom": {
+            "name": "admin.request_status",
+            "kind": {
+              "Enum": [
+                "new",
+                "under_review",
+                "in_progress",
+                "done",
+                "closed"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "position",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 7,
+        "name": "created_by",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 8,
+        "name": "created_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "updated_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "79ebe350d77fcd10d2a1e6032ddaf310a5dd3b53b13341e73dc4b3c93a40c371"
+}

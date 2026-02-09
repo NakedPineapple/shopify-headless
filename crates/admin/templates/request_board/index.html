@@ -1,0 +1,101 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Request Board{% endblock %}
+
+{% block page_title %}
+<div class="flex items-center justify-between">
+    <div>
+        <h1 class="text-2xl font-semibold text-foreground">Request Board</h1>
+        <p class="text-sm text-muted-foreground mt-1">Track bugs and feature requests</p>
+    </div>
+    <a href="/requests/new"
+       class="inline-flex items-center gap-2 px-4 py-2 bg-coral text-white rounded-lg hover:bg-coral/90 transition-colors">
+        <i class="ph ph-plus"></i>
+        New Request
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+{# Kanban board with horizontal scroll #}
+<div class="flex gap-4 overflow-x-auto pb-4 min-h-[calc(100vh-14rem)]">
+    {% for column in columns %}
+    <div class="flex flex-col w-72 shrink-0">
+        {# Column header #}
+        <div class="flex items-center justify-between px-3 py-2 mb-3">
+            <div class="flex items-center gap-2">
+                <h3 class="text-sm font-semibold text-foreground">{{ column.status }}</h3>
+                <span class="inline-flex items-center justify-center w-5 h-5 text-xs font-medium rounded-full bg-muted text-muted-foreground">
+                    {{ column.count }}
+                </span>
+            </div>
+        </div>
+
+        {# Sortable card container #}
+        <div class="flex-1 space-y-2 p-1 rounded-lg bg-muted/30 overflow-y-auto min-h-[100px]"
+             data-column="{{ column.slug }}"
+             id="column-{{ column.slug }}">
+            {% for card in column.cards %}
+            {% include "request_board/_card.html" %}
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+{# Toast notification #}
+<div id="toast" class="fixed bottom-6 right-6 z-50 hidden">
+    <div class="bg-destructive text-white px-4 py-3 rounded-lg shadow-lg text-sm flex items-center gap-2">
+        <i class="ph ph-warning"></i>
+        <span id="toast-message">An error occurred</span>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    // Initialize SortableJS on each column
+    var columns = document.querySelectorAll('[data-column]');
+    columns.forEach(function(column) {
+        new Sortable(column, {
+            group: 'kanban',
+            animation: 150,
+            ghostClass: 'opacity-30',
+            dragClass: 'shadow-lg',
+            onEnd: function(evt) {
+                var itemId = evt.item.getAttribute('data-item-id');
+                var newStatus = evt.to.getAttribute('data-column');
+                var newPosition = evt.newIndex;
+
+                fetch('/requests/' + itemId + '/status', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: 'status=' + encodeURIComponent(newStatus) + '&position=' + newPosition
+                })
+                .then(function(response) {
+                    if (!response.ok) {
+                        throw new Error('Failed to update status');
+                    }
+                })
+                .catch(function(error) {
+                    showToast(error.message || 'Failed to move card');
+                    // Reload the page to restore correct state
+                    setTimeout(function() { window.location.reload(); }, 1500);
+                });
+            }
+        });
+    });
+
+    function showToast(message) {
+        var toast = document.getElementById('toast');
+        var toastMessage = document.getElementById('toast-message');
+        toastMessage.textContent = message;
+        toast.classList.remove('hidden');
+        setTimeout(function() {
+            toast.classList.add('hidden');
+        }, 4000);
+    }
+})();
+</script>
+{% endblock %}
