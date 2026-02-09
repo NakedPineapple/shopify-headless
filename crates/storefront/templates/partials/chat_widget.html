@@ -1,0 +1,93 @@
+{# Chat Widget - AI-powered support chat #}
+{# Rendered conditionally in base.html when site.chat_enabled is true #}
+
+{# Floating Action Button (collapsed state) #}
+<button id="chat-fab"
+        type="button"
+        class="fixed bottom-6 right-6 z-[100] w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 flex items-center justify-center group"
+        aria-label="Open support chat"
+        data-action="toggle-chat">
+    <i class="ph ph-chat-circle-dots text-2xl group-hover:scale-110 transition-transform" id="chat-fab-icon"></i>
+    <i class="ph ph-x text-2xl hidden" id="chat-fab-close-icon"></i>
+</button>
+
+{# Chat Panel (expanded state) #}
+<div id="chat-panel"
+     class="fixed bottom-24 right-6 z-[100] w-[min(400px,calc(100vw-3rem))] max-h-[min(600px,calc(100vh-8rem))] rounded-2xl bg-background shadow-2xl border border-border/50 flex-col opacity-0 scale-95 pointer-events-none transition-all duration-200 origin-bottom-right hidden"
+     role="dialog"
+     aria-label="Customer support chat"
+     data-turnstile-site-key="{{ site.turnstile_site_key }}">
+
+    {# Header #}
+    <div class="flex items-center justify-between px-5 py-4 border-b border-border/50 rounded-t-2xl bg-primary text-primary-foreground">
+        <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-full bg-primary-foreground/20 flex items-center justify-center">
+                <i class="ph ph-sparkle text-lg"></i>
+            </div>
+            <div>
+                <h2 class="text-sm font-semibold leading-tight">How can we help?</h2>
+                <p class="text-xs opacity-80 leading-tight">Powered by AI</p>
+            </div>
+        </div>
+        <button type="button"
+                class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-primary-foreground/20 transition-colors"
+                data-action="toggle-chat"
+                aria-label="Close chat">
+            <i class="ph ph-x text-lg"></i>
+        </button>
+    </div>
+
+    {# Messages Area #}
+    <div id="chat-messages"
+         class="flex-1 overflow-y-auto px-4 py-4 space-y-3 min-h-[200px] max-h-[400px]"
+         aria-live="polite"
+         aria-relevant="additions">
+        {# Welcome message (shown when no conversation exists) #}
+        <div id="chat-welcome" class="text-center py-8 px-4">
+            <div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                <i class="ph ph-hand-waving text-2xl text-primary"></i>
+            </div>
+            <p class="text-sm font-medium text-foreground mb-1">Welcome to Naked Pineapple!</p>
+            <p class="text-xs text-muted-foreground leading-relaxed">
+                Ask me anything about our products, shipping, returns, or your order. I'm here to help!
+            </p>
+        </div>
+    </div>
+
+    {# Tool Use Indicator #}
+    <div id="chat-tool-indicator" class="hidden px-4 pb-2">
+        <div class="flex items-center gap-2 text-xs text-muted-foreground">
+            <div class="flex gap-0.5">
+                <span class="w-1.5 h-1.5 rounded-full bg-primary/60 animate-bounce [animation-delay:0ms]"></span>
+                <span class="w-1.5 h-1.5 rounded-full bg-primary/60 animate-bounce [animation-delay:150ms]"></span>
+                <span class="w-1.5 h-1.5 rounded-full bg-primary/60 animate-bounce [animation-delay:300ms]"></span>
+            </div>
+            <span id="chat-tool-name">Looking that up...</span>
+        </div>
+    </div>
+
+    {# Input Area #}
+    <div class="px-4 py-3 border-t border-border/50">
+        <form id="chat-form" class="flex items-end gap-2">
+            <label for="chat-input" class="sr-only">Type your message</label>
+            <textarea id="chat-input"
+                      name="message"
+                      class="flex-1 resize-none rounded-xl border border-border bg-muted/50 px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors min-h-[40px] max-h-[120px]"
+                      placeholder="Type your message..."
+                      rows="1"
+                      maxlength="2000"
+                      aria-label="Chat message"></textarea>
+            <button id="chat-send"
+                    type="submit"
+                    class="w-10 h-10 flex-shrink-0 rounded-xl bg-primary text-primary-foreground flex items-center justify-center hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    aria-label="Send message"
+                    disabled>
+                <i class="ph ph-paper-plane-right text-lg"></i>
+            </button>
+        </form>
+        <p id="chat-error" class="hidden text-xs text-destructive mt-2"></p>
+    </div>
+
+    {# Turnstile container (invisible mode) #}
+    <div id="chat-turnstile" class="hidden"></div>
+</div>

@@ -140,6 +140,11 @@
     <!-- Newsletter Popup -->
     {% include "partials/newsletter_popup.html" %}
 
+    <!-- Chat Widget (AI-powered support) -->
+    {% if site.chat_enabled %}
+    {% include "partials/chat_widget.html" %}
+    {% endif %}
+
     <!-- Swiper.js (local vendor) -->
     <script src="/static/vendor/swiper-bundle.min.js"></script>
 
@@ -186,6 +191,9 @@
                     break;
                 case 'close-filter-drawer':
                     window.closeFilterDrawer();
+                    break;
+                case 'toggle-chat':
+                    if (window.toggleChat) window.toggleChat();
                     break;
                 case 'select-thumbnail':
                     var img = document.getElementById('main-product-image');
@@ -318,6 +326,7 @@
                 window.closeQuickView();
                 window.closeMobileMenu();
                 window.closeSearchDrawer();
+                if (window.closeChat) window.closeChat();
             }
         });
 
@@ -853,6 +862,11 @@
     </script>
 
     {% block scripts %}{% endblock %}
+
+    <!-- Chat widget script (loaded when AI chat is enabled) -->
+    {% if site.chat_enabled %}
+    <script src="/static/js/chat.js" defer></script>
+    {% endif %}
 
     <!-- Analytics script - loaded after other scripts (suppressed by GPC) -->
     {% block analytics_script %}

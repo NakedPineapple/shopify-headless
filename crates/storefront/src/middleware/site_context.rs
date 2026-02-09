@@ -29,6 +29,10 @@ pub struct SiteContext {
     pub cf_beacon_token: String,
     /// Whether the browser sent the `Sec-GPC: 1` Global Privacy Control signal.
     pub gpc: bool,
+    /// Whether AI chat support is fully configured and enabled.
+    pub chat_enabled: bool,
+    /// Cloudflare Turnstile public site key (empty if not configured).
+    pub turnstile_site_key: String,
 }
 
 impl FromRequestParts<AppState> for SiteContext {
@@ -67,11 +71,19 @@ impl FromRequestParts<AppState> for SiteContext {
             .and_then(|v| v.to_str().ok())
             .is_some_and(|v| v == "1");
 
+        let chat_enabled = state.is_chat_enabled();
+        let turnstile_site_key = config
+            .turnstile_site_key
+            .clone()
+            .unwrap_or_default();
+
         Ok(Self {
             host: host.to_owned(),
             base_url,
             cf_beacon_token,
             gpc,
+            chat_enabled,
+            turnstile_site_key,
         })
     }
 }
