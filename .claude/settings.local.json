@@ -87,6 +87,10 @@
       "Bash(sqlite3:*)",
       "Bash(task test:*)",
       "Bash(task test:integration:*)"
+    ],
+    "additionalDirectories": [
+      "../NakedPineapple-worktree1",
+      "../NakedPineapple-worktree2"
     ]
   }
 }
