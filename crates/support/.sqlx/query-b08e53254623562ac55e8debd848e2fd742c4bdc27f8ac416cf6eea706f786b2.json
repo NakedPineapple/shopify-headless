@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE storefront.support_conversation\n            SET status = 'escalated', escalated_at = $2, escalation_reason = $3\n            WHERE id = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Timestamptz",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b08e53254623562ac55e8debd848e2fd742c4bdc27f8ac416cf6eea706f786b2"
+}

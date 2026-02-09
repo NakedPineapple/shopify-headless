@@ -25,5 +25,3 @@ ALTER TABLE admin.chat_message DROP COLUMN IF EXISTS api_interaction;
 
 -- Drop super admin index
 DROP INDEX IF EXISTS idx_chat_session_admin_created;
-
--- Note: We don't drop the pgvector extension as other things may depend on it

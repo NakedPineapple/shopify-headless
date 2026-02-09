@@ -3,9 +3,6 @@
 
 SET search_path TO admin, public;
 
--- Enable pgvector extension for embedding-based tool selection
-CREATE EXTENSION IF NOT EXISTS vector;
-
 -- Add API interaction metadata to messages for debug panel
 ALTER TABLE admin.chat_message ADD COLUMN api_interaction JSONB NULL;
 

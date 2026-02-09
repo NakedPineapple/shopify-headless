@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE storefront.support_conversation\n            SET assigned_admin_id = $2\n            WHERE id = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "17b45ea1f77ce672e573bb78fdec8c63eb0f6f5c0a14ac1da8164625ff73d315"
+}

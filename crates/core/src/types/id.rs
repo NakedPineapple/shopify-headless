@@ -124,6 +124,12 @@ define_id!(LotAllocationId);
 define_id!(RequestBoardItemId);
 define_id!(RequestBoardCommentId);
 
+// Support
+define_id!(SupportConversationId);
+define_id!(SupportMessageId);
+define_id!(SupportTicketId);
+define_id!(SupportKnowledgeId);
+
 /// A generic placeholder ID type for migration purposes.
 ///
 /// Prefer using specific ID types like `UserId`, `OrderId`, etc.

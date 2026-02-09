@@ -147,3 +147,42 @@ impl std::str::FromStr for AdminRole {
         }
     }
 }
+
+/// Support conversation status.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[cfg_attr(feature = "postgres", derive(sqlx::Type))]
+#[cfg_attr(
+    feature = "postgres",
+    sqlx(
+        type_name = "storefront.support_conversation_status",
+        rename_all = "snake_case"
+    )
+)]
+#[serde(rename_all = "snake_case")]
+pub enum SupportConversationStatus {
+    Active,
+    Escalated,
+    Waiting,
+    Resolved,
+    Closed,
+}
+
+/// Support message role.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[cfg_attr(feature = "postgres", derive(sqlx::Type))]
+#[cfg_attr(
+    feature = "postgres",
+    sqlx(
+        type_name = "storefront.support_message_role",
+        rename_all = "snake_case"
+    )
+)]
+#[serde(rename_all = "snake_case")]
+pub enum SupportMessageRole {
+    Customer,
+    Assistant,
+    Agent,
+    System,
+    ToolUse,
+    ToolResult,
+}

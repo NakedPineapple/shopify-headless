@@ -1,0 +1,153 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                c.id, c.session_token, c.shopify_customer_id, c.customer_email,\n                c.customer_name,\n                c.status as \"status: SupportConversationStatus\",\n                c.assigned_admin_id,\n                c.escalated_at as \"escalated_at: DateTime<Utc>\",\n                c.escalation_reason, c.title, c.is_authenticated,\n                c.created_at as \"created_at: DateTime<Utc>\",\n                c.updated_at as \"updated_at: DateTime<Utc>\",\n                c.resolved_at as \"resolved_at: DateTime<Utc>\",\n                c.last_customer_message_at as \"last_customer_message_at: DateTime<Utc>\",\n                c.last_agent_message_at as \"last_agent_message_at: DateTime<Utc>\",\n                (SELECT count(*) FROM storefront.support_message m WHERE m.support_conversation_id = c.id) as \"message_count!\",\n                (SELECT content->>'text'\n                 FROM storefront.support_message m\n                 WHERE m.support_conversation_id = c.id\n                 ORDER BY m.created_at DESC LIMIT 1) as last_message_preview\n            FROM storefront.support_conversation c\n            WHERE ($1::storefront.support_conversation_status IS NULL OR c.status = $1)\n              AND ($2::integer IS NULL OR c.assigned_admin_id = $2)\n            ORDER BY c.updated_at DESC\n            LIMIT $3 OFFSET $4\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "session_token",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "shopify_customer_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "customer_email",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "customer_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "status: SupportConversationStatus",
+        "type_info": {
+          "Custom": {
+            "name": "storefront.support_conversation_status",
+            "kind": {
+              "Enum": [
+                "active",
+                "escalated",
+                "waiting",
+                "resolved",
+                "closed"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "assigned_admin_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 7,
+        "name": "escalated_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "escalation_reason",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "is_authenticated",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 11,
+        "name": "created_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 12,
+        "name": "updated_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 13,
+        "name": "resolved_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 14,
+        "name": "last_customer_message_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 15,
+        "name": "last_agent_message_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 16,
+        "name": "message_count!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 17,
+        "name": "last_message_preview",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        {
+          "Custom": {
+            "name": "storefront.support_conversation_status",
+            "kind": {
+              "Enum": [
+                "active",
+                "escalated",
+                "waiting",
+                "resolved",
+                "closed"
+              ]
+            }
+          }
+        },
+        "Int4",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      null,
+      null
+    ]
+  },
+  "hash": "e52b19a644c84277c23dca10cd651e487424fe1d79f92e1f05ca4bec24750e20"
+}

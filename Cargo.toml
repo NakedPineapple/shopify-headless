@@ -4,6 +4,7 @@ members = [
     "crates/core",
     "crates/crypto",
     "crates/services",
+    "crates/support",
     "crates/storefront",
     "crates/admin",
     "crates/automations",
@@ -46,6 +47,7 @@ multiple-crate-versions = "allow" # handled by Cargo-deny
 naked-pineapple-core = { path = "crates/core" }
 naked-pineapple-crypto = { path = "crates/crypto" }
 naked-pineapple-services = { path = "crates/services" }
+naked-pineapple-support = { path = "crates/support" }
 
 # Serialization
 serde = { version = "1", features = ["derive"] }

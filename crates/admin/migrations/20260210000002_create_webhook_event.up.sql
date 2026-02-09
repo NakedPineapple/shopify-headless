@@ -28,22 +28,3 @@ CREATE INDEX idx_webhook_event_pending
     ON admin.webhook_event (status, received_at)
     WHERE status = 'pending';
 
--- Restricted role for public-facing webhook handlers.
---
--- This role can only INSERT and SELECT on admin.webhook_event. It has no
--- access to admin.shopify_token, admin.inbound_email, or any other table.
--- The password must be set via: ALTER ROLE webhook_receiver PASSWORD 'xxx';
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'webhook_receiver') THEN
-        CREATE ROLE webhook_receiver LOGIN;
-    END IF;
-END $$;
-
-GRANT USAGE ON SCHEMA admin TO webhook_receiver;
-GRANT INSERT, SELECT ON admin.webhook_event TO webhook_receiver;
-GRANT USAGE, SELECT ON SEQUENCE admin.webhook_event_id_seq TO webhook_receiver;
-
--- Explicitly deny access to sensitive tables.
--- Default is no access, but being explicit documents the security boundary.
-REVOKE ALL ON admin.shopify_token FROM webhook_receiver;

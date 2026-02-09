@@ -121,7 +121,13 @@ mod tests {
         let result = mac.finalize().into_bytes();
         let sig = format!(
             "sha256={}",
-            result.iter().map(|b| format!("{b:02x}")).collect::<String>()
+            result
+                .iter()
+                .fold(String::new(), |mut acc, b| {
+                    use std::fmt::Write;
+                    let _ = write!(acc, "{b:02x}");
+                    acc
+                })
         );
 
         assert!(verify_hmac_sha256_hex(secret, body, &sig));

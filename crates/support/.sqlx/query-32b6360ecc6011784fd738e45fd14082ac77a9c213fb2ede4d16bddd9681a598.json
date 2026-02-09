@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE storefront.support_ticket\n            SET slack_message_ts = $2, slack_channel_id = $3\n            WHERE id = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "32b6360ecc6011784fd738e45fd14082ac77a9c213fb2ede4d16bddd9681a598"
+}

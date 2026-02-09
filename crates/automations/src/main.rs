@@ -161,7 +161,7 @@ async fn main() {
 
     let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
     tokio::spawn(spawn_internal_listener(state.clone(), health_port));
-    start_webhook_listener(&state, &webhook_config).await;
+    start_webhook_listener(&state, webhook_config.as_ref()).await;
 
     let scheduler = Scheduler::new(state);
     let scheduler_handle = tokio::spawn(scheduler.run(shutdown_rx));
@@ -196,7 +196,7 @@ async fn health_readiness(State(state): State<AppState>) -> (StatusCode, &'stati
 /// Start the public webhook listener and reconcile Shopify webhook subscriptions.
 async fn start_webhook_listener(
     state: &AppState,
-    webhook_config: &Option<config::WebhookConfig>,
+    webhook_config: Option<&config::WebhookConfig>,
 ) {
     let Some(wh_config) = webhook_config else {
         tracing::info!("WEBHOOK_DATABASE_URL not set, public webhook listener disabled");
@@ -220,10 +220,9 @@ async fn start_webhook_listener(
 
     if let Some(shopify) = state.shopify()
         && let Some(base_url) = &wh_config.base_url
+        && let Err(e) = shopify::webhook_subscriptions::reconcile(shopify, base_url).await
     {
-        if let Err(e) = shopify::webhook_subscriptions::reconcile(shopify, base_url).await {
-            tracing::warn!(error = %e, "failed to reconcile Shopify webhook subscriptions");
-        }
+        tracing::warn!(error = %e, "failed to reconcile Shopify webhook subscriptions");
     }
 }
 

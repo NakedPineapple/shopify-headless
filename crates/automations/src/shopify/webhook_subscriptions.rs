@@ -66,7 +66,7 @@ fn topic_to_path(topic: &str) -> String {
     // Handles multi-word resources like SUBSCRIPTION_CONTRACTS_CREATE.
     lower
         .rsplit_once('_')
-        .map_or(lower.clone(), |(resource, action)| {
+        .map_or_else(|| lower.clone(), |(resource, action)| {
             format!("{resource}/{action}")
         })
 }

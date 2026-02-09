@@ -306,6 +306,7 @@ tasks:
       - task: sqlx:prepare:admin
       - task: sqlx:prepare:automations
       - task: sqlx:prepare:cli
+      - task: sqlx:prepare:support
 
   sqlx:prepare:storefront:
     desc: "Generate sqlx offline cache for storefront"
@@ -338,6 +339,14 @@ tasks:
       - cargo sqlx prepare
     env:
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/np_admin
+
+  sqlx:prepare:support:
+    desc: "Generate sqlx offline cache for support"
+    dir: crates/support
+    cmds:
+      - cargo sqlx prepare
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/np_storefront
 
   sqlx:check:
     desc: "Verify sqlx cache is up to date"

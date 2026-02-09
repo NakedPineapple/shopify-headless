@@ -1,0 +1,72 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                id, support_conversation_id,\n                role as \"role: SupportMessageRole\",\n                content, api_interaction, admin_user_id,\n                created_at as \"created_at: DateTime<Utc>\"\n            FROM storefront.support_message\n            WHERE support_conversation_id = $1\n            ORDER BY created_at ASC\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "support_conversation_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "role: SupportMessageRole",
+        "type_info": {
+          "Custom": {
+            "name": "storefront.support_message_role",
+            "kind": {
+              "Enum": [
+                "customer",
+                "assistant",
+                "agent",
+                "system",
+                "tool_use",
+                "tool_result"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "content",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 4,
+        "name": "api_interaction",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 5,
+        "name": "admin_user_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "created_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "f849ec3350a899e8396bdd9901aa39507291d2a62cac13548bbcb6dd268443b7"
+}

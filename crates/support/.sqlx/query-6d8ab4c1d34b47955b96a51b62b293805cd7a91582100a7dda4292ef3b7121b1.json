@@ -1,0 +1,126 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                id, session_token, shopify_customer_id, customer_email, customer_name,\n                status as \"status: SupportConversationStatus\",\n                assigned_admin_id,\n                escalated_at as \"escalated_at: DateTime<Utc>\",\n                escalation_reason, title, is_authenticated,\n                created_at as \"created_at: DateTime<Utc>\",\n                updated_at as \"updated_at: DateTime<Utc>\",\n                resolved_at as \"resolved_at: DateTime<Utc>\",\n                last_customer_message_at as \"last_customer_message_at: DateTime<Utc>\",\n                last_agent_message_at as \"last_agent_message_at: DateTime<Utc>\"\n            FROM storefront.support_conversation\n            WHERE shopify_customer_id = $1\n            ORDER BY updated_at DESC\n            LIMIT $2\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "session_token",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "shopify_customer_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "customer_email",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "customer_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "status: SupportConversationStatus",
+        "type_info": {
+          "Custom": {
+            "name": "storefront.support_conversation_status",
+            "kind": {
+              "Enum": [
+                "active",
+                "escalated",
+                "waiting",
+                "resolved",
+                "closed"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "assigned_admin_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 7,
+        "name": "escalated_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "escalation_reason",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "is_authenticated",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 11,
+        "name": "created_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 12,
+        "name": "updated_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 13,
+        "name": "resolved_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 14,
+        "name": "last_customer_message_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 15,
+        "name": "last_agent_message_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "6d8ab4c1d34b47955b96a51b62b293805cd7a91582100a7dda4292ef3b7121b1"
+}

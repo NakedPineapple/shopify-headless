@@ -240,7 +240,9 @@ async fn dispatch_operational(
     slack
         .post_message(channel, blocks, Some(&fallback))
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
 }
 
 /// Extract a human-readable summary from an operational webhook payload.

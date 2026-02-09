@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE storefront.support_ticket\n            SET status = 'resolved', resolution_notes = $2, resolved_at = $3\n            WHERE id = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "073003af5ab0059f8da14b3a8902954e353ca5b773cd053cf2fb34d31d339b57"
+}

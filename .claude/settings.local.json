@@ -66,6 +66,7 @@
       "Bash(cargo clippy:*)",
       "Bash(cargo fmt:*)",
       "Bash(cargo test:*)",
+      "Bash(psql:*)",
       "Bash(task build:*)",
       "Bash(task rust:build:*)",
       "Bash(task rust:check:*)",

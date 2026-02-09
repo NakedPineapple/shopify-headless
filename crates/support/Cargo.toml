@@ -1,0 +1,40 @@
+[package]
+name = "naked-pineapple-support"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "Shared customer support library for Naked Pineapple (used by storefront and admin)"
+publish = false
+
+[lints]
+workspace = true
+
+[dependencies]
+naked-pineapple-core = { workspace = true, features = ["postgres"] }
+naked-pineapple-services = { workspace = true }
+
+# Database
+sqlx = { workspace = true, features = ["time"] }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Error handling
+thiserror = { workspace = true }
+
+# Logging
+tracing = { workspace = true }
+
+# Async
+async-stream = "0.3"
+futures = { workspace = true }
+
+# Types
+chrono = { workspace = true }
+time = "0.3"
+
+# Security
+secrecy = { workspace = true }
