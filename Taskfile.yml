@@ -797,6 +797,36 @@ tasks:
       ADMIN_DATABASE_URL: "postgres://admin_admin:{{.FLY_POSTGRES_ADMIN_ADMIN_PASSWORD}}@localhost:15433/np_admin"
       ADMIN_HOSTS: "admin.nakedpineapple.co"
 
+  fly:db:set-password:admin:staging:
+    desc: "Set admin break-glass password on staging (see --summary for usage)"
+    summary: |
+      Set a break-glass password for an admin user on staging.
+
+      Requires fly:db:proxy:admin running in another terminal.
+
+      Usage:
+        task fly:db:set-password:admin:staging -- -e admin@example.com
+    cmds:
+      - task: fly:check:admin-staging
+      - cargo run -p naked-pineapple-cli -- admin set-password {{.CLI_ARGS}}
+    env:
+      ADMIN_DATABASE_URL: "postgres://admin_staging_admin:{{.FLY_POSTGRES_ADMIN_STAGING_ADMIN_PASSWORD}}@localhost:15433/np_admin_staging"
+
+  fly:db:set-password:admin:prod:
+    desc: "Set admin break-glass password on production (see --summary for usage)"
+    summary: |
+      Set a break-glass password for an admin user on production.
+
+      Requires fly:db:proxy:admin running in another terminal.
+
+      Usage:
+        task fly:db:set-password:admin:prod -- -e admin@example.com
+    cmds:
+      - task: fly:check:admin-prod
+      - cargo run -p naked-pineapple-cli -- admin set-password {{.CLI_ARGS}}
+    env:
+      ADMIN_DATABASE_URL: "postgres://admin_admin:{{.FLY_POSTGRES_ADMIN_ADMIN_PASSWORD}}@localhost:15433/np_admin"
+
   # --- sqlx prepare ---
 
   fly:db:sqlx:staging:

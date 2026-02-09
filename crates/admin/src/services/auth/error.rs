@@ -52,12 +52,8 @@ pub enum AdminAuthError {
     PasswordNotSet,
 
     /// Password hashing/verification error.
-    #[error("password processing error: {0}")]
-    PasswordHash(String),
-
-    /// Password does not meet minimum requirements.
-    #[error("password must be at least 12 characters")]
-    PasswordTooShort,
+    #[error(transparent)]
+    Password(#[from] naked_pineapple_crypto::PasswordError),
 
     /// Repository/database error.
     #[error("database error: {0}")]

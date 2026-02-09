@@ -1,0 +1,17 @@
+[package]
+name = "naked-pineapple-crypto"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "Cryptographic utilities for Naked Pineapple (password hashing)"
+publish = false
+
+[lints]
+workspace = true
+
+[dependencies]
+argon2 = "0.5"
+secrecy = { workspace = true }
+thiserror = { workspace = true }

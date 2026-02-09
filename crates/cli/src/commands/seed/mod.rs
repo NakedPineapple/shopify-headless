@@ -4,15 +4,19 @@
 //! via `OpenAI`, and inserts them into the `tool_example_queries` table for
 //! embedding-based tool selection.
 
+mod db;
+mod error;
+mod seeder;
+
 use std::path::Path;
 
 use secrecy::SecretString;
+use sqlx::PgPool;
 use tracing::{error, info};
 
-use naked_pineapple_admin::db;
-use naked_pineapple_admin::tool_selection::{
-    EmbeddingClient, ToolExamplesConfig, seed_from_file, validate_config,
-};
+use naked_pineapple_services::openai::EmbeddingClient;
+
+use seeder::{ToolExamplesConfig, seed_from_file, validate_config};
 
 /// Seed tool examples from a YAML file.
 ///
@@ -29,19 +33,15 @@ pub async fn tool_examples(
     file_path: &str,
     clear_existing: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    // Load environment variables
     dotenvy::dotenv().ok();
 
-    // Get required environment variables
-    let database_url = std::env::var("ADMIN_DATABASE_URL")
-        .map(SecretString::from)
-        .map_err(|_| "ADMIN_DATABASE_URL not set")?;
+    let database_url =
+        std::env::var("ADMIN_DATABASE_URL").map_err(|_| "ADMIN_DATABASE_URL not set")?;
 
     let openai_api_key = std::env::var("OPENAI_API_KEY")
         .map(SecretString::from)
         .map_err(|_| "OPENAI_API_KEY not set")?;
 
-    // Verify file exists
     let path = Path::new(file_path);
     if !path.exists() {
         return Err(format!("File not found: {file_path}").into());
@@ -68,7 +68,7 @@ pub async fn tool_examples(
     info!("Configuration validated successfully");
 
     // Connect to database
-    let pool = db::create_pool(&database_url).await?;
+    let pool = PgPool::connect(&database_url).await?;
     info!("Connected to database");
 
     // Create embedding client
@@ -100,17 +100,15 @@ pub async fn tool_examples(
 ///
 /// Returns an error if database connection fails.
 pub async fn tool_examples_stats() -> Result<(), Box<dyn std::error::Error>> {
-    // Load environment variables
     dotenvy::dotenv().ok();
 
-    let database_url = std::env::var("ADMIN_DATABASE_URL")
-        .map(SecretString::from)
-        .map_err(|_| "ADMIN_DATABASE_URL not set")?;
+    let database_url =
+        std::env::var("ADMIN_DATABASE_URL").map_err(|_| "ADMIN_DATABASE_URL not set")?;
 
-    let pool = db::create_pool(&database_url).await?;
+    let pool = PgPool::connect(&database_url).await?;
 
-    let total = naked_pineapple_admin::db::tool_examples::get_total_count(&pool).await?;
-    let by_domain = naked_pineapple_admin::db::tool_examples::get_domain_counts(&pool).await?;
+    let total = db::get_total_count(&pool).await?;
+    let by_domain = db::get_domain_counts(&pool).await?;
 
     info!("Tool Examples Statistics");
     info!("========================");

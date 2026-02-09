@@ -27,17 +27,12 @@
 //! tool execution, it's added as a new example (with `is_learned = true`).
 
 mod classifier;
-mod embeddings;
 mod error;
-pub mod seeder;
 mod selector;
 
 pub use classifier::DomainClassifier;
-pub use embeddings::EmbeddingClient;
 pub use error::ToolSelectionError;
-pub use seeder::{
-    SeedResult, ToolExampleConfig, ToolExamplesConfig, seed_from_file, validate_config,
-};
+pub use naked_pineapple_services::openai::EmbeddingClient;
 pub use selector::ToolSelector;
 
 /// Available tool domains.

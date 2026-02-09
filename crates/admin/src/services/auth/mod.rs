@@ -9,10 +9,7 @@ mod error;
 
 pub use error::AdminAuthError;
 
-use argon2::password_hash::SaltString;
-use argon2::password_hash::rand_core::OsRng;
-use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
-use secrecy::{ExposeSecret, SecretString};
+use secrecy::SecretString;
 use sqlx::PgPool;
 use tracing::{info, warn};
 use uuid::Uuid;
@@ -280,7 +277,7 @@ impl<'a> AdminAuthService<'a> {
             return Err(AdminAuthError::PasswordNotSet);
         };
 
-        if !Self::verify_password(password, &hash)? {
+        if !naked_pineapple_crypto::verify_password(password, &hash)? {
             warn!(
                 user_id = %user.id.as_i32(),
                 email = %email.as_str(),
@@ -304,19 +301,14 @@ impl<'a> AdminAuthService<'a> {
     ///
     /// # Errors
     ///
-    /// Returns `AdminAuthError::PasswordTooShort` if under 12 characters.
-    /// Returns `AdminAuthError::PasswordHash` if hashing fails.
+    /// Returns `AdminAuthError::Password` if under 12 characters or hashing fails.
     /// Returns `AdminAuthError::Repository` for database errors.
     pub async fn set_password(
         &self,
         target_user_id: AdminUserId,
         password: &SecretString,
     ) -> Result<(), AdminAuthError> {
-        if password.expose_secret().len() < 12 {
-            return Err(AdminAuthError::PasswordTooShort);
-        }
-
-        let hash = Self::hash_password(password)?;
+        let hash = naked_pineapple_crypto::hash_password(password)?;
         self.users
             .set_password_hash(target_user_id, Some(&hash))
             .await?;
@@ -345,32 +337,11 @@ impl<'a> AdminAuthService<'a> {
         Ok(())
     }
 
-    /// Hash a password using Argon2id with a random salt.
-    fn hash_password(password: &SecretString) -> Result<String, AdminAuthError> {
-        let salt = SaltString::generate(&mut OsRng);
-        let argon2 = Argon2::default();
-        let hash = argon2
-            .hash_password(password.expose_secret().as_bytes(), &salt)
-            .map_err(|e| AdminAuthError::PasswordHash(e.to_string()))?;
-        Ok(hash.to_string())
-    }
-
-    /// Verify a password against a stored Argon2id hash.
-    fn verify_password(password: &SecretString, hash: &str) -> Result<bool, AdminAuthError> {
-        let parsed =
-            PasswordHash::new(hash).map_err(|e| AdminAuthError::PasswordHash(e.to_string()))?;
-        Ok(Argon2::default()
-            .verify_password(password.expose_secret().as_bytes(), &parsed)
-            .is_ok())
-    }
-
     /// Perform a dummy password hash to prevent timing leaks when user is not found.
     fn dummy_verify(password: &SecretString) {
         // Use a fixed, valid PHC-format hash for constant-time comparison
         let dummy = "$argon2id$v=19$m=19456,t=2,p=1$AAAAAAAAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
-        if let Ok(parsed) = PasswordHash::new(dummy) {
-            let _ = Argon2::default().verify_password(password.expose_secret().as_bytes(), &parsed);
-        }
+        let _ = naked_pineapple_crypto::verify_password(password, dummy);
     }
 
     // =========================================================================

@@ -8,6 +8,9 @@
 //!
 //! # Create a new admin user directly (without passkey)
 //! np-cli admin create -e admin@example.com -n "Admin Name" -r super_admin
+//!
+//! # Set a break-glass password for an admin user
+//! np-cli admin set-password -e admin@example.com
 //! ```
 //!
 //! # Environment Variables
@@ -16,6 +19,7 @@
 //! - `ADMIN_HOSTS` - Comma-separated hostnames for generating setup links
 
 use naked_pineapple_core::AdminRole;
+use secrecy::SecretString;
 use sqlx::PgPool;
 use thiserror::Error;
 
@@ -45,6 +49,22 @@ pub enum AdminError {
     /// Invite already exists.
     #[error("Invite already exists for email: {0}")]
     InviteExists(String),
+
+    /// User not found.
+    #[error("No admin user found with email: {0}")]
+    UserNotFound(String),
+
+    /// Passwords do not match.
+    #[error("Passwords do not match")]
+    PasswordMismatch,
+
+    /// Password input error.
+    #[error("Failed to read password: {0}")]
+    PasswordInput(std::io::Error),
+
+    /// Password hashing error.
+    #[error(transparent)]
+    Password(#[from] naked_pineapple_crypto::PasswordError),
 }
 
 /// Create a new admin user.
@@ -219,4 +239,63 @@ pub async fn create_invite(
     );
 
     Ok(invite_id)
+}
+
+/// Set a break-glass password for an admin user.
+///
+/// Prompts for password input twice and hashes with Argon2id before storing.
+///
+/// # Arguments
+///
+/// * `email` - Email address of the admin user
+///
+/// # Errors
+///
+/// Returns an error if the user is not found, passwords don't match,
+/// or the database operation fails.
+pub async fn set_password(email: &str) -> Result<(), AdminError> {
+    dotenvy::dotenv().ok();
+
+    if !email.contains('@') || !email.contains('.') {
+        return Err(AdminError::InvalidEmail(email.to_owned()));
+    }
+
+    let database_url = std::env::var("ADMIN_DATABASE_URL")
+        .map_err(|_| AdminError::MissingEnvVar("ADMIN_DATABASE_URL"))?;
+
+    tracing::info!("Connecting to admin database...");
+    let pool = PgPool::connect(&database_url).await?;
+
+    // Verify user exists
+    let user_id = sqlx::query_scalar!(r#"SELECT id FROM admin.admin_user WHERE email = $1"#, email)
+        .fetch_optional(&pool)
+        .await?
+        .ok_or_else(|| AdminError::UserNotFound(email.to_owned()))?;
+
+    // Prompt for password
+    let password =
+        rpassword::prompt_password("Enter new password: ").map_err(AdminError::PasswordInput)?;
+    let confirm =
+        rpassword::prompt_password("Confirm password: ").map_err(AdminError::PasswordInput)?;
+
+    if password != confirm {
+        return Err(AdminError::PasswordMismatch);
+    }
+
+    let password = SecretString::from(password);
+    let hash = naked_pineapple_crypto::hash_password(&password)?;
+
+    sqlx::query::<sqlx::Postgres>("UPDATE admin.admin_user SET password_hash = $1 WHERE id = $2")
+        .bind(&hash)
+        .bind(user_id)
+        .execute(&pool)
+        .await?;
+
+    tracing::warn!(
+        user_id,
+        email,
+        "Break-glass password SET for admin user via CLI"
+    );
+
+    Ok(())
 }

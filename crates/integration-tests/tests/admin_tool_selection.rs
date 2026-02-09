@@ -7,9 +7,7 @@ use naked_pineapple_admin::claude::tools::{
     all_shopify_tools, filter_tools_by_names, get_tool_by_name, get_tool_domain,
     get_tools_by_domain, requires_confirmation,
 };
-use naked_pineapple_admin::tool_selection::{
-    DOMAINS, ToolExampleConfig, ToolExamplesConfig, validate_config,
-};
+use naked_pineapple_admin::tool_selection::DOMAINS;
 
 // =============================================================================
 // Tool Registry Tests
@@ -154,129 +152,6 @@ fn test_filter_tools_by_names_ignores_unknown() {
 
     let tools = filter_tools_by_names(&names);
     assert_eq!(tools.len(), 2);
-}
-
-// =============================================================================
-// Configuration Validation Tests
-// =============================================================================
-
-#[test]
-fn test_validate_config_valid() {
-    let mut config = ToolExamplesConfig::new();
-    config.insert(
-        "get_orders_low_level_shopify".to_string(),
-        ToolExampleConfig {
-            domain: "orders".to_string(),
-            examples: vec![
-                "Show me recent orders".to_string(),
-                "What orders came in today".to_string(),
-            ],
-        },
-    );
-
-    let errors = validate_config(&config);
-    assert!(
-        errors.is_empty(),
-        "Valid config should have no errors: {errors:?}"
-    );
-}
-
-#[test]
-fn test_validate_config_unknown_tool() {
-    let mut config = ToolExamplesConfig::new();
-    config.insert(
-        "unknown_tool".to_string(),
-        ToolExampleConfig {
-            domain: "orders".to_string(),
-            examples: vec!["Some query".to_string()],
-        },
-    );
-
-    let errors = validate_config(&config);
-    assert!(!errors.is_empty());
-    assert!(errors.iter().any(|e| e.contains("Unknown tool")));
-}
-
-#[test]
-fn test_validate_config_invalid_domain() {
-    let mut config = ToolExamplesConfig::new();
-    config.insert(
-        "get_orders_low_level_shopify".to_string(),
-        ToolExampleConfig {
-            domain: "invalid_domain".to_string(),
-            examples: vec!["Some query".to_string()],
-        },
-    );
-
-    let errors = validate_config(&config);
-    assert!(!errors.is_empty());
-    assert!(errors.iter().any(|e| e.contains("Invalid domain")));
-}
-
-#[test]
-fn test_validate_config_empty_examples() {
-    let mut config = ToolExamplesConfig::new();
-    config.insert(
-        "get_orders_low_level_shopify".to_string(),
-        ToolExampleConfig {
-            domain: "orders".to_string(),
-            examples: vec![],
-        },
-    );
-
-    let errors = validate_config(&config);
-    assert!(!errors.is_empty());
-    assert!(errors.iter().any(|e| e.contains("No examples")));
-}
-
-#[test]
-fn test_validate_config_empty_example_string() {
-    let mut config = ToolExamplesConfig::new();
-    config.insert(
-        "get_orders_low_level_shopify".to_string(),
-        ToolExampleConfig {
-            domain: "orders".to_string(),
-            examples: vec!["Valid query".to_string(), "   ".to_string()],
-        },
-    );
-
-    let errors = validate_config(&config);
-    assert!(!errors.is_empty());
-    assert!(errors.iter().any(|e| e.contains("Empty example")));
-}
-
-// =============================================================================
-// YAML Parsing Tests
-// =============================================================================
-
-#[test]
-fn test_parse_yaml_config() {
-    let yaml = r#"
-get_orders_low_level_shopify:
-  domain: orders
-  examples:
-    - "Show me recent orders"
-    - "What orders came in today?"
-
-cancel_order_low_level_shopify:
-  domain: orders
-  examples:
-    - "Cancel order #1001"
-"#;
-
-    let config: ToolExamplesConfig = serde_yaml_ng::from_str(yaml).expect("Should parse YAML");
-    assert_eq!(config.len(), 2);
-
-    let get_orders = config
-        .get("get_orders_low_level_shopify")
-        .expect("Should have get_orders_low_level_shopify");
-    assert_eq!(get_orders.domain, "orders");
-    assert_eq!(get_orders.examples.len(), 2);
-
-    let cancel_order = config
-        .get("cancel_order_low_level_shopify")
-        .expect("Should have cancel_order_low_level_shopify");
-    assert_eq!(cancel_order.examples.len(), 1);
 }
 
 // =============================================================================

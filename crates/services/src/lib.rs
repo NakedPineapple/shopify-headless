@@ -5,6 +5,7 @@
 //!
 //! - [`claude`] - Anthropic Claude API client (streaming + non-streaming)
 //! - [`klaviyo`] - Klaviyo API client for newsletter and helpdesk
+//! - [`openai`] - `OpenAI` embedding client for semantic similarity search
 //! - [`slack`] - Slack Web API client for notifications and approvals
 //! - [`email`] - SMTP email delivery via lettre
 //! - [`config`] - Shared configuration types loaded from environment variables
@@ -15,4 +16,5 @@ pub mod claude;
 pub mod config;
 pub mod email;
 pub mod klaviyo;
+pub mod openai;
 pub mod slack;

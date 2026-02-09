@@ -24,6 +24,9 @@
 //! # Create admin user directly (no passkey)
 //! np-cli admin create -e admin@example.com -n "Admin Name" -r super_admin
 //!
+//! # Set a break-glass password for an admin user
+//! np-cli admin set-password -e admin@example.com
+//!
 //! # Seed tool examples for AI chat
 //! np-cli seed tool-examples --file crates/admin/data/tool_examples.yaml
 //!
@@ -37,6 +40,7 @@
 //! - `migrate rollback` - Rollback database migrations
 //! - `admin invite` - Create invite for new admin (recommended)
 //! - `admin create` - Create admin user directly (no passkey)
+//! - `admin set-password` - Set break-glass password for an admin user
 //! - `seed tool-examples` - Seed tool example queries for AI chat
 //! - `seed tool-examples-stats` - Show tool examples statistics
 
@@ -133,6 +137,12 @@ enum AdminAction {
         #[arg(short = 'x', long, default_value = "7")]
         expires_in_days: i32,
     },
+    /// Set a break-glass password for an admin user
+    SetPassword {
+        /// Admin email address
+        #[arg(short, long)]
+        email: String,
+    },
 }
 
 #[derive(Subcommand)]
@@ -195,6 +205,9 @@ async fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 expires_in_days,
             } => {
                 commands::admin::create_invite(&email, &name, &role, expires_in_days).await?;
+            }
+            AdminAction::SetPassword { email } => {
+                commands::admin::set_password(&email).await?;
             }
         },
         Commands::Seed { action } => match action {

@@ -20,6 +20,7 @@ workspace = true
 
 [dependencies]
 naked-pineapple-core = { workspace = true, features = ["postgres"] }
+naked-pineapple-crypto = { workspace = true }
 naked-pineapple-services = { workspace = true }
 
 # Web framework
@@ -78,7 +79,6 @@ lettre = { version = "0.11", features = ["tokio1-native-tls", "builder"] }
 
 # Security
 secrecy = { workspace = true }
-argon2 = "0.5"
 
 # TLS
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }

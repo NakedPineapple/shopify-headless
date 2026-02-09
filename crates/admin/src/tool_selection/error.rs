@@ -13,7 +13,7 @@ pub enum ToolSelectionError {
 
     /// Failed to generate embeddings.
     #[error("embedding generation failed: {0}")]
-    Embedding(String),
+    Embedding(#[from] naked_pineapple_services::openai::EmbeddingError),
 
     /// Database error.
     #[error("database error: {0}")]
@@ -38,12 +38,4 @@ pub enum ToolSelectionError {
     /// No tools found for query.
     #[error("no tools found for the given query")]
     NoToolsFound,
-
-    /// IO error (file read/write).
-    #[error("IO error: {0}")]
-    Io(String),
-
-    /// Configuration error (YAML parsing, validation).
-    #[error("configuration error: {0}")]
-    Config(String),
 }
