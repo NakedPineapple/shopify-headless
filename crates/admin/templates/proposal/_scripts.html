@@ -1,0 +1,98 @@
+    <script>
+    (function() {
+        // ── Scroll-triggered entrance animations ──
+        const fadeObserver = new IntersectionObserver(function(entries) {
+            for (let i = 0; i < entries.length; i++) {
+                if (entries[i].isIntersecting) {
+                    entries[i].target.classList.add('visible');
+                    fadeObserver.unobserve(entries[i].target);
+                }
+            }
+        }, { threshold: 0.15 });
+
+        const fadeEls = document.querySelectorAll('.fade-in');
+        for (let i = 0; i < fadeEls.length; i++) {
+            fadeObserver.observe(fadeEls[i]);
+        }
+
+        // ── Active sidebar nav tracking ──
+        const navLinks = document.querySelectorAll('.sidebar-nav a');
+        const sections = [];
+
+        for (let i = 0; i < navLinks.length; i++) {
+            var id = navLinks[i].getAttribute('data-section');
+            var el = document.getElementById(id);
+            if (el) sections.push({ id: id, el: el });
+        }
+
+        var currentActive = '';
+
+        const sectionObserver = new IntersectionObserver(function(entries) {
+            // Find the topmost visible section
+            var visible = [];
+            for (let i = 0; i < entries.length; i++) {
+                if (entries[i].isIntersecting) {
+                    visible.push(entries[i].target.id);
+                }
+            }
+
+            if (visible.length > 0) {
+                // Pick the one closest to top of viewport
+                var best = visible[0];
+                var bestTop = Infinity;
+                for (let i = 0; i < visible.length; i++) {
+                    var rect = document.getElementById(visible[i]).getBoundingClientRect();
+                    if (rect.top < bestTop && rect.top > -rect.height / 2) {
+                        bestTop = rect.top;
+                        best = visible[i];
+                    }
+                }
+
+                if (best !== currentActive) {
+                    currentActive = best;
+                    for (let i = 0; i < navLinks.length; i++) {
+                        if (navLinks[i].getAttribute('data-section') === best) {
+                            navLinks[i].classList.add('active');
+                        } else {
+                            navLinks[i].classList.remove('active');
+                        }
+                    }
+                }
+            }
+        }, { threshold: 0.2 });
+
+        for (let i = 0; i < sections.length; i++) {
+            sectionObserver.observe(sections[i].el);
+        }
+
+        // ── Mobile drawer toggle ──
+        var hamburger = document.getElementById('hamburger');
+        var sidebar = document.getElementById('sidebar');
+        var overlay = document.getElementById('drawer-overlay');
+
+        function openDrawer() {
+            sidebar.classList.add('open');
+            overlay.classList.add('open');
+        }
+
+        function closeDrawer() {
+            sidebar.classList.remove('open');
+            overlay.classList.remove('open');
+        }
+
+        hamburger.addEventListener('click', function() {
+            if (sidebar.classList.contains('open')) {
+                closeDrawer();
+            } else {
+                openDrawer();
+            }
+        });
+
+        overlay.addEventListener('click', closeDrawer);
+
+        // Close drawer on nav link click (mobile)
+        for (let i = 0; i < navLinks.length; i++) {
+            navLinks[i].addEventListener('click', closeDrawer);
+        }
+    })();
+    </script>
