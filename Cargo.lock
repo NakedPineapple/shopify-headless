@@ -2660,6 +2660,7 @@ dependencies = [
  "dotenvy",
  "naked-pineapple-services",
  "reqwest 0.13.2",
+ "rust_decimal",
  "secrecy",
  "sentry",
  "sentry-tower",

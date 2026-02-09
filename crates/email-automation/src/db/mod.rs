@@ -4,6 +4,7 @@
 //! New tables for email triage, automation logs, and outbound queues
 //! are added via admin's migration directory.
 
+pub mod abandoned_cart;
 pub mod inbound_email;
 pub mod outbound_queue;
 

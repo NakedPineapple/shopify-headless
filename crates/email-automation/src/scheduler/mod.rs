@@ -16,6 +16,7 @@ use tokio::time::interval;
 use crate::outbound;
 use crate::state::AppState;
 use crate::triage;
+use crate::workflows;
 
 /// Scheduler that runs periodic automation tasks.
 pub struct Scheduler {
@@ -123,13 +124,24 @@ impl Scheduler {
         outbound::poller::poll_deliveries(pool, shopify, poll_minutes, review_delay).await;
     }
 
-    /// Check for abandoned carts (placeholder for Phase 4).
-    #[expect(
-        clippy::unused_async,
-        reason = "will be async in Phase 4; select! requires consistent arm types"
-    )]
+    /// Detect abandoned carts, trigger Klaviyo recovery flows, and check for recoveries.
     async fn check_abandoned_carts(&self) {
-        tracing::debug!("abandoned cart check: not yet implemented");
+        let (Some(shopify), Some(klaviyo)) = (self.state.shopify(), self.state.klaviyo()) else {
+            return;
+        };
+
+        let config = &self.state.config().scheduler;
+        let poll_window = config.cart_check_interval_secs / 60 + 5;
+
+        let clients = workflows::abandoned_cart::AbandonedCartClients {
+            pool: self.state.pool(),
+            shopify,
+            klaviyo,
+            abandon_delay_minutes: config.cart_abandon_delay_minutes,
+            poll_window_minutes: poll_window,
+        };
+
+        workflows::abandoned_cart::run(&clients).await;
     }
 
     /// Check for low stock items (placeholder for Phase 5).

@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE admin.abandoned_cart\n        SET recovery_status = 'first_email_sent',\n            first_email_at = NOW()\n        WHERE id = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "36c385b136233cddcb608c757b187b1e809c1d55f2f643d67f203e8ad36328c4"
+}

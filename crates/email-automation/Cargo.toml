@@ -23,7 +23,17 @@ axum = { workspace = true }
 tokio = { workspace = true }
 
 # Database
-sqlx = { workspace = true }
+# The "time" feature is required here but not in admin/storefront because
+# `cargo sqlx prepare` compiles each crate in isolation. The admin crate gets
+# sqlx's "time" feature transitively via `tower-sessions-sqlx-store`, and when
+# building the full workspace Cargo unifies features so every crate benefits.
+# But `cargo sqlx prepare` runs from this crate's directory, so sqlx only sees
+# features declared here. Without "time", the offline macro expansion resolves
+# TIMESTAMPTZ to `time::OffsetDateTime` (from the cached .sqlx/ metadata
+# generated during a workspace build) but the `Encode<Postgres>` impl for
+# `OffsetDateTime` is gated behind the "time" feature, causing compilation to
+# fail. Adding it explicitly ensures `sqlx prepare` succeeds in isolation.
+sqlx = { workspace = true, features = ["time"] }
 
 # Serialization
 serde = { workspace = true }
@@ -45,6 +55,7 @@ tracing-subscriber = { workspace = true }
 dotenvy = { workspace = true }
 chrono = { workspace = true }
 time = "0.3"
+rust_decimal = { workspace = true }
 
 # Security
 secrecy = { workspace = true }

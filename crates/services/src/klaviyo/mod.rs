@@ -10,6 +10,7 @@
 //! - API Version: `2024-10-15` (specified via `revision` header)
 
 mod campaigns;
+pub mod events;
 mod helpdesk;
 mod types;
 

@@ -131,6 +131,8 @@ pub struct SchedulerConfig {
     pub order_poll_interval_secs: u64,
     /// Days after delivery to send a review request email.
     pub review_request_delay_days: u64,
+    /// Minutes of inactivity before a checkout is considered abandoned.
+    pub cart_abandon_delay_minutes: u64,
 }
 
 impl SchedulerConfig {
@@ -146,6 +148,7 @@ impl SchedulerConfig {
             outbound_interval_secs: parse_env_u64("AUTOMATION_OUTBOUND_INTERVAL_SECS", 30),
             order_poll_interval_secs: parse_env_u64("AUTOMATION_ORDER_POLL_INTERVAL_SECS", 300),
             review_request_delay_days: parse_env_u64("AUTOMATION_REVIEW_REQUEST_DELAY_DAYS", 7),
+            cart_abandon_delay_minutes: parse_env_u64("AUTOMATION_CART_ABANDON_DELAY_MINUTES", 60),
         }
     }
 }
@@ -240,5 +243,6 @@ mod tests {
         assert_eq!(config.outbound_interval_secs, 30);
         assert_eq!(config.order_poll_interval_secs, 300);
         assert_eq!(config.review_request_delay_days, 7);
+        assert_eq!(config.cart_abandon_delay_minutes, 60);
     }
 }

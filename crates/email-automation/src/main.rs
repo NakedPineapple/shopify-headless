@@ -40,6 +40,7 @@ mod shopify;
 mod slack;
 mod state;
 mod triage;
+mod workflows;
 
 use config::AutomationConfig;
 use microsoft_graph::M365Client;

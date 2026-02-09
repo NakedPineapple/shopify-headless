@@ -3,6 +3,7 @@
 //! Provides order and product lookups needed by the response composer to
 //! include real Shopify data in draft replies.
 
+pub mod checkouts;
 pub mod client;
 pub mod fulfillments;
 pub mod orders;
