@@ -58,7 +58,7 @@ task fly:db:migrate:storefront:staging  # Terminal 2: run migrations
 Two separate PostgreSQL databases enforce security boundaries:
 
 - **np_storefront** - User accounts, sessions, search index
-- **np_admin** - Admin users, OAuth tokens, chat history
+- **np_admin** - Admin users, OAuth tokens, chat history. Also used by the `email-automation` crate (migrations in `crates/admin/migrations/`, queries use `admin.` schema prefix).
 
 The admin binary has no access to storefront user data and vice versa. Admin is accessible only via Tailscale VPN.
 
@@ -79,6 +79,12 @@ Migrations are SQL files in `crates/{app}/migrations/` and are embedded at compi
 2. Run `task sqlx:prepare` to update offline cache
 3. Commit `.sqlx/` directory
 
+Migrations must use their crate's schema explicitly (e.g., `admin` for admin, `storefront` for storefront):
+- Begin with `SET search_path TO {schema}, public;`
+- Qualify table names as `{schema}.table_name`
+- Use `DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'utc')` for timestamps
+- Create `updated_at` triggers via `{schema}.update_updated_at_column()`
+
 ## Code Patterns
 
 ### SQLx Query Macros
@@ -90,6 +96,15 @@ All database interactions must use SQLx's compile-time verified query macros:
 
 Do not use the runtime `query()` or `query_as()` functions. The macros ensure SQL is validated against the database schema at compile time.
 
+### SQLx Type Mapping (chrono vs time)
+
+SQLx has both `chrono` and `time` features active because `time` is pulled in transitively by `webauthn-rs`, `tower-sessions`, `reqwest`, and other dependencies. This causes asymmetric behavior:
+
+- **Reading (SELECT)**: Works with chrono types via explicit type annotations (e.g., `as "received_date: NaiveDate"`)
+- **Writing (INSERT/UPDATE)**: SQLx may resolve bind parameters to `time` types instead of chrono
+
+Which columns are affected depends on workspace feature unification in each crate. The public API uses chrono types consistently; conversion to `time` types happens internally when binding parameters. See `to_time_date` in `crates/admin/src/db/inventory_lot.rs` for `DATE` columns and `to_time_offset` in `crates/email-automation/src/db/mod.rs` for `TIMESTAMPTZ` columns.
+
 ### SQLx Offline Mode
 
 Queries are verified at compile time using cached metadata in `.sqlx/`. After changing SQL queries:
@@ -100,6 +115,10 @@ task sqlx:prepare          # Regenerate cache
 
 Commit the updated `.sqlx/` directory.
 
+### Askama Templates
+
+Askama macros can access fields from the parent template that calls them. Avoid passing redundant parameters to macros when the data is already available through the parent scope.
+
 ### Error Handling
 
 Use `thiserror` for custom error types. Each crate has an `error.rs` defining its error enum.
@@ -109,6 +128,7 @@ Use `thiserror` for custom error types. Each crate has an `error.rs` defining it
 - Rust 2024 edition with `#![forbid(unsafe_code)]` in production
 - Prices use `rust_decimal::Decimal` wrapped in core `Price` type
 - IDs are type-safe via core `EntityId<T>` wrapper
+- Clippy enforces a maximum of 7 function arguments. Use parameter structs to stay under the limit (e.g., `ErrorParams`, `ProductErrorParams`).
 
 ### Function Length Limit
 
