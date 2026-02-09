@@ -8,3 +8,4 @@
 pub mod abandoned_cart;
 pub mod low_stock;
 pub mod segmentation;
+pub mod subscription_lifecycle;

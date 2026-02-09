@@ -1,0 +1,76 @@
+# =============================================================================
+# Stage 1: Chef base image with cargo-chef installed
+# =============================================================================
+FROM rust:1.93.0-trixie@sha256:e35d0f677e0e0be6f4b4f93bf16e6f93ab4f427dc440a0ef12511026f8b7d7e3 AS chef
+RUN cargo install cargo-chef --locked
+WORKDIR /app
+
+# =============================================================================
+# Stage 2: Planner - creates recipe.json capturing the exact dependency graph
+# =============================================================================
+FROM chef AS planner
+COPY Cargo.toml Cargo.lock ./
+COPY crates ./crates
+RUN cargo chef prepare --recipe-path recipe.json
+
+# =============================================================================
+# Stage 3: Deps builder - compiles dependencies only (cached when recipe unchanged)
+# =============================================================================
+FROM chef AS deps-builder
+
+# Install build dependencies including mold linker for faster linking
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    pkg-config=1.8.1-4 \
+    libssl-dev=3.5.4-1~deb13u2 \
+    mold=2.37.1+dfsg-1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Use mold linker for faster linking
+ENV RUSTFLAGS="-C link-arg=-fuse-ld=mold"
+
+COPY --from=planner /app/recipe.json recipe.json
+RUN cargo chef cook --release --recipe-path recipe.json
+
+# =============================================================================
+# Stage 4: Builder - compiles actual source code (deps already cached)
+# =============================================================================
+FROM deps-builder AS builder
+
+# Use sqlx offline mode (reads from .sqlx cache instead of live database)
+ENV SQLX_OFFLINE=true
+
+COPY . .
+
+# Build application (no CSS/Tailwind — background worker only)
+RUN cargo build --release --locked -p naked-pineapple-email-automation
+
+# =============================================================================
+# Stage 5: Runtime - distroless image for production
+# =============================================================================
+FROM gcr.io/distroless/cc-debian13@sha256:d7ac2f9af248f31fe6270002755722afdf6875e0e49cd52b9150208e6a23875c AS runtime
+
+# OCI image metadata (values injected by CI via --build-arg or Docker --label)
+ARG VERSION=0.1.0
+ARG COMMIT_SHA
+ARG BUILD_DATE
+LABEL org.opencontainers.image.title="Naked Pineapple Email Automation" \
+      org.opencontainers.image.description="Background email automation service for Naked Pineapple" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.authors="Adam Walz <adam@pineappleskinco.com>" \
+      org.opencontainers.image.licenses="MIT OR Apache-2.0" \
+      org.opencontainers.image.source="https://github.com/NakedPineapple/shopify-headless" \
+      org.opencontainers.image.revision="${COMMIT_SHA}" \
+      org.opencontainers.image.created="${BUILD_DATE}" \
+      org.opencontainers.image.vendor="Pineapple Skin Co LLC" \
+      org.opencontainers.image.base.name="gcr.io/distroless/cc-debian13" \
+      org.opencontainers.image.security.no-new-privileges="true"
+
+WORKDIR /app
+
+COPY --from=builder --chown=nonroot:nonroot /app/target/release/naked-pineapple-email-automation /app/server
+COPY --from=builder --chown=nonroot:nonroot /app/crates/email-automation/templates /app/crates/email-automation/templates
+
+USER nonroot
+
+EXPOSE 9092
+ENTRYPOINT ["/app/server"]

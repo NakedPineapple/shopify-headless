@@ -1,0 +1,16 @@
+Payment Issue — Action Required, {{ customer_name }}
+
+We had trouble processing the payment for your subscription. To keep your products coming, please update your payment information.
+
+Affected subscription:
+{% for name in &product_names %}
+- {{ name }}
+{% endfor %}
+
+Update your payment method: https://nakedpineapple.co/account
+
+If you need help, don't hesitate to reach out — we're here for you!
+
+—
+Naked Pineapple — Natural Skincare
+Questions? Reach out at info@nakedpineapple.co

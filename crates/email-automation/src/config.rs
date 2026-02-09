@@ -130,6 +130,8 @@ pub struct SchedulerConfig {
     pub outbound_interval_secs: u64,
     /// Shopify order/fulfillment poll interval in seconds.
     pub order_poll_interval_secs: u64,
+    /// Subscription lifecycle check interval in seconds.
+    pub subscription_check_interval_secs: u64,
     /// Days after delivery to send a review request email.
     pub review_request_delay_days: u64,
     /// Minutes of inactivity before a checkout is considered abandoned.
@@ -138,6 +140,10 @@ pub struct SchedulerConfig {
     pub low_stock_threshold: i32,
     /// Email recipients for low stock alerts (empty = no email alerts).
     pub low_stock_email_recipients: Vec<String>,
+    /// Days before subscription renewal to send a reminder.
+    pub subscription_renewal_reminder_days: u64,
+    /// Days after subscription cancellation to send a win-back email.
+    pub subscription_winback_delay_days: u64,
 }
 
 impl SchedulerConfig {
@@ -152,6 +158,10 @@ impl SchedulerConfig {
             ),
             outbound_interval_secs: parse_env_u64("AUTOMATION_OUTBOUND_INTERVAL_SECS", 30),
             order_poll_interval_secs: parse_env_u64("AUTOMATION_ORDER_POLL_INTERVAL_SECS", 300),
+            subscription_check_interval_secs: parse_env_u64(
+                "AUTOMATION_SUBSCRIPTION_CHECK_INTERVAL_SECS",
+                86400,
+            ),
             review_request_delay_days: parse_env_u64("AUTOMATION_REVIEW_REQUEST_DELAY_DAYS", 7),
             cart_abandon_delay_minutes: parse_env_u64("AUTOMATION_CART_ABANDON_DELAY_MINUTES", 60),
             low_stock_threshold: get_env_or_default("AUTOMATION_LOW_STOCK_THRESHOLD", "10")
@@ -165,6 +175,14 @@ impl SchedulerConfig {
                         .collect()
                 })
                 .unwrap_or_default(),
+            subscription_renewal_reminder_days: parse_env_u64(
+                "AUTOMATION_SUBSCRIPTION_RENEWAL_REMINDER_DAYS",
+                3,
+            ),
+            subscription_winback_delay_days: parse_env_u64(
+                "AUTOMATION_SUBSCRIPTION_WINBACK_DELAY_DAYS",
+                14,
+            ),
         }
     }
 }

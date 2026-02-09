@@ -284,6 +284,122 @@ fn convert_stock_variants(variants: &[LowStockVariantData]) -> Vec<TemplateStock
 }
 
 // ---------------------------------------------------------------------------
+// Subscription Renewal Reminder
+// ---------------------------------------------------------------------------
+
+#[derive(Template)]
+#[template(path = "email/subscription_renewal.html")]
+pub struct SubscriptionRenewalHtml {
+    pub customer_name: String,
+    pub renewal_date: String,
+    pub product_names: Vec<String>,
+}
+
+#[derive(Template)]
+#[template(path = "email/subscription_renewal.txt")]
+pub struct SubscriptionRenewalText {
+    pub customer_name: String,
+    pub renewal_date: String,
+    pub product_names: Vec<String>,
+}
+
+impl SubscriptionRenewalHtml {
+    pub fn from_data(data: &super::SubscriptionRenewalData) -> Self {
+        Self {
+            customer_name: data.customer_name.clone(),
+            renewal_date: data.renewal_date.clone(),
+            product_names: data.product_names.clone(),
+        }
+    }
+}
+
+impl SubscriptionRenewalText {
+    pub fn from_data(data: &super::SubscriptionRenewalData) -> Self {
+        Self {
+            customer_name: data.customer_name.clone(),
+            renewal_date: data.renewal_date.clone(),
+            product_names: data.product_names.clone(),
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Payment Failure
+// ---------------------------------------------------------------------------
+
+#[derive(Template)]
+#[template(path = "email/payment_failure.html")]
+pub struct PaymentFailureHtml {
+    pub customer_name: String,
+    pub product_names: Vec<String>,
+}
+
+#[derive(Template)]
+#[template(path = "email/payment_failure.txt")]
+pub struct PaymentFailureText {
+    pub customer_name: String,
+    pub product_names: Vec<String>,
+}
+
+impl PaymentFailureHtml {
+    pub fn from_data(data: &super::PaymentFailureData) -> Self {
+        Self {
+            customer_name: data.customer_name.clone(),
+            product_names: data.product_names.clone(),
+        }
+    }
+}
+
+impl PaymentFailureText {
+    pub fn from_data(data: &super::PaymentFailureData) -> Self {
+        Self {
+            customer_name: data.customer_name.clone(),
+            product_names: data.product_names.clone(),
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Subscription Win-Back
+// ---------------------------------------------------------------------------
+
+#[derive(Template)]
+#[template(path = "email/subscription_winback.html")]
+pub struct WinBackHtml {
+    pub customer_name: String,
+    pub product_names: Vec<String>,
+    pub store_url: String,
+}
+
+#[derive(Template)]
+#[template(path = "email/subscription_winback.txt")]
+pub struct WinBackText {
+    pub customer_name: String,
+    pub product_names: Vec<String>,
+    pub store_url: String,
+}
+
+impl WinBackHtml {
+    pub fn from_data(data: &super::WinBackData) -> Self {
+        Self {
+            customer_name: data.customer_name.clone(),
+            product_names: data.product_names.clone(),
+            store_url: data.store_url.clone(),
+        }
+    }
+}
+
+impl WinBackText {
+    pub fn from_data(data: &super::WinBackData) -> Self {
+        Self {
+            customer_name: data.customer_name.clone(),
+            product_names: data.product_names.clone(),
+            store_url: data.store_url.clone(),
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 

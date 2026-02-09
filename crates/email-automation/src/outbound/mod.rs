@@ -27,6 +27,9 @@ pub enum EmailType {
     DeliveryNotification,
     ReviewRequest,
     LowStockAlert,
+    SubscriptionRenewalReminder,
+    SubscriptionPaymentFailure,
+    SubscriptionWinBack,
 }
 
 impl EmailType {
@@ -39,6 +42,9 @@ impl EmailType {
             Self::DeliveryNotification => "delivery_notification",
             Self::ReviewRequest => "review_request",
             Self::LowStockAlert => "low_stock_alert",
+            Self::SubscriptionRenewalReminder => "subscription_renewal_reminder",
+            Self::SubscriptionPaymentFailure => "subscription_payment_failure",
+            Self::SubscriptionWinBack => "subscription_winback",
         }
     }
 }
@@ -279,6 +285,129 @@ pub async fn enqueue_low_stock_alert(
             reference_id: Some(product_id),
             reference_type: Some("low_stock_alert"),
             scheduled_for: None,
+        },
+    )
+    .await?;
+
+    Ok(id)
+}
+
+/// Data needed to render and queue a subscription renewal reminder email.
+pub struct SubscriptionRenewalData {
+    pub customer_name: String,
+    pub renewal_date: String,
+    pub product_names: Vec<String>,
+}
+
+/// Render and enqueue a subscription renewal reminder email.
+#[instrument(skip(pool, data))]
+pub async fn enqueue_subscription_renewal_reminder(
+    pool: &sqlx::PgPool,
+    to_address: &str,
+    to_name: Option<&str>,
+    reference_id: &str,
+    data: &SubscriptionRenewalData,
+) -> Result<i64, OutboundError> {
+    let html = templates::SubscriptionRenewalHtml::from_data(data).render()?;
+    let text = templates::SubscriptionRenewalText::from_data(data).render()?;
+    let subject = "Your Subscription Renews Soon — Naked Pineapple".to_string();
+
+    debug!("queueing subscription renewal reminder email");
+
+    let id = outbound_queue::enqueue(
+        pool,
+        &EnqueueParams {
+            email_type: EmailType::SubscriptionRenewalReminder.as_str(),
+            to_address,
+            to_name,
+            subject: &subject,
+            body_html: &html,
+            body_text: &text,
+            reference_id: Some(reference_id),
+            reference_type: Some("subscription_renewal"),
+            scheduled_for: None,
+        },
+    )
+    .await?;
+
+    Ok(id)
+}
+
+/// Data needed to render and queue a subscription payment failure email.
+pub struct PaymentFailureData {
+    pub customer_name: String,
+    pub product_names: Vec<String>,
+}
+
+/// Render and enqueue a payment failure notification email.
+#[instrument(skip(pool, data))]
+pub async fn enqueue_payment_failure_notification(
+    pool: &sqlx::PgPool,
+    to_address: &str,
+    to_name: Option<&str>,
+    reference_id: &str,
+    data: &PaymentFailureData,
+) -> Result<i64, OutboundError> {
+    let html = templates::PaymentFailureHtml::from_data(data).render()?;
+    let text = templates::PaymentFailureText::from_data(data).render()?;
+    let subject = "Action Required: Subscription Payment Issue — Naked Pineapple".to_string();
+
+    debug!("queueing payment failure notification email");
+
+    let id = outbound_queue::enqueue(
+        pool,
+        &EnqueueParams {
+            email_type: EmailType::SubscriptionPaymentFailure.as_str(),
+            to_address,
+            to_name,
+            subject: &subject,
+            body_html: &html,
+            body_text: &text,
+            reference_id: Some(reference_id),
+            reference_type: Some("payment_failure"),
+            scheduled_for: None,
+        },
+    )
+    .await?;
+
+    Ok(id)
+}
+
+/// Data needed to render and queue a subscription win-back email.
+pub struct WinBackData {
+    pub customer_name: String,
+    pub product_names: Vec<String>,
+    pub store_url: String,
+}
+
+/// Render and enqueue a subscription win-back email, scheduled for a future date.
+#[instrument(skip(pool, data))]
+pub async fn enqueue_subscription_winback(
+    pool: &sqlx::PgPool,
+    to_address: &str,
+    to_name: Option<&str>,
+    reference_id: &str,
+    data: &WinBackData,
+    scheduled_for: chrono::DateTime<chrono::Utc>,
+) -> Result<i64, OutboundError> {
+    let html = templates::WinBackHtml::from_data(data).render()?;
+    let text = templates::WinBackText::from_data(data).render()?;
+    let subject = "We Miss You — Come Back to Naked Pineapple".to_string();
+
+    debug!("queueing subscription win-back email");
+
+    let id = outbound_queue::enqueue(
+        pool,
+        &EnqueueParams {
+            email_type: EmailType::SubscriptionWinBack.as_str(),
+            to_address,
+            to_name,
+            subject: &subject,
+            body_html: &html,
+            body_text: &text,
+            reference_id: Some(reference_id),
+            reference_type: Some("subscription_winback"),
+            scheduled_for: Some(scheduled_for),
         },
     )
     .await?;

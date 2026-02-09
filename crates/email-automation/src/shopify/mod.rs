@@ -10,5 +10,6 @@ pub mod fulfillments;
 pub mod inventory;
 pub mod orders;
 pub mod products;
+pub mod subscriptions;
 
 pub use client::ShopifyClient;
