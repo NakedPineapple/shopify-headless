@@ -21,6 +21,14 @@
 //! - `AUTOMATION_SEGMENT_SYNC_INTERVAL_SECS` - Segment sync interval (default: 86400)
 //! - `AUTOMATION_LOW_STOCK_EMAIL_RECIPIENTS` - Comma-separated email addresses for alerts
 //! - `AUTOMATION_HEALTH_PORT` - Health check port (default: 9092)
+//! - `WEBHOOK_DATABASE_URL` - Restricted DB connection for webhook handlers
+//! - `WEBHOOK_PORT` - Public webhook listener port (default: 8080)
+//! - `WEBHOOK_BASE_URL` - Public URL for Shopify webhook subscription registration
+//! - `SHOPIFY_WEBHOOK_SECRET` - HMAC secret for Shopify webhook verification
+//! - `GITHUB_WEBHOOK_SECRET` - HMAC secret for GitHub webhook verification
+//! - `SENTRY_WEBHOOK_SECRET` - Secret for Sentry webhook verification
+//! - `FLY_WEBHOOK_TOKEN` - Bearer token for Fly.io webhook verification
+//! - `BETTERSTACK_WEBHOOK_SECRET` - Secret for Better Stack webhook verification
 //! - `SENTRY_DSN` - Sentry error tracking DSN
 
 use secrecy::SecretString;
@@ -49,6 +57,8 @@ pub struct AutomationConfig {
     pub email: Option<EmailConfig>,
     /// Scheduler timing configuration.
     pub scheduler: SchedulerConfig,
+    /// Webhook listener configuration (optional — enables public webhook ingestion).
+    pub webhook: Option<WebhookConfig>,
     /// Health check port.
     pub health_port: u16,
     /// Sentry DSN for error tracking.
@@ -142,6 +152,8 @@ pub struct SchedulerConfig {
     pub subscription_renewal_reminder_days: u64,
     /// Days after subscription cancellation to send a win-back email.
     pub subscription_winback_delay_days: u64,
+    /// Webhook event processing interval in seconds.
+    pub webhook_event_interval_secs: u64,
 }
 
 impl SchedulerConfig {
@@ -179,6 +191,10 @@ impl SchedulerConfig {
                 "AUTOMATION_SUBSCRIPTION_WINBACK_DELAY_DAYS",
                 14,
             ),
+            webhook_event_interval_secs: parse_env_u64(
+                "AUTOMATION_WEBHOOK_EVENT_INTERVAL_SECS",
+                15,
+            ),
         }
     }
 }
@@ -188,6 +204,67 @@ impl ShopifyConfig {
         let store = get_optional_env("SHOPIFY_STORE")?;
         let api_version = get_env_or_default("SHOPIFY_API_VERSION", "2026-01");
         Some(Self { store, api_version })
+    }
+}
+
+/// Configuration for the public webhook listener.
+///
+/// Requires `WEBHOOK_DATABASE_URL` to be set (a restricted-privilege connection).
+/// The public listener is only started if this config is present.
+#[derive(Clone)]
+pub struct WebhookConfig {
+    /// Restricted-privilege database connection URL for webhook handlers.
+    pub database_url: SecretString,
+    /// Port for the public webhook listener.
+    pub port: u16,
+    /// Public base URL for registering Shopify webhook subscriptions.
+    pub base_url: Option<String>,
+    /// HMAC secret for Shopify webhook verification.
+    pub shopify_secret: Option<SecretString>,
+    /// HMAC secret for GitHub webhook verification.
+    pub github_secret: Option<SecretString>,
+    /// Secret for Sentry webhook verification.
+    pub sentry_secret: Option<SecretString>,
+    /// Bearer token for Fly.io webhook verification.
+    pub fly_token: Option<SecretString>,
+    /// Secret for Better Stack webhook verification.
+    pub betterstack_secret: Option<SecretString>,
+}
+
+impl std::fmt::Debug for WebhookConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("WebhookConfig")
+            .field("database_url", &"[REDACTED]")
+            .field("port", &self.port)
+            .field("base_url", &self.base_url)
+            .field("shopify_secret", &self.shopify_secret.as_ref().map(|_| "[REDACTED]"))
+            .field("github_secret", &self.github_secret.as_ref().map(|_| "[REDACTED]"))
+            .field("sentry_secret", &self.sentry_secret.as_ref().map(|_| "[REDACTED]"))
+            .field("fly_token", &self.fly_token.as_ref().map(|_| "[REDACTED]"))
+            .field("betterstack_secret", &self.betterstack_secret.as_ref().map(|_| "[REDACTED]"))
+            .finish()
+    }
+}
+
+impl WebhookConfig {
+    fn from_env() -> Option<Self> {
+        let database_url = get_database_url("WEBHOOK_DATABASE_URL").ok()?;
+
+        let port = get_env_or_default("WEBHOOK_PORT", "8080")
+            .parse::<u16>()
+            .unwrap_or(8080);
+
+        Some(Self {
+            database_url,
+            port,
+            base_url: get_optional_env("WEBHOOK_BASE_URL"),
+            shopify_secret: get_optional_env("SHOPIFY_WEBHOOK_SECRET").map(SecretString::from),
+            github_secret: get_optional_env("GITHUB_WEBHOOK_SECRET").map(SecretString::from),
+            sentry_secret: get_optional_env("SENTRY_WEBHOOK_SECRET").map(SecretString::from),
+            fly_token: get_optional_env("FLY_WEBHOOK_TOKEN").map(SecretString::from),
+            betterstack_secret: get_optional_env("BETTERSTACK_WEBHOOK_SECRET")
+                .map(SecretString::from),
+        })
     }
 }
 
@@ -215,6 +292,8 @@ impl AutomationConfig {
         let email = EmailConfig::from_env().ok();
         let scheduler = SchedulerConfig::from_env();
 
+        let webhook = WebhookConfig::from_env();
+
         let health_port = get_env_or_default("AUTOMATION_HEALTH_PORT", "9092")
             .parse::<u16>()
             .map_err(|e| {
@@ -236,6 +315,7 @@ impl AutomationConfig {
             shopify,
             email,
             scheduler,
+            webhook,
             health_port,
             sentry_dsn,
             sentry_environment,

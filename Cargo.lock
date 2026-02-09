@@ -2647,8 +2647,10 @@ name = "naked-pineapple-automations"
 version = "0.6.0"
 dependencies = [
  "axum",
+ "base64 0.22.1",
  "chrono",
  "dotenvy",
+ "hmac",
  "naked-pineapple-services",
  "reqwest 0.13.2",
  "rust_decimal",
@@ -2657,6 +2659,7 @@ dependencies = [
  "sentry-tower",
  "serde",
  "serde_json",
+ "sha2",
  "sqlx",
  "thiserror 2.0.18",
  "time",

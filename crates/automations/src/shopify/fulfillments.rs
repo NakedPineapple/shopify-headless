@@ -72,6 +72,40 @@ pub struct FulfillmentDetail {
     pub company: Option<String>,
 }
 
+const ORDER_BY_ID_QUERY: &str = r"
+query OrderById($id: ID!) {
+    order(id: $id) {
+        id
+        name
+        email
+        createdAt
+        customer { firstName lastName }
+        lineItems(first: 20) {
+            nodes {
+                title
+                quantity
+                variant { title }
+                originalUnitPriceSet { shopMoney { amount currencyCode } }
+            }
+        }
+        subtotalPriceSet { shopMoney { amount currencyCode } }
+        totalPriceSet { shopMoney { amount currencyCode } }
+        totalShippingPriceSet { shopMoney { amount currencyCode } }
+        totalTaxSet { shopMoney { amount currencyCode } }
+        shippingAddress {
+            firstName lastName
+            address1 address2
+            city provinceCode zip country
+        }
+        fulfillments {
+            status
+            createdAt
+            trackingInfo { number url company }
+        }
+    }
+}
+";
+
 const RECENT_ORDERS_QUERY: &str = r"
 query RecentOrders($query: String!) {
     orders(first: 50, query: $query, sortKey: CREATED_AT, reverse: true) {
@@ -171,6 +205,26 @@ pub async fn fetch_recently_delivered(
         .await?;
 
     Ok(parse_order_details(&data))
+}
+
+/// Fetch a single order by its Shopify global ID.
+///
+/// Used by the webhook event processor to fetch full order details after
+/// receiving a webhook notification.
+#[instrument(skip(client))]
+pub async fn fetch_order_by_id(
+    client: &ShopifyClient,
+    order_gid: &str,
+) -> Result<Option<OrderDetail>, ShopifyError> {
+    let data = client
+        .graphql(ORDER_BY_ID_QUERY, json!({ "id": order_gid }))
+        .await?;
+
+    let order_node = data.get("order");
+    match order_node {
+        Some(node) if !node.is_null() => Ok(parse_single_detail(node)),
+        _ => Ok(None),
+    }
 }
 
 fn parse_order_details(data: &serde_json::Value) -> Vec<OrderDetail> {

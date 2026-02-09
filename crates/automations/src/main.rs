@@ -14,7 +14,8 @@
 //!
 //! # Security
 //!
-//! - No user-facing UI — outbound-only service
+//! - Two separate HTTP listeners isolate public webhook traffic from internal endpoints
+//! - Public webhook handlers use a restricted-privilege database connection
 //! - Single instance deployment (no duplicate processing)
 
 #![cfg_attr(not(test), forbid(unsafe_code))]
@@ -41,6 +42,7 @@ mod shopify;
 mod slack;
 mod state;
 mod triage;
+mod webhooks;
 mod workflows;
 
 use config::AutomationConfig;
@@ -145,6 +147,7 @@ async fn main() {
     });
 
     let health_port = config.health_port;
+    let webhook_config = config.webhook.clone();
     let state = AppState::new(state::AppStateParams {
         config,
         pool: pool.clone(),
@@ -156,29 +159,13 @@ async fn main() {
         email_service,
     });
 
-    // Graceful shutdown channel
     let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
+    tokio::spawn(spawn_internal_listener(state.clone(), health_port));
+    start_webhook_listener(&state, &webhook_config).await;
 
-    // Spawn HTTP listener (health checks + Slack webhook)
-    tokio::spawn(spawn_http_listener(state.clone(), health_port));
-
-    // Spawn scheduler
     let scheduler = Scheduler::new(state);
     let scheduler_handle = tokio::spawn(scheduler.run(shutdown_rx));
-
-    // Wait for shutdown signal
-    shutdown_signal().await;
-    let _ = shutdown_tx.send(true);
-
-    // Give the scheduler a moment to finish its current task
-    let timeout = tokio::time::timeout(Duration::from_secs(30), scheduler_handle);
-    match timeout.await {
-        Ok(Ok(())) => tracing::info!("scheduler stopped cleanly"),
-        Ok(Err(e)) => tracing::error!(error = %e, "scheduler task panicked"),
-        Err(_) => tracing::warn!("scheduler did not stop within 30s timeout"),
-    }
-
-    tracing::info!("automations service shut down");
+    await_graceful_shutdown(shutdown_tx, scheduler_handle).await;
 }
 
 /// Liveness health check.
@@ -206,8 +193,63 @@ async fn health_readiness(State(state): State<AppState>) -> (StatusCode, &'stati
     }
 }
 
-/// Spawn the HTTP listener for health checks and Slack webhooks.
-async fn spawn_http_listener(state: AppState, port: u16) {
+/// Start the public webhook listener and reconcile Shopify webhook subscriptions.
+async fn start_webhook_listener(
+    state: &AppState,
+    webhook_config: &Option<config::WebhookConfig>,
+) {
+    let Some(wh_config) = webhook_config else {
+        tracing::info!("WEBHOOK_DATABASE_URL not set, public webhook listener disabled");
+        return;
+    };
+
+    match db::create_pool(&wh_config.database_url).await {
+        Ok(webhook_pool) => {
+            let webhook_state = webhooks::state::WebhookState::new(webhook_pool, wh_config);
+            tokio::spawn(spawn_webhook_listener(webhook_state, wh_config.port));
+            tracing::info!(port = wh_config.port, "public webhook listener started");
+        }
+        Err(e) => {
+            tracing::warn!(
+                error = %e,
+                "failed to create webhook database pool, public webhooks disabled"
+            );
+            return;
+        }
+    }
+
+    if let Some(shopify) = state.shopify()
+        && let Some(base_url) = &wh_config.base_url
+    {
+        if let Err(e) = shopify::webhook_subscriptions::reconcile(shopify, base_url).await {
+            tracing::warn!(error = %e, "failed to reconcile Shopify webhook subscriptions");
+        }
+    }
+}
+
+/// Wait for shutdown signal and stop the scheduler gracefully.
+async fn await_graceful_shutdown(
+    shutdown_tx: tokio::sync::watch::Sender<bool>,
+    scheduler_handle: tokio::task::JoinHandle<()>,
+) {
+    shutdown_signal().await;
+    let _ = shutdown_tx.send(true);
+
+    let timeout = tokio::time::timeout(Duration::from_secs(30), scheduler_handle);
+    match timeout.await {
+        Ok(Ok(())) => tracing::info!("scheduler stopped cleanly"),
+        Ok(Err(e)) => tracing::error!(error = %e, "scheduler task panicked"),
+        Err(_) => tracing::warn!("scheduler did not stop within 30s timeout"),
+    }
+
+    tracing::info!("automations service shut down");
+}
+
+/// Spawn the internal HTTP listener for health checks and Slack webhooks.
+///
+/// Binds to the health check port (default 9092). This listener is NOT exposed
+/// via `http_service` in Fly.io — it is only reachable from the internal network.
+async fn spawn_internal_listener(state: AppState, port: u16) {
     let app = Router::new()
         .route("/health", get(health))
         .route("/health/ready", get(health_readiness))
@@ -218,15 +260,35 @@ async fn spawn_http_listener(state: AppState, port: u16) {
         .with_state(state);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
-    tracing::info!(%addr, "HTTP listener started (health + webhook)");
+    tracing::info!(%addr, "internal listener started (health + Slack)");
 
     let listener = tokio::net::TcpListener::bind(addr)
         .await
-        .expect("Failed to bind HTTP listener");
+        .expect("Failed to bind internal listener");
 
     axum::serve(listener, app)
         .await
-        .expect("HTTP listener error");
+        .expect("Internal listener error");
+}
+
+/// Spawn the public webhook listener for external service webhooks.
+///
+/// Binds to the webhook port (default 8080). This listener is exposed via
+/// `http_service` in Fly.io and uses a restricted-privilege [`WebhookState`]
+/// with no access to the Shopify Admin API token or other service credentials.
+async fn spawn_webhook_listener(state: webhooks::state::WebhookState, port: u16) {
+    let app = webhooks::router(state);
+
+    let addr = SocketAddr::from(([0, 0, 0, 0], port));
+    tracing::info!(%addr, "public webhook listener started");
+
+    let listener = tokio::net::TcpListener::bind(addr)
+        .await
+        .expect("Failed to bind webhook listener");
+
+    axum::serve(listener, app)
+        .await
+        .expect("Webhook listener error");
 }
 
 /// Wait for shutdown signal (Ctrl+C or SIGTERM).

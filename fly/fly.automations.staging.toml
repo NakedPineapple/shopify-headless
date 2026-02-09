@@ -1,4 +1,4 @@
-app = "nakedpineapple-automations"
+app = "nakedpineapple-automations-staging"
 primary_region = "sjc"
 kill_signal = "SIGTERM"
 kill_timeout = 30
@@ -7,7 +7,7 @@ kill_timeout = 30
   dockerfile = "../docker/Dockerfile.automations"
 
 [env]
-  RUST_LOG = "warn,naked_pineapple_automations=info,tower_http=info,sqlx::query=warn,rustls=warn,h2=warn,hyper_util=warn"
+  RUST_LOG = "info,naked_pineapple_automations=debug,tower_http=info,sqlx::query=warn,rustls=warn,h2=warn,hyper_util=warn"
   SHOPIFY_STORE = "nakedpineapple.myshopify.com"
   SHOPIFY_API_VERSION = "2026-01"
   SMTP_HOST = "outbound.mailhop.org"
@@ -15,11 +15,8 @@ kill_timeout = 30
   SMTP_FROM = "noreply@pineappleskinco.com"
   AUTOMATION_HEALTH_PORT = "9092"
   WEBHOOK_PORT = "8080"
-  SENTRY_ENVIRONMENT = "production"
+  SENTRY_ENVIRONMENT = "staging"
 
-# Public webhook listener (port 8080) — receives Shopify, GitHub, Sentry,
-# Fly.io, and Better Stack webhooks. Uses a restricted-privilege DB connection.
-# Health checks and Slack webhook remain on the internal-only port 9092.
 [http_service]
   internal_port = 8080
   force_https = true

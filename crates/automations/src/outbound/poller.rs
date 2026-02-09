@@ -96,7 +96,7 @@ pub async fn poll_deliveries(
     }
 }
 
-async fn maybe_track_order_confirmed(
+pub(crate) async fn maybe_track_order_confirmed(
     pool: &PgPool,
     klaviyo: &KlaviyoClient,
     order: &OrderDetail,
@@ -140,7 +140,7 @@ async fn maybe_track_order_confirmed(
     Ok(())
 }
 
-async fn maybe_track_order_shipped(
+pub(crate) async fn maybe_track_order_shipped(
     pool: &PgPool,
     klaviyo: &KlaviyoClient,
     order: &OrderDetail,
@@ -190,7 +190,7 @@ async fn maybe_track_order_shipped(
     Ok(())
 }
 
-async fn maybe_track_order_delivered(
+pub(crate) async fn maybe_track_order_delivered(
     pool: &PgPool,
     klaviyo: &KlaviyoClient,
     order: &OrderDetail,

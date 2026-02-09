@@ -4,8 +4,10 @@
 //! - Abandoned cart detection and recovery via Klaviyo flows
 //! - Low stock monitoring with Slack alerts
 //! - Customer segmentation with Shopify tagging and Klaviyo sync
+//! - Webhook event processing (dispatches stored webhook events)
 
 pub mod abandoned_cart;
 pub mod low_stock;
 pub mod segmentation;
 pub mod subscription_lifecycle;
+pub mod webhook_events;

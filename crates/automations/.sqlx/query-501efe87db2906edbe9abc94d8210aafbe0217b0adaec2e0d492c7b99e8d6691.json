@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE admin.webhook_event\n        SET status = $2,\n            error_message = $3,\n            processed_at = (CURRENT_TIMESTAMP AT TIME ZONE 'utc')\n        WHERE id = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "501efe87db2906edbe9abc94d8210aafbe0217b0adaec2e0d492c7b99e8d6691"
+}

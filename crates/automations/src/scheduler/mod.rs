@@ -87,6 +87,9 @@ impl Scheduler {
         let mut segment_sync = interval(Duration::from_secs(config.segment_sync_interval_secs));
         let mut subscription_check =
             interval(Duration::from_secs(config.subscription_check_interval_secs));
+        let mut webhook_events = interval(Duration::from_secs(
+            config.webhook_event_interval_secs,
+        ));
 
         tracing::info!(
             email_poll_secs = config.email_poll_interval_secs,
@@ -95,6 +98,7 @@ impl Scheduler {
             stock_check_secs = config.stock_check_interval_secs,
             segment_sync_secs = config.segment_sync_interval_secs,
             subscription_check_secs = config.subscription_check_interval_secs,
+            webhook_event_secs = config.webhook_event_interval_secs,
             "scheduler started"
         );
 
@@ -110,6 +114,7 @@ impl Scheduler {
                 _ = stock_check.tick() => { guarded!(self, "stock_check", check_low_stock); },
                 _ = segment_sync.tick() => { guarded!(self, "segment_sync", sync_customer_segments); },
                 _ = subscription_check.tick() => { guarded!(self, "subscription_check", check_subscriptions); },
+                _ = webhook_events.tick() => { guarded!(self, "webhook_events", process_webhook_events); },
             }
         }
 
@@ -273,6 +278,17 @@ impl Scheduler {
 
         workflows::subscription_lifecycle::run(&clients).await;
         true
+    }
+
+    /// Process pending webhook events from `admin.webhook_event`.
+    async fn process_webhook_events(&self) -> bool {
+        let clients = workflows::webhook_events::WebhookDispatchClients {
+            pool: self.state.pool(),
+            shopify: self.state.shopify(),
+            klaviyo: self.state.klaviyo(),
+            slack: self.state.slack(),
+        };
+        workflows::webhook_events::run(&clients).await
     }
 
     /// Sync customer segments: classify, tag in Shopify, and sync to Klaviyo.

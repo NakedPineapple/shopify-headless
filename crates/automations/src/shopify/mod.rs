@@ -11,5 +11,6 @@ pub mod inventory;
 pub mod orders;
 pub mod products;
 pub mod subscriptions;
+pub mod webhook_subscriptions;
 
 pub use client::ShopifyClient;
