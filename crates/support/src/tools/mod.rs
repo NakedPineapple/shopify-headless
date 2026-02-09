@@ -7,12 +7,14 @@
 //! - `lookup_subscription` - Subscription details (authenticated only)
 //! - `request_human_help` - Escalate to human agent
 
+pub mod context;
 pub mod faq;
 pub mod handoff;
 pub mod order;
 pub mod product;
 pub mod subscription;
 
+pub use context::ToolContext;
 use naked_pineapple_services::claude::types::Tool;
 
 /// Build the list of tools available to the support chat AI.

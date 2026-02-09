@@ -20,10 +20,11 @@ pub mod security_headers;
 pub mod session;
 pub mod shopify_customer;
 pub mod site_context;
+pub mod turnstile;
 
 pub use csp::{CspNonce, csp_nonce_middleware};
 pub use csrf::{CsrfToken, csrf_protection, get_or_create_csrf_token};
-pub use rate_limit::{api_rate_limiter, auth_rate_limiter, gwp_rate_limiter};
+pub use rate_limit::{api_rate_limiter, auth_rate_limiter, chat_rate_limiter, gwp_rate_limiter};
 pub use request_id::request_id_middleware;
 pub use security_headers::security_headers_middleware;
 pub use session::create_session_layer;
@@ -32,3 +33,4 @@ pub use shopify_customer::{
     set_shopify_customer_token,
 };
 pub use site_context::SiteContext;
+pub use turnstile::verify_turnstile_token;

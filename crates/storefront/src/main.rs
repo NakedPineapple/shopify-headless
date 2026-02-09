@@ -213,8 +213,20 @@ async fn main() {
     // Build application state
     // Content is loaded from the storefront crate's `content/` directory
     let content_dir = Path::new("crates/storefront/content");
-    let state = AppState::new(config.clone(), pool, content_dir)
-        .expect("Failed to initialize application state");
+    let state = AppState::new(
+        config.clone(),
+        pool,
+        content_dir,
+        config.claude.as_ref(),
+        config.openai.as_ref(),
+    )
+    .expect("Failed to initialize application state");
+
+    if state.is_chat_enabled() {
+        tracing::info!("AI chat support enabled");
+    } else {
+        tracing::info!("AI chat support disabled (missing CLAUDE_API_KEY, OPENAI_API_KEY, or TURNSTILE keys)");
+    }
 
     // Start building search index in background
     state.start_search_indexing();

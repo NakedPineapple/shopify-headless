@@ -3,6 +3,9 @@
 use std::path::Path;
 use std::sync::Arc;
 
+use naked_pineapple_services::claude::ClaudeClient;
+use naked_pineapple_services::config::{ClaudeConfig, OpenAIConfig};
+use naked_pineapple_services::openai::EmbeddingClient;
 use sqlx::PgPool;
 
 use crate::config::StorefrontConfig;
@@ -33,6 +36,8 @@ struct AppStateInner {
     customer: CustomerClient,
     content: ContentStore,
     search: SearchIndex,
+    claude: Option<ClaudeClient>,
+    embedding: Option<EmbeddingClient>,
 }
 
 impl AppState {
@@ -43,6 +48,8 @@ impl AppState {
     /// * `config` - Storefront configuration
     /// * `pool` - `PostgreSQL` connection pool
     /// * `content_dir` - Path to content directory for markdown files
+    /// * `claude_config` - Optional Claude API configuration
+    /// * `openai_config` - Optional `OpenAI` API configuration
     ///
     /// # Errors
     ///
@@ -51,11 +58,15 @@ impl AppState {
         config: StorefrontConfig,
         pool: PgPool,
         content_dir: &Path,
+        claude_config: Option<&ClaudeConfig>,
+        openai_config: Option<&OpenAIConfig>,
     ) -> Result<Self, AppStateError> {
         let storefront = StorefrontClient::new(&config.shopify);
         let customer = CustomerClient::new(&config.shopify);
         let content = ContentStore::load(content_dir)?;
         let search = SearchIndex::new();
+        let claude = claude_config.map(ClaudeClient::new);
+        let embedding = openai_config.map(|c| EmbeddingClient::new(&c.api_key));
 
         Ok(Self {
             inner: Arc::new(AppStateInner {
@@ -65,6 +76,8 @@ impl AppState {
                 customer,
                 content,
                 search,
+                claude,
+                embedding,
             }),
         })
     }
@@ -103,6 +116,26 @@ impl AppState {
     #[must_use]
     pub fn search(&self) -> &SearchIndex {
         &self.inner.search
+    }
+
+    /// Get a reference to the Claude API client, if configured.
+    #[must_use]
+    pub fn claude(&self) -> Option<&ClaudeClient> {
+        self.inner.claude.as_ref()
+    }
+
+    /// Get a reference to the embedding client, if configured.
+    #[must_use]
+    pub fn embedding(&self) -> Option<&EmbeddingClient> {
+        self.inner.embedding.as_ref()
+    }
+
+    /// Returns true if AI chat support is fully configured.
+    #[must_use]
+    pub fn is_chat_enabled(&self) -> bool {
+        self.inner.claude.is_some()
+            && self.inner.embedding.is_some()
+            && self.inner.config.is_chat_enabled()
     }
 
     /// Start building the search index asynchronously.

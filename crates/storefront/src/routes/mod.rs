@@ -66,6 +66,7 @@ pub mod pages;
 pub mod products;
 pub mod search;
 pub mod shopify_auth;
+pub mod support;
 pub mod webhooks;
 pub mod well_known;
 
@@ -74,7 +75,7 @@ use axum::{
     routing::{get, post},
 };
 
-use crate::middleware::{api_rate_limiter, auth_rate_limiter, gwp_rate_limiter};
+use crate::middleware::{api_rate_limiter, auth_rate_limiter, chat_rate_limiter, gwp_rate_limiter};
 use crate::state::AppState;
 
 /// Create the auth routes router.
@@ -180,6 +181,17 @@ pub fn account_routes() -> Router<AppState> {
         )
 }
 
+/// Create the support chat routes router.
+///
+/// Rate limited to ~20 requests per minute per IP to protect AI API costs.
+pub fn support_routes() -> Router<AppState> {
+    Router::new()
+        .route("/chat", post(support::start_chat))
+        .route("/chat/{id}/messages/stream", post(support::send_message_stream))
+        .route("/chat/{id}/messages", get(support::get_messages))
+        .layer(chat_rate_limiter())
+}
+
 /// Create all routes for the storefront.
 pub fn routes() -> Router<AppState> {
     Router::new()
@@ -219,6 +231,8 @@ pub fn routes() -> Router<AppState> {
         )
         // Contact routes
         .route("/contact/product-question", post(contact::product_question))
+        // Support chat routes
+        .nest("/support", support_routes())
         // Shopify webhooks (CSRF-exempt via /api/webhooks prefix)
         .route(
             "/api/webhooks/shopify/orders-create",

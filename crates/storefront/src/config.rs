@@ -27,6 +27,7 @@
 use std::collections::{HashMap, HashSet};
 use std::net::{IpAddr, SocketAddr};
 
+use naked_pineapple_services::config::{ClaudeConfig, OpenAIConfig};
 use secrecy::{ExposeSecret, SecretString};
 use thiserror::Error;
 
@@ -99,6 +100,14 @@ pub struct StorefrontConfig {
     pub sentry_traces_sample_rate: f32,
     /// Shopify webhook signing secret (optional - webhook feature only active when set)
     pub shopify_webhook_secret: Option<SecretString>,
+    /// Claude API configuration (optional - chat disabled if not set)
+    pub claude: Option<ClaudeConfig>,
+    /// `OpenAI` API configuration (optional - needed for RAG embeddings)
+    pub openai: Option<OpenAIConfig>,
+    /// Cloudflare Turnstile site key (public, passed to templates)
+    pub turnstile_site_key: Option<String>,
+    /// Cloudflare Turnstile secret key (server-side verification)
+    pub turnstile_secret_key: Option<SecretString>,
 }
 
 /// Klaviyo API configuration.
@@ -257,6 +266,13 @@ impl StorefrontConfig {
         let shopify_webhook_secret =
             get_optional_env("SHOPIFY_WEBHOOK_SECRET").map(SecretString::from);
 
+        // Chat support configuration (all optional — chat disabled if any missing)
+        let claude = ClaudeConfig::from_env().ok();
+        let openai = OpenAIConfig::from_env();
+        let turnstile_site_key = get_optional_env("TURNSTILE_SITE_KEY");
+        let turnstile_secret_key =
+            get_optional_env("TURNSTILE_SECRET_KEY").map(SecretString::from);
+
         Ok(Self {
             database_url,
             host,
@@ -275,6 +291,10 @@ impl StorefrontConfig {
             sentry_sample_rate,
             sentry_traces_sample_rate,
             shopify_webhook_secret,
+            claude,
+            openai,
+            turnstile_site_key,
+            turnstile_secret_key,
         })
     }
 
@@ -282,6 +302,17 @@ impl StorefrontConfig {
     #[must_use]
     pub const fn socket_addr(&self) -> SocketAddr {
         SocketAddr::new(self.host, self.port)
+    }
+
+    /// Returns true if AI chat support is enabled.
+    ///
+    /// Chat requires Claude API, `OpenAI` embeddings, and Turnstile bot protection.
+    #[must_use]
+    pub const fn is_chat_enabled(&self) -> bool {
+        self.claude.is_some()
+            && self.openai.is_some()
+            && self.turnstile_site_key.is_some()
+            && self.turnstile_secret_key.is_some()
     }
 
     /// Derive the full origin URL for a hostname.
@@ -598,6 +629,10 @@ mod tests {
             sentry_sample_rate: 1.0,
             sentry_traces_sample_rate: 1.0,
             shopify_webhook_secret: None,
+            claude: None,
+            openai: None,
+            turnstile_site_key: None,
+            turnstile_secret_key: None,
         };
 
         let addr = config.socket_addr();

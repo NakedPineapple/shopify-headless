@@ -131,6 +131,27 @@ pub fn api_rate_limiter() -> RateLimiterLayer {
     GovernorLayer::new(Arc::new(config))
 }
 
+/// Create rate limiter for chat endpoints: ~20 requests per minute per IP.
+///
+/// Configuration: 1 request every 3 seconds (replenish), burst of 5.
+/// This prevents abuse of AI chat endpoints which incur API costs.
+///
+/// # Panics
+///
+/// This function will not panic. The configuration uses only valid positive
+/// integers (`per_second(3)` and `burst_size(5)`), which are always accepted
+/// by `GovernorConfigBuilder`.
+#[must_use]
+pub fn chat_rate_limiter() -> RateLimiterLayer {
+    let config = GovernorConfigBuilder::default()
+        .key_extractor(CloudflareIpKeyExtractor)
+        .per_second(3) // Replenish 1 token every 3 seconds (~20/minute)
+        .burst_size(5) // Allow burst of 5 requests
+        .finish()
+        .expect("rate limiter config with per_second(3) and burst_size(5) is valid");
+    GovernorLayer::new(Arc::new(config))
+}
+
 /// Create rate limiter for GWP claims: ~5 requests per minute per IP.
 ///
 /// Configuration: 1 request every 12 seconds (replenish), burst of 3.

@@ -22,8 +22,11 @@ use super::csp::CspNonce;
 // Essential external domains (always allowed)
 // =============================================================================
 
-/// Script sources needed regardless of GPC (Shopify Shop Pay).
-const SCRIPT_SRC_ESSENTIAL: &[&str] = &["https://cdn.shopify.com"];
+/// Script sources needed regardless of GPC (Shopify Shop Pay, Turnstile).
+const SCRIPT_SRC_ESSENTIAL: &[&str] = &[
+    "https://cdn.shopify.com",
+    "https://challenges.cloudflare.com",
+];
 
 /// Image sources needed regardless of GPC (CDN, Shopify).
 const IMG_SRC_ESSENTIAL: &[&str] = &[
@@ -41,8 +44,12 @@ const CONNECT_SRC_ESSENTIAL: &[&str] = &[
     "https://*.ingest.eu.sentry.io",
 ];
 
-/// Frame sources needed regardless of GPC (Shopify Shop Pay).
-const FRAME_SRC_ESSENTIAL: &[&str] = &["https://cdn.shopify.com", "https://shop.app"];
+/// Frame sources needed regardless of GPC (Shopify Shop Pay, Turnstile).
+const FRAME_SRC_ESSENTIAL: &[&str] = &[
+    "https://cdn.shopify.com",
+    "https://shop.app",
+    "https://challenges.cloudflare.com",
+];
 
 // =============================================================================
 // Analytics-only external domains (suppressed when GPC is active)

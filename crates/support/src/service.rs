@@ -19,6 +19,7 @@ use crate::db::conversation::ConversationRepository;
 use crate::db::message::MessageRepository;
 use crate::error::SupportError;
 use crate::models::{ChatStreamEvent, CreateMessageParams};
+use crate::tools::ToolContext;
 use crate::{rag, tools};
 
 const MAX_MESSAGES_PER_CONVERSATION: i64 = 50;
@@ -33,6 +34,7 @@ pub struct SupportChatServiceParams<'a> {
     pub pool: &'a PgPool,
     pub system_prompt: &'a str,
     pub is_authenticated: bool,
+    pub tool_context: &'a dyn ToolContext,
 }
 
 /// Service that handles support chat interactions.
@@ -42,17 +44,19 @@ pub struct SupportChatService<'a> {
     pool: &'a PgPool,
     system_prompt: &'a str,
     is_authenticated: bool,
+    tool_context: &'a dyn ToolContext,
 }
 
 impl<'a> SupportChatService<'a> {
     #[must_use]
-    pub const fn new(params: SupportChatServiceParams<'a>) -> Self {
+    pub fn new(params: SupportChatServiceParams<'a>) -> Self {
         Self {
             claude: params.claude,
             embedding: params.embedding,
             pool: params.pool,
             system_prompt: params.system_prompt,
             is_authenticated: params.is_authenticated,
+            tool_context: params.tool_context,
         }
     }
 
@@ -122,14 +126,24 @@ impl<'a> SupportChatService<'a> {
         Ok(())
     }
 
-    /// Build the system prompt, injecting RAG context from the knowledge base.
+    /// Build the system prompt, injecting RAG and content search context.
     async fn build_system_prompt(&self, user_message: &str) -> String {
         let rag_context =
             rag::retrieve_context(self.embedding, self.pool, user_message).await;
+        let content_context = self.tool_context.search_content(user_message, 3);
+
         let mut system = self.system_prompt.to_string();
-        if !rag_context.is_empty() {
+        if !rag_context.is_empty() || !content_context.is_empty() {
             system.push_str("\n\n## Relevant Knowledge\n\n");
-            system.push_str(&rag_context);
+            if !rag_context.is_empty() {
+                system.push_str(&rag_context);
+            }
+            if !content_context.is_empty() {
+                if !rag_context.is_empty() {
+                    system.push('\n');
+                }
+                system.push_str(&content_context);
+            }
         }
         system
     }
@@ -289,9 +303,11 @@ impl<'a> SupportChatService<'a> {
         match name {
             "lookup_faq" => self.execute_faq_lookup(input).await,
             "lookup_product" => {
-                "Product lookup is not yet available. Please describe what \
-                    product you're looking for and I'll help with what I know."
-                    .to_string()
+                let query = input.get("query").and_then(|v| v.as_str()).unwrap_or("");
+                if query.is_empty() {
+                    return "Please provide a product name or search term.".to_string();
+                }
+                self.tool_context.lookup_product(query).await
             }
             "lookup_order_status" => {
                 if !self.is_authenticated {
@@ -299,7 +315,14 @@ impl<'a> SupportChatService<'a> {
                         log in to their account first so you can look up their order."
                         .to_string();
                 }
-                "Order lookup is not yet available.".to_string()
+                let order_number = input
+                    .get("order_number")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                if order_number.is_empty() {
+                    return "Please provide an order number.".to_string();
+                }
+                self.tool_context.lookup_order(order_number).await
             }
             "lookup_subscription" => {
                 if !self.is_authenticated {
@@ -307,26 +330,47 @@ impl<'a> SupportChatService<'a> {
                         log in to their account first to view subscription details."
                         .to_string();
                 }
-                "Subscription lookup is not yet available.".to_string()
+                let sub_id = input
+                    .get("subscription_id")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                if sub_id.is_empty() {
+                    return "Please provide a subscription ID or 'all' to list \
+                        subscriptions."
+                        .to_string();
+                }
+                self.tool_context.lookup_subscription(sub_id).await
             }
             "request_human_help" => self.execute_handoff(input, conversation_id).await,
             _ => format!("Unknown tool: {name}"),
         }
     }
 
-    /// Execute the FAQ lookup tool via RAG retrieval.
+    /// Execute the FAQ lookup tool via RAG + content search.
     async fn execute_faq_lookup(&self, input: &serde_json::Value) -> String {
         let query = input.get("query").and_then(|v| v.as_str()).unwrap_or("");
         if query.is_empty() {
             return "Please provide a search query.".to_string();
         }
 
-        let context = rag::retrieve_context(self.embedding, self.pool, query).await;
-        if context.is_empty() {
-            "No relevant FAQ content found for that query.".to_string()
-        } else {
-            context
+        let rag_context = rag::retrieve_context(self.embedding, self.pool, query).await;
+        let content_context = self.tool_context.search_content(query, 5);
+
+        if rag_context.is_empty() && content_context.is_empty() {
+            return "No relevant FAQ content found for that query.".to_string();
         }
+
+        let mut result = String::new();
+        if !rag_context.is_empty() {
+            result.push_str(&rag_context);
+        }
+        if !content_context.is_empty() {
+            if !result.is_empty() {
+                result.push('\n');
+            }
+            result.push_str(&content_context);
+        }
+        result
     }
 
     /// Execute the human handoff tool — escalate and create a ticket.
