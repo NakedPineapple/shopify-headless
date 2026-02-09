@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE admin.automation_log\n        SET status = 'failed',\n            error = $1,\n            completed_at = NOW(),\n            duration_ms = $2\n        WHERE id = $3\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b1bf6105641e7b63c877ae8faa2c884fe1b5fe72eb88f1dcfbb4100d9edc7fd3"
+}

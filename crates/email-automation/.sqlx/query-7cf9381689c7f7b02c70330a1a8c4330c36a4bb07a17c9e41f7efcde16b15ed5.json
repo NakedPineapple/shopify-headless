@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT EXISTS(\n            SELECT 1 FROM admin.automation_log\n            WHERE workflow = $1\n              AND status = 'completed'\n              AND metadata @> $2\n              AND started_at > NOW() - make_interval(hours => $3)\n        ) AS \"exists!\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "exists!",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Jsonb",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "7cf9381689c7f7b02c70330a1a8c4330c36a4bb07a17c9e41f7efcde16b15ed5"
+}

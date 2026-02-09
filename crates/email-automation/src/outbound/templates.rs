@@ -6,8 +6,8 @@
 use askama::Template;
 
 use super::{
-    AddressData, DeliveryNotificationData, LineItemData, OrderConfirmationData, ReviewRequestData,
-    ShippingUpdateData,
+    AddressData, DeliveryNotificationData, LineItemData, LowStockAlertData, LowStockVariantData,
+    OrderConfirmationData, ReviewRequestData, ShippingUpdateData,
 };
 
 // ---------------------------------------------------------------------------
@@ -219,6 +219,68 @@ impl ReviewRequestText {
             store_url: data.store_url.clone(),
         }
     }
+}
+
+// ---------------------------------------------------------------------------
+// Low Stock Alert
+// ---------------------------------------------------------------------------
+
+#[derive(Template)]
+#[template(path = "email/low_stock_alert.html")]
+pub struct LowStockAlertHtml {
+    pub product_title: String,
+    pub total_inventory: i32,
+    pub threshold: i32,
+    pub variants: Vec<TemplateStockVariant>,
+}
+
+#[derive(Template)]
+#[template(path = "email/low_stock_alert.txt")]
+pub struct LowStockAlertText {
+    pub product_title: String,
+    pub total_inventory: i32,
+    pub threshold: i32,
+    pub variants: Vec<TemplateStockVariant>,
+}
+
+/// Variant inventory for low stock alert templates.
+pub struct TemplateStockVariant {
+    pub title: String,
+    pub sku: Option<String>,
+    pub inventory_quantity: i32,
+}
+
+impl LowStockAlertHtml {
+    pub fn from_data(data: &LowStockAlertData) -> Self {
+        Self {
+            product_title: data.product_title.clone(),
+            total_inventory: data.total_inventory,
+            threshold: data.threshold,
+            variants: convert_stock_variants(&data.variants),
+        }
+    }
+}
+
+impl LowStockAlertText {
+    pub fn from_data(data: &LowStockAlertData) -> Self {
+        Self {
+            product_title: data.product_title.clone(),
+            total_inventory: data.total_inventory,
+            threshold: data.threshold,
+            variants: convert_stock_variants(&data.variants),
+        }
+    }
+}
+
+fn convert_stock_variants(variants: &[LowStockVariantData]) -> Vec<TemplateStockVariant> {
+    variants
+        .iter()
+        .map(|v| TemplateStockVariant {
+            title: v.title.clone(),
+            sku: v.sku.clone(),
+            inventory_quantity: v.inventory_quantity,
+        })
+        .collect()
 }
 
 // ---------------------------------------------------------------------------

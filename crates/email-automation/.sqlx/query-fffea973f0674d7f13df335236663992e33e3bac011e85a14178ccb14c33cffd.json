@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE admin.automation_log\n        SET status = 'completed',\n            items_processed = $1,\n            items_actioned = $2,\n            metadata = $3,\n            completed_at = NOW(),\n            duration_ms = $4\n        WHERE id = $5\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Int4",
+        "Jsonb",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "fffea973f0674d7f13df335236663992e33e3bac011e85a14178ccb14c33cffd"
+}

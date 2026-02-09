@@ -5,7 +5,9 @@
 
 pub mod checkouts;
 pub mod client;
+pub mod customers;
 pub mod fulfillments;
+pub mod inventory;
 pub mod orders;
 pub mod products;
 

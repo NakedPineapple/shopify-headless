@@ -26,6 +26,7 @@ pub enum EmailType {
     ShippingUpdate,
     DeliveryNotification,
     ReviewRequest,
+    LowStockAlert,
 }
 
 impl EmailType {
@@ -37,6 +38,7 @@ impl EmailType {
             Self::ShippingUpdate => "shipping_update",
             Self::DeliveryNotification => "delivery_notification",
             Self::ReviewRequest => "review_request",
+            Self::LowStockAlert => "low_stock_alert",
         }
     }
 }
@@ -226,6 +228,57 @@ pub async fn enqueue_review_request(
             reference_id: Some(order_id),
             reference_type: Some("review_request"),
             scheduled_for: Some(scheduled_for),
+        },
+    )
+    .await?;
+
+    Ok(id)
+}
+
+/// Data needed to render and queue a low stock alert email.
+pub struct LowStockAlertData {
+    pub product_title: String,
+    pub total_inventory: i32,
+    pub threshold: i32,
+    pub variants: Vec<LowStockVariantData>,
+}
+
+/// A variant's inventory for the low stock alert.
+pub struct LowStockVariantData {
+    pub title: String,
+    pub sku: Option<String>,
+    pub inventory_quantity: i32,
+}
+
+/// Render and enqueue a low stock alert email.
+#[instrument(skip(pool, data), fields(product = %data.product_title))]
+pub async fn enqueue_low_stock_alert(
+    pool: &sqlx::PgPool,
+    to_address: &str,
+    product_id: &str,
+    data: &LowStockAlertData,
+) -> Result<i64, OutboundError> {
+    let html = templates::LowStockAlertHtml::from_data(data).render()?;
+    let text = templates::LowStockAlertText::from_data(data).render()?;
+    let subject = format!(
+        "Low Stock Alert: {} ({} units)",
+        data.product_title, data.total_inventory
+    );
+
+    debug!("queueing low stock alert email");
+
+    let id = outbound_queue::enqueue(
+        pool,
+        &EnqueueParams {
+            email_type: EmailType::LowStockAlert.as_str(),
+            to_address,
+            to_name: None,
+            subject: &subject,
+            body_html: &html,
+            body_text: &text,
+            reference_id: Some(product_id),
+            reference_type: Some("low_stock_alert"),
+            scheduled_for: None,
         },
     )
     .await?;

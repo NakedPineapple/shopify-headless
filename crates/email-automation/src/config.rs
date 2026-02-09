@@ -19,6 +19,7 @@
 //! - `AUTOMATION_CART_CHECK_INTERVAL_SECS` - Cart check interval (default: 900)
 //! - `AUTOMATION_STOCK_CHECK_INTERVAL_SECS` - Stock check interval (default: 3600)
 //! - `AUTOMATION_SEGMENT_SYNC_INTERVAL_SECS` - Segment sync interval (default: 86400)
+//! - `AUTOMATION_LOW_STOCK_EMAIL_RECIPIENTS` - Comma-separated email addresses for alerts
 //! - `AUTOMATION_HEALTH_PORT` - Health check port (default: 9092)
 //! - `SENTRY_DSN` - Sentry error tracking DSN
 
@@ -133,6 +134,10 @@ pub struct SchedulerConfig {
     pub review_request_delay_days: u64,
     /// Minutes of inactivity before a checkout is considered abandoned.
     pub cart_abandon_delay_minutes: u64,
+    /// Inventory units below which a low stock alert is triggered.
+    pub low_stock_threshold: i32,
+    /// Email recipients for low stock alerts (empty = no email alerts).
+    pub low_stock_email_recipients: Vec<String>,
 }
 
 impl SchedulerConfig {
@@ -149,6 +154,17 @@ impl SchedulerConfig {
             order_poll_interval_secs: parse_env_u64("AUTOMATION_ORDER_POLL_INTERVAL_SECS", 300),
             review_request_delay_days: parse_env_u64("AUTOMATION_REVIEW_REQUEST_DELAY_DAYS", 7),
             cart_abandon_delay_minutes: parse_env_u64("AUTOMATION_CART_ABANDON_DELAY_MINUTES", 60),
+            low_stock_threshold: get_env_or_default("AUTOMATION_LOW_STOCK_THRESHOLD", "10")
+                .parse()
+                .unwrap_or(10),
+            low_stock_email_recipients: get_optional_env("AUTOMATION_LOW_STOCK_EMAIL_RECIPIENTS")
+                .map(|s| {
+                    s.split(',')
+                        .map(|e| e.trim().to_string())
+                        .filter(|e| !e.is_empty())
+                        .collect()
+                })
+                .unwrap_or_default(),
         }
     }
 }

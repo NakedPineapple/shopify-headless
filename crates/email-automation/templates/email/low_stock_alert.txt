@@ -1,0 +1,15 @@
+LOW STOCK ALERT
+===============
+
+Product: {{ product_title }}
+Total Inventory: {{ total_inventory }} units (threshold: {{ threshold }})
+
+{% if !variants.is_empty() %}
+Variant Breakdown:
+{% for variant in &variants %}
+  - {{ variant.title }}{% if let Some(sku) = &variant.sku %} (SKU: {{ sku }}){% endif %}: {{ variant.inventory_quantity }} units
+{% endfor %}
+{% endif %}
+
+---
+Naked Pineapple — Automated Inventory Alert

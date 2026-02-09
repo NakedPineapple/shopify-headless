@@ -12,6 +12,7 @@
 mod campaigns;
 pub mod events;
 mod helpdesk;
+pub mod profiles;
 mod types;
 
 pub use helpdesk::HelpdeskEventParams;

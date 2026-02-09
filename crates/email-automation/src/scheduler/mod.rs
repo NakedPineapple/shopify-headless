@@ -144,13 +144,23 @@ impl Scheduler {
         workflows::abandoned_cart::run(&clients).await;
     }
 
-    /// Check for low stock items (placeholder for Phase 5).
-    #[expect(
-        clippy::unused_async,
-        reason = "will be async in Phase 5; select! requires consistent arm types"
-    )]
+    /// Check for low stock items and send Slack/email alerts.
     async fn check_low_stock(&self) {
-        tracing::debug!("low stock check: not yet implemented");
+        let (Some(shopify), Some(slack)) = (self.state.shopify(), self.state.slack()) else {
+            return;
+        };
+
+        let config = &self.state.config().scheduler;
+
+        let clients = workflows::low_stock::LowStockClients {
+            pool: self.state.pool(),
+            shopify,
+            slack,
+            threshold: config.low_stock_threshold,
+            email_recipients: &config.low_stock_email_recipients,
+        };
+
+        workflows::low_stock::run(&clients).await;
     }
 
     /// Process the outbound email queue: send queued emails via M365.
@@ -164,12 +174,18 @@ impl Scheduler {
         outbound::sender::process_queue(self.state.pool(), self.state.m365(), &mailbox).await;
     }
 
-    /// Sync customer segments to Klaviyo (placeholder for Phase 5).
-    #[expect(
-        clippy::unused_async,
-        reason = "will be async in Phase 5; select! requires consistent arm types"
-    )]
+    /// Sync customer segments: classify, tag in Shopify, and sync to Klaviyo.
     async fn sync_customer_segments(&self) {
-        tracing::debug!("customer segment sync: not yet implemented");
+        let (Some(shopify), Some(klaviyo)) = (self.state.shopify(), self.state.klaviyo()) else {
+            return;
+        };
+
+        let clients = workflows::segmentation::SegmentationClients {
+            pool: self.state.pool(),
+            shopify,
+            klaviyo,
+        };
+
+        workflows::segmentation::run(&clients).await;
     }
 }

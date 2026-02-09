@@ -5,6 +5,7 @@
 //! are added via admin's migration directory.
 
 pub mod abandoned_cart;
+pub mod automation_log;
 pub mod inbound_email;
 pub mod outbound_queue;
 
