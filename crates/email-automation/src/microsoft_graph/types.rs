@@ -125,3 +125,20 @@ pub struct ReplyBody {
 pub struct MoveRequest {
     pub destination_id: String,
 }
+
+/// Request body for sending a new email via `POST /users/{mailbox}/sendMail`.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SendMailRequest {
+    pub message: OutboundMessage,
+    pub save_to_sent_items: bool,
+}
+
+/// An outbound email message with subject, body, and recipients.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OutboundMessage {
+    pub subject: String,
+    pub body: OutboundBody,
+    pub to_recipients: Vec<OutboundRecipient>,
+}

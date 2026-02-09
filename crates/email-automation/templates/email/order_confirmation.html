@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Order {{ order_name }} Confirmed</title>
+    <!--[if mso]>
+    <noscript>
+        <xml>
+            <o:OfficeDocumentSettings>
+                <o:PixelsPerInch>96</o:PixelsPerInch>
+            </o:OfficeDocumentSettings>
+        </xml>
+    </noscript>
+    <![endif]-->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Playfair+Display:wght@600&display=swap');
+    </style>
+</head>
+<body style="margin: 0; padding: 0; background-color: #faf8f5; font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+    <!-- Preheader text (hidden) -->
+    <div style="display: none; max-height: 0; overflow: hidden;">
+        Thank you for your order! Order {{ order_name }} confirmed.
+    </div>
+
+    <!-- Email wrapper -->
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #faf8f5;">
+        <tr>
+            <td style="padding: 40px 20px;">
+                <!-- Main container -->
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width: 520px; margin: 0 auto;">
+
+                    <!-- Logo & Header -->
+                    <tr>
+                        <td style="text-align: center; padding-bottom: 32px;">
+                            <!-- Pineapple Icon -->
+                            <div style="width: 56px; height: 56px; margin: 0 auto 16px; background: linear-gradient(135deg, #d4a574 0%, #c9956a 100%); border-radius: 16px; display: flex; align-items: center; justify-content: center;">
+                                <img src="https://nakedpineapple.co/static/images/pineapple-icon.png" alt="" width="32" height="32" style="display: block;" />
+                            </div>
+                            <h1 style="margin: 0; font-family: 'Playfair Display', Georgia, serif; font-size: 24px; font-weight: 600; color: #1a1614; letter-spacing: -0.02em;">
+                                Naked Pineapple
+                            </h1>
+                        </td>
+                    </tr>
+
+                    <!-- Main Card -->
+                    <tr>
+                        <td>
+                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #ffffff; border-radius: 24px; box-shadow: 0 4px 24px rgba(26, 22, 20, 0.06);">
+                                <tr>
+                                    <td style="padding: 48px 40px;">
+                                        <!-- Order Confirmed Icon -->
+                                        <div style="width: 64px; height: 64px; margin: 0 auto 24px; background: linear-gradient(135deg, #e8f5e8 0%, #d4edda 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                                            <span style="font-size: 28px;">&#128230;</span>
+                                        </div>
+
+                                        <!-- Order Status -->
+                                        <p style="margin: 0 0 8px; font-size: 14px; color: #28a745; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; text-align: center;">
+                                            Order Confirmed
+                                        </p>
+                                        <h2 style="margin: 0 0 16px; font-family: 'Playfair Display', Georgia, serif; font-size: 28px; font-weight: 600; color: #1a1614; line-height: 1.2; text-align: center;">
+                                            Thank You, {{ customer_name }}!
+                                        </h2>
+                                        <p style="margin: 0 0 32px; font-size: 16px; color: #5c5248; line-height: 1.6; text-align: center;">
+                                            Your order {{ order_name }} has been confirmed and is being prepared. We'll send you a shipping update as soon as it's on its way.
+                                        </p>
+
+                                        <!-- Order Details Header -->
+                                        <div style="padding: 16px 20px; background-color: #f8f5f0; border-radius: 12px 12px 0 0; border-bottom: 1px solid #e8e2d9;">
+                                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                                                <tr>
+                                                    <td style="font-size: 13px; color: #8b7355; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">
+                                                        {{ order_name }}
+                                                    </td>
+                                                    <td style="font-size: 13px; color: #8b7355; text-align: right;">
+                                                        {{ order_date }}
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                        </div>
+
+                                        <!-- Line Items -->
+                                        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="border-collapse: collapse;">
+                                            {% for item in &line_items %}
+                                            <tr>
+                                                <td style="padding: 16px 20px; border-bottom: 1px solid #f0ece6;">
+                                                    <p style="margin: 0 0 2px; font-size: 15px; font-weight: 500; color: #1a1614;">
+                                                        {{ item.title }}
+                                                    </p>
+                                                    {% if let Some(variant) = &item.variant %}
+                                                    <p style="margin: 0; font-size: 13px; color: #8b7355;">
+                                                        {{ variant }}
+                                                    </p>
+                                                    {% endif %}
+                                                    <p style="margin: 4px 0 0; font-size: 13px; color: #5c5248;">
+                                                        Qty: {{ item.quantity }}
+                                                    </p>
+                                                </td>
+                                                <td style="padding: 16px 20px; border-bottom: 1px solid #f0ece6; text-align: right; vertical-align: top;">
+                                                    <p style="margin: 0; font-size: 15px; font-weight: 500; color: #1a1614;">
+                                                        {{ item.price }}
+                                                    </p>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </table>
+
+                                        <!-- Price Summary -->
+                                        <div style="padding: 20px; background-color: #fdfcfa; border-radius: 0 0 12px 12px;">
+                                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                                                <tr>
+                                                    <td style="padding: 4px 0; font-size: 14px; color: #5c5248;">
+                                                        Subtotal
+                                                    </td>
+                                                    <td style="padding: 4px 0; font-size: 14px; color: #5c5248; text-align: right;">
+                                                        {{ subtotal }}
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td style="padding: 4px 0; font-size: 14px; color: #5c5248;">
+                                                        Shipping
+                                                    </td>
+                                                    <td style="padding: 4px 0; font-size: 14px; color: #5c5248; text-align: right;">
+                                                        {{ shipping }}
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td style="padding: 4px 0; font-size: 14px; color: #5c5248;">
+                                                        Tax
+                                                    </td>
+                                                    <td style="padding: 4px 0; font-size: 14px; color: #5c5248; text-align: right;">
+                                                        {{ tax }}
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td colspan="2" style="padding: 12px 0 0;">
+                                                        <div style="height: 1px; background: linear-gradient(90deg, transparent, #e8e2d9, transparent);"></div>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td style="padding: 12px 0 0; font-size: 16px; font-weight: 600; color: #1a1614;">
+                                                        Total
+                                                    </td>
+                                                    <td style="padding: 12px 0 0; font-size: 16px; font-weight: 600; color: #1a1614; text-align: right;">
+                                                        {{ total }}
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                        </div>
+
+                                        {% if let Some(addr) = shipping_address %}
+                                        <!-- Divider -->
+                                        <div style="height: 1px; background: linear-gradient(90deg, transparent, #e8e2d9, transparent); margin: 32px 0;"></div>
+
+                                        <!-- Shipping Address -->
+                                        <p style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #1a1614;">
+                                            Shipping To
+                                        </p>
+                                        <div style="padding: 20px; background-color: #f8f5f0; border-radius: 12px;">
+                                            <p style="margin: 0; font-size: 14px; color: #5c5248; line-height: 1.8;">
+                                                <strong style="color: #1a1614;">{{ addr.name }}</strong><br>
+                                                {{ addr.address1 }}<br>
+                                                {% if let Some(line2) = &addr.address2 %}
+                                                {{ line2 }}<br>
+                                                {% endif %}
+                                                {{ addr.city }}, {{ addr.province }} {{ addr.zip }}<br>
+                                                {{ addr.country }}
+                                            </p>
+                                        </div>
+                                        {% endif %}
+
+                                        <!-- Divider -->
+                                        <div style="height: 1px; background: linear-gradient(90deg, transparent, #e8e2d9, transparent); margin: 32px 0;"></div>
+
+                                        <!-- CTA Button -->
+                                        <div style="text-align: center;">
+                                            <a href="https://nakedpineapple.co/account" style="display: inline-block; background: linear-gradient(135deg, #d63a2f 0%, #c43328 100%); color: #ffffff; font-size: 15px; font-weight: 600; text-decoration: none; padding: 16px 40px; border-radius: 12px; box-shadow: 0 4px 12px rgba(214, 58, 47, 0.3);">
+                                                View Your Order
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td style="padding-top: 32px; text-align: center;">
+                            <p style="margin: 0 0 8px; font-size: 13px; color: #8b7355;">
+                                Naked Pineapple — Natural Skincare
+                            </p>
+                            <p style="margin: 0; font-size: 12px; color: #a89a8a;">
+                                Questions? Reach out at info@nakedpineapple.co
+                            </p>
+                        </td>
+                    </tr>
+
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

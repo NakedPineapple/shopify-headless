@@ -2,6 +2,7 @@
 //!
 //! Runs periodic tasks using `tokio::select!` over interval ticks:
 //! - Email polling (default: every 2 minutes)
+//! - Shopify order/fulfillment polling (default: every 5 minutes)
 //! - Abandoned cart detection (default: every 15 minutes)
 //! - Low stock monitoring (default: every hour)
 //! - Outbound email queue processing (default: every 30 seconds)
@@ -12,6 +13,7 @@ use std::time::Duration;
 use tokio::sync::watch;
 use tokio::time::interval;
 
+use crate::outbound;
 use crate::state::AppState;
 use crate::triage;
 
@@ -35,6 +37,7 @@ impl Scheduler {
         let config = &self.state.config().scheduler;
 
         let mut email_poll = interval(Duration::from_secs(config.email_poll_interval_secs));
+        let mut order_poll = interval(Duration::from_secs(config.order_poll_interval_secs));
         let mut cart_check = interval(Duration::from_secs(config.cart_check_interval_secs));
         let mut stock_check = interval(Duration::from_secs(config.stock_check_interval_secs));
         let mut outbound = interval(Duration::from_secs(config.outbound_interval_secs));
@@ -42,6 +45,7 @@ impl Scheduler {
 
         tracing::info!(
             email_poll_secs = config.email_poll_interval_secs,
+            order_poll_secs = config.order_poll_interval_secs,
             cart_check_secs = config.cart_check_interval_secs,
             stock_check_secs = config.stock_check_interval_secs,
             outbound_secs = config.outbound_interval_secs,
@@ -56,6 +60,7 @@ impl Scheduler {
                     break;
                 }
                 _ = email_poll.tick() => self.poll_emails().await,
+                _ = order_poll.tick() => self.poll_shopify_events().await,
                 _ = cart_check.tick() => self.check_abandoned_carts().await,
                 _ = stock_check.tick() => self.check_low_stock().await,
                 _ = outbound.tick() => self.process_outbound_queue().await,
@@ -103,6 +108,21 @@ impl Scheduler {
         }
     }
 
+    /// Poll Shopify for recent orders/fulfillments and queue outbound emails.
+    async fn poll_shopify_events(&self) {
+        let Some(shopify) = self.state.shopify() else {
+            return;
+        };
+
+        let poll_minutes = self.state.config().scheduler.order_poll_interval_secs / 60 + 2;
+        let review_delay = self.state.config().scheduler.review_request_delay_days;
+        let pool = self.state.pool();
+
+        outbound::poller::poll_new_orders(pool, shopify, poll_minutes).await;
+        outbound::poller::poll_fulfillments(pool, shopify, poll_minutes).await;
+        outbound::poller::poll_deliveries(pool, shopify, poll_minutes, review_delay).await;
+    }
+
     /// Check for abandoned carts (placeholder for Phase 4).
     #[expect(
         clippy::unused_async,
@@ -121,13 +141,15 @@ impl Scheduler {
         tracing::debug!("low stock check: not yet implemented");
     }
 
-    /// Process the outbound email queue (placeholder for Phase 3).
-    #[expect(
-        clippy::unused_async,
-        reason = "will be async in Phase 3; select! requires consistent arm types"
-    )]
+    /// Process the outbound email queue: send queued emails via M365.
     async fn process_outbound_queue(&self) {
-        tracing::debug!("outbound queue processing: not yet implemented");
+        let mailbox = self.state.m365().mailboxes().first().cloned();
+        let Some(mailbox) = mailbox else {
+            tracing::warn!("no mailbox configured for outbound sending");
+            return;
+        };
+
+        outbound::sender::process_queue(self.state.pool(), self.state.m365(), &mailbox).await;
     }
 
     /// Sync customer segments to Klaviyo (placeholder for Phase 5).

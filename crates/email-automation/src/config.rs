@@ -116,10 +116,6 @@ impl M365Config {
 
 /// Scheduler timing configuration.
 #[derive(Debug, Clone)]
-#[expect(
-    clippy::struct_field_names,
-    reason = "the `_secs` suffix documents the unit on each interval field"
-)]
 pub struct SchedulerConfig {
     /// Email poll interval in seconds.
     pub email_poll_interval_secs: u64,
@@ -131,6 +127,10 @@ pub struct SchedulerConfig {
     pub segment_sync_interval_secs: u64,
     /// Outbound email queue processing interval in seconds.
     pub outbound_interval_secs: u64,
+    /// Shopify order/fulfillment poll interval in seconds.
+    pub order_poll_interval_secs: u64,
+    /// Days after delivery to send a review request email.
+    pub review_request_delay_days: u64,
 }
 
 impl SchedulerConfig {
@@ -144,6 +144,8 @@ impl SchedulerConfig {
                 86400,
             ),
             outbound_interval_secs: parse_env_u64("AUTOMATION_OUTBOUND_INTERVAL_SECS", 30),
+            order_poll_interval_secs: parse_env_u64("AUTOMATION_ORDER_POLL_INTERVAL_SECS", 300),
+            review_request_delay_days: parse_env_u64("AUTOMATION_REVIEW_REQUEST_DELAY_DAYS", 7),
         }
     }
 }
@@ -236,5 +238,7 @@ mod tests {
         assert_eq!(config.stock_check_interval_secs, 3600);
         assert_eq!(config.segment_sync_interval_secs, 86400);
         assert_eq!(config.outbound_interval_secs, 30);
+        assert_eq!(config.order_poll_interval_secs, 300);
+        assert_eq!(config.review_request_delay_days, 7);
     }
 }

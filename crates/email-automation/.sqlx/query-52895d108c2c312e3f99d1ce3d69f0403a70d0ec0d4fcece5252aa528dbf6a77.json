@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE admin.outbound_email_queue\n        SET status = 'sent', sent_at = NOW(), last_attempt_at = NOW()\n        WHERE id = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "52895d108c2c312e3f99d1ce3d69f0403a70d0ec0d4fcece5252aa528dbf6a77"
+}

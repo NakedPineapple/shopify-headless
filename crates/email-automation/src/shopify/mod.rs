@@ -4,6 +4,7 @@
 //! include real Shopify data in draft replies.
 
 pub mod client;
+pub mod fulfillments;
 pub mod orders;
 pub mod products;
 

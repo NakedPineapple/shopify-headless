@@ -1,0 +1,64 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, email_type, to_address, to_name,\n               subject, body_html,\n               attempts, max_attempts\n        FROM admin.outbound_email_queue\n        WHERE status = 'queued'\n          AND scheduled_for <= NOW()\n          AND attempts < max_attempts\n        ORDER BY scheduled_for ASC\n        LIMIT $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "email_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "to_address",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "to_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "subject",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "body_html",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "attempts",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 7,
+        "name": "max_attempts",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "fc00e3cf89a60ec33d706d45c8eae143ba6d927ec6c9d1dd9582a20d58431c87"
+}

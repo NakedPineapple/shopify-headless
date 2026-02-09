@@ -1,0 +1,16 @@
+How Are You Loving Your Products, {{ customer_name }}?
+
+We hope you're enjoying:
+{% for name in &product_names %}
+- {{ name }}
+{% endfor %}
+
+Your feedback helps us improve and helps other customers discover products they'll love.
+
+Leave a review: {{ store_url }}
+
+Thank you for being part of the Naked Pineapple family!
+
+—
+Naked Pineapple — Natural Skincare
+Questions? Reach out at info@nakedpineapple.co

@@ -1,0 +1,30 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO admin.outbound_email_queue (\n            email_type, to_address, to_name,\n            subject, body_html, body_text,\n            reference_id, reference_type, scheduled_for\n        )\n        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, COALESCE($9, NOW()))\n        RETURNING id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "5ffb106ede95cf19fd416c957efb141901f9b36a311ae14e56b6ab688cc4f394"
+}

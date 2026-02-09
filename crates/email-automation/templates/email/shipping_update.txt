@@ -1,0 +1,18 @@
+Your Order Is On Its Way, {{ customer_name }}!
+
+Great news — your order {{ order_name }} has shipped.
+{% if let Some(carrier) = &carrier %}
+Carrier: {{ carrier }}{% endif %}{% if let Some(num) = &tracking_number %}
+Tracking Number: {{ num }}{% endif %}{% if let Some(url) = &tracking_url %}
+Track your package: {{ url }}{% endif %}
+
+Items Shipped:
+{% for item in &items %}
+- {{ item }}
+{% endfor %}
+
+View your order: https://nakedpineapple.co/account
+
+—
+Naked Pineapple — Natural Skincare
+Questions? Reach out at info@nakedpineapple.co

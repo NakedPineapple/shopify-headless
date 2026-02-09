@@ -34,6 +34,7 @@ mod db;
 mod error;
 mod logging;
 mod microsoft_graph;
+mod outbound;
 mod scheduler;
 mod shopify;
 mod slack;

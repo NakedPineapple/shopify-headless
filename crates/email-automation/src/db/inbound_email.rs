@@ -3,36 +3,12 @@
 //! CRUD operations for storing and updating inbound emails processed
 //! by the triage pipeline.
 
-use chrono::{DateTime, Datelike, Timelike, Utc};
+use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 use tracing::instrument;
 
-use super::RepositoryError;
+use super::{RepositoryError, to_time_offset};
 use crate::triage::types::{ClassificationResult, EmailStatus};
-
-/// Convert chrono `DateTime<Utc>` to `time::OffsetDateTime` for `SQLx` compatibility.
-///
-/// `SQLx` exhibits asymmetric behavior when both `chrono` and `time` crates are in the
-/// dependency graph: reads work with chrono via type annotations, but writes (bind
-/// parameters) expect `time` types. See `crates/admin/src/db/manufacturing.rs` for the
-/// equivalent `DATE` conversion and full explanation.
-fn to_time_offset_date_time(dt: DateTime<Utc>) -> time::OffsetDateTime {
-    let date = time::Date::from_calendar_date(
-        dt.year(),
-        time::Month::try_from(u8::try_from(dt.month()).expect("month in range"))
-            .expect("valid month"),
-        u8::try_from(dt.day()).expect("day in range"),
-    )
-    .expect("valid date");
-    let time = time::Time::from_hms_nano(
-        u8::try_from(dt.hour()).expect("hour in range"),
-        u8::try_from(dt.minute()).expect("minute in range"),
-        u8::try_from(dt.second()).expect("second in range"),
-        dt.timestamp_subsec_nanos(),
-    )
-    .expect("valid time");
-    time::OffsetDateTime::new_utc(date, time)
-}
 
 /// Parameters for inserting a new inbound email.
 pub struct InsertParams<'a> {
@@ -93,7 +69,7 @@ pub async fn insert(pool: &PgPool, params: &InsertParams<'_>) -> Result<i32, Rep
         params.subject,
         params.body_preview,
         params.body_text,
-        to_time_offset_date_time(params.received_at),
+        to_time_offset(params.received_at),
         EmailStatus::Pending.as_str(),
     )
     .fetch_one(pool)

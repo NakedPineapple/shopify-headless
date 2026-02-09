@@ -1,0 +1,32 @@
+Thank You for Your Order, {{ customer_name }}!
+
+Your order {{ order_name }} has been confirmed.
+
+Order Date: {{ order_date }}
+
+Items Ordered:
+{% for item in &line_items %}
+- {{ item.title }}{% if let Some(variant) = &item.variant %} ({{ variant }}){% endif %} x{{ item.quantity }} — {{ item.price }}
+{% endfor %}
+
+Subtotal: {{ subtotal }}
+Shipping: {{ shipping }}
+Tax: {{ tax }}
+Total: {{ total }}
+{% if let Some(addr) = &shipping_address %}
+
+Shipping To:
+{{ addr.name }}
+{{ addr.address1 }}{% if let Some(addr2) = &addr.address2 %}
+{{ addr2 }}{% endif %}
+{{ addr.city }}, {{ addr.province }} {{ addr.zip }}
+{{ addr.country }}
+{% endif %}
+
+View your order: https://nakedpineapple.co/account
+
+Thank you for choosing Naked Pineapple!
+
+—
+Naked Pineapple — Natural Skincare
+Questions? Reach out at info@nakedpineapple.co

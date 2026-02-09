@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE admin.outbound_email_queue\n        SET attempts = attempts + 1,\n            last_attempt_at = NOW(),\n            error_message = $1,\n            status = CASE\n                WHEN attempts + 1 >= max_attempts THEN 'failed'\n                ELSE 'queued'\n            END\n        WHERE id = $2\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a562046c08a03029d70953bee28337cf55020ffaea040a9fcc613dbc1640224d"
+}

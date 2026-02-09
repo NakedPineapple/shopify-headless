@@ -49,6 +49,9 @@ time = "0.3"
 # Security
 secrecy = { workspace = true }
 
+# Templates (outbound email rendering)
+askama = { workspace = true }
+
 # Utilities (Slack webhook URL encoding)
 urlencoding = { workspace = true }
 uuid = { workspace = true }
