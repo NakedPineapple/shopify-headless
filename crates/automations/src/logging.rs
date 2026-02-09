@@ -1,4 +1,4 @@
-//! Structured logging configuration for the email automation service.
+//! Structured logging configuration for the automations service.
 //!
 //! Reuses the same patterns as the admin binary:
 //! - JSON format on Fly.io with service metadata and OTel-style field names
@@ -147,7 +147,7 @@ fn sentry_event_filter(metadata: &tracing::Metadata<'_>) -> sentry_tracing::Even
 /// Locally: Human-readable text format with colors.
 pub fn init_tracing(metadata: &ServiceMetadata) {
     let env_filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| "naked_pineapple_email_automation=info,tower_http=debug".into());
+        .unwrap_or_else(|_| "naked_pineapple_automations=info,tower_http=debug".into());
 
     if metadata.is_fly() {
         let make_writer = MetadataInjectingMakeWriter {

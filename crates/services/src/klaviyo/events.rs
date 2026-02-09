@@ -183,7 +183,7 @@ impl KlaviyoClient {
                         "cart_total": params.cart_total,
                         "checkout_url": params.checkout_url,
                         "line_items": params.line_items,
-                        "source": "email_automation"
+                        "source": "automations"
                     },
                     "time": chrono::Utc::now().to_rfc3339()
                 }
@@ -231,7 +231,7 @@ impl KlaviyoClient {
                         "tax": params.tax,
                         "total": params.total,
                         "shipping_address": params.shipping_address,
-                        "source": "email_automation"
+                        "source": "automations"
                     },
                     "time": chrono::Utc::now().to_rfc3339()
                 }
@@ -276,7 +276,7 @@ impl KlaviyoClient {
                         "tracking_number": params.tracking_number,
                         "tracking_url": params.tracking_url,
                         "items": params.items,
-                        "source": "email_automation"
+                        "source": "automations"
                     },
                     "time": chrono::Utc::now().to_rfc3339()
                 }
@@ -322,7 +322,7 @@ impl KlaviyoClient {
                         "order_name": params.order_name,
                         "product_names": params.product_names,
                         "store_url": params.store_url,
-                        "source": "email_automation"
+                        "source": "automations"
                     },
                     "time": chrono::Utc::now().to_rfc3339()
                 }
@@ -364,7 +364,7 @@ impl KlaviyoClient {
                         "customer_name": params.customer_name,
                         "renewal_date": params.renewal_date,
                         "product_names": params.product_names,
-                        "source": "email_automation"
+                        "source": "automations"
                     },
                     "time": chrono::Utc::now().to_rfc3339()
                 }
@@ -405,7 +405,7 @@ impl KlaviyoClient {
                     "properties": {
                         "customer_name": params.customer_name,
                         "product_names": params.product_names,
-                        "source": "email_automation"
+                        "source": "automations"
                     },
                     "time": chrono::Utc::now().to_rfc3339()
                 }
@@ -449,7 +449,7 @@ impl KlaviyoClient {
                         "customer_name": params.customer_name,
                         "product_names": params.product_names,
                         "store_url": params.store_url,
-                        "source": "email_automation"
+                        "source": "automations"
                     },
                     "time": chrono::Utc::now().to_rfc3339()
                 }

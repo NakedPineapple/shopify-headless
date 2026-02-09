@@ -1,8 +1,8 @@
-//! Naked Pineapple Email Automation — background service for email workflows.
+//! Naked Pineapple Automations — background service for automated workflows.
 //!
 //! This binary polls Microsoft 365 shared mailboxes for inbound emails,
 //! classifies them with Claude AI, routes them for human review via Slack,
-//! and manages automated outbound email workflows.
+//! and manages automated outbound workflows.
 //!
 //! # Architecture
 //!
@@ -76,10 +76,10 @@ async fn main() {
 
     let _sentry_guard = init_sentry(&config);
 
-    let service_metadata = logging::ServiceMetadata::from_env("email-automation");
+    let service_metadata = logging::ServiceMetadata::from_env("automations");
     logging::init_tracing(&service_metadata);
 
-    tracing::info!("starting email automation service");
+    tracing::info!("starting automations service");
 
     let pool = db::create_pool(&config.database_url)
         .await
@@ -178,7 +178,7 @@ async fn main() {
         Err(_) => tracing::warn!("scheduler did not stop within 30s timeout"),
     }
 
-    tracing::info!("email automation service shut down");
+    tracing::info!("automations service shut down");
 }
 
 /// Liveness health check.

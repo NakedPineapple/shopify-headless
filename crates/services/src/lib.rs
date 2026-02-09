@@ -1,7 +1,7 @@
 //! Shared service clients for Naked Pineapple.
 //!
 //! This library provides API clients and configuration types used by both
-//! the admin panel and the email-automation binary:
+//! the admin panel and the automations binary:
 //!
 //! - [`claude`] - Anthropic Claude API client (streaming + non-streaming)
 //! - [`klaviyo`] - Klaviyo API client for newsletter and helpdesk

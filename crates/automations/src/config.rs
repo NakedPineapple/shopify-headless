@@ -1,4 +1,4 @@
-//! Email automation configuration loaded from environment variables.
+//! Automations configuration loaded from environment variables.
 //!
 //! Reuses shared config types from `naked-pineapple-services` and adds
 //! Microsoft 365 and scheduler-specific configuration.

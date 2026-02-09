@@ -1,13 +1,13 @@
-app = "nakedpineapple-email-automation"
+app = "nakedpineapple-automations"
 primary_region = "sjc"
 kill_signal = "SIGTERM"
 kill_timeout = 30
 
 [build]
-  dockerfile = "../docker/Dockerfile.email-automation"
+  dockerfile = "../docker/Dockerfile.automations"
 
 [env]
-  RUST_LOG = "warn,naked_pineapple_email_automation=info,tower_http=info,sqlx::query=warn,rustls=warn,h2=warn,hyper_util=warn"
+  RUST_LOG = "warn,naked_pineapple_automations=info,tower_http=info,sqlx::query=warn,rustls=warn,h2=warn,hyper_util=warn"
   SHOPIFY_STORE = "nakedpineapple.myshopify.com"
   SHOPIFY_API_VERSION = "2026-01"
   SMTP_HOST = "outbound.mailhop.org"

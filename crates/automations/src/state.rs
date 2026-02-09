@@ -1,4 +1,4 @@
-//! Application state shared across the email automation service.
+//! Application state shared across the automations service.
 
 use std::sync::Arc;
 

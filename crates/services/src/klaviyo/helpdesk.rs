@@ -102,7 +102,7 @@ impl KlaviyoClient {
             "classification": params.classification,
             "reasoning": params.reasoning,
             "email_id": params.email_id,
-            "source": "email_automation"
+            "source": "automations"
         });
 
         let request = TrackEventRequest {

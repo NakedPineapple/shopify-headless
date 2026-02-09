@@ -1,6 +1,6 @@
 //! Shared configuration types loaded from environment variables.
 //!
-//! These config structs are used by both admin and email-automation binaries.
+//! These config structs are used by both admin and automations binaries.
 //! Each binary has its own top-level config that composes these shared types.
 
 use std::collections::HashMap;

@@ -1,4 +1,4 @@
-//! Database operations for email automation.
+//! Database operations for the automations service.
 //!
 //! Connects to the `np_admin` database (shared with the admin binary).
 //! New tables for email triage, automation logs, and outbound queues

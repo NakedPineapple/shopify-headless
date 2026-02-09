@@ -42,7 +42,7 @@ ENV SQLX_OFFLINE=true
 COPY . .
 
 # Build application (no CSS/Tailwind — background worker only)
-RUN cargo build --release --locked -p naked-pineapple-email-automation
+RUN cargo build --release --locked -p naked-pineapple-automations
 
 # =============================================================================
 # Stage 5: Runtime - distroless image for production
@@ -53,8 +53,8 @@ FROM gcr.io/distroless/cc-debian13@sha256:d7ac2f9af248f31fe6270002755722afdf6875
 ARG VERSION=0.1.0
 ARG COMMIT_SHA
 ARG BUILD_DATE
-LABEL org.opencontainers.image.title="Naked Pineapple Email Automation" \
-      org.opencontainers.image.description="Background email automation service for Naked Pineapple" \
+LABEL org.opencontainers.image.title="Naked Pineapple Automations" \
+      org.opencontainers.image.description="Background automation service for Naked Pineapple" \
       org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.authors="Adam Walz <adam@pineappleskinco.com>" \
       org.opencontainers.image.licenses="MIT OR Apache-2.0" \
@@ -67,8 +67,8 @@ LABEL org.opencontainers.image.title="Naked Pineapple Email Automation" \
 
 WORKDIR /app
 
-COPY --from=builder --chown=nonroot:nonroot /app/target/release/naked-pineapple-email-automation /app/server
-COPY --from=builder --chown=nonroot:nonroot /app/crates/email-automation/templates /app/crates/email-automation/templates
+COPY --from=builder --chown=nonroot:nonroot /app/target/release/naked-pineapple-automations /app/server
+COPY --from=builder --chown=nonroot:nonroot /app/crates/automations/templates /app/crates/automations/templates
 
 USER nonroot
 

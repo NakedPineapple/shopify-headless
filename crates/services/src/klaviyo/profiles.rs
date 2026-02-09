@@ -83,7 +83,7 @@ fn build_properties(params: &ProfileUpsertParams<'_>) -> serde_json::Value {
     );
     props.insert(
         "np_segmented_by".to_string(),
-        serde_json::Value::String("email_automation".to_string()),
+        serde_json::Value::String("automations".to_string()),
     );
 
     if let Some(last_order) = params.last_order_at {

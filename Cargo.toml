@@ -5,7 +5,7 @@ members = [
     "crates/services",
     "crates/storefront",
     "crates/admin",
-    "crates/email-automation",
+    "crates/automations",
     "crates/cli",
     "crates/integration-tests",
 ]

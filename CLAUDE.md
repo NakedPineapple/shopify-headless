@@ -58,7 +58,7 @@ task fly:db:migrate:storefront:staging  # Terminal 2: run migrations
 Two separate PostgreSQL databases enforce security boundaries:
 
 - **np_storefront** - User accounts, sessions, search index
-- **np_admin** - Admin users, OAuth tokens, chat history. Also used by the `email-automation` crate (migrations in `crates/admin/migrations/`, queries use `admin.` schema prefix).
+- **np_admin** - Admin users, OAuth tokens, chat history. Also used by the `automations` crate (migrations in `crates/admin/migrations/`, queries use `admin.` schema prefix).
 
 The admin binary has no access to storefront user data and vice versa. Admin is accessible only via Tailscale VPN.
 
@@ -103,7 +103,7 @@ SQLx has both `chrono` and `time` features active because `time` is pulled in tr
 - **Reading (SELECT)**: Works with chrono types via explicit type annotations (e.g., `as "received_date: NaiveDate"`)
 - **Writing (INSERT/UPDATE)**: SQLx may resolve bind parameters to `time` types instead of chrono
 
-Which columns are affected depends on workspace feature unification in each crate. The public API uses chrono types consistently; conversion to `time` types happens internally when binding parameters. See `to_time_date` in `crates/admin/src/db/inventory_lot.rs` for `DATE` columns and `to_time_offset` in `crates/email-automation/src/db/mod.rs` for `TIMESTAMPTZ` columns.
+Which columns are affected depends on workspace feature unification in each crate. The public API uses chrono types consistently; conversion to `time` types happens internally when binding parameters. See `to_time_date` in `crates/admin/src/db/inventory_lot.rs` for `DATE` columns and `to_time_offset` in `crates/automations/src/db/mod.rs` for `TIMESTAMPTZ` columns.
 
 ### SQLx Offline Mode
 

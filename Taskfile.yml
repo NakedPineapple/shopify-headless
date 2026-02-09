@@ -66,10 +66,10 @@ tasks:
       - css:watch:admin
       - rust:run:dev:admin
 
-  dev:email-automation:
-    desc: "Run email automation service with auto-reload"
+  dev:automations:
+    desc: "Run automations service with auto-reload"
     cmds:
-      - cargo watch -x 'run -p naked-pineapple-email-automation'
+      - cargo watch -x 'run -p naked-pineapple-automations'
 
   check:
     desc: "Run all checks (fmt, lint, audit, deny)"
@@ -304,7 +304,7 @@ tasks:
     cmds:
       - task: sqlx:prepare:storefront
       - task: sqlx:prepare:admin
-      - task: sqlx:prepare:email-automation
+      - task: sqlx:prepare:automations
       - task: sqlx:prepare:cli
 
   sqlx:prepare:storefront:
@@ -323,9 +323,9 @@ tasks:
     env:
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/np_admin
 
-  sqlx:prepare:email-automation:
-    desc: "Generate sqlx offline cache for email-automation"
-    dir: crates/email-automation
+  sqlx:prepare:automations:
+    desc: "Generate sqlx offline cache for automations"
+    dir: crates/automations
     cmds:
       - cargo sqlx prepare
     env:

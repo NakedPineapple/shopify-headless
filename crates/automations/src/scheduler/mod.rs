@@ -1,4 +1,4 @@
-//! Task scheduler for the email automation service.
+//! Task scheduler for the automations service.
 //!
 //! Runs periodic tasks using `tokio::select!` over interval ticks:
 //! - Email polling (default: every 2 minutes)
@@ -138,7 +138,7 @@ impl Scheduler {
             },
             Block::Context {
                 elements: vec![ContextElement::Mrkdwn {
-                    text: "Automated alert from email-automation circuit breaker".to_string(),
+                    text: "Automated alert from automations circuit breaker".to_string(),
                 }],
             },
         ];
