@@ -30,6 +30,7 @@
       "WebFetch(domain:askama.readthedocs.io)",
       "WebFetch(domain:askama.rs)",
       "WebFetch(domain:betterstack.com)",
+      "WebFetch(domain:certbot.eff.org)",
       "WebFetch(domain:community.fly.io)",
       "WebFetch(domain:community.shopify.com)",
       "WebFetch(domain:community.shopify.dev)",

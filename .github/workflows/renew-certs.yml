@@ -37,13 +37,14 @@ jobs:
           echo "dns_cloudflare_api_token = $CLOUDFLARE_API_TOKEN" > ~/.secrets/cloudflare.ini
           chmod 600 ~/.secrets/cloudflare.ini
 
-      - name: Generate certificate
+      - name: Generate multi-domain certificate
         run: |
           sudo certbot certonly --dns-cloudflare \
             --dns-cloudflare-credentials ~/.secrets/cloudflare.ini \
             --non-interactive --agree-tos \
             --email hostmaster@pineappleskinco.com \
-            -d staging.admin.pineappleskinco.com
+            -d staging.admin.pineappleskinco.com \
+            -d staging.admin.nakedpineapple.co
 
       - name: Install flyctl
         uses: superfly/flyctl-actions/setup-flyctl@master
@@ -74,13 +75,14 @@ jobs:
           echo "dns_cloudflare_api_token = $CLOUDFLARE_API_TOKEN" > ~/.secrets/cloudflare.ini
           chmod 600 ~/.secrets/cloudflare.ini
 
-      - name: Generate certificate
+      - name: Generate multi-domain certificate
         run: |
           sudo certbot certonly --dns-cloudflare \
             --dns-cloudflare-credentials ~/.secrets/cloudflare.ini \
             --non-interactive --agree-tos \
             --email hostmaster@pineappleskinco.com \
-            -d admin.pineappleskinco.com
+            -d admin.pineappleskinco.com \
+            -d admin.nakedpineapple.co
 
       - name: Install flyctl
         uses: superfly/flyctl-actions/setup-flyctl@master
