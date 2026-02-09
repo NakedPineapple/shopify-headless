@@ -26,6 +26,7 @@ use axum::extract::State;
 use axum::http::StatusCode;
 use axum::{Router, routing::get, routing::post};
 use naked_pineapple_services::claude::ClaudeClient;
+use naked_pineapple_services::email::EmailService;
 use naked_pineapple_services::klaviyo::KlaviyoClient;
 use naked_pineapple_services::slack::SlackClient;
 
@@ -130,6 +131,19 @@ async fn main() {
         None
     };
 
+    let email_service = config.email.as_ref().and_then(|email_config| {
+        match EmailService::new(email_config) {
+            Ok(service) => {
+                tracing::info!("SMTP email service initialized");
+                Some(service)
+            }
+            Err(e) => {
+                tracing::warn!(error = %e, "SMTP email service not available, continuing without");
+                None
+            }
+        }
+    });
+
     let health_port = config.health_port;
     let state = AppState::new(state::AppStateParams {
         config,
@@ -139,6 +153,7 @@ async fn main() {
         slack: slack_client,
         klaviyo: klaviyo_client,
         shopify: shopify_client,
+        email_service,
     });
 
     // Graceful shutdown channel

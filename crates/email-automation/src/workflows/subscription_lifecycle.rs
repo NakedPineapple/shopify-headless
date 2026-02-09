@@ -3,17 +3,23 @@
 //! Runs on a schedule (default: daily) and performs:
 //!
 //! 1. **Renewal reminders**: Find active subscriptions renewing within N days
-//!    and queue reminder emails.
-//! 2. **Payment failure**: Detect failed billing attempts and queue notification
-//!    emails.
-//! 3. **Win-back**: Find recently cancelled subscriptions and queue win-back
-//!    emails after a configurable delay.
+//!    and fire Klaviyo events to trigger reminder emails.
+//! 2. **Payment failure**: Detect failed billing attempts and fire Klaviyo
+//!    events to trigger notification emails.
+//! 3. **Win-back**: Find recently cancelled subscriptions and fire Klaviyo
+//!    events to trigger win-back flows (Klaviyo handles the delay).
 
 use sqlx::PgPool;
 use tracing::{debug, error, info, instrument, warn};
 
+use naked_pineapple_services::klaviyo::KlaviyoClient;
+use naked_pineapple_services::klaviyo::events::{
+    SubscriptionCancelledEventParams, SubscriptionPaymentFailedEventParams,
+    SubscriptionRenewalReminderEventParams,
+};
+
 use crate::db::{automation_log, outbound_queue};
-use crate::outbound::{self, EmailType};
+use crate::outbound::EmailType;
 use crate::shopify::ShopifyClient;
 use crate::shopify::subscriptions::{self, SubscriptionContract};
 
@@ -23,9 +29,11 @@ pub struct SubscriptionClients<'a> {
     pub pool: &'a PgPool,
     /// Shopify Admin API client.
     pub shopify: &'a ShopifyClient,
+    /// Klaviyo client for event tracking.
+    pub klaviyo: &'a KlaviyoClient,
     /// Days before renewal to send a reminder.
     pub renewal_reminder_days: u64,
-    /// Days after cancellation to send a win-back email.
+    /// Days after cancellation to look back for cancelled subscriptions.
     pub winback_delay_days: u64,
 }
 
@@ -86,8 +94,8 @@ async fn process_subscriptions(clients: &SubscriptionClients<'_>) -> Result<(i32
     // 2. Payment failure notifications
     actioned += send_payment_failure_notifications(clients, &contracts).await;
 
-    // 3. Win-back emails for cancelled subscriptions
-    actioned += send_winback_emails(clients).await;
+    // 3. Win-back events for cancelled subscriptions
+    actioned += send_winback_events(clients).await;
 
     if actioned > 0 {
         info!(
@@ -100,7 +108,7 @@ async fn process_subscriptions(clients: &SubscriptionClients<'_>) -> Result<(i32
     Ok((total, actioned))
 }
 
-/// Send renewal reminder emails for subscriptions renewing within N days.
+/// Fire renewal reminder events for subscriptions renewing within N days.
 async fn send_renewal_reminders(
     clients: &SubscriptionClients<'_>,
     contracts: &[SubscriptionContract],
@@ -128,7 +136,7 @@ async fn send_renewal_reminders(
             continue;
         }
 
-        // Deduplicate: check if we already queued a renewal reminder for this contract
+        // Deduplicate
         let reference_id = format!("renewal:{}", contract.id);
         match outbound_queue::exists(
             clients.pool,
@@ -140,53 +148,55 @@ async fn send_renewal_reminders(
             Ok(true) => continue,
             Ok(false) => {}
             Err(e) => {
-                warn!(contract_id = %contract.id, error = %e, "failed to check renewal queue");
+                warn!(contract_id = %contract.id, error = %e, "failed to check renewal dedup");
                 continue;
             }
         }
 
         let customer_name = format_customer_name(contract);
-        let data = outbound::SubscriptionRenewalData {
-            customer_name,
-            renewal_date: billing_utc.format("%B %d, %Y").to_string(),
-            product_names: contract.line_items.clone(),
+        let params = SubscriptionRenewalReminderEventParams {
+            email,
+            customer_name: &customer_name,
+            renewal_date: &billing_utc.format("%B %d, %Y").to_string(),
+            product_names: &contract.line_items,
         };
 
-        let to_name = format_customer_name_opt(contract);
-        match outbound::enqueue_subscription_renewal_reminder(
-            clients.pool,
-            email,
-            to_name.as_deref(),
-            &reference_id,
-            &data,
-        )
-        .await
+        match clients
+            .klaviyo
+            .track_subscription_renewal_reminder_event(&params)
+            .await
         {
-            Ok(id) => {
-                info!(
-                    email_id = id,
-                    contract_id = %contract.id,
-                    "queued subscription renewal reminder"
-                );
+            Ok(()) => {
+                if let Err(e) = outbound_queue::record_tracked(
+                    clients.pool,
+                    EmailType::SubscriptionRenewalReminder.as_str(),
+                    &reference_id,
+                    "subscription_renewal",
+                )
+                .await
+                {
+                    warn!(error = %e, "failed to record renewal reminder dedup");
+                }
+                info!(contract_id = %contract.id, "tracked subscription renewal reminder event");
                 sent += 1;
             }
             Err(e) => {
                 warn!(
                     contract_id = %contract.id,
                     error = %e,
-                    "failed to queue renewal reminder"
+                    "failed to track renewal reminder event"
                 );
             }
         }
     }
 
     if sent > 0 {
-        debug!(count = sent, "renewal reminders sent");
+        debug!(count = sent, "renewal reminder events tracked");
     }
     sent
 }
 
-/// Send payment failure notification emails.
+/// Fire payment failure events.
 async fn send_payment_failure_notifications(
     clients: &SubscriptionClients<'_>,
     contracts: &[SubscriptionContract],
@@ -211,8 +221,7 @@ async fn send_payment_failure_notifications(
             }
         }
 
-        // Deduplicate
-        let reference_id = format!("payment_failure:{}", contract.id);
+        // Deduplicate via automation_log (48-hour window)
         match automation_log::has_recent_alert(
             clients.pool,
             "subscription_payment_failure",
@@ -233,27 +242,19 @@ async fn send_payment_failure_notifications(
         }
 
         let customer_name = format_customer_name(contract);
-        let data = outbound::PaymentFailureData {
-            customer_name,
-            product_names: contract.line_items.clone(),
+        let params = SubscriptionPaymentFailedEventParams {
+            email,
+            customer_name: &customer_name,
+            product_names: &contract.line_items,
         };
 
-        let to_name = format_customer_name_opt(contract);
-        match outbound::enqueue_payment_failure_notification(
-            clients.pool,
-            email,
-            to_name.as_deref(),
-            &reference_id,
-            &data,
-        )
-        .await
+        match clients
+            .klaviyo
+            .track_subscription_payment_failed_event(&params)
+            .await
         {
-            Ok(id) => {
-                info!(
-                    email_id = id,
-                    contract_id = %contract.id,
-                    "queued payment failure notification"
-                );
+            Ok(()) => {
+                info!(contract_id = %contract.id, "tracked subscription payment failed event");
                 log_payment_failure_alert(clients.pool, contract).await;
                 sent += 1;
             }
@@ -261,21 +262,21 @@ async fn send_payment_failure_notifications(
                 warn!(
                     contract_id = %contract.id,
                     error = %e,
-                    "failed to queue payment failure notification"
+                    "failed to track payment failure event"
                 );
             }
         }
     }
 
     if sent > 0 {
-        debug!(count = sent, "payment failure notifications sent");
+        debug!(count = sent, "payment failure events tracked");
     }
     sent
 }
 
-/// Send win-back emails for recently cancelled subscriptions.
-async fn send_winback_emails(clients: &SubscriptionClients<'_>) -> i32 {
-    // Poll for cancellations within a broad window (subscriptions cancelled recently)
+/// Fire win-back events for recently cancelled subscriptions.
+async fn send_winback_events(clients: &SubscriptionClients<'_>) -> i32 {
+    // Poll for cancellations within a broad window
     let poll_window = clients.winback_delay_days * 24 * 60 + 1440; // delay + 1 day buffer
     let contracts =
         match subscriptions::fetch_cancelled_contracts(clients.shopify, poll_window).await {
@@ -304,54 +305,50 @@ async fn send_winback_emails(clients: &SubscriptionClients<'_>) -> i32 {
             Ok(true) => continue,
             Ok(false) => {}
             Err(e) => {
-                warn!(contract_id = %contract.id, error = %e, "failed to check winback queue");
+                warn!(contract_id = %contract.id, error = %e, "failed to check winback dedup");
                 continue;
             }
         }
 
         let customer_name = format_customer_name(contract);
-        let data = outbound::WinBackData {
-            customer_name,
-            product_names: contract.line_items.clone(),
-            store_url: "https://nakedpineapple.co".to_string(),
+        let params = SubscriptionCancelledEventParams {
+            email,
+            customer_name: &customer_name,
+            product_names: &contract.line_items,
+            store_url: "https://nakedpineapple.co",
         };
 
-        // Schedule for N days after cancellation (use now + winback_delay if no cancelled_at)
-        let scheduled_for = chrono::Utc::now()
-            + chrono::Duration::days(i64::try_from(clients.winback_delay_days).unwrap_or(14));
-
-        let to_name = format_customer_name_opt(contract);
-        match outbound::enqueue_subscription_winback(
-            clients.pool,
-            email,
-            to_name.as_deref(),
-            &reference_id,
-            &data,
-            scheduled_for,
-        )
-        .await
+        match clients
+            .klaviyo
+            .track_subscription_cancelled_event(&params)
+            .await
         {
-            Ok(id) => {
-                info!(
-                    email_id = id,
-                    contract_id = %contract.id,
-                    scheduled = %scheduled_for,
-                    "queued subscription win-back email"
-                );
+            Ok(()) => {
+                if let Err(e) = outbound_queue::record_tracked(
+                    clients.pool,
+                    EmailType::SubscriptionWinBack.as_str(),
+                    &reference_id,
+                    "subscription_winback",
+                )
+                .await
+                {
+                    warn!(error = %e, "failed to record winback dedup");
+                }
+                info!(contract_id = %contract.id, "tracked subscription cancelled event");
                 sent += 1;
             }
             Err(e) => {
                 warn!(
                     contract_id = %contract.id,
                     error = %e,
-                    "failed to queue win-back email"
+                    "failed to track subscription cancelled event"
                 );
             }
         }
     }
 
     if sent > 0 {
-        debug!(count = sent, "win-back emails queued");
+        debug!(count = sent, "win-back events tracked");
     }
     sent
 }
@@ -364,12 +361,6 @@ fn format_customer_name(contract: &SubscriptionContract) -> String {
         (None, Some(last)) => last.clone(),
         (None, None) => String::new(),
     }
-}
-
-/// Format customer name for the `to_name` field (None if empty).
-fn format_customer_name_opt(contract: &SubscriptionContract) -> Option<String> {
-    let name = format_customer_name(contract);
-    if name.is_empty() { None } else { Some(name) }
 }
 
 /// Log a payment failure alert for deduplication.

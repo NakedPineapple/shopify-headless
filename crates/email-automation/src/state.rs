@@ -3,6 +3,7 @@
 use std::sync::Arc;
 
 use naked_pineapple_services::claude::ClaudeClient;
+use naked_pineapple_services::email::EmailService;
 use naked_pineapple_services::klaviyo::KlaviyoClient;
 use naked_pineapple_services::slack::SlackClient;
 use sqlx::PgPool;
@@ -25,6 +26,7 @@ struct AppStateInner {
     slack: Option<SlackClient>,
     klaviyo: Option<KlaviyoClient>,
     shopify: Option<ShopifyClient>,
+    email_service: Option<EmailService>,
 }
 
 /// Parameters for creating a new `AppState`.
@@ -36,6 +38,7 @@ pub struct AppStateParams {
     pub slack: Option<SlackClient>,
     pub klaviyo: Option<KlaviyoClient>,
     pub shopify: Option<ShopifyClient>,
+    pub email_service: Option<EmailService>,
 }
 
 impl AppState {
@@ -51,6 +54,7 @@ impl AppState {
                 slack: params.slack,
                 klaviyo: params.klaviyo,
                 shopify: params.shopify,
+                email_service: params.email_service,
             }),
         }
     }
@@ -95,5 +99,11 @@ impl AppState {
     #[must_use]
     pub fn shopify(&self) -> Option<&ShopifyClient> {
         self.inner.shopify.as_ref()
+    }
+
+    /// Get a reference to the SMTP email service (if configured).
+    #[must_use]
+    pub fn email_service(&self) -> Option<&EmailService> {
+        self.inner.email_service.as_ref()
     }
 }

@@ -5,7 +5,6 @@
 //! - Shopify order/fulfillment polling (default: every 5 minutes)
 //! - Abandoned cart detection (default: every 15 minutes)
 //! - Low stock monitoring (default: every hour)
-//! - Outbound email queue processing (default: every 30 seconds)
 //! - Customer segment sync (default: daily)
 //! - Subscription lifecycle (default: daily)
 //!
@@ -85,7 +84,6 @@ impl Scheduler {
         let mut order_poll = interval(Duration::from_secs(config.order_poll_interval_secs));
         let mut cart_check = interval(Duration::from_secs(config.cart_check_interval_secs));
         let mut stock_check = interval(Duration::from_secs(config.stock_check_interval_secs));
-        let mut outbound = interval(Duration::from_secs(config.outbound_interval_secs));
         let mut segment_sync = interval(Duration::from_secs(config.segment_sync_interval_secs));
         let mut subscription_check =
             interval(Duration::from_secs(config.subscription_check_interval_secs));
@@ -95,7 +93,6 @@ impl Scheduler {
             order_poll_secs = config.order_poll_interval_secs,
             cart_check_secs = config.cart_check_interval_secs,
             stock_check_secs = config.stock_check_interval_secs,
-            outbound_secs = config.outbound_interval_secs,
             segment_sync_secs = config.segment_sync_interval_secs,
             subscription_check_secs = config.subscription_check_interval_secs,
             "scheduler started"
@@ -111,7 +108,6 @@ impl Scheduler {
                 _ = order_poll.tick() => { guarded!(self, "order_poll", poll_shopify_events); },
                 _ = cart_check.tick() => { guarded!(self, "cart_check", check_abandoned_carts); },
                 _ = stock_check.tick() => { guarded!(self, "stock_check", check_low_stock); },
-                _ = outbound.tick() => { guarded!(self, "outbound", process_outbound_queue); },
                 _ = segment_sync.tick() => { guarded!(self, "segment_sync", sync_customer_segments); },
                 _ = subscription_check.tick() => { guarded!(self, "subscription_check", check_subscriptions); },
             }
@@ -202,19 +198,18 @@ impl Scheduler {
         !any_failure
     }
 
-    /// Poll Shopify for recent orders/fulfillments and queue outbound emails.
+    /// Poll Shopify for recent orders/fulfillments and fire Klaviyo events.
     async fn poll_shopify_events(&self) -> bool {
-        let Some(shopify) = self.state.shopify() else {
+        let (Some(shopify), Some(klaviyo)) = (self.state.shopify(), self.state.klaviyo()) else {
             return true;
         };
 
         let poll_minutes = self.state.config().scheduler.order_poll_interval_secs / 60 + 2;
-        let review_delay = self.state.config().scheduler.review_request_delay_days;
         let pool = self.state.pool();
 
-        outbound::poller::poll_new_orders(pool, shopify, poll_minutes).await;
-        outbound::poller::poll_fulfillments(pool, shopify, poll_minutes).await;
-        outbound::poller::poll_deliveries(pool, shopify, poll_minutes, review_delay).await;
+        outbound::poller::poll_new_orders(pool, shopify, klaviyo, poll_minutes).await;
+        outbound::poller::poll_fulfillments(pool, shopify, klaviyo, poll_minutes).await;
+        outbound::poller::poll_deliveries(pool, shopify, klaviyo, poll_minutes).await;
         true
     }
 
@@ -251,6 +246,7 @@ impl Scheduler {
             pool: self.state.pool(),
             shopify,
             slack,
+            email_service: self.state.email_service(),
             threshold: config.low_stock_threshold,
             email_recipients: &config.low_stock_email_recipients,
         };
@@ -259,21 +255,9 @@ impl Scheduler {
         true
     }
 
-    /// Process the outbound email queue: send queued emails via M365.
-    async fn process_outbound_queue(&self) -> bool {
-        let mailbox = self.state.m365().mailboxes().first().cloned();
-        let Some(mailbox) = mailbox else {
-            tracing::warn!("no mailbox configured for outbound sending");
-            return true;
-        };
-
-        outbound::sender::process_queue(self.state.pool(), self.state.m365(), &mailbox).await;
-        true
-    }
-
     /// Check subscription lifecycle: renewals, payment failures, and win-back.
     async fn check_subscriptions(&self) -> bool {
-        let Some(shopify) = self.state.shopify() else {
+        let (Some(shopify), Some(klaviyo)) = (self.state.shopify(), self.state.klaviyo()) else {
             return true;
         };
 
@@ -282,6 +266,7 @@ impl Scheduler {
         let clients = workflows::subscription_lifecycle::SubscriptionClients {
             pool: self.state.pool(),
             shopify,
+            klaviyo,
             renewal_reminder_days: config.subscription_renewal_reminder_days,
             winback_delay_days: config.subscription_winback_delay_days,
         };

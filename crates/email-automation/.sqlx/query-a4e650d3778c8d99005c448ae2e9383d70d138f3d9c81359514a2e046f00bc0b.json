@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO admin.outbound_email_queue (\n            email_type, to_address, subject,\n            body_html, body_text,\n            status, sent_at,\n            reference_id, reference_type\n        )\n        VALUES ($1, 'klaviyo', '', '', '', 'sent', NOW(), $2, $3)\n        RETURNING id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "a4e650d3778c8d99005c448ae2e9383d70d138f3d9c81359514a2e046f00bc0b"
+}

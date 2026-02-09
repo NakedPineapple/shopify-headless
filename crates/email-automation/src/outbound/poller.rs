@@ -1,24 +1,31 @@
-//! Shopify order/fulfillment poller for triggering transactional emails.
+//! Shopify order/fulfillment poller for triggering Klaviyo transactional events.
 //!
 //! Periodically queries the Shopify Admin API for recent order events and
-//! queues the appropriate transactional emails. Deduplicates against the
-//! `outbound_email_queue` table to avoid sending the same email twice.
+//! fires Klaviyo events to trigger email flows. Deduplicates against the
+//! `outbound_email_queue` table to avoid firing the same event twice.
 
-use chrono::Utc;
 use sqlx::PgPool;
 use tracing::{debug, error, info, instrument, warn};
 
-use super::{
-    AddressData, DeliveryNotificationData, EmailType, LineItemData, OrderConfirmationData,
-    ReviewRequestData, ShippingUpdateData,
+use naked_pineapple_services::klaviyo::KlaviyoClient;
+use naked_pineapple_services::klaviyo::events::{
+    OrderConfirmedEventParams, OrderDeliveredEventParams, OrderLineItemEvent,
+    OrderShippedEventParams, ShippingAddressEvent,
 };
+
+use super::EmailType;
 use crate::db::outbound_queue;
 use crate::shopify::ShopifyClient;
 use crate::shopify::fulfillments::{self, OrderDetail};
 
-/// Poll Shopify for new orders and queue confirmation emails.
-#[instrument(skip(pool, shopify))]
-pub async fn poll_new_orders(pool: &PgPool, shopify: &ShopifyClient, poll_minutes: u64) {
+/// Poll Shopify for new orders and fire "Order Confirmed" events.
+#[instrument(skip(pool, shopify, klaviyo))]
+pub async fn poll_new_orders(
+    pool: &PgPool,
+    shopify: &ShopifyClient,
+    klaviyo: &KlaviyoClient,
+    poll_minutes: u64,
+) {
     let orders = match fulfillments::fetch_recent_orders(shopify, poll_minutes).await {
         Ok(orders) => orders,
         Err(e) => {
@@ -30,15 +37,20 @@ pub async fn poll_new_orders(pool: &PgPool, shopify: &ShopifyClient, poll_minute
     debug!(count = orders.len(), "fetched recent orders");
 
     for order in &orders {
-        if let Err(e) = maybe_queue_order_confirmation(pool, order).await {
-            warn!(order = %order.name, error = %e, "failed to queue order confirmation");
+        if let Err(e) = maybe_track_order_confirmed(pool, klaviyo, order).await {
+            warn!(order = %order.name, error = %e, "failed to track order confirmed event");
         }
     }
 }
 
-/// Poll Shopify for recently shipped orders and queue shipping emails.
-#[instrument(skip(pool, shopify))]
-pub async fn poll_fulfillments(pool: &PgPool, shopify: &ShopifyClient, poll_minutes: u64) {
+/// Poll Shopify for recently shipped orders and fire "Order Shipped" events.
+#[instrument(skip(pool, shopify, klaviyo))]
+pub async fn poll_fulfillments(
+    pool: &PgPool,
+    shopify: &ShopifyClient,
+    klaviyo: &KlaviyoClient,
+    poll_minutes: u64,
+) {
     let orders = match fulfillments::fetch_recently_fulfilled(shopify, poll_minutes).await {
         Ok(orders) => orders,
         Err(e) => {
@@ -50,19 +62,22 @@ pub async fn poll_fulfillments(pool: &PgPool, shopify: &ShopifyClient, poll_minu
     debug!(count = orders.len(), "fetched recently fulfilled orders");
 
     for order in &orders {
-        if let Err(e) = maybe_queue_shipping_update(pool, order).await {
-            warn!(order = %order.name, error = %e, "failed to queue shipping update");
+        if let Err(e) = maybe_track_order_shipped(pool, klaviyo, order).await {
+            warn!(order = %order.name, error = %e, "failed to track order shipped event");
         }
     }
 }
 
-/// Poll Shopify for recently delivered orders and queue delivery + review emails.
-#[instrument(skip(pool, shopify))]
+/// Poll Shopify for recently delivered orders and fire "Order Delivered" events.
+///
+/// The "Order Delivered" event triggers both a delivery notification and,
+/// after a configurable delay in the Klaviyo flow, a review request email.
+#[instrument(skip(pool, shopify, klaviyo))]
 pub async fn poll_deliveries(
     pool: &PgPool,
     shopify: &ShopifyClient,
+    klaviyo: &KlaviyoClient,
     poll_minutes: u64,
-    review_delay_days: u64,
 ) {
     let orders = match fulfillments::fetch_recently_delivered(shopify, poll_minutes).await {
         Ok(orders) => orders,
@@ -75,19 +90,17 @@ pub async fn poll_deliveries(
     debug!(count = orders.len(), "fetched recently delivered orders");
 
     for order in &orders {
-        if let Err(e) = maybe_queue_delivery_notification(pool, order).await {
-            warn!(order = %order.name, error = %e, "failed to queue delivery notification");
-        }
-        if let Err(e) = maybe_queue_review_request(pool, order, review_delay_days).await {
-            warn!(order = %order.name, error = %e, "failed to queue review request");
+        if let Err(e) = maybe_track_order_delivered(pool, klaviyo, order).await {
+            warn!(order = %order.name, error = %e, "failed to track order delivered event");
         }
     }
 }
 
-async fn maybe_queue_order_confirmation(
+async fn maybe_track_order_confirmed(
     pool: &PgPool,
+    klaviyo: &KlaviyoClient,
     order: &OrderDetail,
-) -> Result<(), super::OutboundError> {
+) -> Result<(), PollerError> {
     let Some(email) = &order.email else {
         return Ok(());
     };
@@ -98,22 +111,40 @@ async fn maybe_queue_order_confirmation(
     }
 
     let customer_name = customer_name(order);
-    let data = build_confirmation_data(order, &customer_name);
-    let to_name = if customer_name.is_empty() {
-        None
-    } else {
-        Some(customer_name.as_str())
+    let line_items = build_line_items(order);
+    let shipping_address = build_shipping_address(order);
+
+    let params = OrderConfirmedEventParams {
+        email,
+        customer_name: &customer_name,
+        order_name: &order.name,
+        order_date: &order.created_at,
+        line_items: &line_items,
+        subtotal: &format!("${}", order.prices.subtotal),
+        shipping: &format!("${}", order.prices.shipping),
+        tax: &format!("${}", order.prices.tax),
+        total: &format!("${}", order.prices.total),
+        shipping_address: shipping_address.as_ref(),
     };
 
-    let id = super::enqueue_order_confirmation(pool, email, to_name, order_ref, &data).await?;
-    info!(email_id = id, order = %order.name, "queued order confirmation");
+    klaviyo.track_order_confirmed_event(&params).await?;
+    outbound_queue::record_tracked(
+        pool,
+        EmailType::OrderConfirmation.as_str(),
+        order_ref,
+        "order",
+    )
+    .await?;
+
+    info!(order = %order.name, "tracked order confirmed event");
     Ok(())
 }
 
-async fn maybe_queue_shipping_update(
+async fn maybe_track_order_shipped(
     pool: &PgPool,
+    klaviyo: &KlaviyoClient,
     order: &OrderDetail,
-) -> Result<(), super::OutboundError> {
+) -> Result<(), PollerError> {
     let Some(email) = &order.email else {
         return Ok(());
     };
@@ -124,22 +155,46 @@ async fn maybe_queue_shipping_update(
     }
 
     let customer_name = customer_name(order);
-    let data = build_shipping_data(order, &customer_name);
-    let to_name = if customer_name.is_empty() {
-        None
-    } else {
-        Some(customer_name.as_str())
+    let fulfillment = order.fulfillments.first();
+    let items: Vec<String> = order
+        .line_items
+        .iter()
+        .map(|li| {
+            li.variant_title.as_ref().map_or_else(
+                || format!("{} x{}", li.title, li.quantity),
+                |variant| format!("{} ({variant}) x{}", li.title, li.quantity),
+            )
+        })
+        .collect();
+
+    let params = OrderShippedEventParams {
+        email,
+        customer_name: &customer_name,
+        order_name: &order.name,
+        carrier: fulfillment.and_then(|f| f.company.as_deref()),
+        tracking_number: fulfillment.and_then(|f| f.number.as_deref()),
+        tracking_url: fulfillment.and_then(|f| f.url.as_deref()),
+        items: &items,
     };
 
-    let id = super::enqueue_shipping_update(pool, email, to_name, order_ref, &data).await?;
-    info!(email_id = id, order = %order.name, "queued shipping update");
+    klaviyo.track_order_shipped_event(&params).await?;
+    outbound_queue::record_tracked(
+        pool,
+        EmailType::ShippingUpdate.as_str(),
+        order_ref,
+        "fulfillment",
+    )
+    .await?;
+
+    info!(order = %order.name, "tracked order shipped event");
     Ok(())
 }
 
-async fn maybe_queue_delivery_notification(
+async fn maybe_track_order_delivered(
     pool: &PgPool,
+    klaviyo: &KlaviyoClient,
     order: &OrderDetail,
-) -> Result<(), super::OutboundError> {
+) -> Result<(), PollerError> {
     let Some(email) = &order.email else {
         return Ok(());
     };
@@ -150,58 +205,26 @@ async fn maybe_queue_delivery_notification(
     }
 
     let customer_name = customer_name(order);
-    let data = DeliveryNotificationData {
-        customer_name: customer_name.clone(),
-        order_name: order.name.clone(),
-    };
-    let to_name = if customer_name.is_empty() {
-        None
-    } else {
-        Some(customer_name.as_str())
-    };
-
-    let id = super::enqueue_delivery_notification(pool, email, to_name, order_ref, &data).await?;
-    info!(email_id = id, order = %order.name, "queued delivery notification");
-    Ok(())
-}
-
-async fn maybe_queue_review_request(
-    pool: &PgPool,
-    order: &OrderDetail,
-    delay_days: u64,
-) -> Result<(), super::OutboundError> {
-    let Some(email) = &order.email else {
-        return Ok(());
-    };
-    let order_ref = &order.id;
-
-    if outbound_queue::exists(pool, EmailType::ReviewRequest.as_str(), order_ref).await? {
-        return Ok(());
-    }
-
-    let customer_name = customer_name(order);
     let product_names: Vec<String> = order.line_items.iter().map(|li| li.title.clone()).collect();
-    let data = ReviewRequestData {
-        customer_name: customer_name.clone(),
-        product_names,
-        store_url: "https://nakedpineapple.co".to_string(),
-    };
-    let to_name = if customer_name.is_empty() {
-        None
-    } else {
-        Some(customer_name.as_str())
+
+    let params = OrderDeliveredEventParams {
+        email,
+        customer_name: &customer_name,
+        order_name: &order.name,
+        product_names: &product_names,
+        store_url: "https://nakedpineapple.co",
     };
 
-    let scheduled_for = Utc::now() + chrono::Duration::days(i64::try_from(delay_days).unwrap_or(7));
+    klaviyo.track_order_delivered_event(&params).await?;
+    outbound_queue::record_tracked(
+        pool,
+        EmailType::DeliveryNotification.as_str(),
+        order_ref,
+        "delivery",
+    )
+    .await?;
 
-    let id = super::enqueue_review_request(pool, email, to_name, order_ref, &data, scheduled_for)
-        .await?;
-    info!(
-        email_id = id,
-        order = %order.name,
-        scheduled = %scheduled_for,
-        "queued review request"
-    );
+    info!(order = %order.name, "tracked order delivered event");
     Ok(())
 }
 
@@ -214,26 +237,28 @@ fn customer_name(order: &OrderDetail) -> String {
     }
 }
 
-fn build_confirmation_data(order: &OrderDetail, customer_name: &str) -> OrderConfirmationData {
-    let line_items = order
+fn build_line_items(order: &OrderDetail) -> Vec<OrderLineItemEvent> {
+    order
         .line_items
         .iter()
-        .map(|li| LineItemData {
+        .map(|li| OrderLineItemEvent {
             title: li.title.clone(),
             variant: li.variant_title.clone(),
             quantity: li.quantity,
             price: format!("${}", li.price),
         })
-        .collect();
+        .collect()
+}
 
-    let shipping_address = order.shipping_address.as_ref().map(|addr| {
+fn build_shipping_address(order: &OrderDetail) -> Option<ShippingAddressEvent> {
+    order.shipping_address.as_ref().map(|addr| {
         let name = match (&addr.first_name, &addr.last_name) {
             (Some(f), Some(l)) => format!("{f} {l}"),
             (Some(f), None) => f.clone(),
             (None, Some(l)) => l.clone(),
             (None, None) => String::new(),
         };
-        AddressData {
+        ShippingAddressEvent {
             name,
             address1: addr.address1.clone().unwrap_or_default(),
             address2: addr.address2.clone(),
@@ -242,40 +267,17 @@ fn build_confirmation_data(order: &OrderDetail, customer_name: &str) -> OrderCon
             zip: addr.zip.clone().unwrap_or_default(),
             country: addr.country.clone().unwrap_or_default(),
         }
-    });
-
-    OrderConfirmationData {
-        customer_name: customer_name.to_string(),
-        order_name: order.name.clone(),
-        order_date: order.created_at.clone(),
-        line_items,
-        subtotal: format!("${}", order.prices.subtotal),
-        shipping: format!("${}", order.prices.shipping),
-        tax: format!("${}", order.prices.tax),
-        total: format!("${}", order.prices.total),
-        shipping_address,
-    }
+    })
 }
 
-fn build_shipping_data(order: &OrderDetail, customer_name: &str) -> ShippingUpdateData {
-    let fulfillment = order.fulfillments.first();
-    let items = order
-        .line_items
-        .iter()
-        .map(|li| {
-            li.variant_title.as_ref().map_or_else(
-                || format!("{} x{}", li.title, li.quantity),
-                |variant| format!("{} ({variant}) x{}", li.title, li.quantity),
-            )
-        })
-        .collect();
+/// Errors from poller operations.
+#[derive(Debug, thiserror::Error)]
+pub enum PollerError {
+    /// Klaviyo API call failed.
+    #[error("Klaviyo error: {0}")]
+    Klaviyo(#[from] naked_pineapple_services::klaviyo::KlaviyoError),
 
-    ShippingUpdateData {
-        customer_name: customer_name.to_string(),
-        order_name: order.name.clone(),
-        carrier: fulfillment.and_then(|f| f.company.clone()),
-        tracking_number: fulfillment.and_then(|f| f.number.clone()),
-        tracking_url: fulfillment.and_then(|f| f.url.clone()),
-        items,
-    }
+    /// Database operation failed.
+    #[error("database error: {0}")]
+    Database(#[from] crate::db::RepositoryError),
 }

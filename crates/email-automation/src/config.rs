@@ -26,8 +26,8 @@
 use secrecy::SecretString;
 
 pub use naked_pineapple_services::config::{
-    ClaudeConfig, ConfigError, KlaviyoConfig, SlackConfig, get_database_url, get_env_or_default,
-    get_optional_env, get_required_env, get_validated_secret,
+    ClaudeConfig, ConfigError, EmailConfig, KlaviyoConfig, SlackConfig, get_database_url,
+    get_env_or_default, get_optional_env, get_required_env, get_validated_secret,
 };
 
 /// Email automation service configuration.
@@ -45,6 +45,8 @@ pub struct AutomationConfig {
     pub klaviyo: Option<KlaviyoConfig>,
     /// Shopify Admin API configuration (optional, enables order/product lookups).
     pub shopify: Option<ShopifyConfig>,
+    /// SMTP email configuration (optional — for internal alerts).
+    pub email: Option<EmailConfig>,
     /// Scheduler timing configuration.
     pub scheduler: SchedulerConfig,
     /// Health check port.
@@ -126,14 +128,10 @@ pub struct SchedulerConfig {
     pub stock_check_interval_secs: u64,
     /// Customer segment sync interval in seconds.
     pub segment_sync_interval_secs: u64,
-    /// Outbound email queue processing interval in seconds.
-    pub outbound_interval_secs: u64,
     /// Shopify order/fulfillment poll interval in seconds.
     pub order_poll_interval_secs: u64,
     /// Subscription lifecycle check interval in seconds.
     pub subscription_check_interval_secs: u64,
-    /// Days after delivery to send a review request email.
-    pub review_request_delay_days: u64,
     /// Minutes of inactivity before a checkout is considered abandoned.
     pub cart_abandon_delay_minutes: u64,
     /// Inventory units below which a low stock alert is triggered.
@@ -156,13 +154,11 @@ impl SchedulerConfig {
                 "AUTOMATION_SEGMENT_SYNC_INTERVAL_SECS",
                 86400,
             ),
-            outbound_interval_secs: parse_env_u64("AUTOMATION_OUTBOUND_INTERVAL_SECS", 30),
             order_poll_interval_secs: parse_env_u64("AUTOMATION_ORDER_POLL_INTERVAL_SECS", 300),
             subscription_check_interval_secs: parse_env_u64(
                 "AUTOMATION_SUBSCRIPTION_CHECK_INTERVAL_SECS",
                 86400,
             ),
-            review_request_delay_days: parse_env_u64("AUTOMATION_REVIEW_REQUEST_DELAY_DAYS", 7),
             cart_abandon_delay_minutes: parse_env_u64("AUTOMATION_CART_ABANDON_DELAY_MINUTES", 60),
             low_stock_threshold: get_env_or_default("AUTOMATION_LOW_STOCK_THRESHOLD", "10")
                 .parse()
@@ -216,6 +212,7 @@ impl AutomationConfig {
         let slack = SlackConfig::from_env();
         let klaviyo = KlaviyoConfig::from_env()?;
         let shopify = ShopifyConfig::from_env();
+        let email = EmailConfig::from_env().ok();
         let scheduler = SchedulerConfig::from_env();
 
         let health_port = get_env_or_default("AUTOMATION_HEALTH_PORT", "9092")
@@ -237,6 +234,7 @@ impl AutomationConfig {
             slack,
             klaviyo,
             shopify,
+            email,
             scheduler,
             health_port,
             sentry_dsn,
@@ -274,9 +272,7 @@ mod tests {
         assert_eq!(config.cart_check_interval_secs, 900);
         assert_eq!(config.stock_check_interval_secs, 3600);
         assert_eq!(config.segment_sync_interval_secs, 86400);
-        assert_eq!(config.outbound_interval_secs, 30);
         assert_eq!(config.order_poll_interval_secs, 300);
-        assert_eq!(config.review_request_delay_days, 7);
         assert_eq!(config.cart_abandon_delay_minutes, 60);
     }
 }

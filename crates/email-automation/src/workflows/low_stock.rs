@@ -10,12 +10,12 @@
 //! 5. **Email**: Optionally send email alerts to configured recipients.
 //! 6. **Log**: Record the run in `automation_log` with product details.
 
+use naked_pineapple_services::email::EmailService;
 use naked_pineapple_services::slack::{Block, ContextElement, PlainText, SlackClient, Text};
 use sqlx::PgPool;
 use tracing::{debug, error, info, instrument, warn};
 
 use crate::db::automation_log;
-use crate::outbound;
 use crate::shopify::ShopifyClient;
 use crate::shopify::inventory;
 
@@ -27,6 +27,8 @@ pub struct LowStockClients<'a> {
     pub shopify: &'a ShopifyClient,
     /// Slack client for sending alerts.
     pub slack: &'a SlackClient,
+    /// SMTP email service for internal alerts (optional).
+    pub email_service: Option<&'a EmailService>,
     /// Inventory threshold below which an alert is triggered.
     pub threshold: i32,
     /// Email recipients for low stock alerts (empty = no email alerts).
@@ -217,39 +219,66 @@ fn format_variant_details(product: &inventory::ProductInventory) -> String {
     out
 }
 
-/// Send low stock alert emails to configured recipients.
+/// Send low stock alert emails to configured recipients via SMTP.
 async fn send_email_alerts(clients: &LowStockClients<'_>, product: &inventory::ProductInventory) {
     if clients.email_recipients.is_empty() {
         return;
     }
 
-    let data = outbound::LowStockAlertData {
-        product_title: product.title.clone(),
-        total_inventory: product.total_inventory,
-        threshold: clients.threshold,
-        variants: product
-            .variants
-            .iter()
-            .map(|v| outbound::LowStockVariantData {
-                title: v.title.clone(),
-                sku: v.sku.clone(),
-                inventory_quantity: v.inventory_quantity,
-            })
-            .collect(),
+    let Some(email_service) = clients.email_service else {
+        debug!("email service not configured, skipping low stock email alerts");
+        return;
     };
 
+    let subject = format!(
+        "Low Stock Alert: {} ({} units)",
+        product.title, product.total_inventory
+    );
+    let body = format_low_stock_text(product, clients.threshold);
+
     for recipient in clients.email_recipients {
-        if let Err(e) =
-            outbound::enqueue_low_stock_alert(clients.pool, recipient, &product.id, &data).await
+        if let Err(e) = email_service
+            .send_text_email(recipient, &subject, &body)
+            .await
         {
             warn!(
                 product = %product.title,
                 recipient = %recipient,
                 error = %e,
-                "failed to enqueue low stock alert email"
+                "failed to send low stock alert email"
             );
         }
     }
+}
+
+/// Format a plain text low stock alert email body.
+fn format_low_stock_text(product: &inventory::ProductInventory, threshold: i32) -> String {
+    use std::fmt::Write;
+
+    let mut body = format!(
+        "Low Stock Alert\n\
+         ================\n\n\
+         Product: {}\n\
+         Total Inventory: {} units\n\
+         Threshold: {} units\n\n\
+         Variant Breakdown:\n",
+        product.title, product.total_inventory, threshold,
+    );
+
+    for variant in &product.variants {
+        let _ = write!(
+            body,
+            "  - {} — {} units",
+            variant.title, variant.inventory_quantity
+        );
+        if let Some(sku) = &variant.sku {
+            let _ = write!(body, " (SKU: {sku})");
+        }
+        body.push('\n');
+    }
+
+    body.push_str("\n-- \nAutomated alert from Naked Pineapple email-automation service\n");
+    body
 }
 
 /// Log an individual product alert to `automation_log` for deduplication.

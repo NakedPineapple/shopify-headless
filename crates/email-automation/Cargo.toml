@@ -60,9 +60,6 @@ rust_decimal = { workspace = true }
 # Security
 secrecy = { workspace = true }
 
-# Templates (outbound email rendering)
-askama = { workspace = true }
-
 # Utilities (Slack webhook URL encoding)
 urlencoding = { workspace = true }
 uuid = { workspace = true }
