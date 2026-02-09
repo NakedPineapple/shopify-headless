@@ -55,14 +55,14 @@ LABEL org.opencontainers.image.title="Naked Pineapple Admin" \
       org.opencontainers.image.revision="${COMMIT_SHA}" \
       org.opencontainers.image.created="${BUILD_DATE}" \
       org.opencontainers.image.vendor="Pineapple Skin Co LLC" \
-      org.opencontainers.image.base.name="alpine:3.21" \
+      org.opencontainers.image.base.name="alpine:3.23" \
       org.opencontainers.image.security.no-new-privileges="true"
 
 RUN apk add --no-cache \
-    ca-certificates=20250911-r0 \
-    libssl3=3.3.6-r0 \
+    ca-certificates=20251003-r0 \
+    libssl3=3.5.5-r0 \
     iptables=1.8.11-r1 \
-    libcap-utils=2.71-r0
+    libcap-utils=2.77-r0
 
 RUN addgroup -g 1001 appuser && adduser -u 1001 -G appuser -D appuser
 
