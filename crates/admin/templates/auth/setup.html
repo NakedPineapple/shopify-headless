@@ -1112,7 +1112,15 @@
 
             } catch (error) {
                 console.error('Passkey registration error:', error);
-                if (error.name === 'NotAllowedError') {
+                if (error.name === 'SecurityError') {
+                    const isSecure = window.isSecureContext;
+                    const inIframe = window.self !== window.top;
+                    let hint = 'Passkey security check failed.';
+                    if (!isSecure) hint += ' HTTPS is required.';
+                    else if (inIframe) hint += ' Cross-origin iframes are not supported.';
+                    else hint += ' The RP ID may not match this origin (' + window.location.origin + ').';
+                    showMessage('error', hint);
+                } else if (error.name === 'NotAllowedError') {
                     showMessage('error', 'Passkey creation was cancelled or not allowed');
                 } else if (error.name === 'InvalidStateError') {
                     showMessage('error', 'This passkey is already registered');

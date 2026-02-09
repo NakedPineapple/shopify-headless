@@ -376,6 +376,106 @@
             50% { opacity: 1; transform: scale(1.2); }
         }
 
+        /* Emergency password form */
+        .password-section {
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .password-section .form-header {
+            margin-bottom: 1.25rem;
+        }
+
+        .password-section .form-title {
+            font-size: 1.125rem;
+            color: #fbbf24;
+        }
+
+        .password-section .form-description {
+            font-size: 0.8125rem;
+            color: rgba(251, 191, 36, 0.7);
+        }
+
+        .emergency-btn {
+            width: 100%;
+            padding: 0.875rem 1.5rem;
+            background: linear-gradient(135deg, #92400e 0%, #78350f 100%);
+            border: 1px solid rgba(251, 191, 36, 0.2);
+            border-radius: 12px;
+            font-size: 0.9375rem;
+            font-weight: 600;
+            color: #fbbf24;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.625rem;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 16px rgba(146, 64, 14, 0.3);
+        }
+
+        .emergency-btn:hover:not(:disabled) {
+            background: linear-gradient(135deg, #a3520f 0%, #92400e 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 24px rgba(146, 64, 14, 0.4);
+        }
+
+        .emergency-btn:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .emergency-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .emergency-notice {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.5rem;
+            padding: 0.75rem;
+            background: rgba(245, 158, 11, 0.08);
+            border: 1px solid rgba(245, 158, 11, 0.15);
+            border-radius: 8px;
+            font-size: 0.75rem;
+            color: rgba(251, 191, 36, 0.7);
+            line-height: 1.4;
+            margin-bottom: 1.25rem;
+        }
+
+        .emergency-notice i {
+            font-size: 1rem;
+            color: #fbbf24;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        .server-error {
+            padding: 1rem;
+            border-radius: 12px;
+            font-size: 0.875rem;
+            line-height: 1.5;
+            margin-bottom: 1.25rem;
+            background: rgba(239, 68, 68, 0.12);
+            border: 1px solid rgba(239, 68, 68, 0.25);
+            color: #fca5a5;
+            animation: fadeSlideUp 0.3s ease-out forwards;
+        }
+
+        .emergency-link {
+            font-size: 0.6875rem;
+            color: rgba(255, 255, 255, 0.15);
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+
+        .emergency-link:hover {
+            color: rgba(255, 255, 255, 0.4);
+            text-decoration: underline;
+            text-underline-offset: 2px;
+        }
+
         /* Animations */
         @keyframes fadeSlideUp {
             from {
@@ -496,6 +596,47 @@
                     <div id="error-message" class="message message-error"></div>
                     <div id="info-message" class="message message-info"></div>
                     <div id="webauthn-warning" class="message message-warning"></div>
+
+                    {% if show_password %}
+                    <!-- Emergency Password Login -->
+                    <div class="password-section">
+                        <div class="form-header">
+                            <h3 class="form-title">
+                                <i class="ph ph-warning-diamond"></i>
+                                Emergency Access
+                            </h3>
+                            <p class="form-description">
+                                Use your break-glass password to sign in.
+                            </p>
+                        </div>
+
+                        {% if let Some(msg) = error_message %}
+                        <div class="server-error">{{ msg }}</div>
+                        {% endif %}
+
+                        <div class="emergency-notice">
+                            <i class="ph-fill ph-shield-warning"></i>
+                            <span>Password login is for emergencies only. All attempts are logged and audited. Use passkey login when available.</span>
+                        </div>
+
+                        <form method="post" action="/auth/login/password">
+                            <div class="input-group">
+                                <label for="email" class="input-label">Email</label>
+                                <input type="email" id="email" name="email" class="input-field"
+                                       placeholder="admin@nakedpineapple.co" required autocomplete="email">
+                            </div>
+                            <div class="input-group">
+                                <label for="password" class="input-label">Password</label>
+                                <input type="password" id="password" name="password" class="input-field"
+                                       placeholder="Enter your emergency password" required autocomplete="current-password">
+                            </div>
+                            <button type="submit" class="emergency-btn">
+                                <i class="ph-fill ph-shield-warning"></i>
+                                <span>Emergency Sign In</span>
+                            </button>
+                        </form>
+                    </div>
+                    {% endif %}
                 </div>
 
                 <!-- Footer -->
@@ -504,6 +645,9 @@
                     Have an invite? <a href="/auth/setup">Set up your account</a><br>
                     Need help? <a href="mailto:support@pineappleskinco.com">Contact support</a><br>
                     <a href="/proposal">View the platform proposal</a>
+                    {% if !show_password %}
+                    <br><a href="?emergency=1" class="emergency-link">Emergency access</a>
+                    {% endif %}
                 </p>
             </div>
         </div>
@@ -552,8 +696,25 @@
         }
         checkRelatedOriginSupport();
 
-        function showError(message) {
+        function showError(message, details) {
             errorEl.textContent = message;
+            if (details) {
+                const detailsEl = document.createElement('details');
+                detailsEl.style.marginTop = '0.5rem';
+                detailsEl.style.fontSize = '0.75rem';
+                detailsEl.style.opacity = '0.8';
+                const summary = document.createElement('summary');
+                summary.textContent = 'Technical details';
+                summary.style.cursor = 'pointer';
+                detailsEl.appendChild(summary);
+                const pre = document.createElement('pre');
+                pre.style.whiteSpace = 'pre-wrap';
+                pre.style.wordBreak = 'break-all';
+                pre.style.marginTop = '0.25rem';
+                pre.textContent = details;
+                detailsEl.appendChild(pre);
+                errorEl.appendChild(detailsEl);
+            }
             errorEl.classList.add('visible');
             infoEl.classList.remove('visible');
         }
@@ -594,7 +755,17 @@
                 const result = await window.WebAuthn.loginWithPasskey();
 
                 if (!result.success) {
-                    showError(result.error || 'Authentication failed. Please try again.');
+                    const clientDiag = window.WebAuthn.collectDiagnostics
+                        ? window.WebAuthn.collectDiagnostics() : {};
+                    let serverDiag = null;
+                    try {
+                        const resp = await fetch('/api/auth/webauthn/diagnostics');
+                        if (resp.ok) serverDiag = await resp.json();
+                    } catch { /* ignore */ }
+                    const allDiag = JSON.stringify(
+                        { client: clientDiag, server: serverDiag }, null, 2
+                    );
+                    showError(result.error || 'Authentication failed. Please try again.', allDiag);
                     setLoading(false);
                     return;
                 }

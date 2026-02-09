@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            INSERT INTO admin.admin_user (email, name, role, webauthn_user_id)\n            VALUES ($1, $2, $3, $4)\n            RETURNING id, email, name, role as \"role: AdminRole\",\n                      webauthn_user_id, slack_user_id,\n                      created_at as \"created_at: DateTime<Utc>\",\n                      updated_at as \"updated_at: DateTime<Utc>\"\n            ",
+  "query": "\n            UPDATE admin.admin_user\n            SET role = $1\n            WHERE id = $2\n            RETURNING id, email, name, role as \"role: AdminRole\",\n                      webauthn_user_id, slack_user_id, password_hash,\n                      created_at as \"created_at: DateTime<Utc>\",\n                      updated_at as \"updated_at: DateTime<Utc>\"\n            ",
   "describe": {
     "columns": [
       {
@@ -51,24 +51,22 @@
       },
       {
         "ordinal": 6,
+        "name": "password_hash",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
         "name": "created_at: DateTime<Utc>",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 7,
+        "ordinal": 8,
         "name": "updated_at: DateTime<Utc>",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
-        {
-          "Custom": {
-            "name": "citext",
-            "kind": "Simple"
-          }
-        },
-        "Text",
         {
           "Custom": {
             "name": "admin.admin_role",
@@ -81,7 +79,7 @@
             }
           }
         },
-        "Uuid"
+        "Int4"
       ]
     },
     "nullable": [
@@ -91,9 +89,10 @@
       false,
       false,
       true,
+      true,
       false,
       false
     ]
   },
-  "hash": "d0a276cd20fc294c26acc87159cd418296799b758fd6aa5136dcd77be5fac1e9"
+  "hash": "ba7d276524ef82368861df4671f5f1760b265d1ba54f859a9d92fee68b2a15f9"
 }

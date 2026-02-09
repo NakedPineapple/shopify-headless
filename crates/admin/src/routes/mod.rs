@@ -386,6 +386,14 @@ fn admin_user_routes() -> Router<AppState> {
         .route("/admin-users", get(admin_users::index))
         .route("/admin-users/{id}/role", post(admin_users::update_role))
         .route("/admin-users/{id}/delete", post(admin_users::delete_user))
+        .route(
+            "/admin-users/{id}/password",
+            post(admin_users::set_password),
+        )
+        .route(
+            "/admin-users/{id}/password/clear",
+            post(admin_users::clear_password),
+        )
         .route("/admin-users/invites", post(admin_users::create_invite))
         .route(
             "/admin-users/invites/{id}/delete",

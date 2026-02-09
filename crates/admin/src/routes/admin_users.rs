@@ -8,6 +8,7 @@ use axum::{
     response::{Html, IntoResponse, Response},
 };
 use chrono::{DateTime, Utc};
+use secrecy::SecretString;
 use serde::Deserialize;
 use tracing::{debug, info, instrument, warn};
 
@@ -17,6 +18,7 @@ use crate::{
     db::{AdminInvite, AdminInviteRepository, AdminUserRepository, RepositoryError},
     filters,
     middleware::auth::RequireSuperAdmin,
+    services::AdminAuthService,
     state::AppState,
 };
 
@@ -33,6 +35,7 @@ pub struct AdminUserListItem {
     pub email: String,
     pub name: String,
     pub role: String,
+    pub has_password: bool,
     pub created_at: DateTime<Utc>,
     pub is_current_user: bool,
 }
@@ -79,6 +82,13 @@ pub struct UpdateRoleForm {
 #[derive(Debug, Deserialize)]
 pub struct DeleteUserForm {
     pub confirm_email: String,
+}
+
+/// Form input for setting a break-glass password.
+#[derive(Debug, Deserialize)]
+pub struct SetPasswordForm {
+    pub password: String,
+    pub password_confirm: String,
 }
 
 /// Form input for creating an invite.
@@ -154,6 +164,7 @@ pub async fn index(
                     email: u.email.to_string(),
                     name: u.name.clone(),
                     role: format!("{}", u.role),
+                    has_password: u.has_password,
                     created_at: u.created_at,
                     is_current_user: u.id == admin.id,
                 })
@@ -275,6 +286,7 @@ pub async fn update_role(
             email: updated_user.email.to_string(),
             name: updated_user.name,
             role: format!("{}", updated_user.role),
+            has_password: updated_user.has_password,
             created_at: updated_user.created_at,
             is_current_user: false,
         },
@@ -486,6 +498,115 @@ pub async fn delete_invite(
 
     // Return empty response with hx-swap delete
     StatusCode::OK.into_response()
+}
+
+// =============================================================================
+// Password Management
+// =============================================================================
+
+/// Set a break-glass password for an admin user.
+///
+/// POST /admin-users/{id}/password
+#[instrument(skip(state, form), fields(admin_id = %admin.id.as_i32(), target_user_id = %id))]
+pub async fn set_password(
+    RequireSuperAdmin(admin): RequireSuperAdmin,
+    State(state): State<AppState>,
+    Path(id): Path<i32>,
+    Form(form): Form<SetPasswordForm>,
+) -> Response {
+    debug!("Setting break-glass password for admin user");
+
+    let target_id = AdminUserId::new(id);
+
+    if form.password != form.password_confirm {
+        warn!("Password confirmation did not match");
+        return error_response(StatusCode::BAD_REQUEST, "Passwords do not match");
+    }
+
+    let password = SecretString::from(form.password);
+    let auth = AdminAuthService::new(state.pool(), state.webauthn());
+
+    if let Err(e) = auth.set_password(target_id, &password).await {
+        warn!(error = %e, "Failed to set break-glass password");
+        return error_response(StatusCode::BAD_REQUEST, &e.to_string());
+    }
+
+    info!(
+        target_user_id = %target_id.as_i32(),
+        set_by = %admin.id.as_i32(),
+        "Break-glass password set by super admin"
+    );
+
+    // Return updated user row
+    render_user_row(&state, target_id, admin.id).await
+}
+
+/// Clear a break-glass password for an admin user.
+///
+/// POST /admin-users/{id}/password/clear
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32(), target_user_id = %id))]
+pub async fn clear_password(
+    RequireSuperAdmin(admin): RequireSuperAdmin,
+    State(state): State<AppState>,
+    Path(id): Path<i32>,
+) -> Response {
+    debug!("Clearing break-glass password for admin user");
+
+    let target_id = AdminUserId::new(id);
+    let auth = AdminAuthService::new(state.pool(), state.webauthn());
+
+    if let Err(e) = auth.clear_password(target_id).await {
+        warn!(error = %e, "Failed to clear break-glass password");
+        return error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Failed to clear password",
+        );
+    }
+
+    info!(
+        target_user_id = %target_id.as_i32(),
+        cleared_by = %admin.id.as_i32(),
+        "Break-glass password cleared by super admin"
+    );
+
+    // Return updated user row
+    render_user_row(&state, target_id, admin.id).await
+}
+
+/// Render a single user row for HTMX responses.
+async fn render_user_row(
+    state: &AppState,
+    target_id: AdminUserId,
+    current_admin_id: AdminUserId,
+) -> Response {
+    let user_repo = AdminUserRepository::new(state.pool());
+    let user = match user_repo.get_by_id(target_id).await {
+        Ok(Some(user)) => user,
+        Ok(None) => return error_response(StatusCode::NOT_FOUND, "User not found"),
+        Err(e) => {
+            tracing::error!("Failed to fetch user: {e}");
+            return error_response(StatusCode::INTERNAL_SERVER_ERROR, "Failed to fetch user");
+        }
+    };
+
+    let template = AdminUserRowTemplate {
+        user: AdminUserListItem {
+            id: user.id.as_i32(),
+            email: user.email.to_string(),
+            name: user.name,
+            role: format!("{}", user.role),
+            has_password: user.has_password,
+            created_at: user.created_at,
+            is_current_user: user.id == current_admin_id,
+        },
+        current_user_id: current_admin_id.as_i32(),
+    };
+
+    Html(template.render().unwrap_or_else(|e| {
+        tracing::error!("Template render error: {}", e);
+        "Internal Server Error".to_owned()
+    }))
+    .into_response()
 }
 
 // =============================================================================

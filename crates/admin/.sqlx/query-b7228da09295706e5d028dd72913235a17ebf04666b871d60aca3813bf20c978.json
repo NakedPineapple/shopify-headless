@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE admin.admin_user\n            SET password_hash = $1\n            WHERE id = $2\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b7228da09295706e5d028dd72913235a17ebf04666b871d60aca3813bf20c978"
+}

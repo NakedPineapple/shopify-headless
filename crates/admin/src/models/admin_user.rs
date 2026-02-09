@@ -27,6 +27,8 @@ pub struct AdminUser {
     pub webauthn_user_id: Uuid,
     /// Slack user ID for receiving DM notifications (e.g., "U0123456789").
     pub slack_user_id: Option<String>,
+    /// Whether this user has a break-glass emergency password set.
+    pub has_password: bool,
     /// When the admin was created.
     pub created_at: DateTime<Utc>,
     /// When the admin was last updated.

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT id, email, name, role as \"role: AdminRole\",\n                   webauthn_user_id, slack_user_id,\n                   created_at as \"created_at: DateTime<Utc>\",\n                   updated_at as \"updated_at: DateTime<Utc>\"\n            FROM admin.admin_user\n            WHERE email = $1\n            ",
+  "query": "\n            UPDATE admin.admin_user\n            SET email = $1\n            WHERE id = $2\n            RETURNING id, email, name, role as \"role: AdminRole\",\n                      webauthn_user_id, slack_user_id, password_hash,\n                      created_at as \"created_at: DateTime<Utc>\",\n                      updated_at as \"updated_at: DateTime<Utc>\"\n            ",
   "describe": {
     "columns": [
       {
@@ -51,11 +51,16 @@
       },
       {
         "ordinal": 6,
+        "name": "password_hash",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
         "name": "created_at: DateTime<Utc>",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 7,
+        "ordinal": 8,
         "name": "updated_at: DateTime<Utc>",
         "type_info": "Timestamptz"
       }
@@ -67,7 +72,8 @@
             "name": "citext",
             "kind": "Simple"
           }
-        }
+        },
+        "Int4"
       ]
     },
     "nullable": [
@@ -77,9 +83,10 @@
       false,
       false,
       true,
+      true,
       false,
       false
     ]
   },
-  "hash": "ac442a5be1cdf8ea96b0656dea632ad9efb9922336767f842c60e7db21e0a540"
+  "hash": "5ca73722d86f11096df8899c3498452e37c4774759b941f0584d999183533056"
 }

@@ -43,6 +43,22 @@ pub enum AdminAuthError {
     #[error("invalid session state")]
     InvalidSessionState,
 
+    /// Invalid email/password combination (intentionally vague to prevent enumeration).
+    #[error("invalid email or password")]
+    InvalidCredentials,
+
+    /// User does not have a break-glass password set.
+    #[error("password login is not enabled for this account")]
+    PasswordNotSet,
+
+    /// Password hashing/verification error.
+    #[error("password processing error: {0}")]
+    PasswordHash(String),
+
+    /// Password does not meet minimum requirements.
+    #[error("password must be at least 12 characters")]
+    PasswordTooShort,
+
     /// Repository/database error.
     #[error("database error: {0}")]
     Repository(#[from] RepositoryError),

@@ -109,7 +109,13 @@ async function registerPasskey(name = 'Passkey') {
 
     } catch (error) {
         console.error('Passkey registration error:', error);
+        if (error instanceof DOMException) {
+            console.error('WebAuthn diagnostics:', collectDiagnostics());
+        }
 
+        if (error.name === 'SecurityError') {
+            return { success: false, error: buildSecurityErrorMessage(error) };
+        }
         if (error.name === 'NotAllowedError') {
             return { success: false, error: 'Registration was cancelled or not allowed' };
         }
@@ -211,7 +217,13 @@ async function loginWithPasskey() {
 
     } catch (error) {
         console.error('Passkey authentication error:', error);
+        if (error instanceof DOMException) {
+            console.error('WebAuthn diagnostics:', collectDiagnostics());
+        }
 
+        if (error.name === 'SecurityError') {
+            return { success: false, error: buildSecurityErrorMessage(error) };
+        }
         if (error.name === 'NotAllowedError') {
             return { success: false, error: 'Authentication was cancelled or not allowed' };
         }
@@ -249,6 +261,51 @@ async function isPlatformAuthenticatorAvailable() {
 }
 
 /**
+ * Collect WebAuthn diagnostic information for error reporting.
+ *
+ * @returns {Object} Diagnostic data about the current environment
+ */
+function collectDiagnostics() {
+    return {
+        currentOrigin: window.location.origin,
+        protocol: window.location.protocol,
+        hostname: window.location.hostname,
+        isSecureContext: window.isSecureContext,
+        isInIframe: window.self !== window.top,
+        userAgent: navigator.userAgent,
+    };
+}
+
+/**
+ * Build a descriptive error message for WebAuthn SecurityError.
+ *
+ * SecurityError typically means the RP ID does not match the current origin,
+ * the page is not served over HTTPS, or it is embedded in a cross-origin iframe.
+ *
+ * @param {DOMException} error - The SecurityError DOMException
+ * @returns {string} User-facing error message with diagnostic hints
+ */
+function buildSecurityErrorMessage(error) {
+    const diag = collectDiagnostics();
+    const hints = [];
+
+    if (!diag.isSecureContext) {
+        hints.push('The page is not in a secure context (HTTPS required).');
+    }
+    if (diag.isInIframe) {
+        hints.push('The page appears to be embedded in an iframe.');
+    }
+    if (hints.length === 0) {
+        hints.push(
+            'The passkey RP ID may not match this origin (' + diag.currentOrigin + ').'
+        );
+    }
+
+    return 'Passkey security check failed: ' + hints.join(' ') +
+        ' [' + error.name + ': ' + error.message + ']';
+}
+
+/**
  * Check if the browser supports Related Origin Requests for cross-domain passkeys.
  *
  * When the user is on a non-primary origin, their browser must support ROR
@@ -281,4 +338,5 @@ window.WebAuthn = {
     isWebAuthnSupported,
     isPlatformAuthenticatorAvailable,
     checkRelatedOriginSupport,
+    collectDiagnostics,
 };

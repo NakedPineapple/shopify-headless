@@ -237,6 +237,77 @@
     </div>
 </div>
 
+<!-- Password Modal -->
+<div id="password-modal" class="fixed inset-0 z-50 hidden">
+    <div class="fixed inset-0 bg-black/50" onclick="closePasswordModal()"></div>
+    <div class="fixed inset-0 flex items-center justify-center p-4 pointer-events-none">
+        <div class="bg-card rounded-xl border border-border w-full max-w-lg pointer-events-auto">
+            <div class="px-6 py-4 border-b border-border flex items-center justify-between">
+                <h3 class="font-semibold text-foreground flex items-center gap-2">
+                    <i class="ph ph-key text-amber-500"></i>
+                    Emergency Password
+                </h3>
+                <button type="button" onclick="closePasswordModal()" class="text-muted-foreground hover:text-foreground">
+                    <i class="ph ph-x text-xl"></i>
+                </button>
+            </div>
+
+            <div class="p-6">
+                <div class="mb-4 p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 rounded-lg">
+                    <div class="flex items-start gap-2">
+                        <i class="ph ph-warning text-amber-600 dark:text-amber-400 mt-0.5"></i>
+                        <div class="text-sm text-amber-800 dark:text-amber-300">
+                            <p class="font-medium mb-1">Emergency Use Only</p>
+                            <p>Break-glass passwords are for emergency access when passkeys are unavailable. All password login attempts are logged and audited.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <p class="text-sm text-muted-foreground mb-4">
+                    Setting password for <strong id="password-user-name" class="text-foreground"></strong>
+                </p>
+
+                <!-- Set Password Form -->
+                <form id="password-form"
+                      hx-swap="outerHTML"
+                      hx-on::after-request="if(event.detail.successful) closePasswordModal()"
+                      class="space-y-4">
+
+                    <div>
+                        <label for="pw-password" class="block text-sm font-medium text-foreground mb-1">
+                            New Password <span class="text-red-500">*</span>
+                        </label>
+                        <input type="password" id="pw-password" name="password" required minlength="12"
+                               placeholder="Minimum 12 characters"
+                               class="w-full px-3 py-2 bg-input rounded-lg text-foreground border-0 focus:ring-2 focus:ring-ring">
+                    </div>
+
+                    <div>
+                        <label for="pw-password-confirm" class="block text-sm font-medium text-foreground mb-1">
+                            Confirm Password <span class="text-red-500">*</span>
+                        </label>
+                        <input type="password" id="pw-password-confirm" name="password_confirm" required minlength="12"
+                               placeholder="Re-enter password"
+                               class="w-full px-3 py-2 bg-input rounded-lg text-foreground border-0 focus:ring-2 focus:ring-ring">
+                    </div>
+
+                    <div class="flex items-center gap-3 pt-2">
+                        <button type="submit"
+                                class="px-6 py-2.5 bg-amber-600 text-white rounded-lg font-medium hover:bg-amber-700 transition-colors flex items-center gap-2">
+                            <i class="ph ph-key"></i>
+                            Set Password
+                        </button>
+                        <button type="button" id="clear-password-btn"
+                                class="px-6 py-2.5 bg-muted text-foreground rounded-lg font-medium hover:bg-accent transition-colors hidden">
+                            Clear Password
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 function openInviteModal() {
     document.getElementById('invite-modal').classList.remove('hidden');
@@ -285,11 +356,48 @@ document.body.addEventListener('htmx:responseError', function(event) {
     }
 });
 
+function openPasswordModal(id, name, hasPassword) {
+    const modal = document.getElementById('password-modal');
+    const form = document.getElementById('password-form');
+    const clearBtn = document.getElementById('clear-password-btn');
+
+    document.getElementById('password-user-name').textContent = name;
+    document.getElementById('pw-password').value = '';
+    document.getElementById('pw-password-confirm').value = '';
+
+    form.setAttribute('hx-post', `/admin-users/${id}/password`);
+    form.setAttribute('hx-target', `#user-row-${id}`);
+    htmx.process(form);
+
+    if (hasPassword) {
+        clearBtn.classList.remove('hidden');
+        clearBtn.onclick = function() {
+            if (confirm('Clear the emergency password for ' + name + '?')) {
+                htmx.ajax('POST', `/admin-users/${id}/password/clear`, {
+                    target: `#user-row-${id}`,
+                    swap: 'outerHTML'
+                });
+                closePasswordModal();
+            }
+        };
+    } else {
+        clearBtn.classList.add('hidden');
+    }
+
+    modal.classList.remove('hidden');
+    document.getElementById('pw-password').focus();
+}
+
+function closePasswordModal() {
+    document.getElementById('password-modal').classList.add('hidden');
+}
+
 // Close modals on escape key
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
         closeInviteModal();
         closeDeleteUserModal();
+        closePasswordModal();
     }
 });
 </script>

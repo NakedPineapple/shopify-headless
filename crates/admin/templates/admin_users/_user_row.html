@@ -52,12 +52,24 @@
         {% if user.is_current_user %}
         <span class="text-xs text-muted-foreground">-</span>
         {% else %}
-        <button type="button"
-                onclick="openDeleteUserModal({{ user.id }}, '{{ user.name }}', '{{ user.email }}')"
-                class="p-2 text-muted-foreground hover:text-destructive transition-colors"
-                title="Delete user">
-            <i class="ph ph-trash"></i>
-        </button>
+        <div class="flex items-center justify-end gap-1">
+            <button type="button"
+                    onclick="openPasswordModal({{ user.id }}, '{{ user.name }}', {{ user.has_password }})"
+                    class="p-2 transition-colors {% if user.has_password %}text-amber-500 hover:text-amber-400{% else %}text-muted-foreground hover:text-foreground{% endif %}"
+                    title="{% if user.has_password %}Manage emergency password{% else %}Set emergency password{% endif %}">
+                {% if user.has_password %}
+                <i class="ph-fill ph-key"></i>
+                {% else %}
+                <i class="ph ph-key"></i>
+                {% endif %}
+            </button>
+            <button type="button"
+                    onclick="openDeleteUserModal({{ user.id }}, '{{ user.name }}', '{{ user.email }}')"
+                    class="p-2 text-muted-foreground hover:text-destructive transition-colors"
+                    title="Delete user">
+                <i class="ph ph-trash"></i>
+            </button>
+        </div>
         {% endif %}
     </td>
 </tr>

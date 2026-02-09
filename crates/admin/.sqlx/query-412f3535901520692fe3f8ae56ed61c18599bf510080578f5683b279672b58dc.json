@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT id, email, name, role as \"role: AdminRole\",\n                   webauthn_user_id, slack_user_id,\n                   created_at as \"created_at: DateTime<Utc>\",\n                   updated_at as \"updated_at: DateTime<Utc>\"\n            FROM admin.admin_user\n            WHERE id = $1\n            ",
+  "query": "\n            UPDATE admin.admin_user\n            SET slack_user_id = $1\n            WHERE id = $2\n            RETURNING id, email, name, role as \"role: AdminRole\",\n                      webauthn_user_id, slack_user_id, password_hash,\n                      created_at as \"created_at: DateTime<Utc>\",\n                      updated_at as \"updated_at: DateTime<Utc>\"\n            ",
   "describe": {
     "columns": [
       {
@@ -51,17 +51,23 @@
       },
       {
         "ordinal": 6,
+        "name": "password_hash",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
         "name": "created_at: DateTime<Utc>",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 7,
+        "ordinal": 8,
         "name": "updated_at: DateTime<Utc>",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
+        "Text",
         "Int4"
       ]
     },
@@ -72,9 +78,10 @@
       false,
       false,
       true,
+      true,
       false,
       false
     ]
   },
-  "hash": "256e604e2062f7fc0ef973109b341cbdf486180f55256c16d13c614086cef8a2"
+  "hash": "412f3535901520692fe3f8ae56ed61c18599bf510080578f5683b279672b58dc"
 }

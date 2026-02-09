@@ -27,6 +27,7 @@ struct AdminUserRow {
     role: AdminRole,
     webauthn_user_id: Uuid,
     slack_user_id: Option<String>,
+    password_hash: Option<String>,
     created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
 }
@@ -46,6 +47,7 @@ impl TryFrom<AdminUserRow> for AdminUser {
             role: row.role,
             webauthn_user_id: row.webauthn_user_id,
             slack_user_id: row.slack_user_id,
+            has_password: row.password_hash.is_some(),
             created_at: row.created_at,
             updated_at: row.updated_at,
         })
@@ -110,7 +112,7 @@ impl<'a> AdminUserRepository<'a> {
             AdminUserRow,
             r#"
             SELECT id, email, name, role as "role: AdminRole",
-                   webauthn_user_id, slack_user_id,
+                   webauthn_user_id, slack_user_id, password_hash,
                    created_at as "created_at: DateTime<Utc>",
                    updated_at as "updated_at: DateTime<Utc>"
             FROM admin.admin_user
@@ -137,7 +139,7 @@ impl<'a> AdminUserRepository<'a> {
             AdminUserRow,
             r#"
             SELECT id, email, name, role as "role: AdminRole",
-                   webauthn_user_id, slack_user_id,
+                   webauthn_user_id, slack_user_id, password_hash,
                    created_at as "created_at: DateTime<Utc>",
                    updated_at as "updated_at: DateTime<Utc>"
             FROM admin.admin_user
@@ -167,7 +169,7 @@ impl<'a> AdminUserRepository<'a> {
             AdminUserRow,
             r#"
             SELECT id, email, name, role as "role: AdminRole",
-                   webauthn_user_id, slack_user_id,
+                   webauthn_user_id, slack_user_id, password_hash,
                    created_at as "created_at: DateTime<Utc>",
                    updated_at as "updated_at: DateTime<Utc>"
             FROM admin.admin_user
@@ -200,7 +202,7 @@ impl<'a> AdminUserRepository<'a> {
             AdminUserRow,
             r#"
             SELECT id, email, name, role as "role: AdminRole",
-                   webauthn_user_id, slack_user_id,
+                   webauthn_user_id, slack_user_id, password_hash,
                    created_at as "created_at: DateTime<Utc>",
                    updated_at as "updated_at: DateTime<Utc>"
             FROM admin.admin_user
@@ -242,7 +244,7 @@ impl<'a> AdminUserRepository<'a> {
             INSERT INTO admin.admin_user (email, name, role, webauthn_user_id)
             VALUES ($1, $2, $3, $4)
             RETURNING id, email, name, role as "role: AdminRole",
-                      webauthn_user_id, slack_user_id,
+                      webauthn_user_id, slack_user_id, password_hash,
                       created_at as "created_at: DateTime<Utc>",
                       updated_at as "updated_at: DateTime<Utc>"
             "#,
@@ -465,7 +467,7 @@ impl<'a> AdminUserRepository<'a> {
             SET name = $1
             WHERE id = $2
             RETURNING id, email, name, role as "role: AdminRole",
-                      webauthn_user_id, slack_user_id,
+                      webauthn_user_id, slack_user_id, password_hash,
                       created_at as "created_at: DateTime<Utc>",
                       updated_at as "updated_at: DateTime<Utc>"
             "#,
@@ -505,7 +507,7 @@ impl<'a> AdminUserRepository<'a> {
             SET email = $1
             WHERE id = $2
             RETURNING id, email, name, role as "role: AdminRole",
-                      webauthn_user_id, slack_user_id,
+                      webauthn_user_id, slack_user_id, password_hash,
                       created_at as "created_at: DateTime<Utc>",
                       updated_at as "updated_at: DateTime<Utc>"
             "#,
@@ -615,7 +617,7 @@ impl<'a> AdminUserRepository<'a> {
             SET role = $1
             WHERE id = $2
             RETURNING id, email, name, role as "role: AdminRole",
-                      webauthn_user_id, slack_user_id,
+                      webauthn_user_id, slack_user_id, password_hash,
                       created_at as "created_at: DateTime<Utc>",
                       updated_at as "updated_at: DateTime<Utc>"
             "#,
@@ -656,7 +658,7 @@ impl<'a> AdminUserRepository<'a> {
             SET slack_user_id = $1
             WHERE id = $2
             RETURNING id, email, name, role as "role: AdminRole",
-                      webauthn_user_id, slack_user_id,
+                      webauthn_user_id, slack_user_id, password_hash,
                       created_at as "created_at: DateTime<Utc>",
                       updated_at as "updated_at: DateTime<Utc>"
             "#,
@@ -726,5 +728,86 @@ impl<'a> AdminUserRepository<'a> {
 
         debug!(count = count, "Admin user count by role retrieved");
         Ok(count)
+    }
+
+    // =========================================================================
+    // Break-Glass Password Operations
+    // =========================================================================
+
+    /// Get an admin user by email, including their password hash for authentication.
+    ///
+    /// The password hash is returned separately and must NOT be stored
+    /// beyond the authentication check. This method exists solely for
+    /// the break-glass password authentication flow.
+    ///
+    /// # Errors
+    ///
+    /// Returns `RepositoryError::Database` if the query fails.
+    /// Returns `RepositoryError::DataCorruption` if the data is invalid.
+    #[instrument(skip(self), fields(email = %email.as_str()), level = "debug")]
+    pub async fn get_with_password_hash(
+        &self,
+        email: &Email,
+    ) -> Result<Option<(AdminUser, Option<String>)>, RepositoryError> {
+        debug!("Fetching admin user with password hash for authentication");
+        let row = sqlx::query_as!(
+            AdminUserRow,
+            r#"
+            SELECT id, email, name, role as "role: AdminRole",
+                   webauthn_user_id, slack_user_id, password_hash,
+                   created_at as "created_at: DateTime<Utc>",
+                   updated_at as "updated_at: DateTime<Utc>"
+            FROM admin.admin_user
+            WHERE email = $1
+            "#,
+            email.as_str()
+        )
+        .fetch_optional(self.pool)
+        .await?;
+
+        if let Some(r) = row {
+            let hash = r.password_hash.clone();
+            let user: AdminUser = r.try_into()?;
+            Ok(Some((user, hash)))
+        } else {
+            debug!("Admin user not found for password auth");
+            Ok(None)
+        }
+    }
+
+    /// Set or clear the password hash for an admin user.
+    ///
+    /// Pass `Some(hash)` to set a password, or `None` to remove it.
+    ///
+    /// # Errors
+    ///
+    /// Returns `RepositoryError::NotFound` if the user doesn't exist.
+    /// Returns `RepositoryError::Database` for other database errors.
+    #[instrument(skip(self, password_hash), fields(id = %id.as_i32()), level = "debug")]
+    pub async fn set_password_hash(
+        &self,
+        id: AdminUserId,
+        password_hash: Option<&str>,
+    ) -> Result<(), RepositoryError> {
+        debug!("Setting password hash for admin user");
+        let result = sqlx::query!(
+            r#"
+            UPDATE admin.admin_user
+            SET password_hash = $1
+            WHERE id = $2
+            "#,
+            password_hash,
+            id.as_i32()
+        )
+        .execute(self.pool)
+        .await?;
+
+        if result.rows_affected() == 0 {
+            debug!("Admin user not found for password hash update");
+            return Err(RepositoryError::NotFound);
+        }
+
+        info!(user_id = %id.as_i32(), "Admin user password hash updated");
+        Ok(())
     }
 }
