@@ -14,7 +14,7 @@ kill_timeout = 30
   ADMIN_HOST = "0.0.0.0"
   ADMIN_PORT = "443"
   RUST_LOG = "warn,naked_pineapple_admin=info,tower_http=info,sqlx::query=warn,rustls=warn,h2=warn,hyper_util=warn"
-  ADMIN_BASE_URL = "https://admin.nakedpineapple.co"
+  ADMIN_HOSTS = "admin.nakedpineapple.co"
   SHOPIFY_STORE = "nakedpineapple.myshopify.com"
   SHOPIFY_API_VERSION = "2026-01"
   SHOPIFY_ADMIN_CLIENT_ID = "43890b19705271a1369762cb0fea3e4b"

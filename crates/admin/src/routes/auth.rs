@@ -21,7 +21,9 @@ use crate::state::AppState;
 /// Login page template.
 #[derive(Template)]
 #[template(path = "auth/login.html")]
-struct LoginPageTemplate;
+struct LoginPageTemplate<'a> {
+    primary_origin: &'a str,
+}
 
 /// Build the auth router.
 pub fn router() -> Router<AppState> {
@@ -33,13 +35,16 @@ pub fn router() -> Router<AppState> {
 /// Render the login page.
 ///
 /// GET /auth/login
-#[instrument]
-async fn login_page() -> impl IntoResponse {
+#[instrument(skip(state))]
+async fn login_page(State(state): State<AppState>) -> impl IntoResponse {
     debug!("Rendering login page");
+    let primary_origin = state.config().primary_origin();
     Html(
-        LoginPageTemplate
-            .render()
-            .unwrap_or_else(|_| String::from("Error rendering template")),
+        LoginPageTemplate {
+            primary_origin: &primary_origin,
+        }
+        .render()
+        .unwrap_or_else(|_| String::from("Error rendering template")),
     )
 }
 

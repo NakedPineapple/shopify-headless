@@ -13,7 +13,7 @@
 //! # Environment Variables
 //!
 //! - `ADMIN_DATABASE_URL` - `PostgreSQL` connection string for admin database
-//! - `ADMIN_BASE_URL` - Base URL for generating setup links
+//! - `ADMIN_HOSTS` - Comma-separated hostnames for generating setup links
 
 use naked_pineapple_core::AdminRole;
 use sqlx::PgPool;
@@ -149,10 +149,16 @@ pub async fn create_invite(
     let database_url = std::env::var("ADMIN_DATABASE_URL")
         .map_err(|_| AdminError::MissingEnvVar("ADMIN_DATABASE_URL"))?;
 
-    let base_url = std::env::var("ADMIN_BASE_URL").unwrap_or_else(|_| {
-        tracing::warn!("ADMIN_BASE_URL not set, using default");
-        "http://localhost:3001".to_owned()
+    let admin_hosts = std::env::var("ADMIN_HOSTS").unwrap_or_else(|_| {
+        tracing::warn!("ADMIN_HOSTS not set, using default");
+        "localhost".to_owned()
     });
+    let primary_host = admin_hosts.split(',').next().unwrap_or("localhost").trim();
+    let base_url = if primary_host == "localhost" {
+        "http://localhost:3001".to_owned()
+    } else {
+        format!("https://{primary_host}")
+    };
 
     tracing::info!("Connecting to admin database...");
     let pool = PgPool::connect(&database_url).await?;

@@ -48,13 +48,11 @@ impl FromRequestParts<AppState> for SiteContext {
 
         let base_url = if host.is_empty() {
             tracing::warn!("Host header missing from request — using default base URL");
-            config.default_base_url.clone()
+            config.origin_for(&config.default_host)
+        } else if config.hosts.contains(host) {
+            config.origin_for(host)
         } else {
-            config
-                .base_urls
-                .get(host)
-                .cloned()
-                .unwrap_or_else(|| config.default_base_url.clone())
+            config.origin_for(&config.default_host)
         };
 
         let cf_beacon_token = config

@@ -255,7 +255,7 @@ async fn connect(State(state): State<AppState>, session: Session) -> Response {
     }
 
     // Build redirect URI
-    let redirect_uri = format!("{}/shopify/callback", state.config().base_url);
+    let redirect_uri = format!("{}/shopify/callback", state.config().primary_origin());
     debug!(redirect_uri = %redirect_uri, "Built OAuth callback redirect URI");
 
     // Generate authorization URL

@@ -479,7 +479,7 @@
                 </div>
 
                 <!-- Form Card -->
-                <div class="form-card">
+                <div class="form-card" id="login-container" data-primary-origin="{{ primary_origin }}">
                     <div class="form-header">
                         <h2 class="form-title">Welcome back</h2>
                         <p class="form-description">
@@ -533,6 +533,24 @@
 
         // Run check after a small delay to ensure page is ready
         setTimeout(checkWebAuthnSupport, 100);
+
+        // Check Related Origin Request support for cross-domain passkeys
+        async function checkRelatedOriginSupport() {
+            const primaryOrigin = document.getElementById('login-container')
+                .dataset.primaryOrigin;
+            const result = await WebAuthn.checkRelatedOriginSupport(primaryOrigin);
+            if (!result.supported) {
+                warningEl.innerHTML =
+                    '<strong>Browser not supported on this domain:</strong> ' +
+                    'Your browser does not support cross-domain passkeys. ' +
+                    'Please use Chrome, Edge, or Safari, or sign in at ' +
+                    '<a href="' + result.primaryOrigin + '/auth/login">' +
+                    result.primaryOrigin + '</a>.';
+                warningEl.classList.add('visible');
+                loginBtn.disabled = true;
+            }
+        }
+        checkRelatedOriginSupport();
 
         function showError(message) {
             errorEl.textContent = message;

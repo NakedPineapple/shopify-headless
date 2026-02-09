@@ -50,7 +50,9 @@ struct PendingRegistration {
 /// Setup page template.
 #[derive(Template)]
 #[template(path = "auth/setup.html")]
-struct SetupPageTemplate;
+struct SetupPageTemplate<'a> {
+    primary_origin: &'a str,
+}
 
 /// Error response for API endpoints.
 #[derive(Debug, Serialize)]
@@ -85,13 +87,16 @@ pub fn router() -> Router<AppState> {
 /// Render the setup page.
 ///
 /// GET /auth/setup
-#[instrument]
-async fn setup_page() -> impl IntoResponse {
+#[instrument(skip(state))]
+async fn setup_page(State(state): State<AppState>) -> impl IntoResponse {
     debug!("Rendering admin setup page for new user registration");
+    let primary_origin = state.config().primary_origin();
     Html(
-        SetupPageTemplate
-            .render()
-            .unwrap_or_else(|_| String::from("Error rendering template")),
+        SetupPageTemplate {
+            primary_origin: &primary_origin,
+        }
+        .render()
+        .unwrap_or_else(|_| String::from("Error rendering template")),
     )
 }
 

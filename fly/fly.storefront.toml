@@ -13,7 +13,7 @@ kill_timeout = 30
   STOREFRONT_HOST = "0.0.0.0"
   STOREFRONT_PORT = "8080"
   RUST_LOG = "info,naked_pineapple_storefront=debug,tower_http=info,reqwest=warn,sqlx::query=warn,rustls=warn,h2=warn,hyper_util=warn"
-  STOREFRONT_BASE_URLS = "https://nakedpineapple.co,https://pineappleskinco.com"
+  STOREFRONT_HOSTS = "nakedpineapple.co,pineappleskinco.com"
   IMAGE_BASE_URL = "https://images.nakedpineapple.co"
   SHOPIFY_STORE = "nakedpineapple.myshopify.com"
   SHOPIFY_CUSTOMER_SHOP_ID = "71655391511"

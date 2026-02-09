@@ -8,7 +8,7 @@
 //!
 //! ## Required
 //! - `ADMIN_DATABASE_URL` - `PostgreSQL` connection string
-//! - `ADMIN_BASE_URL` - Public URL for the admin panel
+//! - `ADMIN_HOSTS` - Comma-separated hostnames (first is primary, used as `WebAuthn` RP ID)
 //! - `ADMIN_SESSION_SECRET` - Session signing secret (min 32 chars, high entropy)
 //! - `SHOPIFY_STORE` - Shopify store domain (e.g., your-store.myshopify.com)
 //! - `SHOPIFY_ADMIN_CLIENT_ID` - Shopify Admin API OAuth client ID (HIGH PRIVILEGE)
@@ -39,6 +39,7 @@
 //! - `ADMIN_TLS_CERT` - PEM-encoded certificate chain
 //! - `ADMIN_TLS_KEY` - PEM-encoded private key
 
+use std::collections::HashSet;
 use std::net::{IpAddr, SocketAddr};
 
 use secrecy::SecretString;
@@ -62,8 +63,10 @@ pub struct AdminConfig {
     pub port: u16,
     /// Port for plain HTTP health checks (Fly.io internal network only)
     pub health_port: u16,
-    /// Public base URL for the admin panel
-    pub base_url: String,
+    /// Primary hostname (used as `WebAuthn` RP ID, e.g., "admin.nakedpineapple.co")
+    pub primary_host: String,
+    /// All admin hostnames
+    pub hosts: HashSet<String>,
     /// Session signing secret
     pub session_secret: SecretString,
     /// Shopify Admin API configuration
@@ -178,7 +181,7 @@ impl AdminConfig {
             .map_err(|e| {
                 ConfigError::InvalidEnvVar("ADMIN_HEALTH_PORT".to_string(), e.to_string())
             })?;
-        let base_url = get_required_env("ADMIN_BASE_URL")?;
+        let (hosts, primary_host) = parse_admin_hosts()?;
         let session_secret = get_validated_secret("ADMIN_SESSION_SECRET")?;
         validate_session_secret(&session_secret, "ADMIN_SESSION_SECRET")?;
 
@@ -203,7 +206,8 @@ impl AdminConfig {
             host,
             port,
             health_port,
-            base_url,
+            primary_host,
+            hosts,
             session_secret,
             shopify,
             claude,
@@ -248,6 +252,23 @@ impl AdminConfig {
     pub const fn slack(&self) -> Option<&SlackConfig> {
         self.slack.as_ref()
     }
+
+    /// Derive the full origin URL for a hostname.
+    /// Localhost uses http with the configured port; everything else uses https.
+    #[must_use]
+    pub fn origin_for(&self, host: &str) -> String {
+        if host == "localhost" {
+            format!("http://localhost:{}", self.port)
+        } else {
+            format!("https://{host}")
+        }
+    }
+
+    /// Returns the full origin URL for the primary host.
+    #[must_use]
+    pub fn primary_origin(&self) -> String {
+        self.origin_for(&self.primary_host)
+    }
 }
 
 impl ShopifyAdminConfig {
@@ -259,6 +280,36 @@ impl ShopifyAdminConfig {
             client_secret: get_validated_secret("SHOPIFY_ADMIN_CLIENT_SECRET")?,
         })
     }
+}
+
+/// Parse `ADMIN_HOSTS` into a set of hostnames and the primary host.
+///
+/// The value is a comma-separated list of hostnames (no scheme).
+/// The first entry becomes the primary host (used as `WebAuthn` RP ID).
+fn parse_admin_hosts() -> Result<(HashSet<String>, String), ConfigError> {
+    let raw = get_required_env("ADMIN_HOSTS")?;
+    let mut hosts = HashSet::new();
+    let mut primary = None;
+
+    for host_str in raw.split(',') {
+        let host_str = host_str.trim();
+        if host_str.is_empty() {
+            continue;
+        }
+        if primary.is_none() {
+            primary = Some(host_str.to_owned());
+        }
+        hosts.insert(host_str.to_owned());
+    }
+
+    let primary = primary.ok_or_else(|| {
+        ConfigError::InvalidEnvVar(
+            "ADMIN_HOSTS".to_string(),
+            "must contain at least one hostname".to_string(),
+        )
+    })?;
+
+    Ok((hosts, primary))
 }
 
 #[cfg(test)]
@@ -273,7 +324,8 @@ mod tests {
             host: "127.0.0.1".parse().unwrap(),
             port: 3001,
             health_port: 9091,
-            base_url: "http://localhost:3001".to_string(),
+            primary_host: "localhost".to_string(),
+            hosts: HashSet::from(["localhost".to_string()]),
             session_secret: SecretString::from("x".repeat(32)),
             shopify: ShopifyAdminConfig {
                 store: "test.myshopify.com".to_string(),

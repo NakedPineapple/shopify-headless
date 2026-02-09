@@ -13,7 +13,13 @@ use uuid::Uuid;
 
 /// Base URL for admin API (configurable via environment).
 fn admin_base_url() -> String {
-    std::env::var("ADMIN_BASE_URL").unwrap_or_else(|_| "http://localhost:3001".to_string())
+    let hosts = std::env::var("ADMIN_HOSTS").unwrap_or_else(|_| "localhost".to_string());
+    let primary = hosts.split(',').next().unwrap_or("localhost").trim();
+    if primary == "localhost" {
+        "http://localhost:3001".to_string()
+    } else {
+        format!("https://{primary}")
+    }
 }
 
 /// Create an authenticated client with session cookie.

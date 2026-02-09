@@ -70,6 +70,7 @@ pub mod shiphero_settings;
 pub mod shopify;
 pub mod slack;
 pub mod warehouse;
+pub mod well_known;
 
 use axum::{
     Router,
@@ -428,4 +429,6 @@ pub fn routes() -> Router<AppState> {
         .merge(shiphero_settings::router())
         // Warehouse (ShipHero visibility)
         .merge(warehouse::router())
+        // Well-known endpoints (WebAuthn ROR, security.txt)
+        .nest("/.well-known", well_known::router())
 }

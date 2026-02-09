@@ -248,10 +248,37 @@ async function isPlatformAuthenticatorAvailable() {
     }
 }
 
+/**
+ * Check if the browser supports Related Origin Requests for cross-domain passkeys.
+ *
+ * When the user is on a non-primary origin, their browser must support ROR
+ * for WebAuthn to work. If on the same origin as the RP ID, ROR is not needed.
+ *
+ * @param {string} primaryOrigin - The primary origin (RP ID origin)
+ * @returns {Promise<{supported: boolean, primaryOrigin?: string}>}
+ */
+async function checkRelatedOriginSupport(primaryOrigin) {
+    if (window.location.origin === primaryOrigin) {
+        return { supported: true };
+    }
+
+    if (typeof PublicKeyCredential?.getClientCapabilities === 'function') {
+        try {
+            const caps = await PublicKeyCredential.getClientCapabilities();
+            if (caps.relatedOrigins) {
+                return { supported: true };
+            }
+        } catch { /* fall through */ }
+    }
+
+    return { supported: false, primaryOrigin };
+}
+
 // Export for use in other scripts
 window.WebAuthn = {
     registerPasskey,
     loginWithPasskey,
     isWebAuthnSupported,
     isPlatformAuthenticatorAvailable,
+    checkRelatedOriginSupport,
 };

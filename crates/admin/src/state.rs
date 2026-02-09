@@ -92,19 +92,25 @@ impl AppState {
             }
         }
 
-        // Initialize WebAuthn
-        let base_url =
-            Url::parse(&config.base_url).map_err(|e| AppStateError::InvalidUrl(e.to_string()))?;
+        // Initialize WebAuthn with multi-origin support (Related Origin Requests)
+        let primary_origin_str = config.primary_origin();
+        let primary_url = Url::parse(&primary_origin_str)
+            .map_err(|e| AppStateError::InvalidUrl(e.to_string()))?;
+        let rp_id = &config.primary_host;
 
-        let rp_id = base_url
-            .host_str()
-            .ok_or_else(|| AppStateError::InvalidUrl("no host in base URL".to_owned()))?
-            .to_owned();
-
-        let webauthn = WebauthnBuilder::new(&rp_id, &base_url)?
+        let mut builder = WebauthnBuilder::new(rp_id, &primary_url)?
             .rp_name("Naked Pineapple Admin")
-            .allow_subdomains(false)
-            .build()?;
+            .allow_subdomains(false);
+
+        for host in &config.hosts {
+            if host != &config.primary_host {
+                let origin = Url::parse(&config.origin_for(host))
+                    .map_err(|e| AppStateError::InvalidUrl(e.to_string()))?;
+                builder = builder.append_allowed_origin(&origin);
+            }
+        }
+
+        let webauthn = builder.build()?;
 
         // Initialize email service (optional - dev mode works without it)
         let email_service = match EmailService::new(&config.email) {

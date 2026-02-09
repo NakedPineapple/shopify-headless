@@ -756,7 +756,7 @@ tasks:
       - cargo run -p naked-pineapple-cli -- admin invite {{.CLI_ARGS}}
     env:
       ADMIN_DATABASE_URL: "postgres://admin_staging_admin:{{.FLY_POSTGRES_ADMIN_STAGING_ADMIN_PASSWORD}}@localhost:15433/np_admin_staging"
-      ADMIN_BASE_URL: "https://staging.admin.nakedpineapple.co"
+      ADMIN_HOSTS: "staging.admin.nakedpineapple.co"
 
   # --- Production migrations ---
 
@@ -795,7 +795,7 @@ tasks:
       - cargo run -p naked-pineapple-cli -- admin invite {{.CLI_ARGS}}
     env:
       ADMIN_DATABASE_URL: "postgres://admin_admin:{{.FLY_POSTGRES_ADMIN_ADMIN_PASSWORD}}@localhost:15433/np_admin"
-      ADMIN_BASE_URL: "https://admin.nakedpineapple.co"
+      ADMIN_HOSTS: "admin.nakedpineapple.co"
 
   # --- sqlx prepare ---
 

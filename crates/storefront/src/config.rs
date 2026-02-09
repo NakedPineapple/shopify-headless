@@ -4,7 +4,7 @@
 //!
 //! ## Required
 //! - `STOREFRONT_DATABASE_URL` - `PostgreSQL` connection string
-//! - `STOREFRONT_BASE_URLS` - Comma-separated public base URLs (e.g., `https://a.com,https://b.com`)
+//! - `STOREFRONT_HOSTS` - Comma-separated hostnames (e.g., `nakedpineapple.co,pineappleskinco.com`)
 //! - `STOREFRONT_SESSION_SECRET` - Session signing secret (min 32 chars, high entropy)
 //! - `SHOPIFY_STORE` - Shopify store domain (e.g., your-store.myshopify.com)
 //! - `SHOPIFY_STOREFRONT_PUBLIC_TOKEN` - Storefront API public access token
@@ -24,7 +24,7 @@
 //! - `GOOGLE_ADS_CONVERSION_LABEL` - Google Ads conversion label
 //! - `SENTRY_DSN` - Sentry error tracking DSN
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::net::{IpAddr, SocketAddr};
 
 use secrecy::{ExposeSecret, SecretString};
@@ -73,10 +73,10 @@ pub struct StorefrontConfig {
     pub port: u16,
     /// Port for plain HTTP health checks (Fly.io internal network only)
     pub health_port: u16,
-    /// Base URLs keyed by host (e.g., `"nakedpineapple.co"` → `"https://nakedpineapple.co"`)
-    pub base_urls: HashMap<String, String>,
-    /// Default base URL (first entry in `STOREFRONT_BASE_URLS`)
-    pub default_base_url: String,
+    /// All storefront hostnames
+    pub hosts: HashSet<String>,
+    /// Default hostname (first entry in `STOREFRONT_HOSTS`)
+    pub default_host: String,
     /// Cloudflare Web Analytics beacon tokens keyed by host
     pub cf_beacon_tokens: HashMap<String, String>,
     /// Session signing secret
@@ -237,7 +237,7 @@ impl StorefrontConfig {
             .map_err(|e| {
                 ConfigError::InvalidEnvVar("STOREFRONT_HEALTH_PORT".to_string(), e.to_string())
             })?;
-        let (base_urls, default_base_url) = parse_base_urls()?;
+        let (hosts, default_host) = parse_hosts()?;
         let cf_beacon_tokens = parse_cf_beacon_tokens()?;
         let session_secret = get_validated_secret("STOREFRONT_SESSION_SECRET")?;
         validate_session_secret(&session_secret, "STOREFRONT_SESSION_SECRET")?;
@@ -262,8 +262,8 @@ impl StorefrontConfig {
             host,
             port,
             health_port,
-            base_urls,
-            default_base_url,
+            hosts,
+            default_host,
             cf_beacon_tokens,
             session_secret,
             shopify,
@@ -282,6 +282,17 @@ impl StorefrontConfig {
     #[must_use]
     pub const fn socket_addr(&self) -> SocketAddr {
         SocketAddr::new(self.host, self.port)
+    }
+
+    /// Derive the full origin URL for a hostname.
+    /// Localhost uses http with the configured port; everything else uses https.
+    #[must_use]
+    pub fn origin_for(&self, host: &str) -> String {
+        if host == "localhost" {
+            format!("http://localhost:{}", self.port)
+        } else {
+            format!("https://{host}")
+        }
     }
 }
 
@@ -360,44 +371,34 @@ fn get_database_url(primary_key: &str) -> Result<SecretString, ConfigError> {
     Err(ConfigError::MissingEnvVar(primary_key.to_string()))
 }
 
-/// Parse `STOREFRONT_BASE_URLS` into a `host→base_url` map and the default base URL.
+/// Parse `STOREFRONT_HOSTS` into a set of hostnames and the default hostname.
 ///
-/// The value is a comma-separated list of full base URLs (e.g.,
-/// `https://nakedpineapple.co,https://pineappleskinco.com`). At least one URL is required.
-fn parse_base_urls() -> Result<(HashMap<String, String>, String), ConfigError> {
-    let raw = get_required_env("STOREFRONT_BASE_URLS")?;
-    let mut map = HashMap::new();
+/// The value is a comma-separated list of hostnames (e.g.,
+/// `nakedpineapple.co,pineappleskinco.com`). At least one hostname is required.
+fn parse_hosts() -> Result<(HashSet<String>, String), ConfigError> {
+    let raw = get_required_env("STOREFRONT_HOSTS")?;
+    let mut hosts = HashSet::new();
     let mut default = None;
 
-    for url_str in raw.split(',') {
-        let url_str = url_str.trim();
-        let url = url::Url::parse(url_str).map_err(|e| {
-            ConfigError::InvalidEnvVar("STOREFRONT_BASE_URLS".to_string(), e.to_string())
-        })?;
-        let host = url
-            .host_str()
-            .ok_or_else(|| {
-                ConfigError::InvalidEnvVar(
-                    "STOREFRONT_BASE_URLS".to_string(),
-                    format!("URL has no host: {url_str}"),
-                )
-            })?
-            .to_owned();
-        let base_url = format!("{}://{}", url.scheme(), host);
-        if default.is_none() {
-            default = Some(base_url.clone());
+    for host_str in raw.split(',') {
+        let host_str = host_str.trim();
+        if host_str.is_empty() {
+            continue;
         }
-        map.insert(host, base_url);
+        if default.is_none() {
+            default = Some(host_str.to_owned());
+        }
+        hosts.insert(host_str.to_owned());
     }
 
     let default = default.ok_or_else(|| {
         ConfigError::InvalidEnvVar(
-            "STOREFRONT_BASE_URLS".to_string(),
-            "must contain at least one URL".to_string(),
+            "STOREFRONT_HOSTS".to_string(),
+            "must contain at least one hostname".to_string(),
         )
     })?;
 
-    Ok((map, default))
+    Ok((hosts, default))
 }
 
 /// Parse `CF_BEACON_TOKENS` JSON into a host→token map.
@@ -576,11 +577,8 @@ mod tests {
             host: "127.0.0.1".parse().unwrap(),
             port: 3000,
             health_port: 9091,
-            base_urls: HashMap::from([(
-                "localhost".to_string(),
-                "http://localhost:3000".to_string(),
-            )]),
-            default_base_url: "http://localhost:3000".to_string(),
+            hosts: HashSet::from(["localhost".to_string()]),
+            default_host: "localhost".to_string(),
             cf_beacon_tokens: HashMap::new(),
             session_secret: SecretString::from("x".repeat(32)),
             shopify: ShopifyStorefrontConfig {

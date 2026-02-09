@@ -465,6 +465,12 @@
             color: #86efac;
         }
 
+        .message-warning {
+            background: rgba(245, 158, 11, 0.12);
+            border: 1px solid rgba(245, 158, 11, 0.25);
+            color: #fcd34d;
+        }
+
         /* Verified badge */
         .verified-badge {
             display: inline-flex;
@@ -618,7 +624,7 @@
                 </div>
 
                 <!-- Form Card -->
-                <div class="form-card">
+                <div class="form-card" id="setup-container" data-primary-origin="{{ primary_origin }}">
                     <!-- Step 1: Email -->
                     <div class="step-content active" id="step-1">
                         <div class="form-header">
@@ -735,6 +741,7 @@
                     <div id="error-message" class="message message-error"></div>
                     <div id="info-message" class="message message-info"></div>
                     <div id="success-message" class="message message-success"></div>
+                    <div id="webauthn-warning" class="message message-warning"></div>
                 </div>
 
                 <!-- Footer -->
@@ -1137,6 +1144,25 @@
             const base64 = btoa(binary);
             return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
         }
+
+        // Check Related Origin Request support for cross-domain passkeys
+        const warningEl = document.getElementById('webauthn-warning');
+        async function checkRelatedOriginSupport() {
+            const primaryOrigin = document.getElementById('setup-container')
+                .dataset.primaryOrigin;
+            const result = await WebAuthn.checkRelatedOriginSupport(primaryOrigin);
+            if (!result.supported) {
+                warningEl.innerHTML =
+                    '<strong>Browser not supported on this domain:</strong> ' +
+                    'Your browser does not support cross-domain passkeys. ' +
+                    'Please use Chrome, Edge, or Safari, or set up your account at ' +
+                    '<a href="' + result.primaryOrigin + '/auth/setup">' +
+                    result.primaryOrigin + '</a>.';
+                warningEl.classList.add('visible');
+                sendCodeBtn.disabled = true;
+            }
+        }
+        checkRelatedOriginSupport();
 
         // Focus email input on load
         emailInput.focus();
