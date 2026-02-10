@@ -483,6 +483,25 @@ pub async fn count_pending_review(pool: &PgPool) -> Result<i64, RepositoryError>
     Ok(count)
 }
 
+/// Count emails that are "open" (not yet responded or archived).
+///
+/// # Errors
+///
+/// Returns `RepositoryError::Database` if the query fails.
+pub async fn count_open(pool: &PgPool) -> Result<i64, RepositoryError> {
+    let count = sqlx::query_scalar!(
+        r#"
+        SELECT COUNT(*) as "count!"
+        FROM admin.inbound_email
+        WHERE status NOT IN ('responded', 'archived')
+        "#,
+    )
+    .fetch_one(pool)
+    .await?;
+
+    Ok(count)
+}
+
 /// Approve a draft response: mark as approved, set reviewer, update status.
 ///
 /// # Errors

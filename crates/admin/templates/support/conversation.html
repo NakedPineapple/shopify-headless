@@ -46,7 +46,7 @@
     <div class="flex items-center gap-2 shrink-0">
         <button type="button"
                 hx-post="/support/conversations/{{ conversation.id }}/assign"
-                hx-target="#conversation-detail"
+                hx-target="{{ detail_target }}"
                 hx-swap="innerHTML"
                 class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-muted text-foreground rounded-lg text-sm hover:bg-accent transition-colors"
                 title="Assign to me">
@@ -56,7 +56,7 @@
         {% if conversation.status != "resolved" %}
         <button type="button"
                 hx-post="/support/conversations/{{ conversation.id }}/resolve"
-                hx-target="#conversation-detail"
+                hx-target="{{ detail_target }}"
                 hx-swap="innerHTML"
                 class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded-lg text-sm hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors"
                 title="Resolve conversation">
@@ -129,7 +129,7 @@
 {% if conversation.status != "closed" %}
 <div class="border-t border-border p-4">
     <form hx-post="/support/conversations/{{ conversation.id }}/reply"
-          hx-target="#conversation-detail"
+          hx-target="{{ detail_target }}"
           hx-swap="innerHTML">
         <div class="flex gap-3">
             <div class="flex-1">

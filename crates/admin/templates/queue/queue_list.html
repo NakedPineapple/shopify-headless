@@ -1,0 +1,90 @@
+{% if items.is_empty() %}
+<div class="flex-1 flex items-center justify-center py-12">
+    <div class="text-center">
+        <i class="ph ph-checks text-3xl text-muted-foreground mb-2"></i>
+        <p class="text-sm text-muted-foreground">No items in this view</p>
+    </div>
+</div>
+{% else %}
+{% for item in items %}
+<div class="queue-item px-4 py-3 cursor-pointer hover:bg-accent/50 transition-colors"
+     {% match item.source %}
+         {% when crate::routes::queue::QueueSource::Email %}
+         hx-get="/queue/detail/email/{{ item.source_id }}"
+         {% when crate::routes::queue::QueueSource::Chat %}
+         hx-get="/queue/detail/chat/{{ item.source_id }}"
+     {% endmatch %}
+     hx-target="#queue-detail"
+     hx-swap="innerHTML"
+     onclick="selectQueueItem(this)">
+    <div class="flex items-start gap-3">
+        <!-- Source Icon -->
+        <div class="w-8 h-8 rounded-full shrink-0 flex items-center justify-center
+            {% match item.source %}
+                {% when crate::routes::queue::QueueSource::Email %}bg-blue-100 dark:bg-blue-900/30
+                {% when crate::routes::queue::QueueSource::Chat %}bg-violet-100 dark:bg-violet-900/30
+            {% endmatch %}">
+            {% match item.source %}
+                {% when crate::routes::queue::QueueSource::Email %}
+                <i class="ph ph-envelope text-sm text-blue-600 dark:text-blue-400"></i>
+                {% when crate::routes::queue::QueueSource::Chat %}
+                <i class="ph ph-chats text-sm text-violet-600 dark:text-violet-400"></i>
+            {% endmatch %}
+        </div>
+
+        <!-- Content -->
+        <div class="flex-1 min-w-0">
+            <div class="flex items-center justify-between gap-2 mb-0.5">
+                <span class="text-sm font-medium text-foreground truncate">
+                    {% match item.customer_name %}
+                        {% when Some with (name) %}{{ name }}
+                        {% when None %}
+                            {% match item.customer_email %}
+                                {% when Some with (email) %}{{ email }}
+                                {% when None %}Unknown
+                            {% endmatch %}
+                    {% endmatch %}
+                </span>
+                <span class="text-xs text-muted-foreground whitespace-nowrap">{{ item.timestamp|humanize_datetime }}</span>
+            </div>
+            <p class="text-sm text-foreground truncate mb-0.5">{{ item.subject }}</p>
+            {% if let Some(preview) = item.preview %}
+            <p class="text-xs text-muted-foreground truncate">{{ preview }}</p>
+            {% endif %}
+
+            <!-- Badges -->
+            <div class="flex items-center gap-1.5 mt-1.5">
+                <!-- Status -->
+                {% match item.queue_status %}
+                    {% when crate::routes::queue::QueueStatus::Open %}
+                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">Open</span>
+                    {% when crate::routes::queue::QueueStatus::Waiting %}
+                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400">Waiting</span>
+                    {% when crate::routes::queue::QueueStatus::Resolved %}
+                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">Resolved</span>
+                {% endmatch %}
+
+                <!-- Category pill -->
+                {% if let Some(cat) = item.category %}
+                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted text-muted-foreground">{{ cat }}</span>
+                {% endif %}
+
+                <!-- Priority pill (chat only) -->
+                {% if let Some(pri) = item.priority %}
+                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium
+                    {% if pri == "urgent" %}bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400
+                    {% elif pri == "high" %}bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400
+                    {% else %}bg-muted text-muted-foreground
+                    {% endif %}">{{ pri }}</span>
+                {% endif %}
+
+                <!-- Needs attention dot -->
+                {% if item.needs_attention %}
+                <span class="w-2 h-2 rounded-full bg-red-500 shrink-0" title="Needs attention"></span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endif %}

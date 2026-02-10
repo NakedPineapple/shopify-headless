@@ -65,6 +65,7 @@ pub mod payouts;
 pub mod products;
 pub mod promotions;
 pub mod proposal;
+pub mod queue;
 pub mod request_board;
 pub mod settings;
 pub mod setup;
@@ -432,6 +433,8 @@ pub fn routes() -> Router<AppState> {
         .merge(chat::router())
         // Shopify OAuth
         .merge(shopify::router())
+        // Unified ticket queue (emails + chat)
+        .merge(queue::router())
         // Email inbox (inbound email triage)
         .merge(emails::router())
         // Support inbox (storefront DB)

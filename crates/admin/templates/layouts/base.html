@@ -130,6 +130,15 @@
                         <span class="sidebar-text text-xs font-medium text-sidebar-muted uppercase tracking-wider">Tools</span>
                     </div>
                     <div class="space-y-1 px-3">
+                        <a href="/queue"
+                           class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors {% if current_path.starts_with("/queue") %}bg-coral text-white{% else %}text-sidebar-foreground hover:bg-sidebar-accent hover:text-white{% endif %}">
+                            <i class="ph ph-ticket text-xl"></i>
+                            <span class="sidebar-text">Ticket Queue</span>
+                            <span class="sidebar-text ml-auto"
+                                  hx-get="/queue/open-count"
+                                  hx-trigger="load, every 30s"
+                                  hx-swap="innerHTML"></span>
+                        </a>
                         <a href="/emails"
                            class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors {% if current_path.starts_with("/emails") %}bg-coral text-white{% else %}text-sidebar-foreground hover:bg-sidebar-accent hover:text-white{% endif %}">
                             <i class="ph ph-envelope text-xl"></i>

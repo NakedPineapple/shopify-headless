@@ -20,7 +20,7 @@ use askama::Template;
 use axum::{
     Form, Router,
     extract::{Path, Query, State},
-    http::StatusCode,
+    http::{HeaderMap, StatusCode},
     response::{Html, IntoResponse, Response},
     routing::{get, post},
 };
@@ -74,6 +74,7 @@ struct EmailDetailTemplate {
     email: inbound_email::InboundEmailDetail,
     thread: Vec<inbound_email::ThreadMessage>,
     has_m365: bool,
+    detail_target: String,
 }
 
 // =============================================================================
@@ -167,6 +168,7 @@ async fn email_detail(
         email,
         thread,
         has_m365,
+        detail_target: "#email-detail".to_string(),
     };
 
     Html(template.render().unwrap_or_default()).into_response()
@@ -175,6 +177,7 @@ async fn email_detail(
 async fn approve(
     State(state): State<AppState>,
     RequireAdminAuth(admin): RequireAdminAuth,
+    headers: HeaderMap,
     Path(id): Path<i32>,
     Form(form): Form<DraftForm>,
 ) -> Response {
@@ -225,12 +228,13 @@ async fn approve(
     }
 
     // Return updated detail
-    render_detail(&state, id).await
+    render_detail(&state, id, &extract_detail_target(&headers)).await
 }
 
 async fn reject(
     State(state): State<AppState>,
     RequireAdminAuth(admin): RequireAdminAuth,
+    headers: HeaderMap,
     Path(id): Path<i32>,
 ) -> Response {
     let pool = state.pool();
@@ -241,12 +245,13 @@ async fn reject(
     }
 
     info!(email_id = id, reviewer = %admin.name, "email draft rejected");
-    render_detail(&state, id).await
+    render_detail(&state, id, &extract_detail_target(&headers)).await
 }
 
 async fn archive(
     State(state): State<AppState>,
     RequireAdminAuth(admin): RequireAdminAuth,
+    headers: HeaderMap,
     Path(id): Path<i32>,
 ) -> Response {
     let pool = state.pool();
@@ -257,12 +262,13 @@ async fn archive(
     }
 
     info!(email_id = id, reviewer = %admin.name, "email archived");
-    render_detail(&state, id).await
+    render_detail(&state, id, &extract_detail_target(&headers)).await
 }
 
 async fn update_draft(
     State(state): State<AppState>,
     RequireAdminAuth(_admin): RequireAdminAuth,
+    headers: HeaderMap,
     Path(id): Path<i32>,
     Form(form): Form<DraftForm>,
 ) -> Response {
@@ -277,7 +283,7 @@ async fn update_draft(
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     }
 
-    render_detail(&state, id).await
+    render_detail(&state, id, &extract_detail_target(&headers)).await
 }
 
 async fn pending_count_badge(
@@ -302,8 +308,16 @@ async fn pending_count_badge(
 // Helpers
 // =============================================================================
 
+/// Extract the HTMX target from request headers, falling back to `#email-detail`.
+fn extract_detail_target(headers: &HeaderMap) -> String {
+    headers
+        .get("HX-Target")
+        .and_then(|v| v.to_str().ok())
+        .map_or_else(|| "#email-detail".to_string(), |id| format!("#{id}"))
+}
+
 /// Re-render the email detail fragment (used after actions).
-async fn render_detail(state: &AppState, id: i32) -> Response {
+pub async fn render_detail(state: &AppState, id: i32, detail_target: &str) -> Response {
     let pool = state.pool();
 
     let email = match inbound_email::get_by_id(pool, id).await {
@@ -325,6 +339,7 @@ async fn render_detail(state: &AppState, id: i32) -> Response {
         email,
         thread,
         has_m365,
+        detail_target: detail_target.to_string(),
     };
 
     Html(template.render().unwrap_or_default()).into_response()

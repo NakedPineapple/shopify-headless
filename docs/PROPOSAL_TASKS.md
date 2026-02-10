@@ -8,7 +8,7 @@ Features described in `crates/admin/templates/proposal/` that are not yet implem
 
 - [X] **Live chat widget (storefront)** — Add a real-time chat widget to the storefront so customers can message support directly. The proposal describes AI-powered instant answers for common questions (order status, returns policy, etc.) with handoff to a human when needed.
 - [X] **Unified email inbox UI (admin)** — Build an admin interface for viewing and responding to inbound customer emails. The backend exists — `crates/automations/src/triage/` classifies emails and `admin.inbound_email` stores them with status, classification, and response drafts — but there is no admin route or template for the inbox.
-- [ ] **Customer ticketing UI (admin)** — Surface triage results as a ticket queue in the admin panel with status tracking (open / waiting / resolved), assignment, and reply composition.
+- [X] **Customer ticketing UI (admin)** — Surface triage results as a ticket queue in the admin panel with status tracking (open / waiting / resolved), assignment, and reply composition.
 - [X] **AI auto-response sending** — The triage pipeline populates `inbound_email.response_draft`, but nothing sends the draft automatically. Wire up an approval-and-send flow (possibly through Slack confirmation) so routine questions can be answered without manual intervention.
 
 ## AI Assistant
@@ -32,6 +32,7 @@ Features described in `crates/admin/templates/proposal/` that are not yet implem
 
 - [ ] **Star ratings & product reviews** — No review submission, storage, or display system exists. The proposal shows star ratings on product cards and detail pages.
 - [ ] **Customer Hub / self-service portal** — Account pages exist (orders, subscriptions, addresses), but the proposal describes a dedicated hub with searchable FAQ, AI-powered instant answers, and a support-ticket view. This goes beyond the current account section.
+- [ ] Image Gallery - A way to browse, upload, delete, and organize original images from the R2 bucket in the admin panel with best of class UI like drag and drop to upload and organize as well as preview images larger and edit R2 metadata
 
 
 ## External Integrations

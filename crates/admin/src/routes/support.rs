@@ -31,7 +31,7 @@ use crate::filters;
 use axum::{
     Form, Router,
     extract::{Path, Query, State},
-    http::StatusCode,
+    http::{HeaderMap, StatusCode},
     response::{Html, IntoResponse, Redirect, Response},
     routing::{get, post},
 };
@@ -119,11 +119,12 @@ struct ConversationListTemplate {
 
 #[derive(Template)]
 #[template(path = "support/conversation.html")]
-struct ConversationTemplate {
-    conversation: SupportConversation,
-    messages: Vec<SupportMessage>,
-    ticket: Option<SupportTicket>,
-    admin_user: AdminUserView,
+pub struct ConversationTemplate {
+    pub conversation: SupportConversation,
+    pub messages: Vec<SupportMessage>,
+    pub ticket: Option<SupportTicket>,
+    pub admin_user: AdminUserView,
+    pub detail_target: String,
 }
 
 #[derive(Template)]
@@ -305,6 +306,16 @@ async fn conversation_detail(
     RequireAdminAuth(admin): RequireAdminAuth,
     Path(id): Path<i32>,
 ) -> Response {
+    render_conversation(&state, &admin, id, "#conversation-detail").await
+}
+
+/// Render a conversation detail fragment with a configurable HTMX target.
+pub async fn render_conversation(
+    state: &AppState,
+    admin: &CurrentAdmin,
+    id: i32,
+    detail_target: &str,
+) -> Response {
     let Some(pool) = state.support_pool() else {
         return StatusCode::SERVICE_UNAVAILABLE.into_response();
     };
@@ -332,7 +343,8 @@ async fn conversation_detail(
         conversation,
         messages,
         ticket,
-        admin_user: AdminUserView::from(&admin),
+        admin_user: AdminUserView::from(admin),
+        detail_target: detail_target.to_string(),
     };
 
     Html(template.render().unwrap_or_default()).into_response()
@@ -345,6 +357,7 @@ async fn conversation_detail(
 async fn conversation_reply(
     State(state): State<AppState>,
     RequireAdminAuth(admin): RequireAdminAuth,
+    headers: HeaderMap,
     Path(id): Path<i32>,
     Form(form): Form<ReplyForm>,
 ) -> Response {
@@ -388,12 +401,14 @@ async fn conversation_reply(
     );
 
     // Return the updated conversation detail fragment
-    conversation_detail(State(state), RequireAdminAuth(admin), Path(id)).await
+    let target = extract_conversation_target(&headers);
+    render_conversation(&state, &admin, id, &target).await
 }
 
 async fn conversation_assign(
     State(state): State<AppState>,
     RequireAdminAuth(admin): RequireAdminAuth,
+    headers: HeaderMap,
     Path(id): Path<i32>,
 ) -> Response {
     let Some(pool) = state.support_pool() else {
@@ -414,12 +429,14 @@ async fn conversation_assign(
         "Assigned support conversation"
     );
 
-    conversation_detail(State(state), RequireAdminAuth(admin), Path(id)).await
+    let target = extract_conversation_target(&headers);
+    render_conversation(&state, &admin, id, &target).await
 }
 
 async fn conversation_resolve(
     State(state): State<AppState>,
     RequireAdminAuth(admin): RequireAdminAuth,
+    headers: HeaderMap,
     Path(id): Path<i32>,
 ) -> Response {
     let Some(pool) = state.support_pool() else {
@@ -440,7 +457,8 @@ async fn conversation_resolve(
         "Resolved support conversation"
     );
 
-    conversation_detail(State(state), RequireAdminAuth(admin), Path(id)).await
+    let target = extract_conversation_target(&headers);
+    render_conversation(&state, &admin, id, &target).await
 }
 
 // =============================================================================
@@ -764,6 +782,14 @@ async fn knowledge_delete(
 // =============================================================================
 // Helpers
 // =============================================================================
+
+/// Extract the HTMX target from request headers, falling back to `#conversation-detail`.
+fn extract_conversation_target(headers: &HeaderMap) -> String {
+    headers
+        .get("HX-Target")
+        .and_then(|v| v.to_str().ok())
+        .map_or_else(|| "#conversation-detail".to_string(), |id| format!("#{id}"))
+}
 
 fn parse_status_filter(filter: &str) -> Option<SupportConversationStatus> {
     match filter {
