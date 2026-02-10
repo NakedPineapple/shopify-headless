@@ -18,6 +18,8 @@ scopes = [
     "logging",
     "monitoring",
     "security",
+    "support",
+    "automations",
     # Infrastructure scopes
     "deploy",
     "ci",
