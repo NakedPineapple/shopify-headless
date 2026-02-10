@@ -200,18 +200,12 @@ pub fn router() -> Router<AppState> {
             get(knowledge_list).post(knowledge_create),
         )
         .route("/support/knowledge/new", get(knowledge_new))
-        .route(
-            "/support/knowledge/{id}/edit",
-            get(knowledge_edit),
-        )
+        .route("/support/knowledge/{id}/edit", get(knowledge_edit))
         .route(
             "/support/knowledge/{id}",
             post(knowledge_update).delete(knowledge_delete),
         )
-        .route(
-            "/support/knowledge/{id}/toggle",
-            post(knowledge_toggle),
-        )
+        .route("/support/knowledge/{id}/toggle", post(knowledge_toggle))
 }
 
 const KNOWLEDGE_CATEGORIES: &[&str] = &[
@@ -225,7 +219,10 @@ const KNOWLEDGE_CATEGORIES: &[&str] = &[
 ];
 
 fn categories() -> Vec<String> {
-    KNOWLEDGE_CATEGORIES.iter().map(|s| (*s).to_string()).collect()
+    KNOWLEDGE_CATEGORIES
+        .iter()
+        .map(|s| (*s).to_string())
+        .collect()
 }
 
 // =============================================================================
@@ -599,9 +596,7 @@ async fn knowledge_list(
     Html(template.render().unwrap_or_default()).into_response()
 }
 
-async fn knowledge_new(
-    RequireAdminAuth(admin): RequireAdminAuth,
-) -> Response {
+async fn knowledge_new(RequireAdminAuth(admin): RequireAdminAuth) -> Response {
     let template = KnowledgeFormTemplate {
         admin_user: AdminUserView::from(&admin),
         current_path: "/support/knowledge".to_string(),

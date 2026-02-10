@@ -255,7 +255,10 @@ impl AppState {
             None
         };
 
-        let embedding = config.openai.as_ref().map(|c| EmbeddingClient::new(&c.api_key));
+        let embedding = config
+            .openai
+            .as_ref()
+            .map(|c| EmbeddingClient::new(&c.api_key));
 
         (support_pool, embedding)
     }

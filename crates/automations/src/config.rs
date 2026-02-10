@@ -239,11 +239,23 @@ impl std::fmt::Debug for WebhookConfig {
             .field("database_url", &"[REDACTED]")
             .field("port", &self.port)
             .field("base_url", &self.base_url)
-            .field("shopify_secret", &self.shopify_secret.as_ref().map(|_| "[REDACTED]"))
-            .field("github_secret", &self.github_secret.as_ref().map(|_| "[REDACTED]"))
-            .field("sentry_secret", &self.sentry_secret.as_ref().map(|_| "[REDACTED]"))
+            .field(
+                "shopify_secret",
+                &self.shopify_secret.as_ref().map(|_| "[REDACTED]"),
+            )
+            .field(
+                "github_secret",
+                &self.github_secret.as_ref().map(|_| "[REDACTED]"),
+            )
+            .field(
+                "sentry_secret",
+                &self.sentry_secret.as_ref().map(|_| "[REDACTED]"),
+            )
             .field("fly_token", &self.fly_token.as_ref().map(|_| "[REDACTED]"))
-            .field("betterstack_secret", &self.betterstack_secret.as_ref().map(|_| "[REDACTED]"))
+            .field(
+                "betterstack_secret",
+                &self.betterstack_secret.as_ref().map(|_| "[REDACTED]"),
+            )
             .finish()
     }
 }

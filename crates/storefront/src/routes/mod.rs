@@ -32,6 +32,16 @@
 //! GET  /contact                  - Contact page
 //! POST /contact/product-question - Submit product question (JSON API)
 //!
+//! # Support
+//! GET  /support                  - Support hub
+//! GET  /support/faq              - FAQ category index
+//! GET  /support/faq/:category    - FAQ category detail
+//! GET  /support/tickets          - Conversation history (authenticated)
+//! GET  /support/tickets/:id      - Conversation detail (authenticated)
+//! POST /support/chat             - Start or resume chat (Turnstile verified)
+//! POST /support/chat/:id/messages/stream - Chat message SSE stream
+//! GET  /support/chat/:id/messages - Chat message history (JSON)
+//!
 //! # Shopify Customer OAuth
 //! GET  /auth/shopify/login     - Redirect to Shopify OAuth
 //! GET  /auth/shopify/callback  - Handle OAuth callback
@@ -181,15 +191,27 @@ pub fn account_routes() -> Router<AppState> {
         )
 }
 
-/// Create the support chat routes router.
+/// Create the support routes router.
 ///
-/// Rate limited to ~20 requests per minute per IP to protect AI API costs.
+/// Chat API routes are rate limited to ~20 requests per minute per IP to protect
+/// AI API costs. Customer hub pages (hub, FAQ, tickets) are not rate limited.
 pub fn support_routes() -> Router<AppState> {
-    Router::new()
+    let chat_routes = Router::new()
         .route("/chat", post(support::start_chat))
-        .route("/chat/{id}/messages/stream", post(support::send_message_stream))
+        .route(
+            "/chat/{id}/messages/stream",
+            post(support::send_message_stream),
+        )
         .route("/chat/{id}/messages", get(support::get_messages))
-        .layer(chat_rate_limiter())
+        .layer(chat_rate_limiter());
+
+    Router::new()
+        .route("/", get(support::hub))
+        .route("/faq", get(support::faq_index))
+        .route("/faq/{category}", get(support::faq_category))
+        .route("/tickets", get(support::tickets))
+        .route("/tickets/{id}", get(support::ticket_detail))
+        .merge(chat_routes)
 }
 
 /// Create all routes for the storefront.

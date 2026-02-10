@@ -270,8 +270,7 @@ impl StorefrontConfig {
         let claude = ClaudeConfig::from_env().ok();
         let openai = OpenAIConfig::from_env();
         let turnstile_site_key = get_optional_env("TURNSTILE_SITE_KEY");
-        let turnstile_secret_key =
-            get_optional_env("TURNSTILE_SECRET_KEY").map(SecretString::from);
+        let turnstile_secret_key = get_optional_env("TURNSTILE_SECRET_KEY").map(SecretString::from);
 
         Ok(Self {
             database_url,

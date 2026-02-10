@@ -1,0 +1,112 @@
+{% extends "layouts/base.html" %}
+{% import "macros/analytics_data.html" as analytics_macro %}
+
+{% block body_data %}{{ analytics_macro::body_attrs(analytics=analytics, user_info=analytics_user_info) }}{% endblock %}
+
+{% block title %}{{ title }} - FAQ - Naked Pineapple{% endblock %}
+
+{% block description %}{{ description }}{% endblock %}
+
+{% block content %}
+<section class="py-16 md:py-24">
+    <div class="page-width">
+        <div class="max-w-3xl mx-auto">
+            <header class="text-center mb-12">
+                <nav class="text-sm text-muted-foreground mb-4">
+                    <a href="/support" class="hover:text-primary transition-colors">Support</a>
+                    <span class="mx-2">/</span>
+                    <a href="/support/faq" class="hover:text-primary transition-colors">FAQ</a>
+                    <span class="mx-2">/</span>
+                    <span class="text-foreground">{{ title }}</span>
+                </nav>
+                <h1 class="font-display text-4xl md:text-5xl font-medium text-foreground mb-4">{{ title }}</h1>
+                {% if !description.is_empty() %}
+                <p class="text-lg text-muted-foreground">{{ description }}</p>
+                {% endif %}
+            </header>
+
+            <div class="prose">
+                {{ content_html|sanitize_html|safe }}
+            </div>
+
+            <div class="mt-12 pt-8 border-t border-border text-center">
+                <p class="text-muted-foreground mb-4">Still have questions?</p>
+                <div class="flex flex-col sm:flex-row items-center justify-center gap-3">
+                    <a href="/support/faq" class="text-primary font-medium hover:underline">Browse other topics</a>
+                    <span class="hidden sm:inline text-muted-foreground">or</span>
+                    <a href="mailto:support@pineappleskinco.com" class="text-primary font-medium hover:underline">Email us</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<style>
+.prose {
+    color: var(--color-text);
+    line-height: 1.75;
+}
+
+.prose h2 {
+    font-family: var(--font-display), serif;
+    font-size: 1.5rem;
+    font-weight: 500;
+    margin-top: 2.5rem;
+    margin-bottom: 1rem;
+    color: var(--color-text);
+}
+
+.prose h3 {
+    font-family: var(--font-display), serif;
+    font-size: 1.25rem;
+    font-weight: 500;
+    margin-top: 2rem;
+    margin-bottom: 0.75rem;
+    color: var(--color-text);
+}
+
+.prose p {
+    margin-bottom: 1.25rem;
+}
+
+.prose a {
+    color: var(--color-primary);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.prose a:hover {
+    color: var(--color-terracotta);
+}
+
+.prose ul, .prose ol {
+    margin-bottom: 1.5rem;
+    padding-left: 1.5rem;
+}
+
+.prose li {
+    margin-bottom: 0.5rem;
+}
+
+.prose ul li {
+    list-style-type: disc;
+}
+
+.prose ol li {
+    list-style-type: decimal;
+}
+
+.prose strong {
+    font-weight: 600;
+    color: var(--color-text);
+}
+
+.prose hr {
+    border: none;
+    border-top: 1px solid var(--color-border-light);
+    margin: 2rem 0;
+}
+</style>
+{% endblock %}

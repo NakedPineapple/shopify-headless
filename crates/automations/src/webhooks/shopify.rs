@@ -52,7 +52,14 @@ pub async fn handle(
         }
     };
 
-    match db::insert_event(state.pool(), "shopify", &topic, external_id.as_deref(), &payload).await
+    match db::insert_event(
+        state.pool(),
+        "shopify",
+        &topic,
+        external_id.as_deref(),
+        &payload,
+    )
+    .await
     {
         Ok(true) => info!(%topic, "Shopify webhook received"),
         Ok(false) => debug!(%topic, "Shopify webhook duplicate, ignored"),
@@ -67,8 +74,5 @@ pub async fn handle(
 
 /// Extract a header value as a string, returning `""` if missing.
 fn header_str<'a>(headers: &'a HeaderMap, key: &str) -> &'a str {
-    headers
-        .get(key)
-        .and_then(|v| v.to_str().ok())
-        .unwrap_or("")
+    headers.get(key).and_then(|v| v.to_str().ok()).unwrap_or("")
 }

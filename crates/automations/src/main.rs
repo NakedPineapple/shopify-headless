@@ -211,10 +211,7 @@ async fn health_readiness(State(state): State<AppState>) -> (StatusCode, &'stati
 }
 
 /// Start the public webhook listener and reconcile Shopify webhook subscriptions.
-async fn start_webhook_listener(
-    state: &AppState,
-    webhook_config: Option<&config::WebhookConfig>,
-) {
+async fn start_webhook_listener(state: &AppState, webhook_config: Option<&config::WebhookConfig>) {
     let Some(wh_config) = webhook_config else {
         tracing::info!("WEBHOOK_DATABASE_URL not set, public webhook listener disabled");
         return;

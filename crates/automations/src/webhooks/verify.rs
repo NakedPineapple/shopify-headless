@@ -96,8 +96,7 @@ mod tests {
 
         let mut mac = HmacSha256::new_from_slice(secret).unwrap();
         mac.update(body);
-        let sig = base64::engine::general_purpose::STANDARD
-            .encode(mac.finalize().into_bytes());
+        let sig = base64::engine::general_purpose::STANDARD.encode(mac.finalize().into_bytes());
 
         assert!(verify_hmac_sha256_base64(secret, body, &sig));
     }
@@ -121,13 +120,11 @@ mod tests {
         let result = mac.finalize().into_bytes();
         let sig = format!(
             "sha256={}",
-            result
-                .iter()
-                .fold(String::new(), |mut acc, b| {
-                    use std::fmt::Write;
-                    let _ = write!(acc, "{b:02x}");
-                    acc
-                })
+            result.iter().fold(String::new(), |mut acc, b| {
+                use std::fmt::Write;
+                let _ = write!(acc, "{b:02x}");
+                acc
+            })
         );
 
         assert!(verify_hmac_sha256_hex(secret, body, &sig));

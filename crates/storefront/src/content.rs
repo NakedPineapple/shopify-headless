@@ -32,6 +32,9 @@ pub struct PageMeta {
     pub description: Option<String>,
     #[serde(default)]
     pub updated_at: Option<NaiveDate>,
+    /// Phosphor icon class (used by support FAQ pages).
+    #[serde(default)]
+    pub icon: Option<String>,
 }
 
 /// Metadata for blog posts
@@ -75,6 +78,7 @@ pub struct Post {
 pub struct ContentStore {
     pages: Arc<HashMap<String, Page>>,
     posts: Arc<Vec<Post>>,
+    support_pages: Arc<HashMap<String, Page>>,
 }
 
 impl ContentStore {
@@ -86,10 +90,12 @@ impl ContentStore {
     pub fn load(content_dir: &Path) -> Result<Self, ContentError> {
         let pages = Self::load_pages(&content_dir.join("pages"))?;
         let posts = Self::load_posts(&content_dir.join("blog"))?;
+        let support_pages = Self::load_pages(&content_dir.join("support"))?;
 
         Ok(Self {
             pages: Arc::new(pages),
             posts: Arc::new(posts),
+            support_pages: Arc::new(support_pages),
         })
     }
 
@@ -277,6 +283,17 @@ impl ContentStore {
             .filter(|p| !p.meta.draft && exclude_slug.is_none_or(|s| p.slug != s))
             .take(limit)
             .collect()
+    }
+
+    /// Get a support FAQ page by slug (e.g., "shipping", "returns").
+    #[must_use]
+    pub fn get_support_page(&self, slug: &str) -> Option<&Page> {
+        self.support_pages.get(slug)
+    }
+
+    /// Get all support FAQ pages.
+    pub fn get_all_support_pages(&self) -> impl Iterator<Item = &Page> {
+        self.support_pages.values()
     }
 }
 

@@ -1,8 +1,16 @@
-//! Support chat route handlers.
+//! Support route handlers: chat API, customer hub, FAQ, and ticket history.
 //!
 //! # Routes
 //!
 //! ```text
+//! # Customer Hub Pages
+//! GET  /support                            -- Support hub (public)
+//! GET  /support/faq                        -- FAQ category index (public)
+//! GET  /support/faq/{category}             -- FAQ category detail (public)
+//! GET  /support/tickets                    -- Conversation history (authenticated)
+//! GET  /support/tickets/{id}              -- Conversation detail (authenticated)
+//!
+//! # Chat API
 //! POST /support/chat                      -- Start or resume conversation (Turnstile verified)
 //! POST /support/chat/{id}/messages/stream -- Send message, SSE streaming response
 //! GET  /support/chat/{id}/messages        -- Get conversation history (JSON)
@@ -14,19 +22,24 @@ use std::fmt::Write;
 use std::future::Future;
 use std::pin::Pin;
 
+use askama::Template;
+use askama_web::WebTemplate;
 use axum::{
     Json,
     extract::{Path, State},
     http::StatusCode,
-    response::{IntoResponse, Response, Sse, sse::{Event, KeepAlive}},
+    response::{
+        IntoResponse, Response, Sse,
+        sse::{Event, KeepAlive},
+    },
 };
 use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use futures::StreamExt;
-use naked_pineapple_core::{SupportConversationId, SupportConversationStatus};
+use naked_pineapple_core::{SupportConversationId, SupportConversationStatus, SupportMessageRole};
 use naked_pineapple_support::{
     db::conversation::ConversationRepository,
     db::message::MessageRepository,
-    models::{ChatStreamEvent, CreateConversationParams},
+    models::{ChatStreamEvent, CreateConversationParams, SupportConversation, SupportMessage},
     service::{SupportChatService, SupportChatServiceParams},
     tools::ToolContext,
 };
@@ -34,8 +47,10 @@ use serde::{Deserialize, Serialize};
 use tower_sessions::Session;
 use tracing::{debug, error, info, warn};
 
-use crate::content::ContentStore;
-use crate::middleware::OptionalShopifyCustomer;
+use crate::config::{AnalyticsConfig, AnalyticsUserInfo};
+use crate::content::{ContentStore, Page};
+use crate::filters;
+use crate::middleware::{OptionalShopifyCustomer, RequireShopifyCustomer};
 use crate::search::SearchIndex;
 use crate::shopify::customer::{CustomerClient, Order, SubscriptionContract};
 use crate::shopify::{Product, StorefrontClient};
@@ -85,7 +100,13 @@ struct ErrorBody {
 }
 
 fn error_response(status: StatusCode, message: &str) -> Response {
-    (status, Json(ErrorBody { error: message.to_string() })).into_response()
+    (
+        status,
+        Json(ErrorBody {
+            error: message.to_string(),
+        }),
+    )
+        .into_response()
 }
 
 // =============================================================================
@@ -110,10 +131,9 @@ pub async fn start_chat(
     };
 
     // Verify Turnstile token
-    if let Err(e) = crate::middleware::verify_turnstile_token(
-        turnstile_secret,
-        &request.turnstile_token,
-    ).await {
+    if let Err(e) =
+        crate::middleware::verify_turnstile_token(turnstile_secret, &request.turnstile_token).await
+    {
         warn!(error = %e, "Turnstile verification failed");
         return error_response(StatusCode::FORBIDDEN, "Bot verification failed");
     }
@@ -129,20 +149,24 @@ pub async fn start_chat(
     // Try to resume an existing active conversation
     match conv_repo.find_active_by_session(&session_token).await {
         Ok(Some(conv)) => {
-            debug!(conversation_id = conv.id.as_i32(), "Resuming existing conversation");
-            return (StatusCode::OK, Json(ConversationResponse {
-                id: conv.id.as_i32(),
-                status: format!("{:?}", conv.status).to_lowercase(),
-                is_new: false,
-            })).into_response();
+            debug!(
+                conversation_id = conv.id.as_i32(),
+                "Resuming existing conversation"
+            );
+            return (
+                StatusCode::OK,
+                Json(ConversationResponse {
+                    id: conv.id.as_i32(),
+                    status: format!("{:?}", conv.status).to_lowercase(),
+                    is_new: false,
+                }),
+            )
+                .into_response();
         }
         Ok(None) => {}
         Err(e) => {
             error!(error = %e, "Failed to look up existing conversation");
-            return error_response(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Something went wrong",
-            );
+            return error_response(StatusCode::INTERNAL_SERVER_ERROR, "Something went wrong");
         }
     }
 
@@ -167,12 +191,19 @@ pub async fn start_chat(
 
     match conv_repo.create(&params).await {
         Ok(conv) => {
-            info!(conversation_id = conv.id.as_i32(), "Created new support conversation");
-            (StatusCode::CREATED, Json(ConversationResponse {
-                id: conv.id.as_i32(),
-                status: format!("{:?}", conv.status).to_lowercase(),
-                is_new: true,
-            })).into_response()
+            info!(
+                conversation_id = conv.id.as_i32(),
+                "Created new support conversation"
+            );
+            (
+                StatusCode::CREATED,
+                Json(ConversationResponse {
+                    id: conv.id.as_i32(),
+                    status: format!("{:?}", conv.status).to_lowercase(),
+                    is_new: true,
+                }),
+            )
+                .into_response()
         }
         Err(e) => {
             error!(error = %e, "Failed to create conversation");
@@ -241,7 +272,9 @@ pub async fn send_message_stream(
         tool_context,
     });
 
-    Sse::new(sse_stream).keep_alive(KeepAlive::default()).into_response()
+    Sse::new(sse_stream)
+        .keep_alive(KeepAlive::default())
+        .into_response()
 }
 
 /// Parameters for the SSE chat stream.
@@ -368,7 +401,9 @@ impl ToolContext for SupportToolContext {
                 }
                 Ok(ref conn) if conn.products.len() == 1 => {
                     // SAFETY: length is checked by the guard
-                    conn.products.first().map_or_else(String::new, format_product)
+                    conn.products
+                        .first()
+                        .map_or_else(String::new, format_product)
                 }
                 Ok(conn) => {
                     let mut out = format!(
@@ -397,8 +432,7 @@ impl ToolContext for SupportToolContext {
     ) -> Pin<Box<dyn Future<Output = String> + Send + 'a>> {
         Box::pin(async move {
             let Some(ref token) = self.access_token else {
-                return "Unable to look up orders — no customer session."
-                    .to_string();
+                return "Unable to look up orders — no customer session.".to_string();
             };
             let orders = match self.customer.get_orders(token, 20).await {
                 Ok(o) => o,
@@ -411,8 +445,7 @@ impl ToolContext for SupportToolContext {
             };
             let normalized = order_number.trim_start_matches('#');
             let matching = orders.iter().find(|o| {
-                o.name.trim_start_matches('#') == normalized
-                    || o.number.to_string() == normalized
+                o.name.trim_start_matches('#') == normalized || o.number.to_string() == normalized
             });
             matching.map_or_else(
                 || {
@@ -432,20 +465,15 @@ impl ToolContext for SupportToolContext {
     ) -> Pin<Box<dyn Future<Output = String> + Send + 'a>> {
         Box::pin(async move {
             let Some(ref token) = self.access_token else {
-                return "Unable to look up subscriptions — no customer session."
-                    .to_string();
+                return "Unable to look up subscriptions — no customer session.".to_string();
             };
             if subscription_id == "all" {
                 match self.customer.get_subscriptions(token, 10).await {
                     Ok(subs) if subs.is_empty() => {
-                        "No active subscriptions found for this account."
-                            .to_string()
+                        "No active subscriptions found for this account.".to_string()
                     }
                     Ok(subs) => {
-                        let mut out = format!(
-                            "Found {} subscription(s):\n\n",
-                            subs.len()
-                        );
+                        let mut out = format!("Found {} subscription(s):\n\n", subs.len());
                         for sub in &subs {
                             out.push_str(&format_subscription(sub));
                             out.push('\n');
@@ -460,15 +488,9 @@ impl ToolContext for SupportToolContext {
                     }
                 }
             } else {
-                match self
-                    .customer
-                    .get_subscription(token, subscription_id)
-                    .await
-                {
+                match self.customer.get_subscription(token, subscription_id).await {
                     Ok(Some(sub)) => format_subscription(&sub),
-                    Ok(None) => format!(
-                        "No subscription found with ID '{subscription_id}'."
-                    ),
+                    Ok(None) => format!("No subscription found with ID '{subscription_id}'."),
                     Err(e) => {
                         warn!(error = %e, "Subscription lookup failed");
                         "I'm having trouble looking up subscription \
@@ -523,14 +545,8 @@ fn format_product_summary(product: &Product) -> String {
 }
 
 fn format_order(order: &Order) -> String {
-    let financial = order
-        .financial_status
-        .as_deref()
-        .unwrap_or("unknown");
-    let fulfillment = order
-        .fulfillment_status
-        .as_deref()
-        .unwrap_or("unfulfilled");
+    let financial = order.financial_status.as_deref().unwrap_or("unknown");
+    let fulfillment = order.fulfillment_status.as_deref().unwrap_or("unfulfilled");
     format!(
         "**Order {}**\nDate: {}\nPayment: {}\n\
          Fulfillment: {}\nTotal: {} {}",
@@ -549,10 +565,7 @@ fn format_subscription(sub: &SubscriptionContract) -> String {
         .iter()
         .map(|l| format!("{} (x{})", l.name, l.quantity))
         .collect();
-    let next_billing = sub
-        .next_billing_date
-        .as_deref()
-        .unwrap_or("N/A");
+    let next_billing = sub.next_billing_date.as_deref().unwrap_or("N/A");
     format!(
         "**Subscription**\nStatus: {}\nFrequency: {}\n\
          Items: {}\nNext billing: {}",
@@ -642,4 +655,272 @@ pub async fn get_messages(
             error_response(StatusCode::INTERNAL_SERVER_ERROR, "Something went wrong")
         }
     }
+}
+
+// =============================================================================
+// Customer Hub: Templates
+// =============================================================================
+
+/// View model for messages in ticket detail template.
+pub struct MessageView {
+    pub role: SupportMessageRole,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    text: String,
+}
+
+impl MessageView {
+    fn from_message(msg: &SupportMessage) -> Self {
+        let text = msg
+            .content
+            .get("text")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+        Self {
+            role: msg.role,
+            created_at: msg.created_at,
+            text,
+        }
+    }
+
+    /// Get the text content of this message.
+    #[must_use]
+    pub fn content_text(&self) -> &str {
+        &self.text
+    }
+}
+
+/// Support hub page template.
+#[derive(Template, WebTemplate)]
+#[template(path = "support/hub.html")]
+pub struct HubTemplate {
+    pub faq_pages: Vec<Page>,
+    pub conversations: Option<Vec<SupportConversation>>,
+    pub chat_enabled: bool,
+    pub analytics: AnalyticsConfig,
+    pub analytics_user_info: AnalyticsUserInfo,
+    pub site: crate::middleware::SiteContext,
+    pub nonce: String,
+}
+
+/// FAQ index page template.
+#[derive(Template, WebTemplate)]
+#[template(path = "support/faq.html")]
+pub struct FaqIndexTemplate {
+    pub faq_pages: Vec<Page>,
+    pub analytics: AnalyticsConfig,
+    pub analytics_user_info: AnalyticsUserInfo,
+    pub site: crate::middleware::SiteContext,
+    pub nonce: String,
+}
+
+/// FAQ category detail page template.
+#[derive(Template, WebTemplate)]
+#[template(path = "support/faq_category.html")]
+pub struct FaqCategoryTemplate {
+    pub title: String,
+    pub description: String,
+    pub content_html: String,
+    pub analytics: AnalyticsConfig,
+    pub analytics_user_info: AnalyticsUserInfo,
+    pub site: crate::middleware::SiteContext,
+    pub nonce: String,
+}
+
+/// Customer ticket history page template.
+#[derive(Template, WebTemplate)]
+#[template(path = "support/tickets.html")]
+pub struct TicketsTemplate {
+    pub conversations: Vec<SupportConversation>,
+    pub analytics: AnalyticsConfig,
+    pub analytics_user_info: AnalyticsUserInfo,
+    pub site: crate::middleware::SiteContext,
+    pub nonce: String,
+}
+
+/// Ticket detail page template.
+#[derive(Template, WebTemplate)]
+#[template(path = "support/ticket_detail.html")]
+pub struct TicketDetailTemplate {
+    pub conversation: SupportConversation,
+    pub messages: Vec<MessageView>,
+    pub analytics: AnalyticsConfig,
+    pub analytics_user_info: AnalyticsUserInfo,
+    pub site: crate::middleware::SiteContext,
+    pub nonce: String,
+}
+
+// =============================================================================
+// Customer Hub: Route Handlers
+// =============================================================================
+
+/// Get sorted FAQ pages from the content store.
+fn sorted_faq_pages(state: &AppState) -> Vec<Page> {
+    let mut pages: Vec<Page> = state.content().get_all_support_pages().cloned().collect();
+    pages.sort_by(|a, b| a.meta.title.cmp(&b.meta.title));
+    pages
+}
+
+/// Support hub page.
+///
+/// GET /support
+pub async fn hub(
+    State(state): State<AppState>,
+    OptionalShopifyCustomer(customer): OptionalShopifyCustomer,
+    crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
+    site: crate::middleware::SiteContext,
+) -> impl IntoResponse {
+    let customer_id = customer
+        .as_ref()
+        .and_then(|c| c.id_token.as_deref())
+        .and_then(decode_id_token_claims)
+        .and_then(|claims| claims.sub);
+
+    let conversations = match customer_id {
+        Some(ref id) => {
+            let conv_repo = ConversationRepository::new(state.pool());
+            Some(conv_repo.list_by_customer(id, 5).await.unwrap_or_default())
+        }
+        None => None,
+    };
+
+    HubTemplate {
+        faq_pages: sorted_faq_pages(&state),
+        conversations,
+        chat_enabled: site.chat_enabled,
+        analytics: state.config().analytics.clone(),
+        analytics_user_info: AnalyticsUserInfo::default(),
+        site,
+        nonce,
+    }
+}
+
+/// FAQ index page.
+///
+/// GET /support/faq
+pub async fn faq_index(
+    State(state): State<AppState>,
+    crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
+    site: crate::middleware::SiteContext,
+) -> impl IntoResponse {
+    FaqIndexTemplate {
+        faq_pages: sorted_faq_pages(&state),
+        analytics: state.config().analytics.clone(),
+        analytics_user_info: AnalyticsUserInfo::default(),
+        site,
+        nonce,
+    }
+}
+
+/// FAQ category detail page.
+///
+/// GET /support/faq/{category}
+///
+/// # Errors
+///
+/// Returns 404 if the category doesn't exist.
+pub async fn faq_category(
+    State(state): State<AppState>,
+    Path(category): Path<String>,
+    crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
+    site: crate::middleware::SiteContext,
+) -> Result<impl IntoResponse, StatusCode> {
+    let page = state
+        .content()
+        .get_support_page(&category)
+        .ok_or(StatusCode::NOT_FOUND)?;
+
+    Ok(FaqCategoryTemplate {
+        title: page.meta.title.clone(),
+        description: page.meta.description.clone().unwrap_or_default(),
+        content_html: page.content_html.clone(),
+        analytics: state.config().analytics.clone(),
+        analytics_user_info: AnalyticsUserInfo::default(),
+        site,
+        nonce,
+    })
+}
+
+/// Customer ticket history page.
+///
+/// GET /support/tickets
+pub async fn tickets(
+    State(state): State<AppState>,
+    RequireShopifyCustomer(customer): RequireShopifyCustomer,
+    crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
+    site: crate::middleware::SiteContext,
+) -> impl IntoResponse {
+    let customer_id = customer
+        .id_token
+        .as_deref()
+        .and_then(decode_id_token_claims)
+        .and_then(|claims| claims.sub);
+
+    let conversations = match customer_id {
+        Some(ref id) => {
+            let conv_repo = ConversationRepository::new(state.pool());
+            conv_repo.list_by_customer(id, 50).await.unwrap_or_default()
+        }
+        None => Vec::new(),
+    };
+
+    TicketsTemplate {
+        conversations,
+        analytics: state.config().analytics.clone(),
+        analytics_user_info: AnalyticsUserInfo::default(),
+        site,
+        nonce,
+    }
+}
+
+/// Ticket detail (conversation thread) page.
+///
+/// GET /support/tickets/{id}
+///
+/// # Errors
+///
+/// Returns 404 if not found or 403 if the conversation doesn't belong to the customer.
+pub async fn ticket_detail(
+    State(state): State<AppState>,
+    RequireShopifyCustomer(customer): RequireShopifyCustomer,
+    Path(id): Path<i32>,
+    crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
+    site: crate::middleware::SiteContext,
+) -> Result<impl IntoResponse, StatusCode> {
+    let customer_id = customer
+        .id_token
+        .as_deref()
+        .and_then(decode_id_token_claims)
+        .and_then(|claims| claims.sub)
+        .ok_or(StatusCode::FORBIDDEN)?;
+
+    let conversation_id = SupportConversationId::new(id);
+    let conv_repo = ConversationRepository::new(state.pool());
+
+    let conversation = conv_repo
+        .get_by_id(conversation_id)
+        .await
+        .map_err(|_| StatusCode::NOT_FOUND)?;
+
+    // Verify the conversation belongs to this customer
+    if conversation.shopify_customer_id.as_deref() != Some(&customer_id) {
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    let msg_repo = MessageRepository::new(state.pool());
+    let raw_messages = msg_repo
+        .list_by_conversation(conversation_id)
+        .await
+        .unwrap_or_default();
+
+    let messages: Vec<MessageView> = raw_messages.iter().map(MessageView::from_message).collect();
+
+    Ok(TicketDetailTemplate {
+        conversation,
+        messages,
+        analytics: state.config().analytics.clone(),
+        analytics_user_info: AnalyticsUserInfo::default(),
+        site,
+        nonce,
+    })
 }

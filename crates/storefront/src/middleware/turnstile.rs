@@ -43,10 +43,7 @@ pub async fn verify_turnstile_token(
     let client = reqwest::Client::new();
     let response: SiteVerifyResponse = client
         .post(SITEVERIFY_URL)
-        .form(&[
-            ("secret", secret_key.expose_secret()),
-            ("response", token),
-        ])
+        .form(&[("secret", secret_key.expose_secret()), ("response", token)])
         .send()
         .await?
         .json()

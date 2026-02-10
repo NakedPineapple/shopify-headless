@@ -132,8 +132,7 @@ impl<'a> SupportChatService<'a> {
 
     /// Build the system prompt, injecting RAG and content search context.
     async fn build_system_prompt(&self, user_message: &str) -> String {
-        let rag_context =
-            rag::retrieve_context(self.embedding, self.pool, user_message).await;
+        let rag_context = rag::retrieve_context(self.embedding, self.pool, user_message).await;
         let content_context = self.tool_context.search_content(user_message, 3);
 
         let mut system = self.system_prompt.to_string();
@@ -217,11 +216,7 @@ impl<'a> SupportChatService<'a> {
     }
 
     /// Persist the assistant's final response text.
-    async fn save_assistant_response(
-        &self,
-        conversation_id: SupportConversationId,
-        text: &str,
-    ) {
+    async fn save_assistant_response(&self, conversation_id: SupportConversationId, text: &str) {
         if text.is_empty() {
             return;
         }
@@ -424,8 +419,14 @@ impl<'a> SupportChatService<'a> {
         // Send Slack notification if configured
         if let Some(slack) = self.slack {
             let conv = conv_repo.get_by_id(conversation_id).await.ok();
-            self.send_escalation_slack(slack, conversation_id, conv.as_ref(), reason, category.as_deref())
-                .await;
+            self.send_escalation_slack(
+                slack,
+                conversation_id,
+                conv.as_ref(),
+                reason,
+                category.as_deref(),
+            )
+            .await;
         }
 
         "I've created a support ticket and our team will be notified. A human agent will \

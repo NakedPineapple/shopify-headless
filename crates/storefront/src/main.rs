@@ -225,7 +225,9 @@ async fn main() {
     if state.is_chat_enabled() {
         tracing::info!("AI chat support enabled");
     } else {
-        tracing::info!("AI chat support disabled (missing CLAUDE_API_KEY, OPENAI_API_KEY, or TURNSTILE keys)");
+        tracing::info!(
+            "AI chat support disabled (missing CLAUDE_API_KEY, OPENAI_API_KEY, or TURNSTILE keys)"
+        );
     }
 
     // Start building search index in background

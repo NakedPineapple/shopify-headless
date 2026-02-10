@@ -1,0 +1,91 @@
+{% extends "layouts/base.html" %}
+{% import "macros/analytics_data.html" as analytics_macro %}
+
+{% block body_data %}{{ analytics_macro::body_attrs(analytics=analytics, user_info=analytics_user_info) }}{% endblock %}
+
+{% block title %}Conversation #{{ conversation.id.as_i32() }} - Naked Pineapple{% endblock %}
+
+{% block description %}View your support conversation with Naked Pineapple.{% endblock %}
+
+{% block content %}
+<section class="py-16 md:py-24">
+    <div class="page-width">
+        <div class="max-w-3xl mx-auto">
+            <header class="mb-8">
+                <nav class="text-sm text-muted-foreground mb-4">
+                    <a href="/support" class="hover:text-primary transition-colors">Support</a>
+                    <span class="mx-2">/</span>
+                    <a href="/support/tickets" class="hover:text-primary transition-colors">My Conversations</a>
+                    <span class="mx-2">/</span>
+                    <span class="text-foreground">#{{ conversation.id.as_i32() }}</span>
+                </nav>
+                <div class="flex items-center justify-between">
+                    <h1 class="font-display text-2xl md:text-3xl font-medium text-foreground">
+                        {% match conversation.title.as_deref() %}
+                            {% when Some with (t) %}{{ t }}
+                            {% when None %}Conversation #{{ conversation.id.as_i32() }}
+                        {% endmatch %}
+                    </h1>
+                    {% match conversation.status %}
+                        {% when SupportConversationStatus::Active %}
+                        <span class="px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">Active</span>
+                        {% when SupportConversationStatus::Escalated %}
+                        <span class="px-3 py-1 rounded-full text-sm font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">Escalated</span>
+                        {% when SupportConversationStatus::Waiting %}
+                        <span class="px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">Waiting</span>
+                        {% when SupportConversationStatus::Resolved %}
+                        <span class="px-3 py-1 rounded-full text-sm font-medium bg-muted text-muted-foreground">Resolved</span>
+                        {% when SupportConversationStatus::Closed %}
+                        <span class="px-3 py-1 rounded-full text-sm font-medium bg-muted text-muted-foreground">Closed</span>
+                    {% endmatch %}
+                </div>
+                <p class="text-sm text-muted-foreground mt-1">Started {{ conversation.created_at.format("%B %d, %Y at %l:%M %p") }}</p>
+            </header>
+
+            {# Message Thread #}
+            <div class="space-y-4 mb-8">
+                {% for msg in messages %}
+                {% match msg.role %}
+                    {% when SupportMessageRole::Customer %}
+                    <div class="flex justify-end">
+                        <div class="max-w-[80%] bg-primary text-primary-foreground rounded-2xl rounded-br-md px-4 py-3">
+                            <p class="text-sm whitespace-pre-wrap">{{ msg.content_text() }}</p>
+                            <p class="text-xs opacity-70 mt-1">{{ msg.created_at.format("%l:%M %p") }}</p>
+                        </div>
+                    </div>
+                    {% when SupportMessageRole::Assistant %}
+                    <div class="flex justify-start">
+                        <div class="max-w-[80%] bg-muted rounded-2xl rounded-bl-md px-4 py-3">
+                            <p class="text-sm text-foreground whitespace-pre-wrap chat-assistant-msg">{{ msg.content_text()|markdown|safe }}</p>
+                            <p class="text-xs text-muted-foreground mt-1">{{ msg.created_at.format("%l:%M %p") }}</p>
+                        </div>
+                    </div>
+                    {% when SupportMessageRole::Agent %}
+                    <div class="flex justify-start">
+                        <div class="max-w-[80%] bg-secondary/10 border border-secondary/20 rounded-2xl rounded-bl-md px-4 py-3">
+                            <p class="text-xs font-medium text-secondary mb-1">Support Agent</p>
+                            <p class="text-sm text-foreground whitespace-pre-wrap">{{ msg.content_text()|markdown|safe }}</p>
+                            <p class="text-xs text-muted-foreground mt-1">{{ msg.created_at.format("%l:%M %p") }}</p>
+                        </div>
+                    </div>
+                    {% when SupportMessageRole::System %}
+                    <div class="text-center">
+                        <span class="inline-block text-xs text-muted-foreground bg-muted/50 px-3 py-1 rounded-full">{{ msg.content_text() }}</span>
+                    </div>
+                    {% when _ %}
+                    {# ToolUse / ToolResult: hidden from customer view #}
+                {% endmatch %}
+                {% endfor %}
+            </div>
+
+            {# Back link #}
+            <div class="pt-8 border-t border-border">
+                <a href="/support/tickets" class="text-primary font-medium hover:underline inline-flex items-center gap-1">
+                    <i class="ph ph-arrow-left text-sm"></i>
+                    Back to conversations
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

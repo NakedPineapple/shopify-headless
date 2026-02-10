@@ -1,0 +1,47 @@
+{% extends "layouts/base.html" %}
+{% import "macros/analytics_data.html" as analytics_macro %}
+
+{% block body_data %}{{ analytics_macro::body_attrs(analytics=analytics, user_info=analytics_user_info) }}{% endblock %}
+
+{% block title %}FAQ - Naked Pineapple{% endblock %}
+
+{% block description %}Find answers to common questions about Naked Pineapple products, orders, shipping, returns, and more.{% endblock %}
+
+{% block content %}
+<section class="py-16 md:py-24">
+    <div class="page-width">
+        <div class="max-w-3xl mx-auto">
+            <header class="text-center mb-12">
+                <nav class="text-sm text-muted-foreground mb-4">
+                    <a href="/support" class="hover:text-primary transition-colors">Support</a>
+                    <span class="mx-2">/</span>
+                    <span class="text-foreground">FAQ</span>
+                </nav>
+                <h1 class="font-display text-4xl md:text-5xl font-medium text-foreground mb-4">Frequently Asked Questions</h1>
+                <p class="text-lg text-muted-foreground">Choose a topic below to find the answers you need.</p>
+            </header>
+
+            <div class="grid sm:grid-cols-2 gap-4">
+                {% for page in faq_pages %}
+                <a href="/support/faq/{{ page.slug }}" class="bg-card rounded-xl border border-border p-5 hover:shadow-md hover:border-primary/20 transition-all duration-200 group flex items-start gap-4">
+                    <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
+                        <i class="ph {{ page.meta.icon.as_deref().unwrap_or("ph-question") }} text-lg text-primary"></i>
+                    </div>
+                    <div>
+                        <h2 class="font-medium text-foreground group-hover:text-primary transition-colors">{{ page.meta.title }}</h2>
+                        {% if let Some(desc) = page.meta.description %}
+                        <p class="text-sm text-muted-foreground mt-1 line-clamp-2">{{ desc }}</p>
+                        {% endif %}
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+
+            <div class="mt-12 text-center">
+                <p class="text-muted-foreground mb-4">Can't find what you're looking for?</p>
+                <a href="/support" class="text-primary font-medium hover:underline">Back to Support Center</a>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

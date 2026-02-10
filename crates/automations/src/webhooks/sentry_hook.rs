@@ -61,8 +61,5 @@ pub async fn handle(
 }
 
 fn header_str<'a>(headers: &'a HeaderMap, key: &str) -> &'a str {
-    headers
-        .get(key)
-        .and_then(|v| v.to_str().ok())
-        .unwrap_or("")
+    headers.get(key).and_then(|v| v.to_str().ok()).unwrap_or("")
 }

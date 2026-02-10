@@ -202,8 +202,8 @@ impl AdminConfig {
             .and_then(|s| s.parse().ok())
             .unwrap_or(1.0);
         let tls = TlsConfig::from_env()?;
-        let storefront_database_url = get_optional_env("STOREFRONT_DATABASE_URL")
-            .map(SecretString::from);
+        let storefront_database_url =
+            get_optional_env("STOREFRONT_DATABASE_URL").map(SecretString::from);
 
         Ok(Self {
             database_url,

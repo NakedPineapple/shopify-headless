@@ -1,0 +1,415 @@
+{% extends "layouts/base.html" %}
+{% import "macros/analytics_data.html" as analytics_macro %}
+
+{% block body_data %}{{ analytics_macro::body_attrs(analytics=analytics, user_info=analytics_user_info) }}{% endblock %}
+
+{% block title %}Support - Naked Pineapple{% endblock %}
+
+{% block description %}Get help with your Naked Pineapple order, browse FAQ topics, or chat with our support team.{% endblock %}
+
+{% block content %}
+{# Hero Section #}
+<section class="relative py-20 md:py-28 bg-gradient-to-br from-muted/50 via-background to-secondary/10 overflow-hidden">
+    <div class="absolute inset-0 opacity-[0.03] pointer-events-none"
+         style="background-image: url('data:image/svg+xml,<svg width=&quot;60&quot; height=&quot;60&quot; viewBox=&quot;0 0 60 60&quot; xmlns=&quot;http://www.w3.org/2000/svg&quot;><path d=&quot;M30 0L60 30L30 60L0 30Z&quot; fill=&quot;none&quot; stroke=&quot;%23d63a2f&quot; stroke-width=&quot;1&quot;/></svg>'); background-size: 60px 60px;"></div>
+
+    <div class="page-width relative">
+        <div class="max-w-2xl mx-auto text-center">
+            <span class="text-primary font-medium tracking-wider text-sm uppercase mb-4 block">Support Center</span>
+            <h1 class="font-display text-4xl md:text-5xl lg:text-6xl font-medium text-foreground mb-6 leading-[1.1]">
+                How Can We Help?
+            </h1>
+            <p class="text-lg text-muted-foreground max-w-lg mx-auto mb-8">
+                Browse our help topics, check your conversations, or start a chat with our team.
+            </p>
+
+            {% if chat_enabled %}
+            {# AI Search Bar #}
+            <form id="hub-search-form" class="max-w-xl mx-auto">
+                <div class="relative">
+                    <label for="hub-search-input" class="sr-only">Ask a question</label>
+                    <input id="hub-search-input"
+                           type="text"
+                           class="w-full rounded-2xl border border-border bg-background pl-5 pr-14 py-4 text-base placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors shadow-sm"
+                           placeholder="Ask a question&hellip;"
+                           maxlength="2000"
+                           autocomplete="off">
+                    <button id="hub-search-btn"
+                            type="submit"
+                            class="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            aria-label="Ask"
+                            disabled>
+                        <i class="ph ph-paper-plane-right text-lg"></i>
+                    </button>
+                </div>
+            </form>
+
+            {# Inline Answer Area #}
+            <div id="hub-search-answer" class="hidden max-w-xl mx-auto mt-6 text-left">
+                <div class="bg-background rounded-2xl border border-border shadow-sm p-6">
+                    <div class="flex items-center gap-2 mb-3">
+                        <div class="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
+                            <i class="ph ph-sparkle text-sm text-primary"></i>
+                        </div>
+                        <span class="text-xs font-medium text-muted-foreground uppercase tracking-wider">AI Answer</span>
+                    </div>
+                    <div id="hub-search-text" class="text-sm text-foreground leading-relaxed hub-answer-prose"></div>
+                    <div id="hub-search-tool" class="hidden flex items-center gap-2 text-xs text-muted-foreground mt-3">
+                        <div class="flex gap-0.5">
+                            <span class="w-1.5 h-1.5 rounded-full bg-primary/60 animate-bounce [animation-delay:0ms]"></span>
+                            <span class="w-1.5 h-1.5 rounded-full bg-primary/60 animate-bounce [animation-delay:150ms]"></span>
+                            <span class="w-1.5 h-1.5 rounded-full bg-primary/60 animate-bounce [animation-delay:300ms]"></span>
+                        </div>
+                        <span id="hub-search-tool-name">Looking that up...</span>
+                    </div>
+                    <p id="hub-search-error" class="hidden text-xs text-destructive mt-3"></p>
+                    <div id="hub-search-follow-up" class="hidden mt-4 pt-3 border-t border-border">
+                        <button type="button"
+                                class="text-primary text-sm font-medium hover:underline inline-flex items-center gap-1"
+                                onclick="if(window.NP_Chat)window.NP_Chat.open()">
+                            Continue this conversation
+                            <i class="ph ph-chat-circle-dots text-sm"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {# Turnstile container for hub search (invisible mode) #}
+            <div id="hub-search-turnstile" class="hidden" data-turnstile-site-key="{{ site.turnstile_site_key }}"></div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+{# FAQ Category Grid #}
+<section class="py-16 md:py-24 bg-background">
+    <div class="page-width">
+        <h2 class="font-display text-2xl md:text-3xl font-medium text-foreground text-center mb-12">Browse Help Topics</h2>
+        <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
+            {% for page in faq_pages %}
+            <a href="/support/faq/{{ page.slug }}" class="bg-card rounded-2xl p-6 border border-border hover:shadow-lg hover:border-primary/20 transition-all duration-300 group">
+                <div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
+                    <i class="ph {{ page.meta.icon.as_deref().unwrap_or("ph-question") }} text-xl text-primary"></i>
+                </div>
+                <h3 class="font-display text-lg text-foreground mb-2 group-hover:text-primary transition-colors">{{ page.meta.title }}</h3>
+                {% if let Some(desc) = page.meta.description %}
+                <p class="text-sm text-muted-foreground line-clamp-2">{{ desc }}</p>
+                {% endif %}
+                <span class="inline-flex items-center gap-1 text-primary text-sm font-medium mt-3">
+                    Learn more
+                    <i class="ph ph-arrow-right text-xs transition-transform group-hover:translate-x-1"></i>
+                </span>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+{# Authenticated: Recent Conversations #}
+{% if let Some(convos) = conversations %}
+<section class="py-16 md:py-24 bg-muted/30">
+    <div class="page-width">
+        <div class="max-w-3xl mx-auto">
+            <div class="flex items-center justify-between mb-8">
+                <h2 class="font-display text-2xl md:text-3xl font-medium text-foreground">Your Conversations</h2>
+                <a href="/support/tickets" class="text-primary text-sm font-medium hover:underline">View all</a>
+            </div>
+            {% if convos.is_empty() %}
+            <div class="bg-card rounded-2xl border border-border p-8 text-center">
+                <i class="ph ph-chat-circle-dots text-4xl text-muted-foreground/50 mb-4"></i>
+                <p class="text-muted-foreground">No support conversations yet.</p>
+                <p class="text-sm text-muted-foreground mt-1">Start a chat using the button in the corner if you need help!</p>
+            </div>
+            {% else %}
+            <div class="space-y-3">
+                {% for conv in convos %}
+                <a href="/support/tickets/{{ conv.id.as_i32() }}" class="block bg-card rounded-xl border border-border p-4 hover:shadow-md hover:border-primary/20 transition-all duration-200 group">
+                    <div class="flex items-start justify-between gap-4">
+                        <div class="min-w-0 flex-1">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="text-foreground font-medium truncate">
+                                    {% match conv.title.as_deref() %}
+                                        {% when Some with (t) %}{{ t }}
+                                        {% when None %}Conversation #{{ conv.id.as_i32() }}
+                                    {% endmatch %}
+                                </span>
+                                {% match conv.status %}
+                                    {% when SupportConversationStatus::Active %}
+                                    <span class="shrink-0 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">Active</span>
+                                    {% when SupportConversationStatus::Escalated %}
+                                    <span class="shrink-0 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">Escalated</span>
+                                    {% when SupportConversationStatus::Waiting %}
+                                    <span class="shrink-0 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">Waiting</span>
+                                    {% when SupportConversationStatus::Resolved %}
+                                    <span class="shrink-0 px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">Resolved</span>
+                                    {% when SupportConversationStatus::Closed %}
+                                    <span class="shrink-0 px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">Closed</span>
+                                {% endmatch %}
+                            </div>
+                            <p class="text-sm text-muted-foreground">Started {{ conv.created_at.format("%b %d, %Y") }}</p>
+                        </div>
+                        <i class="ph ph-caret-right text-muted-foreground group-hover:text-primary transition-colors shrink-0 mt-1"></i>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+{# Chat & Contact CTA #}
+<section class="py-16 md:py-24 bg-background">
+    <div class="page-width">
+        <div class="grid md:grid-cols-2 gap-8 max-w-3xl mx-auto">
+            {% if chat_enabled %}
+            <div class="bg-card rounded-2xl p-8 border border-border text-center">
+                <div class="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-6 mx-auto">
+                    <i class="ph ph-chat-circle-dots text-2xl text-primary"></i>
+                </div>
+                <h3 class="font-display text-xl text-foreground mb-2">Chat With Us</h3>
+                <p class="text-muted-foreground text-sm mb-6">Get instant answers from our AI assistant, available 24/7.</p>
+                <button type="button"
+                        onclick="if(window.NP_Chat)window.NP_Chat.open()"
+                        class="btn btn-primary justify-center">
+                    Start a Chat
+                    <i class="ph ph-chat-circle-dots text-lg"></i>
+                </button>
+            </div>
+            {% endif %}
+            <div class="bg-card rounded-2xl p-8 border border-border text-center">
+                <div class="w-14 h-14 rounded-2xl bg-secondary/10 flex items-center justify-center mb-6 mx-auto">
+                    <i class="ph ph-envelope-simple text-2xl text-secondary"></i>
+                </div>
+                <h3 class="font-display text-xl text-foreground mb-2">Email Us</h3>
+                <p class="text-muted-foreground text-sm mb-6">We typically respond within 24 hours.</p>
+                <a href="mailto:support@pineappleskinco.com" class="btn btn-secondary justify-center">
+                    Send Email
+                    <i class="ph ph-arrow-right text-lg"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+{% if chat_enabled %}
+<style>
+.hub-answer-prose strong { font-weight: 600; color: var(--color-text); }
+.hub-answer-prose em { font-style: italic; }
+.hub-answer-prose code { background: var(--color-muted); padding: 0.125rem 0.25rem; border-radius: 0.25rem; font-size: 0.75rem; }
+</style>
+<script nonce="{{ nonce }}">
+(function () {
+    'use strict';
+
+    var form = document.getElementById('hub-search-form');
+    var input = document.getElementById('hub-search-input');
+    var btn = document.getElementById('hub-search-btn');
+    var answerArea = document.getElementById('hub-search-answer');
+    var textEl = document.getElementById('hub-search-text');
+    var toolEl = document.getElementById('hub-search-tool');
+    var toolNameEl = document.getElementById('hub-search-tool-name');
+    var errorEl = document.getElementById('hub-search-error');
+    var followUpEl = document.getElementById('hub-search-follow-up');
+    var turnstileContainer = document.getElementById('hub-search-turnstile');
+    if (!form || !input || !turnstileContainer) return;
+
+    var siteKey = turnstileContainer.dataset.turnstileSiteKey || '';
+    var isSending = false;
+    var turnstileToken = null;
+    var turnstileWidgetId = null;
+
+    var TOOL_LABELS = {
+        'lookup_faq': 'Searching our knowledge base\u2026',
+        'lookup_product': 'Looking up product info\u2026',
+        'lookup_order_status': 'Checking your order\u2026',
+        'lookup_subscription': 'Checking your subscription\u2026',
+        'request_human_help': 'Connecting you to our team\u2026'
+    };
+
+    /* ----- Turnstile ----- */
+
+    function initTurnstile() {
+        if (turnstileWidgetId != null || !siteKey) return;
+        if (typeof window.turnstile === 'undefined') return;
+        turnstileWidgetId = window.turnstile.render(turnstileContainer, {
+            sitekey: siteKey,
+            callback: function (token) { turnstileToken = token; },
+            'expired-callback': function () { turnstileToken = null; },
+            'error-callback': function () { turnstileToken = null; },
+            size: 'invisible'
+        });
+    }
+
+    function loadTurnstileScript() {
+        if (document.getElementById('turnstile-script') || !siteKey) return;
+        var script = document.createElement('script');
+        script.id = 'turnstile-script';
+        script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onTurnstileLoad';
+        script.async = true;
+        document.head.appendChild(script);
+        var prev = window.onTurnstileLoad;
+        window.onTurnstileLoad = function () {
+            if (prev) prev();
+            initTurnstile();
+        };
+    }
+
+    function ensureToken() {
+        return new Promise(function (resolve, reject) {
+            if (turnstileToken) { resolve(turnstileToken); return; }
+            if (typeof window.turnstile === 'undefined') { reject(new Error('Turnstile not loaded')); return; }
+            if (turnstileWidgetId != null) { window.turnstile.reset(turnstileWidgetId); }
+            else { initTurnstile(); }
+            var attempts = 0;
+            var interval = setInterval(function () {
+                attempts++;
+                if (turnstileToken) { clearInterval(interval); resolve(turnstileToken); }
+                else if (attempts > 50) { clearInterval(interval); reject(new Error('Verification timed out')); }
+            }, 100);
+        });
+    }
+
+    /* ----- Markdown formatting ----- */
+
+    function fmt(text) {
+        return text
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.+?)\*/g, '<em>$1</em>')
+            .replace(/`(.+?)`/g, '<code>$1</code>')
+            .replace(/\n/g, '<br>');
+    }
+
+    /* ----- UI helpers ----- */
+
+    function showAnswer() { answerArea.classList.remove('hidden'); }
+    function showTool(name) { toolNameEl.textContent = TOOL_LABELS[name] || 'Looking that up\u2026'; toolEl.classList.remove('hidden'); }
+    function hideTool() { toolEl.classList.add('hidden'); }
+    function showFollowUp() { followUpEl.classList.remove('hidden'); }
+    function showError(msg) { errorEl.textContent = msg; errorEl.classList.remove('hidden'); }
+
+    function resetAnswer() {
+        textEl.innerHTML = '';
+        errorEl.classList.add('hidden');
+        errorEl.textContent = '';
+        followUpEl.classList.add('hidden');
+        hideTool();
+    }
+
+    /* ----- Main flow ----- */
+
+    function askQuestion(text) {
+        if (isSending || !text.trim()) return;
+        isSending = true;
+        btn.disabled = true;
+        resetAnswer();
+        showAnswer();
+        textEl.innerHTML = '<span class="text-muted-foreground">Thinking\u2026</span>';
+
+        ensureToken().then(function (token) {
+            return fetch('/support/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 'cf-turnstile-response': token })
+            });
+        }).then(function (res) {
+            turnstileToken = null;
+            if (turnstileWidgetId != null && typeof window.turnstile !== 'undefined') {
+                window.turnstile.reset(turnstileWidgetId);
+            }
+            if (!res.ok) return res.json().then(function (b) { throw new Error(b.error || 'Failed to connect'); });
+            return res.json();
+        }).then(function (data) {
+            textEl.innerHTML = '';
+            return streamResponse(data.id, text);
+        }).catch(function (err) {
+            textEl.innerHTML = '';
+            showError(err.message || 'Something went wrong. Please try again.');
+            isSending = false;
+            btn.disabled = !input.value.trim();
+        });
+    }
+
+    function streamResponse(convId, text) {
+        var streamed = '';
+        return fetch('/support/chat/' + convId + '/messages/stream', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: text.trim() })
+        }).then(function (res) {
+            if (!res.ok) return res.text().then(function (b) {
+                var msg = 'Something went wrong';
+                try { msg = JSON.parse(b).error || msg; } catch (e) {}
+                throw new Error(msg);
+            });
+            var reader = res.body.getReader();
+            var decoder = new TextDecoder();
+            var buffer = '';
+
+            function process() {
+                return reader.read().then(function (result) {
+                    if (result.done) { finish(); return; }
+                    buffer += decoder.decode(result.value, { stream: true });
+                    var lines = buffer.split('\n');
+                    buffer = lines.pop() || '';
+                    for (var i = 0; i < lines.length; i++) {
+                        var line = lines[i].trim();
+                        if (!line.startsWith('data:')) continue;
+                        var json = line.substring(5).trim();
+                        if (!json) continue;
+                        try {
+                            var ev = JSON.parse(json);
+                            switch (ev.type) {
+                                case 'text_delta':
+                                    streamed += ev.text;
+                                    textEl.innerHTML = fmt(streamed);
+                                    break;
+                                case 'tool_use': showTool(ev.name); break;
+                                case 'tool_result': hideTool(); break;
+                                case 'message_complete': hideTool(); break;
+                                case 'error': showError(ev.message); break;
+                            }
+                        } catch (e) {}
+                    }
+                    return process();
+                });
+            }
+
+            function finish() {
+                hideTool();
+                isSending = false;
+                btn.disabled = !input.value.trim();
+                if (streamed) showFollowUp();
+                else if (!errorEl.textContent) showError('No answer received. Please try again.');
+            }
+
+            return process();
+        }).catch(function (err) {
+            hideTool();
+            showError(err.message || 'Connection lost. Please try again.');
+            isSending = false;
+            btn.disabled = !input.value.trim();
+        });
+    }
+
+    /* ----- Event listeners ----- */
+
+    input.addEventListener('input', function () { btn.disabled = isSending || !input.value.trim(); });
+    input.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (!isSending && input.value.trim()) askQuestion(input.value); }
+    });
+    form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        if (!isSending && input.value.trim()) askQuestion(input.value);
+    });
+
+    /* Load Turnstile eagerly so it's ready when the user submits */
+    loadTurnstileScript();
+})();
+</script>
+{% endif %}
+{% endblock %}

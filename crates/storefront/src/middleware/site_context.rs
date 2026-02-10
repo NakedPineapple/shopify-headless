@@ -72,10 +72,7 @@ impl FromRequestParts<AppState> for SiteContext {
             .is_some_and(|v| v == "1");
 
         let chat_enabled = state.is_chat_enabled();
-        let turnstile_site_key = config
-            .turnstile_site_key
-            .clone()
-            .unwrap_or_default();
+        let turnstile_site_key = config.turnstile_site_key.clone().unwrap_or_default();
 
         Ok(Self {
             host: host.to_owned(),

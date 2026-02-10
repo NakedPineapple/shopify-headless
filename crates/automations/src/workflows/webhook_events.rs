@@ -10,7 +10,7 @@ use sqlx::PgPool;
 use tracing::{debug, error, info, instrument, warn};
 
 use crate::outbound::poller;
-use crate::shopify::{self, fulfillments, ShopifyClient};
+use crate::shopify::{self, ShopifyClient, fulfillments};
 
 /// Clients needed for dispatching webhook events to downstream workflows.
 pub struct WebhookDispatchClients<'a> {
@@ -99,7 +99,11 @@ async fn dispatch(
             dispatch_operational(clients, event).await?;
         }
         other => {
-            warn!(source = other, event_id = event.id, "unknown webhook source");
+            warn!(
+                source = other,
+                event_id = event.id,
+                "unknown webhook source"
+            );
         }
     }
 
@@ -221,10 +225,7 @@ async fn dispatch_operational(
             text: PlainText::new(format!("{source_label} Webhook Event")),
         },
         Block::Section {
-            text: Text::mrkdwn(format!(
-                "*Event*: `{}`\n{summary}",
-                event.event_type,
-            )),
+            text: Text::mrkdwn(format!("*Event*: `{}`\n{summary}", event.event_type,)),
             accessory: None,
         },
         Block::Context {
@@ -288,8 +289,7 @@ async fn mark_processed(
     event_id: i64,
     error: Option<String>,
 ) -> Result<(), sqlx::Error> {
-    let (status, error_message) =
-        error.map_or(("processed", None), |msg| ("failed", Some(msg)));
+    let (status, error_message) = error.map_or(("processed", None), |msg| ("failed", Some(msg)));
 
     sqlx::query!(
         r#"

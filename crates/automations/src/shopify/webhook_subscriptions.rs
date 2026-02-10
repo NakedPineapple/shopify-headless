@@ -64,11 +64,10 @@ fn topic_to_path(topic: &str) -> String {
     let lower = topic.to_lowercase();
     // Split at the last underscore: resource_action → resource/action.
     // Handles multi-word resources like SUBSCRIPTION_CONTRACTS_CREATE.
-    lower
-        .rsplit_once('_')
-        .map_or_else(|| lower.clone(), |(resource, action)| {
-            format!("{resource}/{action}")
-        })
+    lower.rsplit_once('_').map_or_else(
+        || lower.clone(),
+        |(resource, action)| format!("{resource}/{action}"),
+    )
 }
 
 /// An existing webhook subscription.
@@ -187,7 +186,12 @@ fn log_user_errors(data: &serde_json::Value, mutation: &str, context: &str) {
 
     for error in errors {
         if let Some(msg) = error.get("message").and_then(serde_json::Value::as_str) {
-            warn!(mutation, context, error = msg, "Shopify mutation user error");
+            warn!(
+                mutation,
+                context,
+                error = msg,
+                "Shopify mutation user error"
+            );
         }
     }
 }

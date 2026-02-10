@@ -44,9 +44,7 @@ pub async fn handle(
         .get("type")
         .and_then(serde_json::Value::as_str)
         .unwrap_or("unknown");
-    let external_id = payload
-        .get("id")
-        .and_then(serde_json::Value::as_str);
+    let external_id = payload.get("id").and_then(serde_json::Value::as_str);
 
     match db::insert_event(state.pool(), "fly", event_type, external_id, &payload).await {
         Ok(true) => info!(event_type, "Fly webhook received"),
@@ -61,8 +59,5 @@ pub async fn handle(
 }
 
 fn header_str<'a>(headers: &'a HeaderMap, key: &str) -> &'a str {
-    headers
-        .get(key)
-        .and_then(|v| v.to_str().ok())
-        .unwrap_or("")
+    headers.get(key).and_then(|v| v.to_str().ok()).unwrap_or("")
 }

@@ -51,7 +51,15 @@ pub async fn handle(
         .and_then(|d| d.get("id"))
         .and_then(serde_json::Value::as_str);
 
-    match db::insert_event(state.pool(), "betterstack", event_type, external_id, &payload).await {
+    match db::insert_event(
+        state.pool(),
+        "betterstack",
+        event_type,
+        external_id,
+        &payload,
+    )
+    .await
+    {
         Ok(true) => info!(event_type, "Better Stack webhook received"),
         Ok(false) => debug!(event_type, "Better Stack webhook duplicate, ignored"),
         Err(e) => {
@@ -64,8 +72,5 @@ pub async fn handle(
 }
 
 fn header_str<'a>(headers: &'a HeaderMap, key: &str) -> &'a str {
-    headers
-        .get(key)
-        .and_then(|v| v.to_str().ok())
-        .unwrap_or("")
+    headers.get(key).and_then(|v| v.to_str().ok()).unwrap_or("")
 }

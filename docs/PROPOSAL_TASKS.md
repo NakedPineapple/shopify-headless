@@ -6,7 +6,7 @@ Features described in `crates/admin/templates/proposal/` that are not yet implem
 
 ## Customer Support
 
-- [ ] **Live chat widget (storefront)** — Add a real-time chat widget to the storefront so customers can message support directly. The proposal describes AI-powered instant answers for common questions (order status, returns policy, etc.) with handoff to a human when needed.
+- [X] **Live chat widget (storefront)** — Add a real-time chat widget to the storefront so customers can message support directly. The proposal describes AI-powered instant answers for common questions (order status, returns policy, etc.) with handoff to a human when needed.
 - [ ] **Unified email inbox UI (admin)** — Build an admin interface for viewing and responding to inbound customer emails. The backend exists — `crates/automations/src/triage/` classifies emails and `admin.inbound_email` stores them with status, classification, and response drafts — but there is no admin route or template for the inbox.
 - [ ] **Customer ticketing UI (admin)** — Surface triage results as a ticket queue in the admin panel with status tracking (open / waiting / resolved), assignment, and reply composition.
 - [ ] **AI auto-response sending** — The triage pipeline populates `inbound_email.response_draft`, but nothing sends the draft automatically. Wire up an approval-and-send flow (possibly through Slack confirmation) so routine questions can be answered without manual intervention.

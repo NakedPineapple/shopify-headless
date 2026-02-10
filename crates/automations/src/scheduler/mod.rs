@@ -87,9 +87,7 @@ impl Scheduler {
         let mut segment_sync = interval(Duration::from_secs(config.segment_sync_interval_secs));
         let mut subscription_check =
             interval(Duration::from_secs(config.subscription_check_interval_secs));
-        let mut webhook_events = interval(Duration::from_secs(
-            config.webhook_event_interval_secs,
-        ));
+        let mut webhook_events = interval(Duration::from_secs(config.webhook_event_interval_secs));
 
         tracing::info!(
             email_poll_secs = config.email_poll_interval_secs,
