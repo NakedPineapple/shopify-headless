@@ -285,6 +285,7 @@ async fn update_profile(
         email: updated_user.email,
         name: updated_user.name.clone(),
         role: updated_user.role,
+        slack_user_id: updated_user.slack_user_id,
     };
     set_current_admin(&session, &current_admin)
         .await
@@ -468,6 +469,7 @@ async fn verify_email(
         email: updated_user.email.clone(),
         name: updated_user.name,
         role: updated_user.role,
+        slack_user_id: updated_user.slack_user_id,
     };
     set_current_admin(&session, &current_admin)
         .await

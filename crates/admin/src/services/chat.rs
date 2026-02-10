@@ -27,15 +27,17 @@ use tracing::{debug, error, info, instrument, warn};
 use uuid::Uuid;
 
 use naked_pineapple_core::{AdminUserId, ChatMessageId, ChatRole, ChatSessionId};
+use naked_pineapple_services::openai::EmbeddingClient;
 
 use crate::claude::{
     ClaudeClient, ClaudeError, ContentBlock, ContentBlockDelta, ContentBlockStart, Message,
-    MessageContent, StopReason, StreamEvent, Tool, ToolExecutor, ToolResult, Usage,
-    all_shopify_tools,
+    MessageContent, StopReason, StreamEvent, Tool, ToolExecutor, ToolResult, Usage, all_tools,
 };
 use crate::db::{ChatRepository, RepositoryError};
 use crate::models::chat::{ApiInteraction, ChatMessage, ChatSession};
+use crate::services::action_queue::{ActionQueueService, EnqueueParams};
 use crate::shopify::AdminClient;
+use crate::slack::SlackClient;
 
 /// System prompt template for the Claude chat assistant.
 #[derive(Template)]
@@ -138,6 +140,27 @@ fn render_system_prompt() -> String {
     }
     .render()
     .unwrap_or_else(|_| String::from("You are a helpful assistant."))
+}
+
+/// Context about the current admin user and available integrations.
+///
+/// Bundles the dependencies needed by the chat loop beyond the core
+/// Claude/Shopify clients — admin identity for Slack targeting and
+/// optional integrations for document search and write confirmations.
+#[derive(Clone)]
+pub struct ChatContext {
+    /// Database pool for action queue operations.
+    pub pool: PgPool,
+    /// Admin user's database ID.
+    pub admin_user_id: i32,
+    /// Admin user's display name.
+    pub admin_name: String,
+    /// Admin user's Slack user ID for DM notifications.
+    pub admin_slack_user_id: Option<String>,
+    /// Slack client for sending confirmation messages.
+    pub slack: Option<SlackClient>,
+    /// Embedding client for document search.
+    pub embedding: Option<EmbeddingClient>,
 }
 
 /// Maximum number of tool use iterations to prevent infinite loops.
@@ -276,16 +299,23 @@ pub struct ChatService<'a> {
     pool: &'a PgPool,
     claude: &'a ClaudeClient,
     shopify: &'a AdminClient,
+    ctx: ChatContext,
 }
 
 impl<'a> ChatService<'a> {
     /// Create a new chat service.
     #[must_use]
-    pub const fn new(pool: &'a PgPool, claude: &'a ClaudeClient, shopify: &'a AdminClient) -> Self {
+    pub const fn new(
+        pool: &'a PgPool,
+        claude: &'a ClaudeClient,
+        shopify: &'a AdminClient,
+        ctx: ChatContext,
+    ) -> Self {
         Self {
             pool,
             claude,
             shopify,
+            ctx,
         }
     }
 
@@ -423,12 +453,12 @@ impl<'a> ChatService<'a> {
         let mut claude_messages = convert_to_claude_messages(&history);
 
         // Get available tools and system prompt
-        let tools = all_shopify_tools();
+        let tools = all_tools();
         debug!(tool_count = tools.len(), "Tools loaded for Claude request");
         let system_prompt = render_system_prompt();
 
         // Tool use loop
-        let executor = ToolExecutor::new(self.shopify);
+        let executor = ToolExecutor::new(self.shopify, self.pool, self.ctx.embedding.as_ref());
         let mut iterations = 0;
 
         loop {
@@ -468,6 +498,7 @@ impl<'a> ChatService<'a> {
                 session_id,
                 &response.content,
                 &mut new_messages,
+                &self.ctx,
             )
             .await?;
 
@@ -543,6 +574,7 @@ impl<'a> ChatService<'a> {
             self.shopify.clone(),
             session_id,
             user_message,
+            self.ctx.clone(),
         )
     }
 }
@@ -560,20 +592,22 @@ impl<'a> ChatService<'a> {
 /// * `shopify` - Shopify Admin API client (cheap to clone, uses Arc internally)
 /// * `session_id` - The chat session ID
 /// * `user_message` - The user's message text
+/// * `ctx` - Chat context with admin identity and optional integrations
 ///
 /// # Returns
 ///
 /// A stream of `ChatStreamEvent` items for real-time UI updates.
-#[instrument(skip(pool, claude, shopify, user_message), fields(session_id = %session_id))]
+#[instrument(skip(pool, claude, shopify, user_message, ctx), fields(session_id = %session_id))]
 pub fn stream_chat_message(
     pool: PgPool,
     claude: ClaudeClient,
     shopify: AdminClient,
     session_id: ChatSessionId,
     user_message: String,
+    ctx: ChatContext,
 ) -> impl Stream<Item = ChatStreamEvent> + Send + 'static {
     debug!("Initializing streaming chat message");
-    streaming_chat_loop(pool, claude, shopify, session_id, user_message)
+    streaming_chat_loop(pool, claude, shopify, session_id, user_message, ctx)
 }
 
 /// State for accumulating a streaming content block.
@@ -660,6 +694,7 @@ fn streaming_chat_loop(
     shopify: AdminClient,
     session_id: ChatSessionId,
     user_message: String,
+    ctx: ChatContext,
 ) -> impl Stream<Item = ChatStreamEvent> + Send {
     stream! {
         debug!("Starting streaming chat loop");
@@ -743,12 +778,12 @@ fn streaming_chat_loop(
         let mut claude_messages = convert_to_claude_messages(&history);
 
         // Get available tools and system prompt
-        let tools = all_shopify_tools();
+        let tools = all_tools();
         debug!(tool_count = tools.len(), "Tools loaded for streaming request");
         let system_prompt = render_system_prompt();
 
         // Tool use loop
-        let executor = ToolExecutor::new(&shopify);
+        let executor = ToolExecutor::new(&shopify, &pool, ctx.embedding.as_ref());
         let mut iterations = 0;
 
         loop {
@@ -955,14 +990,49 @@ fn streaming_chat_loop(
                             );
                             (content, false)
                         }
-                        Ok(ToolResult::RequiresConfirmation { tool_name, .. }) => {
-                            // Write operations require confirmation via Slack
-                            // For now, return a message indicating this
-                            debug!(
-                                tool_name = %tool_name,
-                                "Tool requires confirmation"
-                            );
-                            (format!("Action '{tool_name}' requires confirmation. This feature is not yet implemented."), false)
+                        Ok(ToolResult::RequiresConfirmation { tool_name, input: tool_input, domain }) => {
+                            debug!(tool_name = %tool_name, "Tool requires confirmation");
+
+                            if ctx.slack.is_none() {
+                                (format!(
+                                    "Action '{tool_name}' requires Slack confirmation but Slack \
+                                     is not configured. The action cannot be executed."
+                                ), false)
+                            } else {
+                                let action_queue = ActionQueueService::new(
+                                    ctx.pool.clone(),
+                                    ctx.slack.clone(),
+                                );
+                                match action_queue.enqueue(EnqueueParams {
+                                    chat_session_id: session_id.as_i32(),
+                                    chat_message_id: None,
+                                    admin_user_id: ctx.admin_user_id,
+                                    admin_name: ctx.admin_name.clone(),
+                                    admin_slack_user_id: ctx.admin_slack_user_id.clone(),
+                                    tool_name: tool_name.clone(),
+                                    tool_input: tool_input.clone(),
+                                    domain,
+                                }).await {
+                                    Ok(enqueue_result) => {
+                                        yield ChatStreamEvent::ActionPending {
+                                            action_id: enqueue_result.action_id,
+                                            tool_name: tool_name.clone(),
+                                            tool_input,
+                                        };
+                                        (format!(
+                                            "Action '{tool_name}' has been sent for approval via Slack. \
+                                             Action ID: {}. The action will be executed once approved.",
+                                            enqueue_result.action_id
+                                        ), false)
+                                    }
+                                    Err(e) => {
+                                        error!(error = %e, "Failed to enqueue action");
+                                        (format!(
+                                            "Failed to queue action '{tool_name}' for approval: {e}"
+                                        ), true)
+                                    }
+                                }
+                            }
                         }
                         Err(e) => {
                             warn!(
@@ -1226,6 +1296,7 @@ async fn process_response_blocks(
     session_id: ChatSessionId,
     content: &[ContentBlock],
     new_messages: &mut Vec<ChatMessage>,
+    ctx: &ChatContext,
 ) -> Result<(bool, Vec<ContentBlock>), ChatError> {
     let mut has_tool_use = false;
     let mut tool_results: Vec<ContentBlock> = Vec::new();
@@ -1244,7 +1315,7 @@ async fn process_response_blocks(
                 has_tool_use = true;
                 debug!(tool_name = %name, tool_id = %id, "Processing tool use block");
                 let (tool_use_msg, tool_result_msg, tool_result_block) =
-                    execute_tool_use(repo, executor, session_id, id, name, input).await?;
+                    execute_tool_use(repo, executor, session_id, id, name, input, ctx).await?;
                 new_messages.push(tool_use_msg);
                 new_messages.push(tool_result_msg);
                 tool_results.push(tool_result_block);
@@ -1261,7 +1332,7 @@ async fn process_response_blocks(
 /// Execute a tool use block and save the messages.
 ///
 /// Returns (`tool_use_message`, `tool_result_message`, `tool_result_block`).
-#[instrument(skip(repo, executor, input), fields(session_id = %session_id, tool_name = %name, tool_id = %id))]
+#[instrument(skip(repo, executor, input, ctx), fields(session_id = %session_id, tool_name = %name, tool_id = %id))]
 async fn execute_tool_use(
     repo: &ChatRepository<'_>,
     executor: &ToolExecutor<'_>,
@@ -1269,6 +1340,7 @@ async fn execute_tool_use(
     id: &str,
     name: &str,
     input: &serde_json::Value,
+    ctx: &ChatContext,
 ) -> Result<(ChatMessage, ChatMessage, ContentBlock), ChatError> {
     debug!("Executing tool use");
     let start = Instant::now();
@@ -1288,7 +1360,7 @@ async fn execute_tool_use(
     debug!("Executing tool");
     let tool_start = Instant::now();
     let result = executor.execute(name, input).await;
-    let (result_content, is_error) = convert_tool_result(result);
+    let (result_content, is_error) = convert_tool_result(result, session_id, ctx).await;
 
     if is_error {
         warn!(
@@ -1329,15 +1401,71 @@ async fn execute_tool_use(
 }
 
 /// Convert a tool execution result to content string and error flag.
-fn convert_tool_result(result: Result<ToolResult, ClaudeError>) -> (String, bool) {
+///
+/// For write operations, enqueues the action for Slack confirmation.
+async fn convert_tool_result(
+    result: Result<ToolResult, ClaudeError>,
+    session_id: ChatSessionId,
+    ctx: &ChatContext,
+) -> (String, bool) {
     match result {
         Ok(ToolResult::Success(content)) => (content, false),
-        Ok(ToolResult::RequiresConfirmation { tool_name, .. }) => {
-            // Write operations require confirmation via Slack (not yet implemented)
-            let msg = format!("Action '{tool_name}' requires confirmation. Not yet implemented.");
-            (msg, false)
-        }
+        Ok(ToolResult::RequiresConfirmation {
+            tool_name,
+            input,
+            domain,
+        }) => enqueue_pending_action(session_id, &tool_name, input, &domain, ctx).await,
         Err(e) => (format!("Error: {e}"), true),
+    }
+}
+
+/// Enqueue a write operation for Slack confirmation and return the tool result.
+async fn enqueue_pending_action(
+    session_id: ChatSessionId,
+    tool_name: &str,
+    tool_input: serde_json::Value,
+    domain: &str,
+    ctx: &ChatContext,
+) -> (String, bool) {
+    if ctx.slack.is_none() {
+        return (
+            format!(
+                "Action '{tool_name}' requires Slack confirmation but Slack is not \
+                 configured. The action cannot be executed."
+            ),
+            false,
+        );
+    }
+
+    let action_queue = ActionQueueService::new(ctx.pool.clone(), ctx.slack.clone());
+    match action_queue
+        .enqueue(EnqueueParams {
+            chat_session_id: session_id.as_i32(),
+            chat_message_id: None,
+            admin_user_id: ctx.admin_user_id,
+            admin_name: ctx.admin_name.clone(),
+            admin_slack_user_id: ctx.admin_slack_user_id.clone(),
+            tool_name: tool_name.to_string(),
+            tool_input,
+            domain: domain.to_string(),
+        })
+        .await
+    {
+        Ok(enqueue_result) => (
+            format!(
+                "Action '{tool_name}' has been sent for approval via Slack. \
+                 Action ID: {}. The action will be executed once approved.",
+                enqueue_result.action_id
+            ),
+            false,
+        ),
+        Err(e) => {
+            error!(error = %e, "Failed to enqueue action");
+            (
+                format!("Failed to queue action '{tool_name}' for approval: {e}"),
+                true,
+            )
+        }
     }
 }
 

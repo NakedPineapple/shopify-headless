@@ -4,8 +4,8 @@
 //! without requiring actual API calls.
 
 use naked_pineapple_admin::claude::tools::{
-    all_shopify_tools, filter_tools_by_names, get_tool_by_name, get_tool_domain,
-    get_tools_by_domain, requires_confirmation,
+    all_tools, filter_tools_by_names, get_tool_by_name, get_tool_domain, get_tools_by_domain,
+    requires_confirmation,
 };
 use naked_pineapple_admin::tool_selection::DOMAINS;
 
@@ -15,9 +15,9 @@ use naked_pineapple_admin::tool_selection::DOMAINS;
 
 #[test]
 fn test_all_tools_count() {
-    let tools = all_shopify_tools();
-    // 15 analytics + 111 low-level Shopify = 126 total
-    assert_eq!(tools.len(), 126, "Should have 126 tools total");
+    let tools = all_tools();
+    // 1 document search + 15 analytics + 111 low-level Shopify = 127 total
+    assert_eq!(tools.len(), 127, "Should have 127 tools total");
 }
 
 #[test]
@@ -161,6 +161,7 @@ fn test_filter_tools_by_names_ignores_unknown() {
 #[test]
 fn test_all_domains_exist() {
     let expected_domains = [
+        "documents",
         "analytics",
         "orders",
         "customers",
@@ -190,7 +191,7 @@ fn test_all_domains_exist() {
 
 #[test]
 fn test_tool_has_required_fields() {
-    let tools = all_shopify_tools();
+    let tools = all_tools();
 
     for tool in &tools {
         // Every tool should have a non-empty name
@@ -221,7 +222,7 @@ fn test_tool_has_required_fields() {
 
 #[test]
 fn test_tool_domains_are_valid() {
-    let tools = all_shopify_tools();
+    let tools = all_tools();
 
     for tool in &tools {
         if let Some(domain) = &tool.domain {

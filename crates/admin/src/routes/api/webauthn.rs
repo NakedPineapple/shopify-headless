@@ -340,6 +340,7 @@ pub async fn finish_authentication(
         email: user.email,
         name: user.name,
         role: user.role,
+        slack_user_id: user.slack_user_id,
     };
 
     set_current_admin(&session, &current_admin)

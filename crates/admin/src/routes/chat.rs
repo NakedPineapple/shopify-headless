@@ -24,8 +24,9 @@ use crate::db::ChatRepository;
 use crate::filters;
 use crate::middleware::RequireAdminAuth;
 use crate::models::chat::{ChatMessage, ChatSession};
+use crate::models::session::CurrentAdmin;
 use crate::routes::dashboard::AdminUserView;
-use crate::services::{ChatError, ChatService, ChatStreamEvent, stream_chat_message};
+use crate::services::{ChatContext, ChatError, ChatService, ChatStreamEvent, stream_chat_message};
 use crate::state::AppState;
 
 /// Chat page template.
@@ -153,6 +154,18 @@ impl IntoResponse for ChatError {
     }
 }
 
+/// Build a `ChatContext` from the current admin and app state.
+fn build_chat_context(admin: &CurrentAdmin, state: &AppState) -> ChatContext {
+    ChatContext {
+        pool: state.pool().clone(),
+        admin_user_id: admin.id.as_i32(),
+        admin_name: admin.name.clone(),
+        admin_slack_user_id: admin.slack_user_id.clone(),
+        slack: state.slack().cloned(),
+        embedding: state.embedding().cloned(),
+    }
+}
+
 // =============================================================================
 // Route Handlers
 // =============================================================================
@@ -184,7 +197,8 @@ async fn list_sessions(
 ) -> Result<Json<Vec<SessionResponse>>, ChatError> {
     debug!("Listing chat sessions for admin user");
     let claude = ClaudeClient::new(state.config().claude());
-    let service = ChatService::new(state.pool(), &claude, state.shopify());
+    let ctx = build_chat_context(&admin, &state);
+    let service = ChatService::new(state.pool(), &claude, state.shopify(), ctx);
 
     let sessions = service.list_sessions(admin.id).await?;
     debug!(session_count = sessions.len(), "Retrieved chat sessions");
@@ -202,7 +216,8 @@ async fn create_session(
 ) -> Result<(StatusCode, Json<SessionResponse>), ChatError> {
     debug!("Creating new chat session");
     let claude = ClaudeClient::new(state.config().claude());
-    let service = ChatService::new(state.pool(), &claude, state.shopify());
+    let ctx = build_chat_context(&admin, &state);
+    let service = ChatService::new(state.pool(), &claude, state.shopify(), ctx);
 
     let session = service.create_session(admin.id).await?;
     info!(session_id = %session.id.as_i32(), "Chat session created");
@@ -213,17 +228,18 @@ async fn create_session(
 /// Get a chat session with all its messages.
 ///
 /// GET /chat/sessions/:id
-#[instrument(skip(state, _admin), fields(session_id = %id))]
+#[instrument(skip(state, admin), fields(session_id = %id))]
 async fn get_session(
     State(state): State<AppState>,
-    RequireAdminAuth(_admin): RequireAdminAuth,
+    RequireAdminAuth(admin): RequireAdminAuth,
     Path(id): Path<i32>,
 ) -> Result<Json<SessionWithMessagesResponse>, ChatError> {
     debug!("Fetching chat session with messages");
     let session_id = ChatSessionId::new(id);
 
     let claude = ClaudeClient::new(state.config().claude());
-    let service = ChatService::new(state.pool(), &claude, state.shopify());
+    let ctx = build_chat_context(&admin, &state);
+    let service = ChatService::new(state.pool(), &claude, state.shopify(), ctx);
 
     let session = service
         .get_session(session_id)
@@ -247,10 +263,10 @@ async fn get_session(
 /// POST /chat/sessions/:id/messages
 ///
 /// Returns all new messages (user message + assistant response + any tool use).
-#[instrument(skip(state, _admin, request), fields(session_id = %id))]
+#[instrument(skip(state, admin, request), fields(session_id = %id))]
 async fn send_message(
     State(state): State<AppState>,
-    RequireAdminAuth(_admin): RequireAdminAuth,
+    RequireAdminAuth(admin): RequireAdminAuth,
     Path(id): Path<i32>,
     Json(request): Json<SendMessageRequest>,
 ) -> Result<Json<SendMessageResponse>, ChatError> {
@@ -258,7 +274,8 @@ async fn send_message(
     let session_id = ChatSessionId::new(id);
 
     let claude = ClaudeClient::new(state.config().claude());
-    let service = ChatService::new(state.pool(), &claude, state.shopify());
+    let ctx = build_chat_context(&admin, &state);
+    let service = ChatService::new(state.pool(), &claude, state.shopify(), ctx);
 
     info!(session_id = %id, "Processing chat message");
     let messages = service.send_message(session_id, &request.message).await?;
@@ -276,10 +293,10 @@ async fn send_message(
 /// Streams events in real-time as Claude generates the response.
 /// Text tokens are sent as they arrive, tool use is streamed, and
 /// tool results are sent after execution.
-#[instrument(skip(state, _admin, request), fields(session_id = %id))]
+#[instrument(skip(state, admin, request), fields(session_id = %id))]
 async fn send_message_stream(
     State(state): State<AppState>,
-    RequireAdminAuth(_admin): RequireAdminAuth,
+    RequireAdminAuth(admin): RequireAdminAuth,
     Path(id): Path<i32>,
     Json(request): Json<SendMessageRequest>,
 ) -> Sse<impl futures::Stream<Item = Result<Event, Infallible>>> {
@@ -290,11 +307,12 @@ async fn send_message_stream(
     let pool = state.pool().clone();
     let claude = ClaudeClient::new(state.config().claude());
     let shopify = state.shopify().clone();
+    let ctx = build_chat_context(&admin, &state);
 
     info!(session_id = %id, "Initiating SSE stream for chat message");
 
     // Use true streaming - events are yielded as Claude generates them
-    let event_stream = stream_chat_message(pool, claude, shopify, session_id, request.message);
+    let event_stream = stream_chat_message(pool, claude, shopify, session_id, request.message, ctx);
 
     // Map ChatStreamEvent to SSE Event
     let sse_stream = event_stream.map(|event| {

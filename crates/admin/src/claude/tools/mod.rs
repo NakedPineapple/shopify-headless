@@ -1,8 +1,11 @@
-//! Shopify tool definitions organized by domain.
+//! Tool definitions organized by domain.
 //!
-//! This module provides two tiers of tools:
+//! This module provides three categories of tools:
 //!
-//! **High-level analytics tools (12 total):**
+//! **Document search (1 total):**
+//! Semantic search over uploaded business documents (SOPs, vendor agreements, etc.).
+//!
+//! **High-level analytics tools (15 total):**
 //! Summarized, aggregate data for answering business questions.
 //! These return compact responses ideal for questions like "what's our revenue?"
 //!
@@ -37,20 +40,54 @@ pub use orders_low_level_shopify::order_tools;
 pub use products_low_level_shopify::product_tools;
 
 use serde_json::json;
-use tracing::instrument;
+use sqlx::PgPool;
+use tracing::{debug, instrument};
+
+use naked_pineapple_services::openai::EmbeddingClient;
 
 use crate::shopify::AdminClient;
 
 use super::error::ClaudeError;
 use super::types::Tool;
 
-/// Get all tools (126 total: 15 high-level analytics + 111 low-level Shopify).
-///
-/// High-level analytics tools are listed first as they should be preferred
-/// for answering common business questions.
+/// Document search tool definition.
 #[must_use]
-pub fn all_shopify_tools() -> Vec<Tool> {
-    let mut tools = Vec::with_capacity(126);
+pub fn document_tools() -> Vec<Tool> {
+    vec![Tool {
+        name: "search_documents".to_string(),
+        description: "Search uploaded business documents (product guides, vendor agreements, \
+            SOPs, policies, etc.) by semantic similarity. Use this proactively when a question \
+            might benefit from internal knowledge or company-specific information."
+            .to_string(),
+        input_schema: json!({
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "The search query describing what information you need"
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "Maximum number of results to return (default: 5)",
+                    "default": 5
+                }
+            },
+            "required": ["query"]
+        }),
+        domain: Some("documents".to_string()),
+        requires_confirmation: false,
+    }]
+}
+
+/// Get all tools (127 total: 1 document search + 15 analytics + 111 low-level Shopify).
+///
+/// Document search and high-level analytics tools are listed first as they should
+/// be preferred for answering common business questions.
+#[must_use]
+pub fn all_tools() -> Vec<Tool> {
+    let mut tools = Vec::with_capacity(127);
+    // Document search
+    tools.extend(document_tools());
     // High-level analytics tools (preferred for business questions)
     tools.extend(analytics_tools());
     // Low-level Shopify API tools (for specific lookups and modifications)
@@ -70,13 +107,13 @@ pub fn all_shopify_tools() -> Vec<Tool> {
 /// Get a tool by name.
 #[must_use]
 pub fn get_tool_by_name(name: &str) -> Option<Tool> {
-    all_shopify_tools().into_iter().find(|t| t.name == name)
+    all_tools().into_iter().find(|t| t.name == name)
 }
 
 /// Get all tools for a specific domain, with low-level Shopify tools sorted last.
 #[must_use]
 pub fn get_tools_by_domain(domain: &str) -> Vec<Tool> {
-    let mut tools: Vec<Tool> = all_shopify_tools()
+    let mut tools: Vec<Tool> = all_tools()
         .into_iter()
         .filter(|t| t.domain.as_deref() == Some(domain))
         .collect();
@@ -108,7 +145,7 @@ pub fn get_tool_domain(tool_name: &str) -> Option<String> {
 /// when tools are presented to the LLM.
 #[must_use]
 pub fn filter_tools_by_names(names: &[String]) -> Vec<Tool> {
-    let all = all_shopify_tools();
+    let all = all_tools();
     let mut tools: Vec<Tool> = names
         .iter()
         .filter_map(|name| all.iter().find(|t| &t.name == name).cloned())
@@ -127,19 +164,31 @@ fn sort_tools_high_level_first(tools: &mut [Tool]) {
     });
 }
 
-/// Executor for Shopify tools.
+/// Executor for tools (document search + Shopify operations).
 ///
-/// Handles tool execution by mapping tool names to Shopify Admin API calls.
-/// Write operations return a pending status for confirmation flow.
+/// Handles tool execution by mapping tool names to the appropriate backend:
+/// - `search_documents` uses the embedding client and database
+/// - Shopify tools use the Admin API client
+/// - Write operations return a pending status for Slack confirmation flow
 pub struct ToolExecutor<'a> {
     shopify: &'a AdminClient,
+    pool: &'a PgPool,
+    embedding: Option<&'a EmbeddingClient>,
 }
 
 impl<'a> ToolExecutor<'a> {
     /// Create a new tool executor.
     #[must_use]
-    pub const fn new(shopify: &'a AdminClient) -> Self {
-        Self { shopify }
+    pub const fn new(
+        shopify: &'a AdminClient,
+        pool: &'a PgPool,
+        embedding: Option<&'a EmbeddingClient>,
+    ) -> Self {
+        Self {
+            shopify,
+            pool,
+            embedding,
+        }
     }
 
     /// Execute a tool and return the result as a string.
@@ -200,6 +249,9 @@ impl<'a> ToolExecutor<'a> {
         input: &serde_json::Value,
     ) -> Result<String, ClaudeError> {
         match name {
+            // Document search
+            "search_documents" => self.search_documents(input).await,
+
             // High-level analytics tools (15 total)
             "get_sales_summary" => self.get_sales_summary(input).await,
             "get_sales_by_channel" => self.get_sales_by_channel(input).await,
@@ -284,6 +336,54 @@ impl<'a> ToolExecutor<'a> {
 
             _ => Err(ClaudeError::ToolExecution(format!("Unknown tool: {name}"))),
         }
+    }
+
+    /// Execute a document search using semantic embeddings.
+    async fn search_documents(&self, input: &serde_json::Value) -> Result<String, ClaudeError> {
+        let Some(embedding_client) = self.embedding else {
+            return Ok("Document search is not configured. No embedding client available.".into());
+        };
+
+        let query = input
+            .get("query")
+            .and_then(serde_json::Value::as_str)
+            .ok_or_else(|| {
+                ClaudeError::ToolExecution("Missing required 'query' parameter".into())
+            })?;
+
+        let limit = input
+            .get("limit")
+            .and_then(serde_json::Value::as_i64)
+            .unwrap_or(5);
+
+        debug!(query = %query, limit = %limit, "Searching documents");
+
+        let embedding = embedding_client.embed(query).await.map_err(|e| {
+            ClaudeError::ToolExecution(format!("Failed to generate embedding: {e}"))
+        })?;
+
+        let results = crate::db::documents::search_chunks(self.pool, &embedding, 0.3, limit)
+            .await
+            .map_err(|e| ClaudeError::ToolExecution(format!("Document search failed: {e}")))?;
+
+        if results.is_empty() {
+            return Ok("No relevant documents found.".into());
+        }
+
+        let results_json: Vec<serde_json::Value> = results
+            .into_iter()
+            .map(|r| {
+                json!({
+                    "filename": r.filename,
+                    "description": r.description,
+                    "chunk_text": r.chunk_text,
+                    "similarity": format!("{:.3}", r.similarity),
+                })
+            })
+            .collect();
+
+        serde_json::to_string_pretty(&results_json)
+            .map_err(|e| ClaudeError::ToolExecution(format!("Failed to format results: {e}")))
     }
 
     /// Execute a write operation.

@@ -21,6 +21,9 @@ pub struct CurrentAdmin {
     pub name: String,
     /// Admin's role/permission level.
     pub role: AdminRole,
+    /// Slack user ID for DM notifications (e.g., "U0123456789").
+    #[serde(default)]
+    pub slack_user_id: Option<String>,
 }
 
 /// Session keys for admin authentication data.

@@ -186,8 +186,8 @@ impl ActionQueueService {
         pending_actions::approve_action(&self.pool, action_id, approved_by).await?;
         info!(action_id = %action_id, approved_by = %approved_by, "Action approved");
 
-        // Execute the tool
-        let executor = ToolExecutor::new(shopify);
+        // Execute the tool (pool/embedding not needed for write operations)
+        let executor = ToolExecutor::new(shopify, &self.pool, None);
         let result = match executor
             .execute_confirmed(&action.tool_name, &action.tool_input)
             .await

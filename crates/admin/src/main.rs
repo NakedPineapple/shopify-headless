@@ -148,6 +148,27 @@ async fn main() {
         .await
         .expect("Failed to create application state");
 
+    // Spawn background task to expire stale pending actions
+    {
+        let pool = pool.clone();
+        let slack = state.slack().cloned();
+        tokio::spawn(async move {
+            loop {
+                tokio::time::sleep(Duration::from_secs(300)).await;
+                let service = services::ActionQueueService::new(pool.clone(), slack.clone());
+                match service.expire_stale().await {
+                    Ok(count) if count > 0 => {
+                        tracing::info!(count = %count, "Expired stale pending actions");
+                    }
+                    Err(e) => {
+                        tracing::error!(error = %e, "Failed to expire stale pending actions");
+                    }
+                    _ => {}
+                }
+            }
+        });
+    }
+
     // Build router
     let app = Router::new()
         .merge(routes::routes())
