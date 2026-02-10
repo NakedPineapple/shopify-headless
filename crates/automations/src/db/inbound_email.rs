@@ -22,6 +22,8 @@ pub struct InsertParams<'a> {
     pub body_preview: &'a str,
     pub body_text: &'a str,
     pub received_at: DateTime<Utc>,
+    pub folder: Option<&'a str>,
+    pub is_read: bool,
 }
 
 /// A prior message in a thread, for providing context to the classifier.
@@ -55,9 +57,9 @@ pub async fn insert(pool: &PgPool, params: &InsertParams<'_>) -> Result<i32, Rep
             m365_message_id, conversation_id, mailbox,
             from_address, from_name, to_addresses,
             subject, body_preview, body_text,
-            received_at, status
+            received_at, status, folder, is_read
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
         RETURNING id
         "#,
         params.m365_message_id,
@@ -71,6 +73,8 @@ pub async fn insert(pool: &PgPool, params: &InsertParams<'_>) -> Result<i32, Rep
         params.body_text,
         to_time_offset(params.received_at),
         EmailStatus::Pending.as_str(),
+        params.folder,
+        params.is_read,
     )
     .fetch_one(pool)
     .await?;

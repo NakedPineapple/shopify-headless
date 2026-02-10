@@ -53,6 +53,8 @@ pub struct GraphMessage {
     pub from: Option<EmailAddressWrapper>,
     pub to_recipients: Option<Vec<EmailAddressWrapper>>,
     pub received_date_time: Option<DateTime<Utc>>,
+    pub parent_folder_id: Option<String>,
+    pub is_read: Option<bool>,
 }
 
 /// Message body with content type and content.
@@ -80,6 +82,24 @@ pub struct EmailAddress {
 #[derive(Debug, Deserialize)]
 pub struct MessageListResponse {
     pub value: Vec<GraphMessage>,
+    #[serde(rename = "@odata.nextLink")]
+    pub odata_next_link: Option<String>,
+}
+
+/// A mail folder from the Graph API.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MailFolder {
+    pub id: String,
+    pub display_name: String,
+}
+
+/// Paginated list of mail folders from the Graph API.
+#[derive(Debug, Deserialize)]
+pub struct MailFolderListResponse {
+    pub value: Vec<MailFolder>,
+    #[serde(rename = "@odata.nextLink")]
+    pub odata_next_link: Option<String>,
 }
 
 /// Body of an outbound message.

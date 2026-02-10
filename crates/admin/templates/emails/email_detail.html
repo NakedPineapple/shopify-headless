@@ -26,6 +26,12 @@
                         <i class="ph ph-at text-[10px]"></i>
                         {{ email.mailbox }}
                     </span>
+                    {% if let Some(folder) = email.folder %}
+                    <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                        <i class="ph ph-folder text-[10px]"></i>
+                        {{ folder }}
+                    </span>
+                    {% endif %}
                     <!-- Status badge -->
                     {% match email.status.as_str() %}
                         {% when "pending" %}

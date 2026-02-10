@@ -6,6 +6,7 @@
 
 pub mod abandoned_cart;
 pub mod automation_log;
+pub mod email_sync_state;
 pub mod inbound_email;
 pub mod outbound_queue;
 

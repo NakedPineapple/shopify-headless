@@ -158,48 +158,111 @@ impl Scheduler {
         }
     }
 
-    /// Poll shared mailboxes for unread emails and run the triage pipeline.
+    /// Poll shared mailboxes for emails since the last sync and run the triage pipeline.
     /// Returns `true` on success, `false` on failure.
     async fn poll_emails(&self) -> bool {
         let mailboxes = self.state.m365().mailboxes().to_vec();
+        let until = self.state.config().scheduler.email_sync_until.as_ref();
         let mut any_failure = false;
 
         for mailbox in &mailboxes {
-            match self.state.m365().list_unread(mailbox).await {
-                Ok(messages) => {
-                    if messages.is_empty() {
-                        continue;
-                    }
-                    tracing::info!(
-                        mailbox = %mailbox,
-                        count = messages.len(),
-                        "found unread messages"
-                    );
-
-                    let clients = triage::TriageClients {
-                        pool: self.state.pool(),
-                        m365: self.state.m365(),
-                        claude: self.state.claude(),
-                        slack: self.state.slack(),
-                        klaviyo: self.state.klaviyo(),
-                        shopify: self.state.shopify(),
-                        support_pool: self.state.support_pool(),
-                    };
-
-                    triage::process_messages(&clients, mailbox, messages).await;
-                }
-                Err(e) => {
-                    tracing::error!(
-                        mailbox = %mailbox,
-                        error = %e,
-                        "failed to poll mailbox"
-                    );
-                    any_failure = true;
-                }
+            if !self.poll_single_mailbox(mailbox, until).await {
+                any_failure = true;
             }
         }
 
         !any_failure
+    }
+
+    /// Poll a single mailbox using the high water mark approach.
+    ///
+    /// 1. Read the watermark from DB (default: 30 days ago)
+    /// 2. Fetch folder map from M365
+    /// 3. Fetch all messages since the watermark (optionally capped by `until`)
+    /// 4. Process through the triage pipeline
+    /// 5. Update the watermark to the newest `receivedDateTime` seen
+    async fn poll_single_mailbox(
+        &self,
+        mailbox: &str,
+        until: Option<&chrono::DateTime<chrono::Utc>>,
+    ) -> bool {
+        use crate::db::email_sync_state;
+
+        let pool = self.state.pool();
+
+        // 1. Get watermark (default: 30 days ago)
+        let watermark = match email_sync_state::get_high_water_mark(pool, mailbox).await {
+            Ok(Some(ts)) => ts,
+            Ok(None) => {
+                let default = chrono::Utc::now() - chrono::Duration::days(30);
+                tracing::info!(mailbox = %mailbox, "no watermark found, defaulting to 30 days ago");
+                default
+            }
+            Err(e) => {
+                tracing::error!(mailbox = %mailbox, error = %e, "failed to read watermark");
+                return false;
+            }
+        };
+
+        // 2. Fetch folder map
+        let folder_map = match self.state.m365().list_folders(mailbox).await {
+            Ok(map) => map,
+            Err(e) => {
+                tracing::error!(mailbox = %mailbox, error = %e, "failed to list folders");
+                return false;
+            }
+        };
+
+        // 3. Fetch all messages since watermark
+        let messages = match self
+            .state
+            .m365()
+            .list_messages_since(mailbox, &watermark, until)
+            .await
+        {
+            Ok(msgs) => msgs,
+            Err(e) => {
+                tracing::error!(mailbox = %mailbox, error = %e, "failed to fetch messages");
+                return false;
+            }
+        };
+
+        if messages.is_empty() {
+            return true;
+        }
+
+        tracing::info!(
+            mailbox = %mailbox,
+            count = messages.len(),
+            watermark = %watermark,
+            "fetched messages since watermark"
+        );
+
+        // 4. Track max receivedDateTime for watermark update
+        let max_received = messages.iter().filter_map(|m| m.received_date_time).max();
+
+        // 5. Process through triage pipeline
+        let clients = triage::TriageClients {
+            pool,
+            m365: self.state.m365(),
+            claude: self.state.claude(),
+            slack: self.state.slack(),
+            klaviyo: self.state.klaviyo(),
+            shopify: self.state.shopify(),
+            support_pool: self.state.support_pool(),
+        };
+
+        triage::process_messages(&clients, mailbox, messages, &folder_map).await;
+
+        // 6. Update watermark after successful processing
+        if let Some(max_ts) = max_received
+            && let Err(e) = email_sync_state::upsert_high_water_mark(pool, mailbox, max_ts).await
+        {
+            tracing::error!(mailbox = %mailbox, error = %e, "failed to update watermark");
+            return false;
+        }
+
+        true
     }
 
     /// Poll Shopify for recent orders/fulfillments and fire Klaviyo events.

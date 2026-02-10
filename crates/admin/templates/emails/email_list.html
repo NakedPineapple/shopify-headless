@@ -101,8 +101,8 @@
                 </span>
                 {% endif %}
 
-                <!-- Mailbox label -->
-                <span class="text-[10px] text-muted-foreground ml-auto">{{ email.mailbox }}</span>
+                <!-- Mailbox / folder label -->
+                <span class="text-[10px] text-muted-foreground ml-auto">{{ email.mailbox }}{% if let Some(folder) = email.folder %} / {{ folder }}{% endif %}</span>
             </div>
         </div>
     </div>

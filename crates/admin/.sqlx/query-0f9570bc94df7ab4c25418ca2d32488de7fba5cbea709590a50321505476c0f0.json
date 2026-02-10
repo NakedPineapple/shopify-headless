@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT\n            id,\n            m365_message_id,\n            conversation_id,\n            mailbox,\n            from_address,\n            from_name,\n            to_addresses,\n            subject,\n            body_preview,\n            body_text,\n            received_at as \"received_at: DateTime<Utc>\",\n            classification,\n            sub_category,\n            confidence,\n            reasoning,\n            status,\n            routed_to,\n            klaviyo_ticket_id,\n            response_draft,\n            response_approved,\n            response_sent_at as \"response_sent_at: DateTime<Utc>\",\n            reviewed_by,\n            reviewed_at as \"reviewed_at: DateTime<Utc>\",\n            error,\n            created_at as \"created_at: DateTime<Utc>\",\n            updated_at as \"updated_at: DateTime<Utc>\"\n        FROM admin.inbound_email\n        WHERE id = $1\n        ",
+  "query": "\n        SELECT\n            id,\n            m365_message_id,\n            conversation_id,\n            mailbox,\n            folder,\n            is_read as \"is_read!\",\n            from_address,\n            from_name,\n            to_addresses,\n            subject,\n            body_preview,\n            body_text,\n            received_at as \"received_at: DateTime<Utc>\",\n            classification,\n            sub_category,\n            confidence,\n            reasoning,\n            status,\n            routed_to,\n            klaviyo_ticket_id,\n            response_draft,\n            response_approved,\n            response_sent_at as \"response_sent_at: DateTime<Utc>\",\n            reviewed_by,\n            reviewed_at as \"reviewed_at: DateTime<Utc>\",\n            error,\n            created_at as \"created_at: DateTime<Utc>\",\n            updated_at as \"updated_at: DateTime<Utc>\"\n        FROM admin.inbound_email\n        WHERE id = $1\n        ",
   "describe": {
     "columns": [
       {
@@ -25,111 +25,121 @@
       },
       {
         "ordinal": 4,
-        "name": "from_address",
+        "name": "folder",
         "type_info": "Text"
       },
       {
         "ordinal": 5,
+        "name": "is_read!",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 6,
+        "name": "from_address",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
         "name": "from_name",
         "type_info": "Text"
       },
       {
-        "ordinal": 6,
+        "ordinal": 8,
         "name": "to_addresses",
         "type_info": "Jsonb"
       },
       {
-        "ordinal": 7,
+        "ordinal": 9,
         "name": "subject",
         "type_info": "Text"
       },
       {
-        "ordinal": 8,
+        "ordinal": 10,
         "name": "body_preview",
         "type_info": "Text"
       },
       {
-        "ordinal": 9,
+        "ordinal": 11,
         "name": "body_text",
         "type_info": "Text"
       },
       {
-        "ordinal": 10,
+        "ordinal": 12,
         "name": "received_at: DateTime<Utc>",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 11,
+        "ordinal": 13,
         "name": "classification",
         "type_info": "Text"
       },
       {
-        "ordinal": 12,
+        "ordinal": 14,
         "name": "sub_category",
         "type_info": "Text"
       },
       {
-        "ordinal": 13,
+        "ordinal": 15,
         "name": "confidence",
         "type_info": "Float4"
       },
       {
-        "ordinal": 14,
+        "ordinal": 16,
         "name": "reasoning",
         "type_info": "Text"
       },
       {
-        "ordinal": 15,
+        "ordinal": 17,
         "name": "status",
         "type_info": "Text"
       },
       {
-        "ordinal": 16,
+        "ordinal": 18,
         "name": "routed_to",
         "type_info": "Text"
       },
       {
-        "ordinal": 17,
+        "ordinal": 19,
         "name": "klaviyo_ticket_id",
         "type_info": "Text"
       },
       {
-        "ordinal": 18,
+        "ordinal": 20,
         "name": "response_draft",
         "type_info": "Text"
       },
       {
-        "ordinal": 19,
+        "ordinal": 21,
         "name": "response_approved",
         "type_info": "Bool"
       },
       {
-        "ordinal": 20,
+        "ordinal": 22,
         "name": "response_sent_at: DateTime<Utc>",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 21,
+        "ordinal": 23,
         "name": "reviewed_by",
         "type_info": "Text"
       },
       {
-        "ordinal": 22,
+        "ordinal": 24,
         "name": "reviewed_at: DateTime<Utc>",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 23,
+        "ordinal": 25,
         "name": "error",
         "type_info": "Text"
       },
       {
-        "ordinal": 24,
+        "ordinal": 26,
         "name": "created_at: DateTime<Utc>",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 25,
+        "ordinal": 27,
         "name": "updated_at: DateTime<Utc>",
         "type_info": "Timestamptz"
       }
@@ -143,6 +153,8 @@
       false,
       false,
       false,
+      false,
+      true,
       false,
       false,
       true,
@@ -168,5 +180,5 @@
       false
     ]
   },
-  "hash": "ac78ce1c20e568a948a7bdfd9ee2445e27e9ed5ff473e6b697441dfaeb485764"
+  "hash": "0f9570bc94df7ab4c25418ca2d32488de7fba5cbea709590a50321505476c0f0"
 }

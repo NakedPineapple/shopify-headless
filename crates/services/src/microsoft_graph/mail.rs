@@ -3,38 +3,116 @@
 //! Provides methods for reading, sending, replying to, and archiving
 //! emails in shared mailboxes.
 
+use std::collections::HashMap;
+use std::fmt::Write;
+
+use chrono::{DateTime, Utc};
+
 use super::error::M365Error;
 use super::types::{
-    GraphErrorResponse, GraphMessage, MessageListResponse, MoveRequest, OutboundBody, ReplyBody,
-    ReplyRequest,
+    GraphErrorResponse, GraphMessage, MailFolderListResponse, MessageListResponse, MoveRequest,
+    OutboundBody, ReplyBody, ReplyRequest,
 };
 use crate::microsoft_graph::M365Client;
 
 /// Well-known folder name for the Archive folder in Microsoft 365.
 const ARCHIVE_FOLDER: &str = "archive";
 
-/// Maximum messages per page when listing unread emails.
+/// Fields to select when fetching messages.
+const MESSAGE_SELECT: &str = "id,conversationId,subject,bodyPreview,body,\
+                              from,toRecipients,receivedDateTime,isRead,parentFolderId";
+
+/// Maximum messages per page.
 const MAX_PAGE_SIZE: u32 = 50;
 
+/// Safety limit on total pages to prevent runaway pagination.
+const MAX_PAGES: u32 = 100;
+
 impl M365Client {
-    /// List unread messages in a shared mailbox.
+    /// List all mail folders in a mailbox, returning a map of folder ID to display name.
     ///
-    /// Returns up to `MAX_PAGE_SIZE` unread messages, ordered by most recent first.
+    /// Follows pagination if the mailbox has more folders than one page.
     ///
     /// # Errors
     ///
     /// Returns `M365Error` if the request fails or the response cannot be parsed.
-    pub async fn list_unread(&self, mailbox: &str) -> Result<Vec<GraphMessage>, M365Error> {
-        let url = format!(
+    pub async fn list_folders(&self, mailbox: &str) -> Result<HashMap<String, String>, M365Error> {
+        let mut folders = HashMap::new();
+        let mut url = Some(format!(
+            "https://graph.microsoft.com/v1.0/users/{mailbox}/mailFolders\
+             ?$top=100&$select=id,displayName"
+        ));
+
+        while let Some(current_url) = url {
+            let response: MailFolderListResponse = self.graph_get(&current_url).await?;
+            for folder in response.value {
+                folders.insert(folder.id, folder.display_name);
+            }
+            url = response.odata_next_link;
+        }
+
+        Ok(folders)
+    }
+
+    /// Fetch all messages received at or after `since` (and optionally before `until`).
+    ///
+    /// Orders by `receivedDateTime asc` (oldest first) and follows `@odata.nextLink`
+    /// until all pages are exhausted or the safety limit is reached.
+    ///
+    /// # Errors
+    ///
+    /// Returns `M365Error` if any request fails or a response cannot be parsed.
+    pub async fn list_messages_since(
+        &self,
+        mailbox: &str,
+        since: &DateTime<Utc>,
+        until: Option<&DateTime<Utc>>,
+    ) -> Result<Vec<GraphMessage>, M365Error> {
+        let since_str = since.format("%Y-%m-%dT%H:%M:%SZ");
+        let mut filter = format!("receivedDateTime%20ge%20{since_str}");
+        if let Some(until_dt) = until {
+            let until_str = until_dt.format("%Y-%m-%dT%H:%M:%SZ");
+            let _ = write!(filter, "%20and%20receivedDateTime%20lt%20{until_str}");
+        }
+
+        let initial_url = format!(
             "https://graph.microsoft.com/v1.0/users/{mailbox}/messages\
-             ?$filter=isRead%20eq%20false\
-             &$orderby=receivedDateTime%20desc\
+             ?$filter={filter}\
+             &$orderby=receivedDateTime%20asc\
              &$top={MAX_PAGE_SIZE}\
-             &$select=id,conversationId,subject,bodyPreview,body,from,toRecipients,receivedDateTime,isRead"
+             &$select={MESSAGE_SELECT}"
         );
 
-        let response: MessageListResponse = self.graph_get(&url).await?;
-        Ok(response.value)
+        let mut all_messages = Vec::new();
+        let mut url = Some(initial_url);
+        let mut pages = 0u32;
+
+        while let Some(current_url) = url {
+            pages += 1;
+            if pages > MAX_PAGES {
+                tracing::warn!(
+                    mailbox = %mailbox,
+                    pages,
+                    messages = all_messages.len(),
+                    "pagination safety limit reached"
+                );
+                break;
+            }
+
+            let response: MessageListResponse = self.graph_get(&current_url).await?;
+            all_messages.extend(response.value);
+            url = response.odata_next_link;
+        }
+
+        tracing::debug!(
+            mailbox = %mailbox,
+            pages,
+            messages = all_messages.len(),
+            %since_str,
+            "fetched messages since watermark"
+        );
+
+        Ok(all_messages)
     }
 
     /// Mark a message as read.

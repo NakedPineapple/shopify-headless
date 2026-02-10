@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT high_water_mark as \"high_water_mark: DateTime<Utc>\"\n        FROM admin.email_sync_state\n        WHERE mailbox = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "high_water_mark: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "3dd4336ffbca1a3ab160c4734a430d92b62f6adada7b42d1d063a01600e61918"
+}

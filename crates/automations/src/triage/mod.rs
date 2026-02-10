@@ -11,6 +11,8 @@ pub mod router;
 pub mod tools;
 pub mod types;
 
+use std::collections::HashMap;
+
 use naked_pineapple_services::claude::ClaudeClient;
 use naked_pineapple_services::klaviyo::KlaviyoClient;
 use naked_pineapple_services::slack::SlackClient;
@@ -34,22 +36,29 @@ pub struct TriageClients<'a> {
     pub support_pool: Option<&'a PgPool>,
 }
 
-/// Process a batch of unread messages from a single mailbox.
+/// Process a batch of messages from a single mailbox.
 ///
 /// For each message:
 /// 1. Check if already processed (deduplicate by `m365_message_id`)
-/// 2. Store in database
+/// 2. Store in database (with folder name and read status)
 /// 3. Classify with Claude AI
 /// 4. Route based on classification
 /// 5. Mark as read in M365
-#[instrument(skip(clients, messages), fields(mailbox = %mailbox, count = messages.len()))]
+#[instrument(skip(clients, messages, folder_map), fields(mailbox = %mailbox, count = messages.len()))]
 pub async fn process_messages(
     clients: &TriageClients<'_>,
     mailbox: &str,
     messages: Vec<GraphMessage>,
+    folder_map: &HashMap<String, String>,
 ) {
     for message in &messages {
-        if let Err(e) = process_single_message(clients, mailbox, message).await {
+        let folder_name = message
+            .parent_folder_id
+            .as_deref()
+            .and_then(|id| folder_map.get(id))
+            .map(String::as_str);
+
+        if let Err(e) = process_single_message(clients, mailbox, message, folder_name).await {
             error!(
                 m365_id = message.id,
                 error = %e,
@@ -64,6 +73,7 @@ async fn process_single_message(
     clients: &TriageClients<'_>,
     mailbox: &str,
     message: &GraphMessage,
+    folder_name: Option<&str>,
 ) -> Result<(), router::TriageError> {
     let m365_id = &message.id;
 
@@ -81,6 +91,7 @@ async fn process_single_message(
     let body_text = extract_body_text(message);
     let to_addresses = extract_to_addresses(message);
     let received_at = message.received_date_time.unwrap_or_else(chrono::Utc::now);
+    let is_read = message.is_read.unwrap_or(false);
 
     // Store in database
     let email_id = inbound_email::insert(
@@ -96,6 +107,8 @@ async fn process_single_message(
             body_preview,
             body_text: &body_text,
             received_at,
+            folder: folder_name,
+            is_read,
         },
     )
     .await?;

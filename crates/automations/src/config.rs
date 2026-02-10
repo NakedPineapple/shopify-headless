@@ -85,6 +85,12 @@ pub struct ShopifyConfig {
 pub struct SchedulerConfig {
     /// Email poll interval in seconds.
     pub email_poll_interval_secs: u64,
+    /// Optional sync ceiling for email polling (ISO 8601 / RFC 3339).
+    ///
+    /// When set, the email sync will only fetch messages with
+    /// `receivedDateTime < until`, allowing incremental testing.
+    /// When `None`, syncs all the way to the present.
+    pub email_sync_until: Option<chrono::DateTime<chrono::Utc>>,
     /// Abandoned cart check interval in seconds.
     pub cart_check_interval_secs: u64,
     /// Low stock check interval in seconds.
@@ -113,6 +119,9 @@ impl SchedulerConfig {
     fn from_env() -> Self {
         Self {
             email_poll_interval_secs: parse_env_u64("AUTOMATION_EMAIL_POLL_INTERVAL_SECS", 120),
+            email_sync_until: get_optional_env("AUTOMATION_EMAIL_SYNC_UNTIL")
+                .and_then(|s| chrono::DateTime::parse_from_rfc3339(&s).ok())
+                .map(|dt| dt.with_timezone(&chrono::Utc)),
             cart_check_interval_secs: parse_env_u64("AUTOMATION_CART_CHECK_INTERVAL_SECS", 900),
             stock_check_interval_secs: parse_env_u64("AUTOMATION_STOCK_CHECK_INTERVAL_SECS", 3600),
             segment_sync_interval_secs: parse_env_u64(
