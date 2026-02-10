@@ -18,10 +18,10 @@ use sqlx::PgPool;
 use tracing::{error, info, instrument, warn};
 
 use crate::db::inbound_email;
-use crate::microsoft_graph::{GraphMessage, M365Client};
 use crate::shopify::ShopifyClient;
 use crate::triage::classifier::EmailContext;
 use crate::triage::types::EmailStatus;
+use naked_pineapple_services::microsoft_graph::{GraphMessage, M365Client};
 
 /// Service clients used by the triage pipeline.
 pub struct TriageClients<'a> {

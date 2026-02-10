@@ -8,6 +8,7 @@
 //! - [`openai`] - `OpenAI` embedding client for semantic similarity search
 //! - [`slack`] - Slack Web API client for notifications and approvals
 //! - [`email`] - SMTP email delivery via lettre
+//! - [`microsoft_graph`] - Microsoft Graph API client for M365 mail operations
 //! - [`config`] - Shared configuration types loaded from environment variables
 
 #![cfg_attr(not(test), forbid(unsafe_code))]
@@ -16,5 +17,6 @@ pub mod claude;
 pub mod config;
 pub mod email;
 pub mod klaviyo;
+pub mod microsoft_graph;
 pub mod openai;
 pub mod slack;

@@ -55,6 +55,7 @@ pub mod collections;
 pub mod customers;
 pub mod dashboard;
 pub mod discounts;
+pub mod emails;
 pub mod financials;
 pub mod gift_cards;
 pub mod inventory;
@@ -431,6 +432,8 @@ pub fn routes() -> Router<AppState> {
         .merge(chat::router())
         // Shopify OAuth
         .merge(shopify::router())
+        // Email inbox (inbound email triage)
+        .merge(emails::router())
         // Support inbox (storefront DB)
         .merge(support::router())
         // Slack webhooks

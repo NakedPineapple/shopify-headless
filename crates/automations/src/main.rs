@@ -35,7 +35,6 @@ mod config;
 mod db;
 mod error;
 mod logging;
-mod microsoft_graph;
 mod outbound;
 mod scheduler;
 mod shopify;
@@ -46,7 +45,7 @@ mod webhooks;
 mod workflows;
 
 use config::AutomationConfig;
-use microsoft_graph::M365Client;
+use naked_pineapple_services::microsoft_graph::M365Client;
 use scheduler::Scheduler;
 use state::AppState;
 

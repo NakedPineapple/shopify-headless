@@ -47,7 +47,7 @@ use secrecy::SecretString;
 // Re-export shared config types from services crate
 pub use naked_pineapple_services::config::DEFAULT_CLAUDE_MODEL;
 pub use naked_pineapple_services::config::{
-    ClaudeConfig, ConfigError, EmailConfig, KlaviyoConfig, OpenAIConfig, SlackConfig,
+    ClaudeConfig, ConfigError, EmailConfig, KlaviyoConfig, M365Config, OpenAIConfig, SlackConfig,
     get_database_url, get_env_or_default, get_optional_env, get_required_env, get_validated_secret,
     validate_secret_strength, validate_session_secret,
 };
@@ -81,6 +81,8 @@ pub struct AdminConfig {
     pub email: EmailConfig,
     /// Klaviyo configuration (optional - for newsletter campaigns)
     pub klaviyo: Option<KlaviyoConfig>,
+    /// Microsoft 365 configuration (optional — enables email inbox sending)
+    pub m365: Option<M365Config>,
     /// Sentry DSN for error tracking
     pub sentry_dsn: Option<String>,
     /// Sentry environment (e.g., "development", "staging", "production")
@@ -193,6 +195,7 @@ impl AdminConfig {
         let slack = SlackConfig::from_env();
         let email = EmailConfig::from_env()?;
         let klaviyo = KlaviyoConfig::from_env()?;
+        let m365 = M365Config::from_env().ok();
         let sentry_dsn = get_optional_env("SENTRY_DSN");
         let sentry_environment = get_optional_env("SENTRY_ENVIRONMENT");
         let sentry_sample_rate = get_optional_env("SENTRY_SAMPLE_RATE")
@@ -219,6 +222,7 @@ impl AdminConfig {
             slack,
             email,
             klaviyo,
+            m365,
             sentry_dsn,
             sentry_environment,
             sentry_sample_rate,
@@ -352,6 +356,7 @@ mod tests {
                 from_address: "admin@example.com".to_string(),
             },
             klaviyo: None,
+            m365: None,
             sentry_dsn: None,
             sentry_environment: None,
             sentry_sample_rate: 1.0,

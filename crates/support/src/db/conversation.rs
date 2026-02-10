@@ -76,6 +76,8 @@ impl<'a> ConversationRepository<'a> {
         params: &CreateConversationParams,
     ) -> Result<SupportConversation, SupportError> {
         let source = params.source.as_deref().unwrap_or("chat");
+
+        #[cfg(feature = "sqlx-macros")]
         let row = sqlx::query_as!(
             ConversationRow,
             r#"
@@ -104,6 +106,34 @@ impl<'a> ConversationRepository<'a> {
         .fetch_one(self.pool)
         .await?;
 
+        #[cfg(not(feature = "sqlx-macros"))]
+        let row = sqlx::query_as::<_, ConversationRow>(
+            "
+            INSERT INTO storefront.support_conversation
+                (session_token, shopify_customer_id, customer_email, customer_name, is_authenticated, source)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            RETURNING
+                id, session_token, shopify_customer_id, customer_email, customer_name,
+                status,
+                assigned_admin_id,
+                escalated_at,
+                escalation_reason, title, source, is_authenticated,
+                created_at,
+                updated_at,
+                resolved_at,
+                last_customer_message_at,
+                last_agent_message_at
+            ",
+        )
+        .bind(&params.session_token)
+        .bind(&params.shopify_customer_id)
+        .bind(&params.customer_email)
+        .bind(&params.customer_name)
+        .bind(params.is_authenticated)
+        .bind(source)
+        .fetch_one(self.pool)
+        .await?;
+
         Ok(row.into())
     }
 
@@ -116,6 +146,7 @@ impl<'a> ConversationRepository<'a> {
         &self,
         id: SupportConversationId,
     ) -> Result<SupportConversation, SupportError> {
+        #[cfg(feature = "sqlx-macros")]
         let row = sqlx::query_as!(
             ConversationRow,
             r#"
@@ -139,6 +170,29 @@ impl<'a> ConversationRepository<'a> {
         .await?
         .ok_or(SupportError::ConversationNotFound)?;
 
+        #[cfg(not(feature = "sqlx-macros"))]
+        let row = sqlx::query_as::<_, ConversationRow>(
+            "
+            SELECT
+                id, session_token, shopify_customer_id, customer_email, customer_name,
+                status,
+                assigned_admin_id,
+                escalated_at,
+                escalation_reason, title, source, is_authenticated,
+                created_at,
+                updated_at,
+                resolved_at,
+                last_customer_message_at,
+                last_agent_message_at
+            FROM storefront.support_conversation
+            WHERE id = $1
+            ",
+        )
+        .bind(id.as_i32())
+        .fetch_optional(self.pool)
+        .await?
+        .ok_or(SupportError::ConversationNotFound)?;
+
         Ok(row.into())
     }
 
@@ -151,6 +205,7 @@ impl<'a> ConversationRepository<'a> {
         &self,
         session_token: &str,
     ) -> Result<Option<SupportConversation>, SupportError> {
+        #[cfg(feature = "sqlx-macros")]
         let row = sqlx::query_as!(
             ConversationRow,
             r#"
@@ -175,6 +230,30 @@ impl<'a> ConversationRepository<'a> {
         .fetch_optional(self.pool)
         .await?;
 
+        #[cfg(not(feature = "sqlx-macros"))]
+        let row = sqlx::query_as::<_, ConversationRow>(
+            "
+            SELECT
+                id, session_token, shopify_customer_id, customer_email, customer_name,
+                status,
+                assigned_admin_id,
+                escalated_at,
+                escalation_reason, title, source, is_authenticated,
+                created_at,
+                updated_at,
+                resolved_at,
+                last_customer_message_at,
+                last_agent_message_at
+            FROM storefront.support_conversation
+            WHERE session_token = $1 AND status IN ('active', 'escalated', 'waiting')
+            ORDER BY updated_at DESC
+            LIMIT 1
+            ",
+        )
+        .bind(session_token)
+        .fetch_optional(self.pool)
+        .await?;
+
         Ok(row.map(Into::into))
     }
 
@@ -188,6 +267,7 @@ impl<'a> ConversationRepository<'a> {
         id: SupportConversationId,
         status: SupportConversationStatus,
     ) -> Result<(), SupportError> {
+        #[cfg(feature = "sqlx-macros")]
         sqlx::query!(
             r#"
             UPDATE storefront.support_conversation
@@ -197,6 +277,19 @@ impl<'a> ConversationRepository<'a> {
             id.as_i32(),
             status as SupportConversationStatus,
         )
+        .execute(self.pool)
+        .await?;
+
+        #[cfg(not(feature = "sqlx-macros"))]
+        sqlx::query(
+            "
+            UPDATE storefront.support_conversation
+            SET status = $2
+            WHERE id = $1
+            ",
+        )
+        .bind(id.as_i32())
+        .bind(status)
         .execute(self.pool)
         .await?;
 
@@ -214,6 +307,8 @@ impl<'a> ConversationRepository<'a> {
         reason: &str,
     ) -> Result<(), SupportError> {
         let now = to_time_offset(Utc::now());
+
+        #[cfg(feature = "sqlx-macros")]
         sqlx::query!(
             r#"
             UPDATE storefront.support_conversation
@@ -224,6 +319,20 @@ impl<'a> ConversationRepository<'a> {
             now,
             reason,
         )
+        .execute(self.pool)
+        .await?;
+
+        #[cfg(not(feature = "sqlx-macros"))]
+        sqlx::query(
+            "
+            UPDATE storefront.support_conversation
+            SET status = 'escalated', escalated_at = $2, escalation_reason = $3
+            WHERE id = $1
+            ",
+        )
+        .bind(id.as_i32())
+        .bind(now)
+        .bind(reason)
         .execute(self.pool)
         .await?;
 
@@ -240,6 +349,8 @@ impl<'a> ConversationRepository<'a> {
         id: SupportConversationId,
     ) -> Result<(), SupportError> {
         let now = to_time_offset(Utc::now());
+
+        #[cfg(feature = "sqlx-macros")]
         sqlx::query!(
             r#"
             UPDATE storefront.support_conversation
@@ -249,6 +360,19 @@ impl<'a> ConversationRepository<'a> {
             id.as_i32(),
             now,
         )
+        .execute(self.pool)
+        .await?;
+
+        #[cfg(not(feature = "sqlx-macros"))]
+        sqlx::query(
+            "
+            UPDATE storefront.support_conversation
+            SET last_customer_message_at = $2
+            WHERE id = $1
+            ",
+        )
+        .bind(id.as_i32())
+        .bind(now)
         .execute(self.pool)
         .await?;
 
@@ -262,6 +386,8 @@ impl<'a> ConversationRepository<'a> {
     /// Returns `SupportError` if the database query fails.
     pub async fn touch_agent_message(&self, id: SupportConversationId) -> Result<(), SupportError> {
         let now = to_time_offset(Utc::now());
+
+        #[cfg(feature = "sqlx-macros")]
         sqlx::query!(
             r#"
             UPDATE storefront.support_conversation
@@ -271,6 +397,19 @@ impl<'a> ConversationRepository<'a> {
             id.as_i32(),
             now,
         )
+        .execute(self.pool)
+        .await?;
+
+        #[cfg(not(feature = "sqlx-macros"))]
+        sqlx::query(
+            "
+            UPDATE storefront.support_conversation
+            SET last_agent_message_at = $2
+            WHERE id = $1
+            ",
+        )
+        .bind(id.as_i32())
+        .bind(now)
         .execute(self.pool)
         .await?;
 
@@ -287,6 +426,7 @@ impl<'a> ConversationRepository<'a> {
         id: SupportConversationId,
         admin_user_id: i32,
     ) -> Result<(), SupportError> {
+        #[cfg(feature = "sqlx-macros")]
         sqlx::query!(
             r#"
             UPDATE storefront.support_conversation
@@ -296,6 +436,19 @@ impl<'a> ConversationRepository<'a> {
             id.as_i32(),
             admin_user_id,
         )
+        .execute(self.pool)
+        .await?;
+
+        #[cfg(not(feature = "sqlx-macros"))]
+        sqlx::query(
+            "
+            UPDATE storefront.support_conversation
+            SET assigned_admin_id = $2
+            WHERE id = $1
+            ",
+        )
+        .bind(id.as_i32())
+        .bind(admin_user_id)
         .execute(self.pool)
         .await?;
 
@@ -309,6 +462,8 @@ impl<'a> ConversationRepository<'a> {
     /// Returns `SupportError` if the database query fails.
     pub async fn resolve(&self, id: SupportConversationId) -> Result<(), SupportError> {
         let now = to_time_offset(Utc::now());
+
+        #[cfg(feature = "sqlx-macros")]
         sqlx::query!(
             r#"
             UPDATE storefront.support_conversation
@@ -318,6 +473,19 @@ impl<'a> ConversationRepository<'a> {
             id.as_i32(),
             now,
         )
+        .execute(self.pool)
+        .await?;
+
+        #[cfg(not(feature = "sqlx-macros"))]
+        sqlx::query(
+            "
+            UPDATE storefront.support_conversation
+            SET status = 'resolved', resolved_at = $2
+            WHERE id = $1
+            ",
+        )
+        .bind(id.as_i32())
+        .bind(now)
         .execute(self.pool)
         .await?;
 
@@ -336,6 +504,7 @@ impl<'a> ConversationRepository<'a> {
         limit: i64,
         offset: i64,
     ) -> Result<Vec<ConversationSummary>, SupportError> {
+        #[cfg(feature = "sqlx-macros")]
         let rows = sqlx::query_as!(
             ConversationSummaryRow,
             r#"
@@ -370,6 +539,40 @@ impl<'a> ConversationRepository<'a> {
         .fetch_all(self.pool)
         .await?;
 
+        #[cfg(not(feature = "sqlx-macros"))]
+        let rows = sqlx::query_as::<_, ConversationSummaryRow>(
+            "
+            SELECT
+                c.id, c.session_token, c.shopify_customer_id, c.customer_email,
+                c.customer_name,
+                c.status,
+                c.assigned_admin_id,
+                c.escalated_at,
+                c.escalation_reason, c.title, c.source, c.is_authenticated,
+                c.created_at,
+                c.updated_at,
+                c.resolved_at,
+                c.last_customer_message_at,
+                c.last_agent_message_at,
+                (SELECT count(*) FROM storefront.support_message m WHERE m.support_conversation_id = c.id) as message_count,
+                (SELECT content->>'text'
+                 FROM storefront.support_message m
+                 WHERE m.support_conversation_id = c.id
+                 ORDER BY m.created_at DESC LIMIT 1) as last_message_preview
+            FROM storefront.support_conversation c
+            WHERE ($1::storefront.support_conversation_status IS NULL OR c.status = $1)
+              AND ($2::integer IS NULL OR c.assigned_admin_id = $2)
+            ORDER BY c.updated_at DESC
+            LIMIT $3 OFFSET $4
+            ",
+        )
+        .bind(status_filter)
+        .bind(assigned_to)
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(self.pool)
+        .await?;
+
         Ok(rows.into_iter().map(Into::into).collect())
     }
 
@@ -379,12 +582,27 @@ impl<'a> ConversationRepository<'a> {
     ///
     /// Returns `SupportError` if the database query fails.
     pub async fn count_by_status(&self) -> Result<Vec<StatusCount>, SupportError> {
+        #[cfg(feature = "sqlx-macros")]
         let rows = sqlx::query_as!(
             StatusCount,
             r#"
             SELECT
                 status as "status: SupportConversationStatus",
                 count(*) as "count!"
+            FROM storefront.support_conversation
+            WHERE status NOT IN ('closed')
+            GROUP BY status
+            "#,
+        )
+        .fetch_all(self.pool)
+        .await?;
+
+        #[cfg(not(feature = "sqlx-macros"))]
+        let rows = sqlx::query_as::<_, StatusCount>(
+            r#"
+            SELECT
+                status,
+                count(*) as "count"
             FROM storefront.support_conversation
             WHERE status NOT IN ('closed')
             GROUP BY status
@@ -406,6 +624,7 @@ impl<'a> ConversationRepository<'a> {
         shopify_customer_id: &str,
         limit: i64,
     ) -> Result<Vec<SupportConversation>, SupportError> {
+        #[cfg(feature = "sqlx-macros")]
         let rows = sqlx::query_as!(
             ConversationRow,
             r#"
@@ -431,12 +650,37 @@ impl<'a> ConversationRepository<'a> {
         .fetch_all(self.pool)
         .await?;
 
+        #[cfg(not(feature = "sqlx-macros"))]
+        let rows = sqlx::query_as::<_, ConversationRow>(
+            "
+            SELECT
+                id, session_token, shopify_customer_id, customer_email, customer_name,
+                status,
+                assigned_admin_id,
+                escalated_at,
+                escalation_reason, title, source, is_authenticated,
+                created_at,
+                updated_at,
+                resolved_at,
+                last_customer_message_at,
+                last_agent_message_at
+            FROM storefront.support_conversation
+            WHERE shopify_customer_id = $1
+            ORDER BY updated_at DESC
+            LIMIT $2
+            ",
+        )
+        .bind(shopify_customer_id)
+        .bind(limit)
+        .fetch_all(self.pool)
+        .await?;
+
         Ok(rows.into_iter().map(Into::into).collect())
     }
 }
 
 /// Status count for inbox badges.
-#[derive(Debug)]
+#[derive(Debug, sqlx::FromRow)]
 pub struct StatusCount {
     pub status: SupportConversationStatus,
     pub count: i64,

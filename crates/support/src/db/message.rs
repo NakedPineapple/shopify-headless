@@ -52,6 +52,7 @@ impl<'a> MessageRepository<'a> {
         &self,
         params: &CreateMessageParams,
     ) -> Result<SupportMessage, SupportError> {
+        #[cfg(feature = "sqlx-macros")]
         let row = sqlx::query_as!(
             MessageRow,
             r#"
@@ -73,6 +74,26 @@ impl<'a> MessageRepository<'a> {
         .fetch_one(self.pool)
         .await?;
 
+        #[cfg(not(feature = "sqlx-macros"))]
+        let row = sqlx::query_as::<_, MessageRow>(
+            "
+            INSERT INTO storefront.support_message
+                (support_conversation_id, role, content, api_interaction, admin_user_id)
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING
+                id, support_conversation_id,
+                role, content, api_interaction, admin_user_id,
+                created_at
+            ",
+        )
+        .bind(params.support_conversation_id.as_i32())
+        .bind(params.role as SupportMessageRole)
+        .bind(&params.content)
+        .bind(&params.api_interaction)
+        .bind(params.admin_user_id)
+        .fetch_one(self.pool)
+        .await?;
+
         Ok(row.into())
     }
 
@@ -85,6 +106,7 @@ impl<'a> MessageRepository<'a> {
         &self,
         conversation_id: SupportConversationId,
     ) -> Result<Vec<SupportMessage>, SupportError> {
+        #[cfg(feature = "sqlx-macros")]
         let rows = sqlx::query_as!(
             MessageRow,
             r#"
@@ -102,6 +124,22 @@ impl<'a> MessageRepository<'a> {
         .fetch_all(self.pool)
         .await?;
 
+        #[cfg(not(feature = "sqlx-macros"))]
+        let rows = sqlx::query_as::<_, MessageRow>(
+            "
+            SELECT
+                id, support_conversation_id,
+                role, content, api_interaction, admin_user_id,
+                created_at
+            FROM storefront.support_message
+            WHERE support_conversation_id = $1
+            ORDER BY created_at ASC
+            ",
+        )
+        .bind(conversation_id.as_i32())
+        .fetch_all(self.pool)
+        .await?;
+
         Ok(rows.into_iter().map(Into::into).collect())
     }
 
@@ -114,6 +152,7 @@ impl<'a> MessageRepository<'a> {
         &self,
         conversation_id: SupportConversationId,
     ) -> Result<i64, SupportError> {
+        #[cfg(feature = "sqlx-macros")]
         let count = sqlx::query_scalar!(
             r#"
             SELECT count(*) as "count!"
@@ -122,6 +161,18 @@ impl<'a> MessageRepository<'a> {
             "#,
             conversation_id.as_i32(),
         )
+        .fetch_one(self.pool)
+        .await?;
+
+        #[cfg(not(feature = "sqlx-macros"))]
+        let count: i64 = sqlx::query_scalar(
+            r#"
+            SELECT count(*) as "count"
+            FROM storefront.support_message
+            WHERE support_conversation_id = $1
+            "#,
+        )
+        .bind(conversation_id.as_i32())
         .fetch_one(self.pool)
         .await?;
 

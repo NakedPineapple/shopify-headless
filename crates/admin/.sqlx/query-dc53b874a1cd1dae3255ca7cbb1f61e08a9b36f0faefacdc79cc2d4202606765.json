@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE admin.inbound_email\n        SET response_sent_at = (CURRENT_TIMESTAMP AT TIME ZONE 'utc')\n        WHERE id = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "dc53b874a1cd1dae3255ca7cbb1f61e08a9b36f0faefacdc79cc2d4202606765"
+}

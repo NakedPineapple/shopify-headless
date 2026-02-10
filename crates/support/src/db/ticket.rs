@@ -61,6 +61,7 @@ impl<'a> TicketRepository<'a> {
     ///
     /// Returns `SupportError` if the database query fails.
     pub async fn create(&self, params: &CreateTicketParams) -> Result<SupportTicket, SupportError> {
+        #[cfg(feature = "sqlx-macros")]
         let row = sqlx::query_as!(
             TicketRow,
             r#"
@@ -82,6 +83,25 @@ impl<'a> TicketRepository<'a> {
         .fetch_one(self.pool)
         .await?;
 
+        #[cfg(not(feature = "sqlx-macros"))]
+        let row = sqlx::query_as::<_, TicketRow>(
+            r#"
+            INSERT INTO storefront.support_ticket
+                (support_conversation_id, category, priority)
+            VALUES ($1, $2, $3)
+            RETURNING
+                id, support_conversation_id, category, priority, status,
+                assigned_admin_id, resolution_notes, slack_message_ts,
+                slack_channel_id,
+                created_at, updated_at, resolved_at
+            "#,
+        )
+        .bind(params.support_conversation_id.as_i32())
+        .bind(&params.category)
+        .bind(&params.priority)
+        .fetch_one(self.pool)
+        .await?;
+
         Ok(row.into())
     }
 
@@ -91,6 +111,7 @@ impl<'a> TicketRepository<'a> {
     ///
     /// Returns `SupportError` if the database query fails.
     pub async fn get_by_id(&self, id: SupportTicketId) -> Result<SupportTicket, SupportError> {
+        #[cfg(feature = "sqlx-macros")]
         let row = sqlx::query_as!(
             TicketRow,
             r#"
@@ -110,6 +131,23 @@ impl<'a> TicketRepository<'a> {
         .await?
         .ok_or(SupportError::ConversationNotFound)?;
 
+        #[cfg(not(feature = "sqlx-macros"))]
+        let row = sqlx::query_as::<_, TicketRow>(
+            r#"
+            SELECT
+                id, support_conversation_id, category, priority, status,
+                assigned_admin_id, resolution_notes, slack_message_ts,
+                slack_channel_id,
+                created_at, updated_at, resolved_at
+            FROM storefront.support_ticket
+            WHERE id = $1
+            "#,
+        )
+        .bind(id.as_i32())
+        .fetch_optional(self.pool)
+        .await?
+        .ok_or(SupportError::ConversationNotFound)?;
+
         Ok(row.into())
     }
 
@@ -122,6 +160,7 @@ impl<'a> TicketRepository<'a> {
         &self,
         conversation_id: SupportConversationId,
     ) -> Result<Option<SupportTicket>, SupportError> {
+        #[cfg(feature = "sqlx-macros")]
         let row = sqlx::query_as!(
             TicketRow,
             r#"
@@ -142,6 +181,24 @@ impl<'a> TicketRepository<'a> {
         .fetch_optional(self.pool)
         .await?;
 
+        #[cfg(not(feature = "sqlx-macros"))]
+        let row = sqlx::query_as::<_, TicketRow>(
+            r#"
+            SELECT
+                id, support_conversation_id, category, priority, status,
+                assigned_admin_id, resolution_notes, slack_message_ts,
+                slack_channel_id,
+                created_at, updated_at, resolved_at
+            FROM storefront.support_ticket
+            WHERE support_conversation_id = $1
+            ORDER BY created_at DESC
+            LIMIT 1
+            "#,
+        )
+        .bind(conversation_id.as_i32())
+        .fetch_optional(self.pool)
+        .await?;
+
         Ok(row.map(Into::into))
     }
 
@@ -156,6 +213,7 @@ impl<'a> TicketRepository<'a> {
         status: &str,
         priority: &str,
     ) -> Result<(), SupportError> {
+        #[cfg(feature = "sqlx-macros")]
         sqlx::query!(
             r#"
             UPDATE storefront.support_ticket
@@ -166,6 +224,20 @@ impl<'a> TicketRepository<'a> {
             status,
             priority,
         )
+        .execute(self.pool)
+        .await?;
+
+        #[cfg(not(feature = "sqlx-macros"))]
+        sqlx::query(
+            r#"
+            UPDATE storefront.support_ticket
+            SET status = $2, priority = $3
+            WHERE id = $1
+            "#,
+        )
+        .bind(id.as_i32())
+        .bind(status)
+        .bind(priority)
         .execute(self.pool)
         .await?;
 
@@ -183,6 +255,8 @@ impl<'a> TicketRepository<'a> {
         notes: Option<&str>,
     ) -> Result<(), SupportError> {
         let now = to_time_offset(chrono::Utc::now());
+
+        #[cfg(feature = "sqlx-macros")]
         sqlx::query!(
             r#"
             UPDATE storefront.support_ticket
@@ -193,6 +267,20 @@ impl<'a> TicketRepository<'a> {
             notes,
             now,
         )
+        .execute(self.pool)
+        .await?;
+
+        #[cfg(not(feature = "sqlx-macros"))]
+        sqlx::query(
+            r#"
+            UPDATE storefront.support_ticket
+            SET status = 'resolved', resolution_notes = $2, resolved_at = $3
+            WHERE id = $1
+            "#,
+        )
+        .bind(id.as_i32())
+        .bind(notes)
+        .bind(now)
         .execute(self.pool)
         .await?;
 
@@ -210,6 +298,7 @@ impl<'a> TicketRepository<'a> {
         message_ts: &str,
         channel_id: &str,
     ) -> Result<(), SupportError> {
+        #[cfg(feature = "sqlx-macros")]
         sqlx::query!(
             r#"
             UPDATE storefront.support_ticket
@@ -220,6 +309,20 @@ impl<'a> TicketRepository<'a> {
             message_ts,
             channel_id,
         )
+        .execute(self.pool)
+        .await?;
+
+        #[cfg(not(feature = "sqlx-macros"))]
+        sqlx::query(
+            r#"
+            UPDATE storefront.support_ticket
+            SET slack_message_ts = $2, slack_channel_id = $3
+            WHERE id = $1
+            "#,
+        )
+        .bind(id.as_i32())
+        .bind(message_ts)
+        .bind(channel_id)
         .execute(self.pool)
         .await?;
 
@@ -237,6 +340,7 @@ impl<'a> TicketRepository<'a> {
         limit: i64,
         offset: i64,
     ) -> Result<Vec<SupportTicket>, SupportError> {
+        #[cfg(feature = "sqlx-macros")]
         let rows = sqlx::query_as!(
             TicketRow,
             r#"
@@ -256,6 +360,26 @@ impl<'a> TicketRepository<'a> {
             limit,
             offset,
         )
+        .fetch_all(self.pool)
+        .await?;
+
+        #[cfg(not(feature = "sqlx-macros"))]
+        let rows = sqlx::query_as::<_, TicketRow>(
+            r#"
+            SELECT
+                id, support_conversation_id, category, priority, status,
+                assigned_admin_id, resolution_notes, slack_message_ts,
+                slack_channel_id,
+                created_at, updated_at, resolved_at
+            FROM storefront.support_ticket
+            WHERE ($1::text IS NULL OR status = $1)
+            ORDER BY created_at DESC
+            LIMIT $2 OFFSET $3
+            "#,
+        )
+        .bind(status_filter)
+        .bind(limit)
+        .bind(offset)
         .fetch_all(self.pool)
         .await?;
 

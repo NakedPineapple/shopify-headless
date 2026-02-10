@@ -15,11 +15,11 @@ use sqlx::PgPool;
 use tracing::{debug, error, info, instrument};
 
 use crate::db::inbound_email;
-use crate::microsoft_graph::M365Client;
 use crate::shopify::ShopifyClient;
 use crate::slack::messages as slack_messages;
 use crate::triage::responder::{self, DraftResponse, ResponseContext};
 use crate::triage::types::{ClassificationResult, EmailClassification, EmailStatus};
+use naked_pineapple_services::microsoft_graph::M365Client;
 
 /// Parameters for routing a classified email.
 pub struct RouteParams<'a> {
@@ -393,7 +393,7 @@ pub enum TriageError {
 
     /// Microsoft Graph API error.
     #[error("M365 error: {0}")]
-    M365(#[from] crate::microsoft_graph::M365Error),
+    M365(#[from] naked_pineapple_services::microsoft_graph::M365Error),
 
     /// Klaviyo API error.
     #[error("Klaviyo error: {0}")]

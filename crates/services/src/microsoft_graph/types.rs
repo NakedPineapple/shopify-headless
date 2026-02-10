@@ -14,6 +14,7 @@ pub struct AccessToken {
 
 impl AccessToken {
     /// Returns true if the token has expired or will expire within the given buffer.
+    #[must_use]
     pub fn is_expired_with_buffer(&self, buffer: chrono::Duration) -> bool {
         Utc::now() + buffer >= self.expires_at
     }

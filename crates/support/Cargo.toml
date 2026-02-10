@@ -8,6 +8,13 @@ repository.workspace = true
 description = "Shared customer support library for Naked Pineapple (used by storefront and admin)"
 publish = false
 
+[features]
+default = []
+# cargo sqlx prepare can only validate macros against a single DATABASE_URL. Crates that
+# connect to a different database (e.g. admin uses np_admin) must not enable this feature,
+# otherwise their sqlx prepare step fails trying to validate storefront queries.
+sqlx-macros = []
+
 [lints]
 workspace = true
 

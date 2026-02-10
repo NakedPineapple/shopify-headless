@@ -34,8 +34,8 @@
 use secrecy::SecretString;
 
 pub use naked_pineapple_services::config::{
-    ClaudeConfig, ConfigError, EmailConfig, KlaviyoConfig, SlackConfig, get_database_url,
-    get_env_or_default, get_optional_env, get_required_env, get_validated_secret,
+    ClaudeConfig, ConfigError, EmailConfig, KlaviyoConfig, M365Config, SlackConfig,
+    get_database_url, get_env_or_default, get_optional_env,
 };
 
 /// Email automation service configuration.
@@ -78,55 +78,6 @@ pub struct ShopifyConfig {
     pub store: String,
     /// Shopify API version (e.g., "2026-01").
     pub api_version: String,
-}
-
-/// Microsoft 365 Graph API configuration.
-#[derive(Clone)]
-pub struct M365Config {
-    /// Azure AD tenant ID.
-    pub tenant_id: String,
-    /// Azure AD application (client) ID.
-    pub client_id: String,
-    /// Azure AD application client secret.
-    pub client_secret: SecretString,
-    /// Shared mailbox addresses to poll.
-    pub shared_mailboxes: Vec<String>,
-}
-
-impl std::fmt::Debug for M365Config {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("M365Config")
-            .field("tenant_id", &self.tenant_id)
-            .field("client_id", &self.client_id)
-            .field("client_secret", &"[REDACTED]")
-            .field("shared_mailboxes", &self.shared_mailboxes)
-            .finish()
-    }
-}
-
-impl M365Config {
-    fn from_env() -> Result<Self, ConfigError> {
-        let mailboxes_raw = get_required_env("M365_SHARED_MAILBOXES")?;
-        let shared_mailboxes: Vec<String> = mailboxes_raw
-            .split(',')
-            .map(|s| s.trim().to_string())
-            .filter(|s| !s.is_empty())
-            .collect();
-
-        if shared_mailboxes.is_empty() {
-            return Err(ConfigError::InvalidEnvVar(
-                "M365_SHARED_MAILBOXES".to_string(),
-                "must contain at least one mailbox address".to_string(),
-            ));
-        }
-
-        Ok(Self {
-            tenant_id: get_required_env("M365_TENANT_ID")?,
-            client_id: get_required_env("M365_CLIENT_ID")?,
-            client_secret: get_validated_secret("M365_CLIENT_SECRET")?,
-            shared_mailboxes,
-        })
-    }
 }
 
 /// Scheduler timing configuration.

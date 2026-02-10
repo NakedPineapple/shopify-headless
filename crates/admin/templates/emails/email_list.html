@@ -1,0 +1,111 @@
+{% if emails.is_empty() %}
+<div class="flex-1 flex items-center justify-center py-12">
+    <div class="text-center">
+        <i class="ph ph-envelope-open text-4xl text-muted-foreground mb-2"></i>
+        <p class="text-sm text-muted-foreground">No emails found</p>
+    </div>
+</div>
+{% else %}
+{% for email in emails %}
+<div class="email-item px-4 py-3 cursor-pointer hover:bg-accent transition-colors"
+     hx-get="/emails/{{ email.id }}"
+     hx-target="#email-detail"
+     hx-swap="innerHTML"
+     onclick="selectEmail('{{ email.id }}', this)">
+    <div class="flex items-start gap-3">
+        <!-- Classification Icon -->
+        <div class="w-9 h-9 rounded-full shrink-0 flex items-center justify-center
+            {% match email.classification.as_deref() %}
+                {% when Some with ("spam") %}bg-muted
+                {% when Some with ("marketing_newsletter") %}bg-muted
+                {% when Some with ("order_inquiry") %}bg-blue-100 dark:bg-blue-900/30
+                {% when Some with ("product_question") %}bg-teal-100 dark:bg-teal-900/30
+                {% when Some with ("return_request") %}bg-yellow-100 dark:bg-yellow-900/30
+                {% when Some with ("shipping_issue") %}bg-orange-100 dark:bg-orange-900/30
+                {% when Some with ("subscription_inquiry") %}bg-purple-100 dark:bg-purple-900/30
+                {% when Some with ("business_vendor") %}bg-indigo-100 dark:bg-indigo-900/30
+                {% when Some with ("complaint") %}bg-red-100 dark:bg-red-900/30
+                {% when Some with ("praise") %}bg-green-100 dark:bg-green-900/30
+                {% when _ %}bg-muted
+            {% endmatch %}">
+            <i class="ph text-sm
+                {% match email.classification.as_deref() %}
+                    {% when Some with ("spam") %}ph-prohibit text-muted-foreground
+                    {% when Some with ("marketing_newsletter") %}ph-megaphone text-muted-foreground
+                    {% when Some with ("order_inquiry") %}ph-package text-blue-600 dark:text-blue-400
+                    {% when Some with ("product_question") %}ph-question text-teal-600 dark:text-teal-400
+                    {% when Some with ("return_request") %}ph-arrow-u-up-left text-yellow-600 dark:text-yellow-400
+                    {% when Some with ("shipping_issue") %}ph-truck text-orange-600 dark:text-orange-400
+                    {% when Some with ("subscription_inquiry") %}ph-repeat text-purple-600 dark:text-purple-400
+                    {% when Some with ("business_vendor") %}ph-briefcase text-indigo-600 dark:text-indigo-400
+                    {% when Some with ("complaint") %}ph-warning text-red-600 dark:text-red-400
+                    {% when Some with ("praise") %}ph-heart text-green-600 dark:text-green-400
+                    {% when _ %}ph-question text-muted-foreground
+                {% endmatch %}"></i>
+        </div>
+
+        <!-- Content -->
+        <div class="flex-1 min-w-0">
+            <div class="flex items-center justify-between gap-2 mb-0.5">
+                <p class="text-sm font-medium text-foreground truncate">
+                    {% match email.from_name %}
+                        {% when Some with (name) %}{{ name }}
+                        {% when None %}{{ email.from_address }}
+                    {% endmatch %}
+                </p>
+                <span class="text-xs text-muted-foreground whitespace-nowrap">{{ email.received_at|humanize_datetime }}</span>
+            </div>
+            <p class="text-xs text-foreground truncate mb-1">{{ email.subject }}</p>
+            <div class="flex items-center gap-2 flex-wrap">
+                <!-- Classification badge -->
+                {% if let Some(cls) = email.classification %}
+                <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium
+                    {% match cls.as_str() %}
+                        {% when "spam" %}bg-muted text-muted-foreground
+                        {% when "marketing_newsletter" %}bg-muted text-muted-foreground
+                        {% when "order_inquiry" %}bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400
+                        {% when "product_question" %}bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400
+                        {% when "return_request" %}bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400
+                        {% when "shipping_issue" %}bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400
+                        {% when "subscription_inquiry" %}bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400
+                        {% when "business_vendor" %}bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400
+                        {% when "complaint" %}bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400
+                        {% when "praise" %}bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400
+                        {% when _ %}bg-muted text-muted-foreground
+                    {% endmatch %}">
+                    {{ cls.replace("_", " ") }}
+                </span>
+                {% endif %}
+
+                <!-- Low confidence indicator -->
+                {% if email.is_low_confidence() %}
+                <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400">
+                    <i class="ph ph-warning mr-0.5 text-[9px]"></i>
+                    low conf
+                </span>
+                {% endif %}
+
+                <!-- Draft indicator -->
+                {% if email.has_draft %}
+                <span class="inline-flex items-center text-[10px] text-muted-foreground">
+                    <i class="ph ph-pencil-simple mr-0.5"></i>
+                    draft
+                </span>
+                {% endif %}
+
+                <!-- Error indicator -->
+                {% if email.error.is_some() %}
+                <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                    <i class="ph ph-x-circle mr-0.5 text-[9px]"></i>
+                    error
+                </span>
+                {% endif %}
+
+                <!-- Mailbox label -->
+                <span class="text-[10px] text-muted-foreground ml-auto">{{ email.mailbox }}</span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endif %}

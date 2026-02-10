@@ -1,0 +1,116 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Email Inbox{% endblock %}
+
+{% block page_title %}Email Inbox{% endblock %}
+
+{% block page_subtitle %}
+<p class="text-sm text-muted-foreground mt-1">AI-triaged inbound emails across all mailboxes</p>
+{% endblock %}
+
+{% block content %}
+<div class="flex gap-6 h-[calc(100vh-12rem)]">
+    <!-- Left Panel: Email List -->
+    <div class="w-full lg:w-[380px] shrink-0 bg-card rounded-lg border border-border flex flex-col overflow-hidden">
+        <!-- Filter Tabs -->
+        <div class="border-b border-border">
+            <nav class="flex" id="inbox-tabs">
+                <button type="button"
+                        class="inbox-tab flex-1 px-3 py-3 text-xs font-medium text-center transition-colors border-b-2 {% if active_filter == "pending_review" %}border-coral text-foreground{% else %}border-transparent text-muted-foreground hover:text-foreground{% endif %}"
+                        data-filter="pending_review"
+                        hx-get="/emails/list?status=pending_review"
+                        hx-target="#email-list"
+                        hx-swap="innerHTML"
+                        onclick="setActiveTab(this)">
+                    Needs Review
+                    {% if pending_review_count > 0 %}
+                    <span class="ml-1 inline-flex items-center justify-center w-5 h-5 rounded-full bg-coral text-white text-xs">{{ pending_review_count }}</span>
+                    {% endif %}
+                </button>
+                <button type="button"
+                        class="inbox-tab flex-1 px-3 py-3 text-xs font-medium text-center transition-colors border-b-2 {% if active_filter == "all" %}border-coral text-foreground{% else %}border-transparent text-muted-foreground hover:text-foreground{% endif %}"
+                        data-filter="all"
+                        hx-get="/emails/list"
+                        hx-target="#email-list"
+                        hx-swap="innerHTML"
+                        onclick="setActiveTab(this)">
+                    All
+                </button>
+                <button type="button"
+                        class="inbox-tab flex-1 px-3 py-3 text-xs font-medium text-center transition-colors border-b-2 {% if active_filter == "responded" %}border-coral text-foreground{% else %}border-transparent text-muted-foreground hover:text-foreground{% endif %}"
+                        data-filter="responded"
+                        hx-get="/emails/list?status=responded"
+                        hx-target="#email-list"
+                        hx-swap="innerHTML"
+                        onclick="setActiveTab(this)">
+                    Sent
+                </button>
+                <button type="button"
+                        class="inbox-tab flex-1 px-3 py-3 text-xs font-medium text-center transition-colors border-b-2 {% if active_filter == "archived" %}border-coral text-foreground{% else %}border-transparent text-muted-foreground hover:text-foreground{% endif %}"
+                        data-filter="archived"
+                        hx-get="/emails/list?status=archived"
+                        hx-target="#email-list"
+                        hx-swap="innerHTML"
+                        onclick="setActiveTab(this)">
+                    Archived
+                </button>
+                <button type="button"
+                        class="inbox-tab flex-1 px-3 py-3 text-xs font-medium text-center transition-colors border-b-2 {% if active_filter == "failed" %}border-coral text-foreground{% else %}border-transparent text-muted-foreground hover:text-foreground{% endif %}"
+                        data-filter="failed"
+                        hx-get="/emails/list?status=failed"
+                        hx-target="#email-list"
+                        hx-swap="innerHTML"
+                        onclick="setActiveTab(this)">
+                    Failed
+                </button>
+            </nav>
+        </div>
+
+        <!-- Email List -->
+        <div id="email-list" class="flex-1 overflow-y-auto divide-y divide-border"
+             hx-get="/emails/list?status={{ active_filter }}"
+             hx-trigger="load, every 15s"
+             hx-swap="innerHTML">
+            <!-- Loaded via HTMX -->
+        </div>
+    </div>
+
+    <!-- Right Panel: Email Detail -->
+    <div id="email-detail" class="hidden lg:flex flex-1 bg-card rounded-lg border border-border flex-col overflow-hidden">
+        <!-- Empty State -->
+        <div class="flex-1 flex items-center justify-center">
+            <div class="text-center">
+                <div class="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
+                    <i class="ph ph-envelope-open text-3xl text-muted-foreground"></i>
+                </div>
+                <h3 class="text-lg font-medium text-foreground mb-1">Select an email</h3>
+                <p class="text-sm text-muted-foreground">Choose an email from the list to view details and AI analysis</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function setActiveTab(btn) {
+    document.querySelectorAll('.inbox-tab').forEach(function(tab) {
+        tab.classList.remove('border-coral', 'text-foreground');
+        tab.classList.add('border-transparent', 'text-muted-foreground');
+    });
+    btn.classList.remove('border-transparent', 'text-muted-foreground');
+    btn.classList.add('border-coral', 'text-foreground');
+}
+
+function selectEmail(id, el) {
+    document.querySelectorAll('.email-item').forEach(function(item) {
+        item.classList.remove('bg-accent');
+    });
+    el.classList.add('bg-accent');
+
+    var detail = document.getElementById('email-detail');
+    detail.classList.remove('hidden');
+    detail.classList.add('flex');
+}
+</script>
+{% endblock %}

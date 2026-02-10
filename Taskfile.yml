@@ -344,7 +344,7 @@ tasks:
     desc: "Generate sqlx offline cache for support"
     dir: crates/support
     cmds:
-      - cargo sqlx prepare
+      - cargo sqlx prepare -- --features sqlx-macros
     env:
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/np_storefront
 

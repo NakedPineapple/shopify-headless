@@ -70,6 +70,8 @@ impl<'a> KnowledgeRepository<'a> {
         params: &CreateKnowledgeParams,
     ) -> Result<SupportKnowledge, SupportError> {
         let embedding_str = format_embedding(&params.embedding);
+
+        #[cfg(feature = "sqlx-macros")]
         let row = sqlx::query_as!(
             KnowledgeRow,
             r#"
@@ -89,6 +91,22 @@ impl<'a> KnowledgeRepository<'a> {
         .fetch_one(self.pool)
         .await?;
 
+        #[cfg(not(feature = "sqlx-macros"))]
+        let row = sqlx::query_as::<_, KnowledgeRow>(
+            "INSERT INTO storefront.support_knowledge
+                (title, content, category, embedding, created_by)
+            VALUES ($1, $2, $3, $4::text::vector, $5)
+            RETURNING id, title, content, category, is_active, created_by,
+                      created_at, updated_at",
+        )
+        .bind(&params.title)
+        .bind(&params.content)
+        .bind(&params.category)
+        .bind(&embedding_str)
+        .bind(params.created_by)
+        .fetch_one(self.pool)
+        .await?;
+
         Ok(row.into())
     }
 
@@ -103,6 +121,8 @@ impl<'a> KnowledgeRepository<'a> {
         params: &UpdateKnowledgeParams,
     ) -> Result<SupportKnowledge, SupportError> {
         let embedding_str = format_embedding(&params.embedding);
+
+        #[cfg(feature = "sqlx-macros")]
         let row = sqlx::query_as!(
             KnowledgeRow,
             r#"
@@ -122,6 +142,22 @@ impl<'a> KnowledgeRepository<'a> {
         .fetch_one(self.pool)
         .await?;
 
+        #[cfg(not(feature = "sqlx-macros"))]
+        let row = sqlx::query_as::<_, KnowledgeRow>(
+            "UPDATE storefront.support_knowledge
+            SET title = $2, content = $3, category = $4, embedding = $5::text::vector
+            WHERE id = $1
+            RETURNING id, title, content, category, is_active, created_by,
+                      created_at, updated_at",
+        )
+        .bind(id.as_i32())
+        .bind(&params.title)
+        .bind(&params.content)
+        .bind(&params.category)
+        .bind(&embedding_str)
+        .fetch_one(self.pool)
+        .await?;
+
         Ok(row.into())
     }
 
@@ -134,6 +170,7 @@ impl<'a> KnowledgeRepository<'a> {
         &self,
         id: SupportKnowledgeId,
     ) -> Result<SupportKnowledge, SupportError> {
+        #[cfg(feature = "sqlx-macros")]
         let row = sqlx::query_as!(
             KnowledgeRow,
             r#"
@@ -145,6 +182,18 @@ impl<'a> KnowledgeRepository<'a> {
             "#,
             id.as_i32(),
         )
+        .fetch_optional(self.pool)
+        .await?
+        .ok_or(SupportError::ConversationNotFound)?;
+
+        #[cfg(not(feature = "sqlx-macros"))]
+        let row = sqlx::query_as::<_, KnowledgeRow>(
+            "SELECT id, title, content, category, is_active, created_by,
+                   created_at, updated_at
+            FROM storefront.support_knowledge
+            WHERE id = $1",
+        )
+        .bind(id.as_i32())
         .fetch_optional(self.pool)
         .await?
         .ok_or(SupportError::ConversationNotFound)?;
@@ -162,6 +211,7 @@ impl<'a> KnowledgeRepository<'a> {
         id: SupportKnowledgeId,
         active: bool,
     ) -> Result<(), SupportError> {
+        #[cfg(feature = "sqlx-macros")]
         sqlx::query!(
             r#"
             UPDATE storefront.support_knowledge
@@ -174,6 +224,17 @@ impl<'a> KnowledgeRepository<'a> {
         .execute(self.pool)
         .await?;
 
+        #[cfg(not(feature = "sqlx-macros"))]
+        sqlx::query(
+            "UPDATE storefront.support_knowledge
+            SET is_active = $2
+            WHERE id = $1",
+        )
+        .bind(id.as_i32())
+        .bind(active)
+        .execute(self.pool)
+        .await?;
+
         Ok(())
     }
 
@@ -183,6 +244,7 @@ impl<'a> KnowledgeRepository<'a> {
     ///
     /// Returns `SupportError` if the database query fails.
     pub async fn delete(&self, id: SupportKnowledgeId) -> Result<(), SupportError> {
+        #[cfg(feature = "sqlx-macros")]
         sqlx::query!(
             r#"
             DELETE FROM storefront.support_knowledge
@@ -190,6 +252,15 @@ impl<'a> KnowledgeRepository<'a> {
             "#,
             id.as_i32(),
         )
+        .execute(self.pool)
+        .await?;
+
+        #[cfg(not(feature = "sqlx-macros"))]
+        sqlx::query(
+            "DELETE FROM storefront.support_knowledge
+            WHERE id = $1",
+        )
+        .bind(id.as_i32())
         .execute(self.pool)
         .await?;
 
@@ -206,6 +277,7 @@ impl<'a> KnowledgeRepository<'a> {
         category_filter: Option<&str>,
         active_only: bool,
     ) -> Result<Vec<SupportKnowledge>, SupportError> {
+        #[cfg(feature = "sqlx-macros")]
         let rows = sqlx::query_as!(
             KnowledgeRow,
             r#"
@@ -223,6 +295,20 @@ impl<'a> KnowledgeRepository<'a> {
         .fetch_all(self.pool)
         .await?;
 
+        #[cfg(not(feature = "sqlx-macros"))]
+        let rows = sqlx::query_as::<_, KnowledgeRow>(
+            "SELECT id, title, content, category, is_active, created_by,
+                   created_at, updated_at
+            FROM storefront.support_knowledge
+            WHERE ($1::text IS NULL OR category = $1)
+              AND ($2 = FALSE OR is_active = TRUE)
+            ORDER BY category, title",
+        )
+        .bind(category_filter)
+        .bind(active_only)
+        .fetch_all(self.pool)
+        .await?;
+
         Ok(rows.into_iter().map(Into::into).collect())
     }
 
@@ -237,6 +323,8 @@ impl<'a> KnowledgeRepository<'a> {
         limit: i64,
     ) -> Result<Vec<KnowledgeSearchResult>, SupportError> {
         let embedding_str = format_embedding(embedding);
+
+        #[cfg(feature = "sqlx-macros")]
         let rows = sqlx::query_as!(
             KnowledgeSearchRow,
             r#"
@@ -253,6 +341,22 @@ impl<'a> KnowledgeRepository<'a> {
             embedding_str,
             limit,
         )
+        .fetch_all(self.pool)
+        .await?;
+
+        #[cfg(not(feature = "sqlx-macros"))]
+        let rows = sqlx::query_as::<_, KnowledgeSearchRow>(
+            "SELECT
+                id, title, content, category, is_active, created_by,
+                created_at, updated_at,
+                1 - (embedding <=> $1::text::vector) as similarity
+            FROM storefront.support_knowledge
+            WHERE is_active = TRUE
+            ORDER BY embedding <=> $1::text::vector
+            LIMIT $2",
+        )
+        .bind(&embedding_str)
+        .bind(limit)
         .fetch_all(self.pool)
         .await?;
 

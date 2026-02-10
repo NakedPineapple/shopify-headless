@@ -23,6 +23,7 @@ pub struct TokenManager {
 
 impl TokenManager {
     /// Create a new token manager.
+    #[must_use]
     pub fn new(config: &M365Config, http: &reqwest::Client) -> Self {
         Self {
             config: config.clone(),

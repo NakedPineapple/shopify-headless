@@ -7,6 +7,7 @@ use sqlx::PgPool;
 use url::Url;
 use webauthn_rs::prelude::*;
 
+use naked_pineapple_services::microsoft_graph::M365Client;
 use naked_pineapple_services::openai::EmbeddingClient;
 
 use crate::config::AdminConfig;
@@ -50,6 +51,7 @@ struct AppStateInner {
     shopify: AdminClient,
     shiphero: Option<ShipHeroClient>,
     slack: Option<SlackClient>,
+    m365: Option<M365Client>,
     webauthn: Webauthn,
     email_service: Option<EmailService>,
 }
@@ -154,6 +156,14 @@ impl AppState {
             );
         }
 
+        let m365 = config.m365.as_ref().map(|m365_config| {
+            tracing::info!("M365 email integration initialized");
+            M365Client::new(m365_config)
+        });
+        if m365.is_none() {
+            tracing::info!("M365 not configured — email inbox sending disabled");
+        }
+
         let (support_pool, embedding) = Self::init_support(&config).await;
 
         Ok(Self {
@@ -165,6 +175,7 @@ impl AppState {
                 shopify,
                 shiphero,
                 slack,
+                m365,
                 webauthn,
                 email_service,
             }),
@@ -235,6 +246,12 @@ impl AppState {
     #[must_use]
     pub fn shiphero(&self) -> Option<&ShipHeroClient> {
         self.inner.shiphero.as_ref()
+    }
+
+    /// Get a reference to the Microsoft 365 client (if configured).
+    #[must_use]
+    pub fn m365(&self) -> Option<&M365Client> {
+        self.inner.m365.as_ref()
     }
 
     /// Initialize the support pool and embedding client.

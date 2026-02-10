@@ -21,7 +21,7 @@ workspace = true
 [dependencies]
 naked-pineapple-core = { workspace = true, features = ["postgres"] }
 naked-pineapple-services = { workspace = true }
-naked-pineapple-support = { workspace = true }
+naked-pineapple-support = { workspace = true, features = ["sqlx-macros"] }
 
 # Web framework
 axum = { workspace = true }

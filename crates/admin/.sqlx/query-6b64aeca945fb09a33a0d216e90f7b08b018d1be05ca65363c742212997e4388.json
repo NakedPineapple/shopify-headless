@@ -1,0 +1,59 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            id,\n            from_address,\n            from_name,\n            subject,\n            body_preview,\n            received_at as \"received_at: DateTime<Utc>\",\n            status\n        FROM admin.inbound_email\n        WHERE conversation_id = $1 AND id != $2\n        ORDER BY received_at ASC\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "from_address",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "from_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "subject",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "body_preview",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "received_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "status",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "6b64aeca945fb09a33a0d216e90f7b08b018d1be05ca65363c742212997e4388"
+}

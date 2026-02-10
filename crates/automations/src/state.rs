@@ -9,8 +9,8 @@ use naked_pineapple_services::slack::SlackClient;
 use sqlx::PgPool;
 
 use crate::config::AutomationConfig;
-use crate::microsoft_graph::M365Client;
 use crate::shopify::ShopifyClient;
+use naked_pineapple_services::microsoft_graph::M365Client;
 
 /// Application state shared across scheduler tasks, health check, and webhook handler.
 #[derive(Clone)]

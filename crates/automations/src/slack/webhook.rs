@@ -209,5 +209,5 @@ enum ActionError {
     #[error("database error: {0}")]
     Database(#[from] crate::db::RepositoryError),
     #[error("M365 error: {0}")]
-    M365(#[from] crate::microsoft_graph::M365Error),
+    M365(#[from] naked_pineapple_services::microsoft_graph::M365Error),
 }
