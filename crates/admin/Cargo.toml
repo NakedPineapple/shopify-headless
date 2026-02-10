@@ -71,6 +71,7 @@ uuid = { workspace = true }
 chrono = { workspace = true }
 chrono-tz = "0.10"
 time = "0.3"
+bytes = "1"
 rand = { workspace = true }
 thiserror = { workspace = true }
 rust_decimal = { workspace = true }
@@ -86,6 +87,13 @@ rustls = { version = "0.23", default-features = false, features = ["ring", "std"
 hmac = { workspace = true }
 sha2 = { workspace = true }
 hex = "0.4"
+
+# Object storage (Cloudflare R2)
+aws-config = "1.8"
+aws-sdk-s3 = "1.122"
+
+# Document processing
+pdf-extract = "0.10"
 
 # Streaming
 async-stream = "0.3"

@@ -95,6 +95,8 @@ pub struct AdminConfig {
     pub tls: Option<TlsConfig>,
     /// Storefront database URL for support inbox (optional — enables support features)
     pub storefront_database_url: Option<SecretString>,
+    /// Cloudflare R2 configuration (optional — enables document upload)
+    pub r2: Option<R2Config>,
 }
 
 /// Shopify Admin API configuration.
@@ -161,6 +163,49 @@ impl TlsConfig {
     }
 }
 
+/// Cloudflare R2 storage configuration.
+#[derive(Clone)]
+pub struct R2Config {
+    /// R2 account ID.
+    pub account_id: String,
+    /// R2 access key ID.
+    pub access_key_id: String,
+    /// R2 secret access key.
+    pub secret_access_key: SecretString,
+    /// R2 bucket name.
+    pub bucket_name: String,
+}
+
+impl std::fmt::Debug for R2Config {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("R2Config")
+            .field("account_id", &self.account_id)
+            .field("access_key_id", &self.access_key_id)
+            .field("secret_access_key", &"[REDACTED]")
+            .field("bucket_name", &self.bucket_name)
+            .finish()
+    }
+}
+
+impl R2Config {
+    /// Load R2 configuration from environment variables.
+    ///
+    /// Returns `None` if `R2_ACCOUNT_ID` is not set.
+    fn from_env() -> Option<Self> {
+        let account_id = get_optional_env("R2_ACCOUNT_ID")?;
+        let access_key_id = get_optional_env("R2_ACCESS_KEY_ID")?;
+        let secret_access_key = SecretString::from(get_optional_env("R2_SECRET_ACCESS_KEY")?);
+        let bucket_name = get_optional_env("R2_BUCKET_NAME")?;
+
+        Some(Self {
+            account_id,
+            access_key_id,
+            secret_access_key,
+            bucket_name,
+        })
+    }
+}
+
 impl AdminConfig {
     /// Load configuration from environment variables.
     ///
@@ -207,6 +252,7 @@ impl AdminConfig {
         let tls = TlsConfig::from_env()?;
         let storefront_database_url =
             get_optional_env("STOREFRONT_DATABASE_URL").map(SecretString::from);
+        let r2 = R2Config::from_env();
 
         Ok(Self {
             database_url,
@@ -229,6 +275,7 @@ impl AdminConfig {
             sentry_traces_sample_rate,
             tls,
             storefront_database_url,
+            r2,
         })
     }
 
@@ -363,6 +410,7 @@ mod tests {
             sentry_traces_sample_rate: 1.0,
             tls: None,
             storefront_database_url: None,
+            r2: None,
         };
 
         let addr = config.socket_addr();

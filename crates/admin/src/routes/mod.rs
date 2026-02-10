@@ -55,6 +55,7 @@ pub mod collections;
 pub mod customers;
 pub mod dashboard;
 pub mod discounts;
+pub mod documents;
 pub mod emails;
 pub mod financials;
 pub mod gift_cards;
@@ -420,6 +421,8 @@ pub fn routes() -> Router<AppState> {
         .merge(admin_user_routes())
         // Financials (manufacturing, lots)
         .merge(financials::router())
+        // Documents (AI knowledge base)
+        .merge(documents::router())
         // Newsletter (Klaviyo)
         .merge(newsletter::router())
         // Promotions (cart page upsells)

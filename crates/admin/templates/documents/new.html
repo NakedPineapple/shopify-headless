@@ -1,0 +1,83 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Upload Document{% endblock %}
+
+{% block page_title %}
+<div>
+    <h1 class="text-2xl font-semibold text-foreground">Upload Document</h1>
+    <p class="text-sm text-muted-foreground mt-1">Add a document to the AI knowledge base</p>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl">
+    {% if let Some(err) = error %}
+    <div class="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
+        <div class="flex items-start gap-3">
+            <i class="ph ph-warning text-red-400 text-lg mt-0.5"></i>
+            <p class="text-sm text-red-400">{{ err }}</p>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="bg-card rounded-xl border border-border p-6">
+        <form method="post" action="/documents" enctype="multipart/form-data" class="space-y-6">
+            <!-- File input -->
+            <div>
+                <label for="file" class="block text-sm font-medium text-foreground mb-2">File</label>
+                <input type="file"
+                       id="file"
+                       name="file"
+                       accept=".pdf,.txt,.md,application/pdf,text/plain,text/markdown"
+                       required
+                       class="block w-full text-muted-foreground
+                              file:mr-4 file:py-2 file:px-4
+                              file:rounded-lg file:border-0
+                              file:text-sm file:font-medium
+                              file:bg-muted file:text-foreground
+                              hover:file:bg-muted/80
+                              cursor-pointer">
+                <p class="mt-2 text-xs text-muted-foreground">Supported formats: PDF, TXT, MD. Maximum 10 MB.</p>
+            </div>
+
+            <!-- Description -->
+            <div>
+                <label for="description" class="block text-sm font-medium text-foreground mb-2">Description <span class="text-muted-foreground font-normal">(optional)</span></label>
+                <textarea id="description"
+                          name="description"
+                          rows="3"
+                          placeholder="e.g., Shipping policy for domestic orders"
+                          class="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-coral/50 focus:border-coral"></textarea>
+                <p class="mt-2 text-xs text-muted-foreground">Helps identify the document in search results.</p>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex items-center gap-4 pt-2">
+                <button type="submit"
+                        class="inline-flex items-center gap-2 px-4 py-2 bg-coral text-white rounded-lg hover:bg-coral/90 transition-colors">
+                    <i class="ph ph-upload-simple"></i>
+                    Upload &amp; Process
+                </button>
+                <a href="/documents"
+                   class="px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Info box -->
+    <div class="mt-6 bg-card rounded-xl border border-border p-5">
+        <h3 class="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
+            <i class="ph ph-info text-coral"></i>
+            What happens when you upload
+        </h3>
+        <ol class="list-decimal list-inside text-sm text-muted-foreground space-y-1.5">
+            <li>Text is extracted from your document</li>
+            <li>Content is split into semantic chunks</li>
+            <li>AI embeddings are generated for each chunk</li>
+            <li>The document becomes searchable by the AI chat assistant</li>
+        </ol>
+    </div>
+</div>
+{% endblock %}

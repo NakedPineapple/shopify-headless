@@ -1,0 +1,91 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Documents{% endblock %}
+
+{% block page_title %}
+<div class="flex items-center justify-between">
+    <div>
+        <h1 class="text-2xl font-semibold text-foreground">Documents</h1>
+        <p class="text-sm text-muted-foreground mt-1">Business documents for AI chat reference</p>
+    </div>
+    <a href="/documents/new"
+       class="inline-flex items-center gap-2 px-4 py-2 bg-coral text-white rounded-lg hover:bg-coral/90 transition-colors">
+        <i class="ph ph-upload-simple"></i>
+        Upload Document
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="bg-card rounded-xl border border-border overflow-hidden">
+    {% if documents.is_empty() %}
+    <div class="p-12 text-center">
+        <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center">
+            <i class="ph ph-file-text text-2xl text-muted-foreground"></i>
+        </div>
+        <h3 class="text-lg font-medium text-foreground mb-2">No documents yet</h3>
+        <p class="text-sm text-muted-foreground mb-4">Upload PDFs, text files, or markdown documents for the AI assistant to reference.</p>
+        <a href="/documents/new"
+           class="inline-flex items-center gap-2 px-4 py-2 bg-coral text-white rounded-lg hover:bg-coral/90 transition-colors">
+            <i class="ph ph-upload-simple"></i>
+            Upload Your First Document
+        </a>
+    </div>
+    {% else %}
+    <table class="w-full">
+        <thead class="bg-muted/50 border-b border-border">
+            <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">File</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Type</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Size</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Uploaded</th>
+                <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-border">
+            {% for doc in documents %}
+            <tr class="hover:bg-muted/30 transition-colors">
+                <td class="px-6 py-4">
+                    <a href="/documents/{{ doc.id }}" class="text-sm font-medium text-coral hover:underline flex items-center gap-2">
+                        {% if doc.content_type == "application/pdf" %}
+                        <i class="ph ph-file-pdf text-lg"></i>
+                        {% else %}
+                        <i class="ph ph-file-text text-lg"></i>
+                        {% endif %}
+                        {{ doc.filename }}
+                    </a>
+                    {% if let Some(desc) = doc.description %}
+                    <p class="text-xs text-muted-foreground mt-1">{{ desc }}</p>
+                    {% endif %}
+                </td>
+                <td class="px-6 py-4 text-sm text-muted-foreground">
+                    {% if doc.content_type == "application/pdf" %}PDF
+                    {% else if doc.content_type == "text/markdown" %}Markdown
+                    {% else %}Text{% endif %}
+                </td>
+                <td class="px-6 py-4 text-sm text-muted-foreground">{{ doc.file_size_display }}</td>
+                <td class="px-6 py-4 text-sm text-muted-foreground">{{ doc.created_at|humanize_datetime }}</td>
+                <td class="px-6 py-4 text-right">
+                    <div class="flex items-center justify-end gap-3">
+                        <a href="/documents/{{ doc.id }}/download"
+                           class="text-muted-foreground hover:text-foreground transition-colors"
+                           title="Download">
+                            <i class="ph ph-download-simple text-lg"></i>
+                        </a>
+                        <form method="post" action="/documents/{{ doc.id }}/delete"
+                              onsubmit="return confirm('Delete this document and all its indexed chunks?');">
+                            <button type="submit"
+                                    class="text-muted-foreground hover:text-red-400 transition-colors"
+                                    title="Delete">
+                                <i class="ph ph-trash text-lg"></i>
+                            </button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+</div>
+{% endblock %}

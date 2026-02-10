@@ -1,0 +1,70 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, filename, content_type, file_size, r2_key, uploaded_by,\n               description,\n               created_at AS \"created_at: chrono::DateTime<chrono::Utc>\",\n               updated_at AS \"updated_at: chrono::DateTime<chrono::Utc>\"\n        FROM admin.documents\n        WHERE id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "filename",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "content_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "file_size",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 4,
+        "name": "r2_key",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "uploaded_by",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "created_at: chrono::DateTime<chrono::Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "updated_at: chrono::DateTime<chrono::Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "0cbbeaa5e976f4faa342ac5f15ba892a332a4fc15c3637984b0900ae4dc29f10"
+}

@@ -25,6 +25,7 @@ pub mod error;
 pub mod filters;
 pub mod middleware;
 pub mod models;
+pub mod r2;
 pub mod routes;
 pub mod services;
 pub mod shiphero;

@@ -54,6 +54,7 @@ mod filters;
 mod logging;
 mod middleware;
 mod models;
+mod r2;
 mod routes;
 mod services;
 mod shiphero;

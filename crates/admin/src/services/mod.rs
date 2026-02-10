@@ -11,6 +11,7 @@
 pub mod action_queue;
 pub mod auth;
 pub mod chat;
+pub mod documents;
 pub mod email;
 pub mod klaviyo;
 

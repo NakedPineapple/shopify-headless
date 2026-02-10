@@ -13,7 +13,7 @@ Features described in `crates/admin/templates/proposal/` that are not yet implem
 
 ## AI Assistant
 
-- [ ] **Document upload & storage** — The proposal lists "Your Documents" as one of 15 AI domains (product guides, vendor agreements, SOPs). No upload endpoint, file storage, or document table exists today.
+- [X] **Document upload & storage** — The proposal lists "Your Documents" as one of 15 AI domains (product guides, vendor agreements, SOPs). No upload endpoint, file storage, or document table exists today.
 - [ ] **Document search tool** — Add a Claude tool that retrieves relevant chunks from uploaded documents so the assistant can reference internal knowledge. All 126 current tools are Shopify-specific.
 - [ ] **Slack approve / deny buttons** — The `pending_actions` table and `action_queue` service exist, but the Slack message with interactive Approve / Deny buttons and the callback handler to execute or discard the action need to be completed and verified end-to-end.
 

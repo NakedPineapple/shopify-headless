@@ -167,6 +167,11 @@
                             <i class="ph ph-chats-circle text-xl"></i>
                             <span class="sidebar-text">AI Chat</span>
                         </a>
+                        <a href="/documents"
+                           class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors {% if current_path.starts_with("/documents") %}bg-coral text-white{% else %}text-sidebar-foreground hover:bg-sidebar-accent hover:text-white{% endif %}">
+                            <i class="ph ph-files text-xl"></i>
+                            <span class="sidebar-text">Documents</span>
+                        </a>
                         <a href="/requests"
                            class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors {% if current_path.starts_with("/requests") %}bg-coral text-white{% else %}text-sidebar-foreground hover:bg-sidebar-accent hover:text-white{% endif %}">
                             <i class="ph ph-kanban text-xl"></i>

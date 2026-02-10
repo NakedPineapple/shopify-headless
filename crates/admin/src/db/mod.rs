@@ -23,6 +23,7 @@
 pub mod admin_invites;
 pub mod admin_users;
 pub mod chat;
+pub mod documents;
 pub mod inbound_email;
 pub mod inventory_lot;
 pub mod manufacturing;

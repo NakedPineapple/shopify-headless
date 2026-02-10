@@ -12,6 +12,7 @@ use naked_pineapple_services::openai::EmbeddingClient;
 
 use crate::config::AdminConfig;
 use crate::db::{ShipHeroCredentialsRepository, ShopifyTokenRepository};
+use crate::r2::R2Client;
 use crate::services::EmailService;
 use crate::shiphero::ShipHeroClient;
 use crate::shiphero::auth::ShipHeroToken;
@@ -54,6 +55,17 @@ struct AppStateInner {
     m365: Option<M365Client>,
     webauthn: Webauthn,
     email_service: Option<EmailService>,
+    r2: Option<R2Client>,
+}
+
+/// Bundle of optional integrations initialized during startup.
+struct Integrations {
+    support_pool: Option<PgPool>,
+    embedding: Option<EmbeddingClient>,
+    shiphero: Option<ShipHeroClient>,
+    slack: Option<SlackClient>,
+    m365: Option<M365Client>,
+    r2: Option<R2Client>,
 }
 
 impl AppState {
@@ -130,54 +142,21 @@ impl AppState {
             }
         };
 
-        // Initialize Slack client (optional - confirmations disabled if not configured)
-        let slack = config.slack.as_ref().map(|slack_config| {
-            tracing::info!("Slack integration initialized");
-            SlackClient::new(
-                slack_config.bot_token.clone(),
-                slack_config.signing_secret.clone(),
-                slack_config.channel_id.clone(),
-            )
-        });
-
-        if slack.is_none() {
-            tracing::warn!(
-                "Slack not configured - write operations will execute without confirmation"
-            );
-        }
-
-        // Initialize ShipHero client (optional - load credentials from database if available)
-        let shiphero = Self::load_shiphero_client(&pool).await;
-        if shiphero.is_some() {
-            tracing::info!("ShipHero client initialized from stored credentials");
-        } else {
-            tracing::info!(
-                "ShipHero not configured - warehouse features disabled until credentials added via /settings/shiphero"
-            );
-        }
-
-        let m365 = config.m365.as_ref().map(|m365_config| {
-            tracing::info!("M365 email integration initialized");
-            M365Client::new(m365_config)
-        });
-        if m365.is_none() {
-            tracing::info!("M365 not configured — email inbox sending disabled");
-        }
-
-        let (support_pool, embedding) = Self::init_support(&config).await;
+        let integrations = Self::init_integrations(&config, &pool).await;
 
         Ok(Self {
             inner: Arc::new(AppStateInner {
                 config,
                 pool,
-                support_pool,
-                embedding,
+                support_pool: integrations.support_pool,
+                embedding: integrations.embedding,
                 shopify,
-                shiphero,
-                slack,
-                m365,
+                shiphero: integrations.shiphero,
+                slack: integrations.slack,
+                m365: integrations.m365,
                 webauthn,
                 email_service,
+                r2: integrations.r2,
             }),
         })
     }
@@ -252,6 +231,70 @@ impl AppState {
     #[must_use]
     pub fn m365(&self) -> Option<&M365Client> {
         self.inner.m365.as_ref()
+    }
+
+    /// Get a reference to the R2 client (if configured).
+    #[must_use]
+    pub fn r2(&self) -> Option<&R2Client> {
+        self.inner.r2.as_ref()
+    }
+
+    /// Initialize optional integrations (Slack, `ShipHero`, M365, R2, support pool, embeddings).
+    async fn init_integrations(config: &AdminConfig, pool: &PgPool) -> Integrations {
+        let slack = config.slack.as_ref().map(|slack_config| {
+            tracing::info!("Slack integration initialized");
+            SlackClient::new(
+                slack_config.bot_token.clone(),
+                slack_config.signing_secret.clone(),
+                slack_config.channel_id.clone(),
+            )
+        });
+        if slack.is_none() {
+            tracing::warn!(
+                "Slack not configured - write operations will execute without confirmation"
+            );
+        }
+
+        let shiphero = Self::load_shiphero_client(pool).await;
+        if shiphero.is_some() {
+            tracing::info!("ShipHero client initialized from stored credentials");
+        } else {
+            tracing::info!(
+                "ShipHero not configured - warehouse features disabled until credentials added via /settings/shiphero"
+            );
+        }
+
+        let m365 = config.m365.as_ref().map(|m365_config| {
+            tracing::info!("M365 email integration initialized");
+            M365Client::new(m365_config)
+        });
+        if m365.is_none() {
+            tracing::info!("M365 not configured — email inbox sending disabled");
+        }
+
+        let (support_pool, embedding) = Self::init_support(config).await;
+
+        let r2 = config.r2.as_ref().map(|r2_config| {
+            tracing::info!("R2 document storage initialized");
+            R2Client::new(
+                &r2_config.account_id,
+                &r2_config.access_key_id,
+                &r2_config.secret_access_key,
+                r2_config.bucket_name.clone(),
+            )
+        });
+        if r2.is_none() {
+            tracing::info!("R2 not configured — document upload disabled");
+        }
+
+        Integrations {
+            support_pool,
+            embedding,
+            shiphero,
+            slack,
+            m365,
+            r2,
+        }
     }
 
     /// Initialize the support pool and embedding client.

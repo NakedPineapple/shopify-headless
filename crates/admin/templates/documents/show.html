@@ -1,0 +1,86 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}{{ document.filename }}{% endblock %}
+
+{% block page_title %}
+<div class="flex items-center justify-between">
+    <div class="flex items-center gap-3">
+        {% if document.content_type == "application/pdf" %}
+        <i class="ph ph-file-pdf text-2xl text-coral"></i>
+        {% else %}
+        <i class="ph ph-file-text text-2xl text-coral"></i>
+        {% endif %}
+        <div>
+            <h1 class="text-2xl font-semibold text-foreground">{{ document.filename }}</h1>
+            {% if let Some(desc) = document.description %}
+            <p class="text-sm text-muted-foreground mt-1">{{ desc }}</p>
+            {% endif %}
+        </div>
+    </div>
+    <div class="flex items-center gap-3">
+        <a href="/documents/{{ document.id }}/download"
+           class="inline-flex items-center gap-2 px-4 py-2 bg-coral text-white rounded-lg hover:bg-coral/90 transition-colors">
+            <i class="ph ph-download-simple"></i>
+            Download
+        </a>
+        <form method="post" action="/documents/{{ document.id }}/delete"
+              onsubmit="return confirm('Delete this document and all its indexed chunks?');">
+            <button type="submit"
+                    class="inline-flex items-center gap-2 px-4 py-2 border border-red-500/30 text-red-400 rounded-lg hover:bg-red-500/10 transition-colors">
+                <i class="ph ph-trash"></i>
+                Delete
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <a href="/documents" class="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
+        <i class="ph ph-arrow-left"></i>
+        Back to Documents
+    </a>
+
+    <!-- Metadata -->
+    <div class="bg-card rounded-xl border border-border p-6">
+        <h2 class="text-lg font-semibold text-foreground mb-4">Details</h2>
+        <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+            <div>
+                <dt class="text-xs font-medium text-muted-foreground uppercase tracking-wider">Filename</dt>
+                <dd class="mt-1 text-sm text-foreground">{{ document.filename }}</dd>
+            </div>
+            <div>
+                <dt class="text-xs font-medium text-muted-foreground uppercase tracking-wider">Format</dt>
+                <dd class="mt-1 text-sm text-foreground">
+                    {% if document.content_type == "application/pdf" %}PDF
+                    {% else if document.content_type == "text/markdown" %}Markdown
+                    {% else %}Plain Text{% endif %}
+                </dd>
+            </div>
+            <div>
+                <dt class="text-xs font-medium text-muted-foreground uppercase tracking-wider">File Size</dt>
+                <dd class="mt-1 text-sm text-foreground">{{ document.file_size_display }}</dd>
+            </div>
+            <div>
+                <dt class="text-xs font-medium text-muted-foreground uppercase tracking-wider">Uploaded</dt>
+                <dd class="mt-1 text-sm text-foreground">{{ document.created_at|humanize_datetime }}</dd>
+            </div>
+        </dl>
+    </div>
+
+    <!-- Processing status -->
+    <div class="bg-card rounded-xl border border-border p-6">
+        <h2 class="text-lg font-semibold text-foreground mb-4">Processing Status</h2>
+        <div class="flex items-start gap-3">
+            <div class="w-8 h-8 rounded-full bg-green-500/10 flex items-center justify-center shrink-0">
+                <i class="ph ph-check text-green-400"></i>
+            </div>
+            <div>
+                <p class="text-sm font-medium text-foreground">Indexed and searchable</p>
+                <p class="text-sm text-muted-foreground mt-0.5">{{ chunk_count }} chunk{% if chunk_count != 1 %}s{% endif %} embedded and available to the AI chat assistant</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
