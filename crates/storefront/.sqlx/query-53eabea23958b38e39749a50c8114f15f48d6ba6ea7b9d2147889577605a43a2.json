@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n                c.id, c.session_token, c.shopify_customer_id, c.customer_email,\n                c.customer_name,\n                c.status as \"status: SupportConversationStatus\",\n                c.assigned_admin_id,\n                c.escalated_at as \"escalated_at: DateTime<Utc>\",\n                c.escalation_reason, c.title, c.is_authenticated,\n                c.created_at as \"created_at: DateTime<Utc>\",\n                c.updated_at as \"updated_at: DateTime<Utc>\",\n                c.resolved_at as \"resolved_at: DateTime<Utc>\",\n                c.last_customer_message_at as \"last_customer_message_at: DateTime<Utc>\",\n                c.last_agent_message_at as \"last_agent_message_at: DateTime<Utc>\",\n                (SELECT count(*) FROM storefront.support_message m WHERE m.support_conversation_id = c.id) as \"message_count!\",\n                (SELECT content->>'text'\n                 FROM storefront.support_message m\n                 WHERE m.support_conversation_id = c.id\n                 ORDER BY m.created_at DESC LIMIT 1) as last_message_preview\n            FROM storefront.support_conversation c\n            WHERE ($1::storefront.support_conversation_status IS NULL OR c.status = $1)\n              AND ($2::integer IS NULL OR c.assigned_admin_id = $2)\n            ORDER BY c.updated_at DESC\n            LIMIT $3 OFFSET $4\n            ",
+  "query": "\n            SELECT\n                c.id, c.session_token, c.shopify_customer_id, c.customer_email,\n                c.customer_name,\n                c.status as \"status: SupportConversationStatus\",\n                c.assigned_admin_id,\n                c.escalated_at as \"escalated_at: DateTime<Utc>\",\n                c.escalation_reason, c.title, c.source, c.is_authenticated,\n                c.created_at as \"created_at: DateTime<Utc>\",\n                c.updated_at as \"updated_at: DateTime<Utc>\",\n                c.resolved_at as \"resolved_at: DateTime<Utc>\",\n                c.last_customer_message_at as \"last_customer_message_at: DateTime<Utc>\",\n                c.last_agent_message_at as \"last_agent_message_at: DateTime<Utc>\",\n                (SELECT count(*) FROM storefront.support_message m WHERE m.support_conversation_id = c.id) as \"message_count!\",\n                (SELECT content->>'text'\n                 FROM storefront.support_message m\n                 WHERE m.support_conversation_id = c.id\n                 ORDER BY m.created_at DESC LIMIT 1) as last_message_preview\n            FROM storefront.support_conversation c\n            WHERE ($1::storefront.support_conversation_status IS NULL OR c.status = $1)\n              AND ($2::integer IS NULL OR c.assigned_admin_id = $2)\n            ORDER BY c.updated_at DESC\n            LIMIT $3 OFFSET $4\n            ",
   "describe": {
     "columns": [
       {
@@ -68,41 +68,46 @@
       },
       {
         "ordinal": 10,
+        "name": "source",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 11,
         "name": "is_authenticated",
         "type_info": "Bool"
       },
       {
-        "ordinal": 11,
+        "ordinal": 12,
         "name": "created_at: DateTime<Utc>",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 12,
+        "ordinal": 13,
         "name": "updated_at: DateTime<Utc>",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 13,
+        "ordinal": 14,
         "name": "resolved_at: DateTime<Utc>",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 14,
+        "ordinal": 15,
         "name": "last_customer_message_at: DateTime<Utc>",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 15,
+        "ordinal": 16,
         "name": "last_agent_message_at: DateTime<Utc>",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 16,
+        "ordinal": 17,
         "name": "message_count!",
         "type_info": "Int8"
       },
       {
-        "ordinal": 17,
+        "ordinal": 18,
         "name": "last_message_preview",
         "type_info": "Text"
       }
@@ -142,6 +147,7 @@
       false,
       false,
       false,
+      false,
       true,
       true,
       true,
@@ -149,5 +155,5 @@
       null
     ]
   },
-  "hash": "e52b19a644c84277c23dca10cd651e487424fe1d79f92e1f05ca4bec24750e20"
+  "hash": "53eabea23958b38e39749a50c8114f15f48d6ba6ea7b9d2147889577605a43a2"
 }

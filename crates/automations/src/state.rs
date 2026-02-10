@@ -21,6 +21,7 @@ pub struct AppState {
 struct AppStateInner {
     config: AutomationConfig,
     pool: PgPool,
+    support_pool: Option<PgPool>,
     m365: M365Client,
     claude: ClaudeClient,
     slack: Option<SlackClient>,
@@ -33,6 +34,7 @@ struct AppStateInner {
 pub struct AppStateParams {
     pub config: AutomationConfig,
     pub pool: PgPool,
+    pub support_pool: Option<PgPool>,
     pub m365: M365Client,
     pub claude: ClaudeClient,
     pub slack: Option<SlackClient>,
@@ -49,6 +51,7 @@ impl AppState {
             inner: Arc::new(AppStateInner {
                 config: params.config,
                 pool: params.pool,
+                support_pool: params.support_pool,
                 m365: params.m365,
                 claude: params.claude,
                 slack: params.slack,
@@ -105,5 +108,11 @@ impl AppState {
     #[must_use]
     pub fn email_service(&self) -> Option<&EmailService> {
         self.inner.email_service.as_ref()
+    }
+
+    /// Get a reference to the storefront support pool (if configured).
+    #[must_use]
+    pub fn support_pool(&self) -> Option<&PgPool> {
+        self.inner.support_pool.as_ref()
     }
 }

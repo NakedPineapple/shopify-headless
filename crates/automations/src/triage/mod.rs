@@ -31,6 +31,7 @@ pub struct TriageClients<'a> {
     pub slack: Option<&'a SlackClient>,
     pub klaviyo: Option<&'a KlaviyoClient>,
     pub shopify: Option<&'a ShopifyClient>,
+    pub support_pool: Option<&'a PgPool>,
 }
 
 /// Process a batch of unread messages from a single mailbox.
@@ -148,6 +149,7 @@ async fn process_single_message(
         body: &body_text,
         classification: &classification,
         conversation_id,
+        support_pool: clients.support_pool,
     };
 
     router::route_email(

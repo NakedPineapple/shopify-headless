@@ -70,6 +70,7 @@ pub mod setup;
 pub mod shiphero_settings;
 pub mod shopify;
 pub mod slack;
+pub mod support;
 pub mod warehouse;
 pub mod well_known;
 
@@ -430,6 +431,8 @@ pub fn routes() -> Router<AppState> {
         .merge(chat::router())
         // Shopify OAuth
         .merge(shopify::router())
+        // Support inbox (storefront DB)
+        .merge(support::router())
         // Slack webhooks
         .merge(slack::router())
         // Request Board (bug reports & feature requests)

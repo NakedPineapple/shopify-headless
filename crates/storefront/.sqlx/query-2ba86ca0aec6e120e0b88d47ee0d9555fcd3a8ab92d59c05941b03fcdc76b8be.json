@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT count(*) as \"count!\"\n            FROM storefront.support_message\n            WHERE support_conversation_id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "2ba86ca0aec6e120e0b88d47ee0d9555fcd3a8ab92d59c05941b03fcdc76b8be"
+}

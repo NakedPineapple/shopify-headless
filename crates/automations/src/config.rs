@@ -67,6 +67,8 @@ pub struct AutomationConfig {
     pub sentry_environment: Option<String>,
     /// Sentry error sample rate (0.0 to 1.0).
     pub sentry_sample_rate: f32,
+    /// Storefront database URL (optional — enables support conversation creation from email triage).
+    pub storefront_database_url: Option<SecretString>,
 }
 
 /// Shopify Admin API configuration for order/product lookups.
@@ -306,6 +308,9 @@ impl AutomationConfig {
             .and_then(|s| s.parse().ok())
             .unwrap_or(1.0);
 
+        let storefront_database_url =
+            get_optional_env("STOREFRONT_DATABASE_URL").map(SecretString::from);
+
         Ok(Self {
             database_url,
             m365,
@@ -320,6 +325,7 @@ impl AutomationConfig {
             sentry_dsn,
             sentry_environment,
             sentry_sample_rate,
+            storefront_database_url,
         })
     }
 }

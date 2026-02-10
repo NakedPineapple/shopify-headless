@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE storefront.support_conversation\n            SET status = $2\n            WHERE id = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        {
+          "Custom": {
+            "name": "storefront.support_conversation_status",
+            "kind": {
+              "Enum": [
+                "active",
+                "escalated",
+                "waiting",
+                "resolved",
+                "closed"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "18f0fa293a4f4df4b19ce75dd7b3f207383addb72f727063402b8ce80938d8ac"
+}

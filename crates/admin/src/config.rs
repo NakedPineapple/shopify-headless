@@ -91,6 +91,8 @@ pub struct AdminConfig {
     pub sentry_traces_sample_rate: f32,
     /// TLS configuration for HTTPS (optional)
     pub tls: Option<TlsConfig>,
+    /// Storefront database URL for support inbox (optional — enables support features)
+    pub storefront_database_url: Option<SecretString>,
 }
 
 /// Shopify Admin API configuration.
@@ -200,6 +202,8 @@ impl AdminConfig {
             .and_then(|s| s.parse().ok())
             .unwrap_or(1.0);
         let tls = TlsConfig::from_env()?;
+        let storefront_database_url = get_optional_env("STOREFRONT_DATABASE_URL")
+            .map(SecretString::from);
 
         Ok(Self {
             database_url,
@@ -220,6 +224,7 @@ impl AdminConfig {
             sentry_sample_rate,
             sentry_traces_sample_rate,
             tls,
+            storefront_database_url,
         })
     }
 
@@ -352,6 +357,7 @@ mod tests {
             sentry_sample_rate: 1.0,
             sentry_traces_sample_rate: 1.0,
             tls: None,
+            storefront_database_url: None,
         };
 
         let addr = config.socket_addr();

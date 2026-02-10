@@ -7,6 +7,8 @@ use sqlx::PgPool;
 use url::Url;
 use webauthn_rs::prelude::*;
 
+use naked_pineapple_services::openai::EmbeddingClient;
+
 use crate::config::AdminConfig;
 use crate::db::{ShipHeroCredentialsRepository, ShopifyTokenRepository};
 use crate::services::EmailService;
@@ -43,6 +45,8 @@ pub struct AppState {
 struct AppStateInner {
     config: AdminConfig,
     pool: PgPool,
+    support_pool: Option<PgPool>,
+    embedding: Option<EmbeddingClient>,
     shopify: AdminClient,
     shiphero: Option<ShipHeroClient>,
     slack: Option<SlackClient>,
@@ -150,10 +154,14 @@ impl AppState {
             );
         }
 
+        let (support_pool, embedding) = Self::init_support(&config).await;
+
         Ok(Self {
             inner: Arc::new(AppStateInner {
                 config,
                 pool,
+                support_pool,
+                embedding,
                 shopify,
                 shiphero,
                 slack,
@@ -205,10 +213,51 @@ impl AppState {
         self.inner.pool.clone()
     }
 
+    /// Get a reference to the support pool (storefront DB, if configured).
+    #[must_use]
+    pub fn support_pool(&self) -> Option<&PgPool> {
+        self.inner.support_pool.as_ref()
+    }
+
+    /// Whether support inbox features are available.
+    #[must_use]
+    pub fn is_support_enabled(&self) -> bool {
+        self.inner.support_pool.is_some()
+    }
+
+    /// Get a reference to the embedding client (if configured).
+    #[must_use]
+    pub fn embedding(&self) -> Option<&EmbeddingClient> {
+        self.inner.embedding.as_ref()
+    }
+
     /// Get a reference to the `ShipHero` client (if configured).
     #[must_use]
     pub fn shiphero(&self) -> Option<&ShipHeroClient> {
         self.inner.shiphero.as_ref()
+    }
+
+    /// Initialize the support pool and embedding client.
+    async fn init_support(config: &AdminConfig) -> (Option<PgPool>, Option<EmbeddingClient>) {
+        let support_pool = if let Some(ref url) = config.storefront_database_url {
+            match crate::db::create_pool(url).await {
+                Ok(p) => {
+                    tracing::info!("Support pool initialized (storefront DB connection)");
+                    Some(p)
+                }
+                Err(e) => {
+                    tracing::warn!(error = %e, "Failed to connect to storefront DB — support inbox disabled");
+                    None
+                }
+            }
+        } else {
+            tracing::info!("STOREFRONT_DATABASE_URL not set — support inbox disabled");
+            None
+        };
+
+        let embedding = config.openai.as_ref().map(|c| EmbeddingClient::new(&c.api_key));
+
+        (support_pool, embedding)
     }
 
     /// Load `ShipHero` client from stored credentials.

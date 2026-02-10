@@ -167,6 +167,30 @@ pub enum SupportConversationStatus {
     Closed,
 }
 
+impl std::fmt::Display for SupportConversationStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Active => write!(f, "active"),
+            Self::Escalated => write!(f, "escalated"),
+            Self::Waiting => write!(f, "waiting"),
+            Self::Resolved => write!(f, "resolved"),
+            Self::Closed => write!(f, "closed"),
+        }
+    }
+}
+
+impl PartialEq<&str> for SupportConversationStatus {
+    fn eq(&self, other: &&str) -> bool {
+        match self {
+            Self::Active => *other == "active",
+            Self::Escalated => *other == "escalated",
+            Self::Waiting => *other == "waiting",
+            Self::Resolved => *other == "resolved",
+            Self::Closed => *other == "closed",
+        }
+    }
+}
+
 /// Support message role.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[cfg_attr(feature = "postgres", derive(sqlx::Type))]
@@ -185,4 +209,30 @@ pub enum SupportMessageRole {
     System,
     ToolUse,
     ToolResult,
+}
+
+impl std::fmt::Display for SupportMessageRole {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Customer => write!(f, "customer"),
+            Self::Assistant => write!(f, "assistant"),
+            Self::Agent => write!(f, "agent"),
+            Self::System => write!(f, "system"),
+            Self::ToolUse => write!(f, "tool_use"),
+            Self::ToolResult => write!(f, "tool_result"),
+        }
+    }
+}
+
+impl PartialEq<&str> for SupportMessageRole {
+    fn eq(&self, other: &&str) -> bool {
+        match self {
+            Self::Customer => *other == "customer",
+            Self::Assistant => *other == "assistant",
+            Self::Agent => *other == "agent",
+            Self::System => *other == "system",
+            Self::ToolUse => *other == "tool_use",
+            Self::ToolResult => *other == "tool_result",
+        }
+    }
 }

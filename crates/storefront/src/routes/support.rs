@@ -162,6 +162,7 @@ pub async fn start_chat(
         customer_email,
         customer_name,
         is_authenticated,
+        source: None,
     };
 
     match conv_repo.create(&params).await {
@@ -267,6 +268,7 @@ fn stream_support_chat(
             system_prompt: SYSTEM_PROMPT,
             is_authenticated: params.tool_context.access_token.is_some(),
             tool_context: &params.tool_context,
+            slack: None,
         });
 
         let event_stream = service.send_message_streaming(

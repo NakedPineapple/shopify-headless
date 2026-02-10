@@ -1,0 +1,39 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                status as \"status: SupportConversationStatus\",\n                count(*) as \"count!\"\n            FROM storefront.support_conversation\n            WHERE status NOT IN ('closed')\n            GROUP BY status\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "status: SupportConversationStatus",
+        "type_info": {
+          "Custom": {
+            "name": "storefront.support_conversation_status",
+            "kind": {
+              "Enum": [
+                "active",
+                "escalated",
+                "waiting",
+                "resolved",
+                "closed"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      null
+    ]
+  },
+  "hash": "7acacf544dd71c565965cfbbeccfa95473bc0cf8cec0afae30b6fb16a122baac"
+}

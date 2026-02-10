@@ -1,0 +1,131 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Knowledge Base - Support{% endblock %}
+
+{% block page_title %}Knowledge Base{% endblock %}
+
+{% block page_subtitle %}
+<p class="text-sm text-muted-foreground mt-1">Manage support knowledge base entries</p>
+{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="flex items-center justify-between mb-6">
+    <div class="flex items-center gap-3 flex-wrap">
+        <!-- Category Filter Pills -->
+        <a href="/support/knowledge"
+           class="px-3 py-1.5 rounded-full text-sm font-medium transition-colors
+               {% if active_category.is_none() %}bg-coral text-white{% else %}bg-muted text-foreground hover:bg-accent{% endif %}">
+            All
+        </a>
+        {% for cat in categories %}
+        <a href="/support/knowledge?category={{ cat }}"
+           class="px-3 py-1.5 rounded-full text-sm font-medium transition-colors capitalize
+               {% if active_category.as_deref() == Some(cat.as_str()) %}bg-coral text-white{% else %}bg-muted text-foreground hover:bg-accent{% endif %}">
+            {{ cat }}
+        </a>
+        {% endfor %}
+    </div>
+
+    <a href="/support/knowledge/new"
+       class="inline-flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors shrink-0">
+        <i class="ph ph-plus"></i>
+        New Entry
+    </a>
+</div>
+
+<!-- Knowledge Entries -->
+{% if entries.is_empty() %}
+<div class="bg-card rounded-lg border border-border p-12 text-center">
+    <div class="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
+        <i class="ph ph-book-open text-3xl text-muted-foreground"></i>
+    </div>
+    <h3 class="text-lg font-medium text-foreground mb-1">No knowledge base entries</h3>
+    <p class="text-sm text-muted-foreground mb-4">
+        {% if active_category.is_some() %}
+        No entries found in this category.
+        <a href="/support/knowledge" class="text-primary hover:underline">View all categories</a>
+        {% else %}
+        Start building your knowledge base to help the AI assistant answer customer questions.
+        {% endif %}
+    </p>
+    <a href="/support/knowledge/new"
+       class="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors">
+        <i class="ph ph-plus"></i>
+        Create First Entry
+    </a>
+</div>
+{% else %}
+<div class="space-y-4">
+    {% for entry in entries %}
+    <div class="bg-card rounded-lg border border-border hover:border-border/80 transition-colors">
+        <div class="px-6 py-4 flex items-start gap-4">
+            <!-- Icon -->
+            <div class="w-10 h-10 rounded-lg bg-muted flex items-center justify-center shrink-0 mt-0.5">
+                <i class="ph ph-book-open text-lg text-muted-foreground"></i>
+            </div>
+
+            <!-- Content -->
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 mb-1">
+                    <h3 class="text-sm font-semibold text-foreground">{{ entry.title }}</h3>
+                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-muted text-muted-foreground capitalize">
+                        {{ entry.category }}
+                    </span>
+                    {% if entry.is_active %}
+                    <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                        <span class="w-1 h-1 rounded-full bg-green-500"></span>
+                        Active
+                    </span>
+                    {% else %}
+                    <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+                        <span class="w-1 h-1 rounded-full bg-current opacity-50"></span>
+                        Inactive
+                    </span>
+                    {% endif %}
+                </div>
+                <p class="text-sm text-muted-foreground line-clamp-2 mb-2">{{ entry.content }}</p>
+                <p class="text-xs text-muted-foreground">
+                    Last updated {{ entry.updated_at.format("%b %d, %Y %H:%M") }}
+                </p>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex items-center gap-2 shrink-0">
+                <button type="button"
+                        hx-post="/support/knowledge/{{ entry.id }}/toggle"
+                        hx-target="body"
+                        hx-swap="outerHTML"
+                        class="p-2 rounded-lg transition-colors
+                            {% if entry.is_active %}text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/30
+                            {% else %}text-muted-foreground hover:bg-muted{% endif %}"
+                        title="{% if entry.is_active %}Deactivate{% else %}Activate{% endif %}">
+                    {% if entry.is_active %}
+                    <i class="ph ph-toggle-right text-xl"></i>
+                    {% else %}
+                    <i class="ph ph-toggle-left text-xl"></i>
+                    {% endif %}
+                </button>
+
+                <a href="/support/knowledge/{{ entry.id }}/edit"
+                   class="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+                   title="Edit">
+                    <i class="ph ph-pencil text-lg"></i>
+                </a>
+
+                <button type="button"
+                        hx-delete="/support/knowledge/{{ entry.id }}"
+                        hx-target="body"
+                        hx-swap="outerHTML"
+                        hx-confirm="Delete this knowledge base entry? This cannot be undone."
+                        class="p-2 text-muted-foreground hover:text-destructive hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                        title="Delete">
+                    <i class="ph ph-trash text-lg"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

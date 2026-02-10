@@ -1,0 +1,155 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Support Tickets{% endblock %}
+
+{% block page_title %}Support Tickets{% endblock %}
+
+{% block page_subtitle %}
+<p class="text-sm text-muted-foreground mt-1">Track and manage support tickets</p>
+{% endblock %}
+
+{% block content %}
+<div class="bg-card rounded-lg border border-border overflow-hidden">
+    <!-- Toolbar -->
+    <div class="px-6 py-4 border-b border-border">
+        <div class="flex items-center gap-3">
+            <a href="/support/tickets"
+               class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors {% if active_filter == "all" %}bg-coral text-white{% else %}bg-muted text-foreground hover:bg-accent{% endif %}">
+                All
+            </a>
+            <a href="/support/tickets?status=open"
+               class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors {% if active_filter == "open" %}bg-coral text-white{% else %}bg-muted text-foreground hover:bg-accent{% endif %}">
+                Open
+            </a>
+            <a href="/support/tickets?status=in_progress"
+               class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors {% if active_filter == "in_progress" %}bg-coral text-white{% else %}bg-muted text-foreground hover:bg-accent{% endif %}">
+                In Progress
+            </a>
+            <a href="/support/tickets?status=resolved"
+               class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors {% if active_filter == "resolved" %}bg-coral text-white{% else %}bg-muted text-foreground hover:bg-accent{% endif %}">
+                Resolved
+            </a>
+        </div>
+    </div>
+
+    <!-- Table -->
+    <div class="overflow-x-auto">
+        <table class="w-full">
+            <thead class="bg-muted">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">ID</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Category</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Priority</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Customer</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Created</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-border">
+                {% if tickets.is_empty() %}
+                <tr>
+                    <td colspan="7" class="px-6 py-12 text-center text-muted-foreground">
+                        <i class="ph ph-ticket text-4xl mb-2 block"></i>
+                        <p>No tickets found</p>
+                    </td>
+                </tr>
+                {% else %}
+                {% for item in tickets %}
+                <tr class="hover:bg-accent transition-colors">
+                    <!-- ID -->
+                    <td class="px-6 py-4">
+                        <a href="/support/tickets/{{ item.ticket.id }}" class="text-sm font-medium text-primary hover:underline">
+                            #{{ item.ticket.id }}
+                        </a>
+                    </td>
+
+                    <!-- Category -->
+                    <td class="px-6 py-4">
+                        {% match item.ticket.category %}
+                            {% when Some with (cat) %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-muted text-foreground capitalize">
+                                {{ cat }}
+                            </span>
+                            {% when None %}
+                            <span class="text-sm text-muted-foreground">--</span>
+                        {% endmatch %}
+                    </td>
+
+                    <!-- Priority -->
+                    <td class="px-6 py-4">
+                        {% if item.ticket.priority == "urgent" %}
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                            Urgent
+                        </span>
+                        {% elif item.ticket.priority == "high" %}
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">
+                            High
+                        </span>
+                        {% elif item.ticket.priority == "normal" %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                            Normal
+                        </span>
+                        {% else %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+                            Low
+                        </span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Status -->
+                    <td class="px-6 py-4">
+                        {% if item.ticket.status == "open" %}
+                        <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                            <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                            Open
+                        </span>
+                        {% elif item.ticket.status == "in_progress" %}
+                        <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400">
+                            <span class="w-1.5 h-1.5 rounded-full bg-yellow-500"></span>
+                            In Progress
+                        </span>
+                        {% elif item.ticket.status == "resolved" %}
+                        <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                            <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                            Resolved
+                        </span>
+                        {% else %}
+                        <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+                            <span class="w-1.5 h-1.5 rounded-full bg-current opacity-50"></span>
+                            Closed
+                        </span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Customer -->
+                    <td class="px-6 py-4">
+                        {% match item.customer_name %}
+                            {% when Some with (name) %}
+                            <p class="text-sm text-foreground">{{ name }}</p>
+                            {% when None %}
+                            <p class="text-sm text-muted-foreground">--</p>
+                        {% endmatch %}
+                    </td>
+
+                    <!-- Created -->
+                    <td class="px-6 py-4">
+                        <span class="text-sm text-muted-foreground">{{ item.ticket.created_at.format("%b %d, %Y") }}</span>
+                    </td>
+
+                    <!-- Actions -->
+                    <td class="px-6 py-4 text-right">
+                        <a href="/support/tickets/{{ item.ticket.id }}"
+                           class="p-2 text-muted-foreground hover:text-foreground transition-colors"
+                           title="View ticket">
+                            <i class="ph ph-eye"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

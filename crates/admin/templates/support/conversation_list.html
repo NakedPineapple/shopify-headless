@@ -1,0 +1,72 @@
+{% if conversations.is_empty() %}
+<div class="flex-1 flex items-center justify-center py-12">
+    <div class="text-center">
+        <i class="ph ph-chats-circle text-4xl text-muted-foreground mb-2"></i>
+        <p class="text-sm text-muted-foreground">No conversations found</p>
+    </div>
+</div>
+{% else %}
+{% for summary in conversations %}
+<div class="conversation-item px-4 py-3 cursor-pointer hover:bg-accent transition-colors"
+     hx-get="/support/conversations/{{ summary.conversation.id }}"
+     hx-target="#conversation-detail"
+     hx-swap="innerHTML"
+     onclick="selectConversation('{{ summary.conversation.id }}', this)">
+    <div class="flex items-start gap-3">
+        <!-- Avatar -->
+        <div class="w-9 h-9 rounded-full shrink-0 flex items-center justify-center
+            {% if summary.conversation.status == "escalated" %}bg-red-100 dark:bg-red-900/30{% else %}bg-muted{% endif %}">
+            <i class="ph ph-user text-sm
+                {% if summary.conversation.status == "escalated" %}text-red-600 dark:text-red-400{% else %}text-muted-foreground{% endif %}"></i>
+        </div>
+
+        <!-- Content -->
+        <div class="flex-1 min-w-0">
+            <div class="flex items-center justify-between gap-2 mb-0.5">
+                <p class="text-sm font-medium text-foreground truncate">
+                    {% match summary.conversation.customer_name %}
+                        {% when Some with (name) %}{{ name }}
+                        {% when None %}Anonymous
+                    {% endmatch %}
+                </p>
+                <span class="text-xs text-muted-foreground whitespace-nowrap">{{ summary.conversation.updated_at.format("%b %d %H:%M") }}</span>
+            </div>
+
+            {% if let Some(preview) = summary.last_message_preview %}
+            <p class="text-xs text-muted-foreground truncate mb-1.5">{{ preview }}</p>
+            {% endif %}
+
+            <!-- Status Badge -->
+            <div class="flex items-center gap-2">
+                {% if summary.conversation.status == "escalated" %}
+                <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                    <i class="ph ph-warning-circle mr-1 text-[10px]"></i>
+                    Escalated
+                </span>
+                {% elif summary.conversation.status == "waiting" %}
+                <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400">
+                    <i class="ph ph-clock mr-1 text-[10px]"></i>
+                    Waiting
+                </span>
+                {% elif summary.conversation.status == "active" %}
+                <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                    Active
+                </span>
+                {% elif summary.conversation.status == "resolved" %}
+                <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                    <i class="ph ph-check mr-1 text-[10px]"></i>
+                    Resolved
+                </span>
+                {% elif summary.conversation.status == "closed" %}
+                <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+                    Closed
+                </span>
+                {% endif %}
+
+                <span class="text-xs text-muted-foreground">{{ summary.message_count }} msgs</span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endif %}

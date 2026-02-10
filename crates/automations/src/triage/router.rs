@@ -9,6 +9,8 @@
 use naked_pineapple_services::claude::{ClaudeClient, ClaudeError};
 use naked_pineapple_services::klaviyo::{KlaviyoClient, KlaviyoError};
 use naked_pineapple_services::slack::SlackClient;
+use naked_pineapple_support::db::conversation::ConversationRepository;
+use naked_pineapple_support::models::CreateConversationParams;
 use sqlx::PgPool;
 use tracing::{debug, error, info, instrument};
 
@@ -39,6 +41,8 @@ pub struct RouteParams<'a> {
     pub classification: &'a ClassificationResult,
     /// Conversation ID for threading checks.
     pub conversation_id: &'a str,
+    /// Storefront support pool (optional — for creating support conversations from email).
+    pub support_pool: Option<&'a PgPool>,
 }
 
 /// Route a classified email to the appropriate destination.
@@ -155,6 +159,11 @@ async fn route_draft_response(
     // Send Slack review message
     if let Some(slack) = slack {
         send_review_message(slack, params, &draft).await;
+    }
+
+    // Create support conversation in storefront DB for unified admin inbox
+    if let Some(sp) = params.support_pool {
+        create_support_conversation(sp, params).await;
     }
 
     info!(
@@ -338,6 +347,36 @@ async fn fetch_shopify_context(
         None
     } else {
         Some(context_parts.join("\n"))
+    }
+}
+
+/// Create a support conversation in the storefront DB so the email appears in the admin inbox.
+async fn create_support_conversation(support_pool: &PgPool, params: &RouteParams<'_>) {
+    let repo = ConversationRepository::new(support_pool);
+    let conv_params = CreateConversationParams {
+        session_token: format!("email-{}", params.email_id),
+        shopify_customer_id: None,
+        customer_email: Some(params.from_address.to_string()),
+        customer_name: params.from_name.map(String::from),
+        is_authenticated: false,
+        source: Some("email".to_string()),
+    };
+
+    match repo.create(&conv_params).await {
+        Ok(conv) => {
+            info!(
+                email_id = params.email_id,
+                conversation_id = conv.id.as_i32(),
+                "support conversation created from email"
+            );
+        }
+        Err(e) => {
+            error!(
+                email_id = params.email_id,
+                error = %e,
+                "failed to create support conversation from email"
+            );
+        }
     }
 }
 

@@ -1,0 +1,90 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO storefront.support_ticket\n                (support_conversation_id, category, priority)\n            VALUES ($1, $2, $3)\n            RETURNING\n                id, support_conversation_id, category, priority, status,\n                assigned_admin_id, resolution_notes, slack_message_ts,\n                slack_channel_id,\n                created_at as \"created_at: DateTime<Utc>\",\n                updated_at as \"updated_at: DateTime<Utc>\",\n                resolved_at as \"resolved_at: DateTime<Utc>\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "support_conversation_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "category",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "priority",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "assigned_admin_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "resolution_notes",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "slack_message_ts",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "slack_channel_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "updated_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 11,
+        "name": "resolved_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "bd16507ea67f74a08e79e79d4930e95807915c40f8a347f94a54e30c1f16f4d0"
+}

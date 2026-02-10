@@ -146,11 +146,28 @@ async fn main() {
         }
     });
 
+    let support_pool = if let Some(ref url) = config.storefront_database_url {
+        match db::create_pool(url).await {
+            Ok(p) => {
+                tracing::info!("support pool created (storefront DB)");
+                Some(p)
+            }
+            Err(e) => {
+                tracing::warn!(error = %e, "failed to create support pool, email→chat disabled");
+                None
+            }
+        }
+    } else {
+        tracing::info!("STOREFRONT_DATABASE_URL not set, email→chat integration disabled");
+        None
+    };
+
     let health_port = config.health_port;
     let webhook_config = config.webhook.clone();
     let state = AppState::new(state::AppStateParams {
         config,
         pool: pool.clone(),
+        support_pool,
         m365,
         claude,
         slack: slack_client,

@@ -22,6 +22,7 @@ struct ConversationRow {
     escalated_at: Option<DateTime<Utc>>,
     escalation_reason: Option<String>,
     title: Option<String>,
+    source: String,
     is_authenticated: bool,
     created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
@@ -43,6 +44,7 @@ impl From<ConversationRow> for SupportConversation {
             escalated_at: row.escalated_at,
             escalation_reason: row.escalation_reason,
             title: row.title,
+            source: row.source,
             is_authenticated: row.is_authenticated,
             created_at: row.created_at,
             updated_at: row.updated_at,
@@ -73,18 +75,19 @@ impl<'a> ConversationRepository<'a> {
         &self,
         params: &CreateConversationParams,
     ) -> Result<SupportConversation, SupportError> {
+        let source = params.source.as_deref().unwrap_or("chat");
         let row = sqlx::query_as!(
             ConversationRow,
             r#"
             INSERT INTO storefront.support_conversation
-                (session_token, shopify_customer_id, customer_email, customer_name, is_authenticated)
-            VALUES ($1, $2, $3, $4, $5)
+                (session_token, shopify_customer_id, customer_email, customer_name, is_authenticated, source)
+            VALUES ($1, $2, $3, $4, $5, $6)
             RETURNING
                 id, session_token, shopify_customer_id, customer_email, customer_name,
                 status as "status: SupportConversationStatus",
                 assigned_admin_id,
                 escalated_at as "escalated_at: DateTime<Utc>",
-                escalation_reason, title, is_authenticated,
+                escalation_reason, title, source, is_authenticated,
                 created_at as "created_at: DateTime<Utc>",
                 updated_at as "updated_at: DateTime<Utc>",
                 resolved_at as "resolved_at: DateTime<Utc>",
@@ -96,6 +99,7 @@ impl<'a> ConversationRepository<'a> {
             params.customer_email,
             params.customer_name,
             params.is_authenticated,
+            source,
         )
         .fetch_one(self.pool)
         .await?;
@@ -120,7 +124,7 @@ impl<'a> ConversationRepository<'a> {
                 status as "status: SupportConversationStatus",
                 assigned_admin_id,
                 escalated_at as "escalated_at: DateTime<Utc>",
-                escalation_reason, title, is_authenticated,
+                escalation_reason, title, source, is_authenticated,
                 created_at as "created_at: DateTime<Utc>",
                 updated_at as "updated_at: DateTime<Utc>",
                 resolved_at as "resolved_at: DateTime<Utc>",
@@ -155,7 +159,7 @@ impl<'a> ConversationRepository<'a> {
                 status as "status: SupportConversationStatus",
                 assigned_admin_id,
                 escalated_at as "escalated_at: DateTime<Utc>",
-                escalation_reason, title, is_authenticated,
+                escalation_reason, title, source, is_authenticated,
                 created_at as "created_at: DateTime<Utc>",
                 updated_at as "updated_at: DateTime<Utc>",
                 resolved_at as "resolved_at: DateTime<Utc>",
@@ -341,7 +345,7 @@ impl<'a> ConversationRepository<'a> {
                 c.status as "status: SupportConversationStatus",
                 c.assigned_admin_id,
                 c.escalated_at as "escalated_at: DateTime<Utc>",
-                c.escalation_reason, c.title, c.is_authenticated,
+                c.escalation_reason, c.title, c.source, c.is_authenticated,
                 c.created_at as "created_at: DateTime<Utc>",
                 c.updated_at as "updated_at: DateTime<Utc>",
                 c.resolved_at as "resolved_at: DateTime<Utc>",
@@ -410,7 +414,7 @@ impl<'a> ConversationRepository<'a> {
                 status as "status: SupportConversationStatus",
                 assigned_admin_id,
                 escalated_at as "escalated_at: DateTime<Utc>",
-                escalation_reason, title, is_authenticated,
+                escalation_reason, title, source, is_authenticated,
                 created_at as "created_at: DateTime<Utc>",
                 updated_at as "updated_at: DateTime<Utc>",
                 resolved_at as "resolved_at: DateTime<Utc>",
@@ -450,6 +454,7 @@ struct ConversationSummaryRow {
     escalated_at: Option<DateTime<Utc>>,
     escalation_reason: Option<String>,
     title: Option<String>,
+    source: String,
     is_authenticated: bool,
     created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
@@ -474,6 +479,7 @@ impl From<ConversationSummaryRow> for ConversationSummary {
                 escalated_at: row.escalated_at,
                 escalation_reason: row.escalation_reason,
                 title: row.title,
+                source: row.source,
                 is_authenticated: row.is_authenticated,
                 created_at: row.created_at,
                 updated_at: row.updated_at,

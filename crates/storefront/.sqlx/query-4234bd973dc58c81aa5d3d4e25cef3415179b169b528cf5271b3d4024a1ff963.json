@@ -1,0 +1,71 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                id, title, content, category, is_active, created_by,\n                created_at as \"created_at: DateTime<Utc>\",\n                updated_at as \"updated_at: DateTime<Utc>\",\n                1 - (embedding <=> $1::text::vector) as similarity\n            FROM storefront.support_knowledge\n            WHERE is_active = TRUE\n            ORDER BY embedding <=> $1::text::vector\n            LIMIT $2\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "content",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "category",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "is_active",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 5,
+        "name": "created_by",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "created_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 7,
+        "name": "updated_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "similarity",
+        "type_info": "Float8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "4234bd973dc58c81aa5d3d4e25cef3415179b169b528cf5271b3d4024a1ff963"
+}

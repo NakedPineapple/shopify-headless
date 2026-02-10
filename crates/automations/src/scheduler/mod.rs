@@ -185,6 +185,7 @@ impl Scheduler {
                         slack: self.state.slack(),
                         klaviyo: self.state.klaviyo(),
                         shopify: self.state.shopify(),
+                        support_pool: self.state.support_pool(),
                     };
 
                     triage::process_messages(&clients, mailbox, messages).await;

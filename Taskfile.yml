@@ -302,11 +302,11 @@ tasks:
   sqlx:prepare:
     desc: "Generate sqlx offline cache for all services"
     cmds:
+      - task: sqlx:prepare:support
       - task: sqlx:prepare:storefront
       - task: sqlx:prepare:admin
       - task: sqlx:prepare:automations
       - task: sqlx:prepare:cli
-      - task: sqlx:prepare:support
 
   sqlx:prepare:storefront:
     desc: "Generate sqlx offline cache for storefront"

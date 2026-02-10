@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            INSERT INTO storefront.support_conversation\n                (session_token, shopify_customer_id, customer_email, customer_name, is_authenticated)\n            VALUES ($1, $2, $3, $4, $5)\n            RETURNING\n                id, session_token, shopify_customer_id, customer_email, customer_name,\n                status as \"status: SupportConversationStatus\",\n                assigned_admin_id,\n                escalated_at as \"escalated_at: DateTime<Utc>\",\n                escalation_reason, title, is_authenticated,\n                created_at as \"created_at: DateTime<Utc>\",\n                updated_at as \"updated_at: DateTime<Utc>\",\n                resolved_at as \"resolved_at: DateTime<Utc>\",\n                last_customer_message_at as \"last_customer_message_at: DateTime<Utc>\",\n                last_agent_message_at as \"last_agent_message_at: DateTime<Utc>\"\n            ",
+  "query": "\n            INSERT INTO storefront.support_conversation\n                (session_token, shopify_customer_id, customer_email, customer_name, is_authenticated, source)\n            VALUES ($1, $2, $3, $4, $5, $6)\n            RETURNING\n                id, session_token, shopify_customer_id, customer_email, customer_name,\n                status as \"status: SupportConversationStatus\",\n                assigned_admin_id,\n                escalated_at as \"escalated_at: DateTime<Utc>\",\n                escalation_reason, title, source, is_authenticated,\n                created_at as \"created_at: DateTime<Utc>\",\n                updated_at as \"updated_at: DateTime<Utc>\",\n                resolved_at as \"resolved_at: DateTime<Utc>\",\n                last_customer_message_at as \"last_customer_message_at: DateTime<Utc>\",\n                last_agent_message_at as \"last_agent_message_at: DateTime<Utc>\"\n            ",
   "describe": {
     "columns": [
       {
@@ -68,31 +68,36 @@
       },
       {
         "ordinal": 10,
+        "name": "source",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 11,
         "name": "is_authenticated",
         "type_info": "Bool"
       },
       {
-        "ordinal": 11,
+        "ordinal": 12,
         "name": "created_at: DateTime<Utc>",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 12,
+        "ordinal": 13,
         "name": "updated_at: DateTime<Utc>",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 13,
+        "ordinal": 14,
         "name": "resolved_at: DateTime<Utc>",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 14,
+        "ordinal": 15,
         "name": "last_customer_message_at: DateTime<Utc>",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 15,
+        "ordinal": 16,
         "name": "last_agent_message_at: DateTime<Utc>",
         "type_info": "Timestamptz"
       }
@@ -103,7 +108,8 @@
         "Text",
         "Text",
         "Text",
-        "Bool"
+        "Bool",
+        "Text"
       ]
     },
     "nullable": [
@@ -120,10 +126,11 @@
       false,
       false,
       false,
+      false,
       true,
       true,
       true
     ]
   },
-  "hash": "41db60b7d4c03580bd6726ab3c92b595a92f69f95675d3c2087bced2e9968864"
+  "hash": "737452c3504daecd45fb682a10ec99c431befcd9351509724405b9171b4ae02d"
 }

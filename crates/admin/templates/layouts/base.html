@@ -130,6 +130,15 @@
                         <span class="sidebar-text text-xs font-medium text-sidebar-muted uppercase tracking-wider">Tools</span>
                     </div>
                     <div class="space-y-1 px-3">
+                        <a href="/support"
+                           class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors {% if current_path.starts_with("/support") %}bg-coral text-white{% else %}text-sidebar-foreground hover:bg-sidebar-accent hover:text-white{% endif %}">
+                            <i class="ph ph-headset text-xl"></i>
+                            <span class="sidebar-text">Support</span>
+                            <span class="sidebar-text ml-auto"
+                                  hx-get="/support/escalated-count"
+                                  hx-trigger="load, every 30s"
+                                  hx-swap="innerHTML"></span>
+                        </a>
                         <a href="/newsletter"
                            class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors {% if current_path.starts_with("/newsletter") %}bg-coral text-white{% else %}text-sidebar-foreground hover:bg-sidebar-accent hover:text-white{% endif %}">
                             <i class="ph ph-megaphone text-xl"></i>

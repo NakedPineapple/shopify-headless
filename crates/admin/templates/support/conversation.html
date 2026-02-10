@@ -1,0 +1,159 @@
+<!-- Conversation Detail Fragment (loaded via HTMX into #conversation-detail) -->
+
+<!-- Header -->
+<div class="px-6 py-4 border-b border-border flex items-center justify-between">
+    <div class="flex items-center gap-3 min-w-0">
+        <div class="w-10 h-10 rounded-full bg-muted flex items-center justify-center shrink-0">
+            <i class="ph ph-user text-lg text-muted-foreground"></i>
+        </div>
+        <div class="min-w-0">
+            <div class="flex items-center gap-2">
+                <h3 class="font-semibold text-foreground truncate">
+                    {% match conversation.customer_name %}
+                        {% when Some with (name) %}{{ name }}
+                        {% when None %}Anonymous
+                    {% endmatch %}
+                </h3>
+                {% if conversation.status == "escalated" %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                    Escalated
+                </span>
+                {% elif conversation.status == "waiting" %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400">
+                    Waiting
+                </span>
+                {% elif conversation.status == "active" %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                    Active
+                </span>
+                {% elif conversation.status == "resolved" %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                    Resolved
+                </span>
+                {% elif conversation.status == "closed" %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+                    Closed
+                </span>
+                {% endif %}
+            </div>
+            {% if let Some(email) = conversation.customer_email %}
+            <p class="text-sm text-muted-foreground truncate">{{ email }}</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="flex items-center gap-2 shrink-0">
+        <button type="button"
+                hx-post="/support/conversations/{{ conversation.id }}/assign"
+                hx-target="#conversation-detail"
+                hx-swap="innerHTML"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-muted text-foreground rounded-lg text-sm hover:bg-accent transition-colors"
+                title="Assign to me">
+            <i class="ph ph-user-plus"></i>
+            Assign
+        </button>
+        {% if conversation.status != "resolved" %}
+        <button type="button"
+                hx-post="/support/conversations/{{ conversation.id }}/resolve"
+                hx-target="#conversation-detail"
+                hx-swap="innerHTML"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded-lg text-sm hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors"
+                title="Resolve conversation">
+            <i class="ph ph-check-circle"></i>
+            Resolve
+        </button>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Message Thread -->
+<div class="flex-1 overflow-y-auto p-6 space-y-4" id="message-thread">
+    {% for message in messages %}
+    {% if message.role == "system" %}
+    <!-- System Message -->
+    <div class="flex justify-center">
+        <p class="text-xs text-muted-foreground italic px-4 py-1.5 bg-muted/50 rounded-full">
+            {{ message.content }}
+            <span class="ml-2 opacity-70">{{ message.created_at.format("%H:%M") }}</span>
+        </p>
+    </div>
+    {% elif message.role == "tool_use" || message.role == "tool_result" %}
+    {# Skip tool messages in the UI #}
+    {% else %}
+    <div class="flex gap-3">
+        <!-- Avatar -->
+        <div class="w-8 h-8 rounded-full shrink-0 flex items-center justify-center
+            {% if message.role == "customer" %}bg-blue-100 dark:bg-blue-900/30
+            {% elif message.role == "assistant" %}bg-violet-100 dark:bg-violet-900/30
+            {% elif message.role == "agent" %}bg-green-100 dark:bg-green-900/30
+            {% endif %}">
+            {% if message.role == "customer" %}
+            <i class="ph ph-user text-sm text-blue-600 dark:text-blue-400"></i>
+            {% elif message.role == "assistant" %}
+            <i class="ph ph-robot text-sm text-violet-600 dark:text-violet-400"></i>
+            {% elif message.role == "agent" %}
+            <i class="ph ph-headset text-sm text-green-600 dark:text-green-400"></i>
+            {% endif %}
+        </div>
+
+        <!-- Message Bubble -->
+        <div class="flex-1 max-w-[85%]">
+            <div class="flex items-center gap-2 mb-1">
+                <span class="text-xs font-medium
+                    {% if message.role == "customer" %}text-blue-600 dark:text-blue-400
+                    {% elif message.role == "assistant" %}text-violet-600 dark:text-violet-400
+                    {% elif message.role == "agent" %}text-green-600 dark:text-green-400
+                    {% endif %}">
+                    {% if message.role == "customer" %}Customer
+                    {% elif message.role == "assistant" %}AI Assistant
+                    {% elif message.role == "agent" %}Agent
+                    {% endif %}
+                </span>
+                <span class="text-xs text-muted-foreground">{{ message.created_at.format("%b %d %H:%M") }}</span>
+            </div>
+            <div class="rounded-lg px-4 py-3 text-sm
+                {% if message.role == "customer" %}bg-blue-50 dark:bg-blue-900/20 text-foreground
+                {% elif message.role == "assistant" %}bg-card border border-border text-foreground
+                {% elif message.role == "agent" %}bg-green-50 dark:bg-green-900/20 text-foreground
+                {% endif %}">
+                {{ message.content }}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    {% endfor %}
+</div>
+
+<!-- Reply Composer -->
+{% if conversation.status != "closed" %}
+<div class="border-t border-border p-4">
+    <form hx-post="/support/conversations/{{ conversation.id }}/reply"
+          hx-target="#conversation-detail"
+          hx-swap="innerHTML">
+        <div class="flex gap-3">
+            <div class="flex-1">
+                <textarea name="message"
+                          rows="3"
+                          required
+                          placeholder="Type your reply..."
+                          class="w-full px-4 py-3 bg-input border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-colors placeholder:text-muted-foreground resize-none"></textarea>
+            </div>
+        </div>
+        <div class="flex items-center justify-end mt-3">
+            <button type="submit"
+                    class="inline-flex items-center gap-2 px-5 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors">
+                <i class="ph ph-paper-plane-right"></i>
+                Send
+            </button>
+        </div>
+    </form>
+</div>
+{% else %}
+<div class="border-t border-border px-4 py-3 bg-muted/30">
+    <p class="text-sm text-muted-foreground text-center">
+        <i class="ph ph-lock mr-1"></i>
+        This conversation is closed
+    </p>
+</div>
+{% endif %}

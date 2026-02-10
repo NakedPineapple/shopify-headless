@@ -1,0 +1,107 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Support Inbox{% endblock %}
+
+{% block page_title %}Support Inbox{% endblock %}
+
+{% block page_subtitle %}
+<p class="text-sm text-muted-foreground mt-1">Manage customer conversations</p>
+{% endblock %}
+
+{% block content %}
+<div class="flex gap-6 h-[calc(100vh-12rem)]">
+    <!-- Left Panel: Conversation List -->
+    <div class="w-full lg:w-[380px] shrink-0 bg-card rounded-lg border border-border flex flex-col overflow-hidden">
+        <!-- Filter Tabs -->
+        <div class="border-b border-border">
+            <nav class="flex" id="inbox-tabs">
+                <button type="button"
+                        class="inbox-tab flex-1 px-4 py-3 text-sm font-medium text-center transition-colors border-b-2 {% if active_filter == "all" %}border-coral text-foreground{% else %}border-transparent text-muted-foreground hover:text-foreground{% endif %}"
+                        data-filter="all"
+                        hx-get="/support/conversations?status=all"
+                        hx-target="#conversation-list"
+                        hx-swap="innerHTML"
+                        onclick="setActiveTab(this)">
+                    All
+                </button>
+                <button type="button"
+                        class="inbox-tab flex-1 px-4 py-3 text-sm font-medium text-center transition-colors border-b-2 {% if active_filter == "escalated" %}border-coral text-foreground{% else %}border-transparent text-muted-foreground hover:text-foreground{% endif %}"
+                        data-filter="escalated"
+                        hx-get="/support/conversations?status=escalated"
+                        hx-target="#conversation-list"
+                        hx-swap="innerHTML"
+                        onclick="setActiveTab(this)">
+                    Escalated
+                    {% if escalated_count > 0 %}
+                    <span class="ml-1 inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-500 text-white text-xs">{{ escalated_count }}</span>
+                    {% endif %}
+                </button>
+                <button type="button"
+                        class="inbox-tab flex-1 px-4 py-3 text-sm font-medium text-center transition-colors border-b-2 {% if active_filter == "waiting" %}border-coral text-foreground{% else %}border-transparent text-muted-foreground hover:text-foreground{% endif %}"
+                        data-filter="waiting"
+                        hx-get="/support/conversations?status=waiting"
+                        hx-target="#conversation-list"
+                        hx-swap="innerHTML"
+                        onclick="setActiveTab(this)">
+                    Waiting
+                </button>
+                <button type="button"
+                        class="inbox-tab flex-1 px-4 py-3 text-sm font-medium text-center transition-colors border-b-2 {% if active_filter == "mine" %}border-coral text-foreground{% else %}border-transparent text-muted-foreground hover:text-foreground{% endif %}"
+                        data-filter="mine"
+                        hx-get="/support/conversations?assigned_to=me"
+                        hx-target="#conversation-list"
+                        hx-swap="innerHTML"
+                        onclick="setActiveTab(this)">
+                    Mine
+                </button>
+            </nav>
+        </div>
+
+        <!-- Conversation List -->
+        <div id="conversation-list" class="flex-1 overflow-y-auto divide-y divide-border"
+             hx-get="/support/conversations?status=all"
+             hx-trigger="load, every 10s"
+             hx-swap="innerHTML">
+            <!-- Loaded via HTMX -->
+        </div>
+    </div>
+
+    <!-- Right Panel: Conversation Detail -->
+    <div id="conversation-detail" class="hidden lg:flex flex-1 bg-card rounded-lg border border-border flex-col overflow-hidden">
+        <!-- Empty State -->
+        <div class="flex-1 flex items-center justify-center">
+            <div class="text-center">
+                <div class="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
+                    <i class="ph ph-chats text-3xl text-muted-foreground"></i>
+                </div>
+                <h3 class="text-lg font-medium text-foreground mb-1">Select a conversation</h3>
+                <p class="text-sm text-muted-foreground">Choose a conversation from the list to view the message thread</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function setActiveTab(btn) {
+    document.querySelectorAll('.inbox-tab').forEach(function(tab) {
+        tab.classList.remove('border-coral', 'text-foreground');
+        tab.classList.add('border-transparent', 'text-muted-foreground');
+    });
+    btn.classList.remove('border-transparent', 'text-muted-foreground');
+    btn.classList.add('border-coral', 'text-foreground');
+}
+
+function selectConversation(id, el) {
+    document.querySelectorAll('.conversation-item').forEach(function(item) {
+        item.classList.remove('bg-accent');
+    });
+    el.classList.add('bg-accent');
+
+    var detail = document.getElementById('conversation-detail');
+    detail.classList.remove('hidden');
+    detail.classList.add('flex');
+}
+</script>
+{% endblock %}

@@ -12,6 +12,7 @@ use naked_pineapple_services::claude::{
     StopReason, StreamEvent,
 };
 use naked_pineapple_services::openai::EmbeddingClient;
+use naked_pineapple_services::slack::{Block, PlainText, SlackClient, Text};
 use sqlx::PgPool;
 use tracing::{debug, error, warn};
 
@@ -35,6 +36,7 @@ pub struct SupportChatServiceParams<'a> {
     pub system_prompt: &'a str,
     pub is_authenticated: bool,
     pub tool_context: &'a dyn ToolContext,
+    pub slack: Option<&'a SlackClient>,
 }
 
 /// Service that handles support chat interactions.
@@ -45,6 +47,7 @@ pub struct SupportChatService<'a> {
     system_prompt: &'a str,
     is_authenticated: bool,
     tool_context: &'a dyn ToolContext,
+    slack: Option<&'a SlackClient>,
 }
 
 impl<'a> SupportChatService<'a> {
@@ -57,6 +60,7 @@ impl<'a> SupportChatService<'a> {
             system_prompt: params.system_prompt,
             is_authenticated: params.is_authenticated,
             tool_context: params.tool_context,
+            slack: params.slack,
         }
     }
 
@@ -409,7 +413,7 @@ impl<'a> SupportChatService<'a> {
         if let Err(e) = ticket_repo
             .create(&crate::models::CreateTicketParams {
                 support_conversation_id: conversation_id,
-                category,
+                category: category.clone(),
                 priority: "normal".to_string(),
             })
             .await
@@ -417,10 +421,74 @@ impl<'a> SupportChatService<'a> {
             error!(error = %e, "Failed to create support ticket");
         }
 
+        // Send Slack notification if configured
+        if let Some(slack) = self.slack {
+            let conv = conv_repo.get_by_id(conversation_id).await.ok();
+            self.send_escalation_slack(slack, conversation_id, conv.as_ref(), reason, category.as_deref())
+                .await;
+        }
+
         "I've created a support ticket and our team will be notified. A human agent will \
             review your conversation and follow up with you soon. Is there anything else I \
             can help with in the meantime?"
             .to_string()
+    }
+
+    /// Send a Slack notification when a conversation is escalated.
+    async fn send_escalation_slack(
+        &self,
+        slack: &SlackClient,
+        conversation_id: SupportConversationId,
+        conversation: Option<&crate::models::SupportConversation>,
+        reason: &str,
+        category: Option<&str>,
+    ) {
+        let customer = conversation
+            .and_then(|c| c.customer_name.as_deref())
+            .unwrap_or("Anonymous");
+        let email = conversation
+            .and_then(|c| c.customer_email.as_deref())
+            .unwrap_or("unknown");
+        let inbox_link = format!(
+            "https://admin.nakedpineapple.co/support/conversations/{}",
+            conversation_id.as_i32()
+        );
+
+        let mut context_parts = vec![format!("*Customer:* {customer} ({email})")];
+        if let Some(cat) = category {
+            context_parts.push(format!("*Category:* {cat}"));
+        }
+
+        let blocks = vec![
+            Block::Header {
+                text: PlainText::new("New Support Escalation"),
+            },
+            Block::Section {
+                text: Text::mrkdwn(format!("*Reason:* {reason}")),
+                accessory: None,
+            },
+            Block::Context {
+                elements: context_parts
+                    .into_iter()
+                    .map(|t| naked_pineapple_services::slack::ContextElement::Mrkdwn { text: t })
+                    .collect(),
+            },
+            Block::Section {
+                text: Text::mrkdwn(format!("<{inbox_link}|View in Admin Inbox>")),
+                accessory: None,
+            },
+        ];
+
+        if let Err(e) = slack
+            .post_message(
+                slack.default_channel(),
+                blocks,
+                Some("New support escalation — customer needs human help"),
+            )
+            .await
+        {
+            error!(error = %e, "Failed to send Slack escalation notification");
+        }
     }
 }
 

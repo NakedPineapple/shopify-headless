@@ -20,6 +20,7 @@ pub struct SupportConversation {
     pub escalated_at: Option<DateTime<Utc>>,
     pub escalation_reason: Option<String>,
     pub title: Option<String>,
+    pub source: String,
     pub is_authenticated: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -78,6 +79,8 @@ pub struct CreateConversationParams {
     pub customer_email: Option<String>,
     pub customer_name: Option<String>,
     pub is_authenticated: bool,
+    /// Origin of the conversation: `"chat"` (default) or `"email"`.
+    pub source: Option<String>,
 }
 
 /// Parameters for creating a new message.

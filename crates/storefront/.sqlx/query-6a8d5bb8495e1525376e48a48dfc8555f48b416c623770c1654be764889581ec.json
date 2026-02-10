@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE storefront.support_ticket\n            SET status = $2, priority = $3\n            WHERE id = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6a8d5bb8495e1525376e48a48dfc8555f48b416c623770c1654be764889581ec"
+}
