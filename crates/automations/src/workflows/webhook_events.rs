@@ -18,6 +18,8 @@ pub struct WebhookDispatchClients<'a> {
     pub shopify: Option<&'a ShopifyClient>,
     pub klaviyo: Option<&'a KlaviyoClient>,
     pub slack: Option<&'a SlackClient>,
+    /// Internal storefront URL for search index refresh (if configured).
+    pub storefront_url: Option<&'a str>,
 }
 
 /// A pending webhook event fetched from the database.
@@ -110,16 +112,40 @@ async fn dispatch(
     Ok(())
 }
 
-/// Dispatch a Shopify webhook event through the existing order/fulfillment pipeline.
+/// Dispatch a Shopify webhook event through the appropriate handler.
 ///
-/// Fetches the full order from the Shopify Admin API and feeds it through the
-/// same tracking functions the poller uses, deduplicating against `outbound_email_queue`.
+/// Order/fulfillment events go through the Klaviyo tracking pipeline.
+/// Product events trigger storefront search index updates and Slack notifications.
 async fn dispatch_shopify(
     clients: &WebhookDispatchClients<'_>,
     event: &PendingEvent,
 ) -> Result<(), String> {
+    match event.event_type.as_str() {
+        "orders/create" | "fulfillments/create" | "fulfillments/update" => {
+            dispatch_order_event(clients, event).await?;
+        }
+        "products/create" | "products/update" => {
+            handle_product_change(clients, event).await?;
+        }
+        "products/delete" => {
+            handle_product_delete(clients, event).await?;
+        }
+        other => {
+            debug!(event_type = other, "unhandled Shopify webhook event type");
+        }
+    }
+
+    info!(event_type = %event.event_type, "dispatched Shopify webhook event");
+    Ok(())
+}
+
+/// Dispatch an order or fulfillment event through the Klaviyo tracking pipeline.
+async fn dispatch_order_event(
+    clients: &WebhookDispatchClients<'_>,
+    event: &PendingEvent,
+) -> Result<(), String> {
     let (Some(shopify), Some(klaviyo)) = (clients.shopify, clients.klaviyo) else {
-        debug!("Shopify/Klaviyo not configured, skipping webhook dispatch");
+        debug!("Shopify/Klaviyo not configured, skipping order event dispatch");
         return Ok(());
     };
 
@@ -144,12 +170,9 @@ async fn dispatch_shopify(
                 .await
                 .map_err(|e| e.to_string())?;
         }
-        other => {
-            debug!(event_type = other, "unhandled Shopify webhook event type");
-        }
+        _ => {}
     }
 
-    info!(event_type = %event.event_type, "dispatched Shopify webhook event");
     Ok(())
 }
 
@@ -281,6 +304,135 @@ fn json_str<'a>(value: &'a serde_json::Value, path: &[&str]) -> &'a str {
         };
     }
     current.as_str().unwrap_or("\u{2014}")
+}
+
+// =============================================================================
+// Product webhook handlers
+// =============================================================================
+
+/// Handle a product create or update webhook.
+///
+/// Extracts the product handle, notifies the storefront to refresh its search
+/// index, and sends a Slack notification.
+async fn handle_product_change(
+    clients: &WebhookDispatchClients<'_>,
+    event: &PendingEvent,
+) -> Result<(), String> {
+    let title = json_str(&event.payload, &["title"]);
+    let handle = json_str(&event.payload, &["handle"]);
+    let action = if event.event_type == "products/create" {
+        "created"
+    } else {
+        "updated"
+    };
+
+    // Notify storefront to refresh search index
+    if !handle.is_empty() && handle != "\u{2014}" {
+        notify_storefront(clients.storefront_url, "refresh", handle).await;
+    }
+
+    // Send Slack notification
+    send_product_slack_notification(clients.slack, action, title, handle).await;
+
+    Ok(())
+}
+
+/// Handle a product delete webhook.
+///
+/// Notifies the storefront to remove the product from its search index
+/// and sends a Slack notification.
+async fn handle_product_delete(
+    clients: &WebhookDispatchClients<'_>,
+    event: &PendingEvent,
+) -> Result<(), String> {
+    let title = json_str(&event.payload, &["title"]);
+    let handle = json_str(&event.payload, &["handle"]);
+
+    // Notify storefront to delete from search index
+    if !handle.is_empty() && handle != "\u{2014}" {
+        notify_storefront(clients.storefront_url, "delete", handle).await;
+    }
+
+    // Send Slack notification
+    send_product_slack_notification(clients.slack, "deleted", title, handle).await;
+
+    Ok(())
+}
+
+/// Send an HTTP request to the storefront's internal index endpoint.
+async fn notify_storefront(storefront_url: Option<&str>, action: &str, handle: &str) {
+    let Some(base_url) = storefront_url else {
+        debug!("storefront URL not configured, skipping index notification");
+        return;
+    };
+
+    let endpoint = format!("{base_url}/internal/index/{action}");
+    let body = serde_json::json!({ "handle": handle });
+
+    let client = reqwest::Client::new();
+    match client.post(&endpoint).json(&body).send().await {
+        Ok(resp) if resp.status().is_success() => {
+            info!(
+                action,
+                handle, "notified storefront to {action} product in index"
+            );
+        }
+        Ok(resp) => {
+            warn!(
+                action,
+                handle,
+                status = %resp.status(),
+                "storefront index notification returned non-success"
+            );
+        }
+        Err(e) => {
+            warn!(
+                action,
+                handle,
+                error = %e,
+                "failed to notify storefront of product change"
+            );
+        }
+    }
+}
+
+/// Send a Slack notification about a product change.
+async fn send_product_slack_notification(
+    slack: Option<&SlackClient>,
+    action: &str,
+    title: &str,
+    handle: &str,
+) {
+    use naked_pineapple_services::slack::{Block, ContextElement, PlainText, Text};
+
+    let Some(slack) = slack else {
+        return;
+    };
+
+    let blocks = vec![
+        Block::Header {
+            text: PlainText::new(format!("Product {action}")),
+        },
+        Block::Section {
+            text: Text::mrkdwn(format!("*{title}*\nHandle: `{handle}`")),
+            accessory: None,
+        },
+        Block::Context {
+            elements: vec![ContextElement::Mrkdwn {
+                text: "Shopify product webhook".to_string(),
+            }],
+        },
+    ];
+
+    let channel = slack.default_channel();
+    let fallback = format!("Product {action}: {title}");
+
+    if let Err(e) = slack.post_message(channel, blocks, Some(&fallback)).await {
+        warn!(
+            error = %e,
+            "failed to send product change Slack notification"
+        );
+    }
 }
 
 /// Mark an event as processed or failed.

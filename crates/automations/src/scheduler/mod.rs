@@ -352,6 +352,12 @@ impl Scheduler {
             shopify: self.state.shopify(),
             klaviyo: self.state.klaviyo(),
             slack: self.state.slack(),
+            storefront_url: self
+                .state
+                .config()
+                .storefront_sync
+                .as_ref()
+                .map(|s| s.internal_url.as_str()),
         };
         workflows::webhook_events::run(&clients).await
     }

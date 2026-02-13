@@ -69,6 +69,8 @@ pub struct AutomationConfig {
     pub sentry_sample_rate: f32,
     /// Storefront database URL (optional — enables support conversation creation from email triage).
     pub storefront_database_url: Option<SecretString>,
+    /// Storefront sync configuration (optional — enables search index refresh on product changes).
+    pub storefront_sync: Option<StorefrontSyncConfig>,
 }
 
 /// Shopify Admin API configuration for order/product lookups.
@@ -78,6 +80,15 @@ pub struct ShopifyConfig {
     pub store: String,
     /// Shopify API version (e.g., "2026-01").
     pub api_version: String,
+}
+
+/// Storefront integration configuration.
+#[derive(Debug, Clone)]
+pub struct StorefrontSyncConfig {
+    /// Internal URL for the storefront health listener (e.g., `http://storefront.internal:9091`).
+    ///
+    /// Used to send incremental search index refresh/delete requests.
+    pub internal_url: String,
 }
 
 /// Scheduler timing configuration.
@@ -321,6 +332,9 @@ impl AutomationConfig {
         let storefront_database_url =
             get_optional_env("STOREFRONT_DATABASE_URL").map(SecretString::from);
 
+        let storefront_sync = get_optional_env("STOREFRONT_INTERNAL_URL")
+            .map(|url| StorefrontSyncConfig { internal_url: url });
+
         Ok(Self {
             database_url,
             m365,
@@ -336,6 +350,7 @@ impl AutomationConfig {
             sentry_environment,
             sentry_sample_rate,
             storefront_database_url,
+            storefront_sync,
         })
     }
 }

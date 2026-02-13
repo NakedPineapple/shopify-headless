@@ -8,11 +8,17 @@ use tracing::{info, warn};
 
 use super::client::{ShopifyClient, ShopifyError};
 
-/// Topics to subscribe to. These match the events the existing poller handles.
+/// Topics to subscribe to.
+///
+/// Order/fulfillment topics drive Klaviyo tracking events.
+/// Product topics drive storefront search index refresh and Slack notifications.
 const DESIRED_TOPICS: &[&str] = &[
     "ORDERS_CREATE",
     "FULFILLMENTS_CREATE",
     "FULFILLMENTS_UPDATE",
+    "PRODUCTS_CREATE",
+    "PRODUCTS_UPDATE",
+    "PRODUCTS_DELETE",
 ];
 
 /// Ensure webhook subscriptions exist for all desired topics.

@@ -34,7 +34,7 @@ use axum::extract::State;
 use axum::http::StatusCode;
 use axum::http::header::{CACHE_CONTROL, HeaderValue};
 use axum::middleware::from_fn;
-use axum::{Router, routing::get};
+use axum::{Json, Router, routing::get, routing::post};
 use axum_prometheus::PrometheusMetricLayer;
 use tower::ServiceBuilder;
 use tower_http::catch_panic::CatchPanicLayer;
@@ -326,11 +326,14 @@ async fn readiness(State(state): State<AppState>) -> (StatusCode, &'static str) 
 ///
 /// Runs on a dedicated port without session, security, or tracing middleware.
 /// This ensures health checks are fast, low-overhead, and never blocked by
-/// middleware issues.
+/// middleware issues. Also hosts internal endpoints for search index management.
 async fn spawn_health_listener(state: AppState, port: u16) {
     let app = Router::new()
         .route("/health", get(health))
         .route("/health/ready", get(readiness))
+        .route("/internal/index/refresh", post(index_refresh))
+        .route("/internal/index/delete", post(index_delete))
+        .route("/internal/index/rebuild", post(index_rebuild))
         .with_state(state);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
@@ -343,6 +346,57 @@ async fn spawn_health_listener(state: AppState, port: u16) {
     axum::serve(listener, app)
         .await
         .expect("Health check listener error");
+}
+
+/// Request body for index refresh/delete operations.
+#[derive(serde::Deserialize)]
+struct IndexHandleRequest {
+    handle: String,
+}
+
+/// Refresh a single product in the search index.
+///
+/// Fetches the product from the Shopify Storefront API by handle and
+/// updates the Tantivy index.
+async fn index_refresh(
+    State(state): State<AppState>,
+    Json(body): Json<IndexHandleRequest>,
+) -> (StatusCode, &'static str) {
+    let product = match state.storefront().get_product_by_handle(&body.handle).await {
+        Ok(p) => p,
+        Err(e) => {
+            tracing::warn!(handle = %body.handle, error = %e, "index refresh: product not found");
+            return (StatusCode::NOT_FOUND, "product not found");
+        }
+    };
+
+    match state.search().update_product(&product) {
+        Ok(()) => (StatusCode::OK, "refreshed"),
+        Err(e) => {
+            tracing::error!(handle = %body.handle, error = %e, "index refresh failed");
+            (StatusCode::INTERNAL_SERVER_ERROR, "refresh failed")
+        }
+    }
+}
+
+/// Delete a single product from the search index by handle.
+async fn index_delete(
+    State(state): State<AppState>,
+    Json(body): Json<IndexHandleRequest>,
+) -> (StatusCode, &'static str) {
+    match state.search().delete_product(&body.handle) {
+        Ok(()) => (StatusCode::OK, "deleted"),
+        Err(e) => {
+            tracing::error!(handle = %body.handle, error = %e, "index delete failed");
+            (StatusCode::INTERNAL_SERVER_ERROR, "delete failed")
+        }
+    }
+}
+
+/// Trigger a full search index rebuild.
+async fn index_rebuild(State(state): State<AppState>) -> (StatusCode, &'static str) {
+    state.start_search_indexing();
+    (StatusCode::ACCEPTED, "rebuild started")
 }
 
 async fn serve_metrics(handle: axum_prometheus::metrics_exporter_prometheus::PrometheusHandle) {

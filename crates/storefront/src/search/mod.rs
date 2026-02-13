@@ -9,7 +9,7 @@
 
 mod indexer;
 
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Mutex, RwLock};
 
 use std::ops::Bound;
 
@@ -20,8 +20,8 @@ use tantivy::query::{
 use tantivy::schema::{
     Field, IndexRecordOption, STORED, Schema, TextFieldIndexing, TextOptions, Value,
 };
-use tantivy::{Index, IndexReader, ReloadPolicy, Term};
-use tracing::{debug, instrument, warn};
+use tantivy::{Index, IndexReader, IndexWriter, ReloadPolicy, Term};
+use tracing::{debug, info, instrument, warn};
 
 pub use indexer::build_index_async;
 
@@ -92,6 +92,7 @@ struct ReadyIndex {
     #[allow(dead_code)]
     index: Index,
     reader: IndexReader,
+    writer: Mutex<IndexWriter>,
     fields: SearchFields,
 }
 
@@ -128,8 +129,13 @@ impl SearchIndex {
     }
 
     /// Set the built index. Called by the background builder task.
-    #[instrument(skip(self, index, fields))]
-    pub(crate) fn set_ready(&self, index: Index, fields: SearchFields) -> Result<(), SearchError> {
+    #[instrument(skip(self, index, writer, fields))]
+    pub(crate) fn set_ready(
+        &self,
+        index: Index,
+        writer: IndexWriter,
+        fields: SearchFields,
+    ) -> Result<(), SearchError> {
         debug!("Setting search index as ready");
 
         let reader = index
@@ -144,6 +150,7 @@ impl SearchIndex {
         let ready = ReadyIndex {
             index,
             reader,
+            writer: Mutex::new(writer),
             fields,
         };
 
@@ -153,6 +160,102 @@ impl SearchIndex {
         })? = Some(ready);
 
         debug!("Search index successfully set as ready");
+        Ok(())
+    }
+
+    /// Update or insert a product in the search index.
+    ///
+    /// Deletes any existing document with the same handle, then adds a new one
+    /// built from the product data. Commits and reloads the reader.
+    ///
+    /// # Errors
+    ///
+    /// Returns `SearchError` if the index is not ready, the lock is poisoned,
+    /// or the write/commit/reload fails.
+    // Allow: The RwLockReadGuard (`guard`) must be held for the entire operation
+    // because `ready` borrows from it. The MutexGuard (`writer`) must be held
+    // through delete + add + commit. Dropping either early would be unsound.
+    #[allow(clippy::significant_drop_tightening)]
+    pub fn update_product(
+        &self,
+        product: &crate::shopify::types::Product,
+    ) -> Result<(), SearchError> {
+        let guard = self
+            .inner
+            .read()
+            .map_err(|_| SearchError::Index("Lock poisoned".to_string()))?;
+
+        let Some(ready) = guard.as_ref() else {
+            return Err(SearchError::Index("Index not ready".to_string()));
+        };
+
+        let mut writer = ready
+            .writer
+            .lock()
+            .map_err(|_| SearchError::Index("Writer lock poisoned".to_string()))?;
+
+        // Delete existing doc(s) with this handle
+        let handle_term = Term::from_field_text(ready.fields.handle, &product.handle);
+        writer.delete_term(handle_term);
+
+        // Build and add the new document
+        let doc = indexer::build_product_doc(&ready.fields, product);
+        writer
+            .add_document(doc)
+            .map_err(|e| SearchError::Index(format!("Failed to add product document: {e}")))?;
+
+        writer
+            .commit()
+            .map_err(|e| SearchError::Index(format!("Failed to commit index: {e}")))?;
+        drop(writer);
+
+        ready
+            .reader
+            .reload()
+            .map_err(|e| SearchError::Index(format!("Failed to reload reader: {e}")))?;
+
+        info!(handle = %product.handle, "product updated in search index");
+        Ok(())
+    }
+
+    /// Delete a product from the search index by handle.
+    ///
+    /// # Errors
+    ///
+    /// Returns `SearchError` if the index is not ready, the lock is poisoned,
+    /// or the write/commit/reload fails.
+    // Allow: Same reasoning as `update_product` — both guards must be held
+    // through their respective operations.
+    #[allow(clippy::significant_drop_tightening)]
+    pub fn delete_product(&self, handle: &str) -> Result<(), SearchError> {
+        let guard = self
+            .inner
+            .read()
+            .map_err(|_| SearchError::Index("Lock poisoned".to_string()))?;
+
+        let Some(ready) = guard.as_ref() else {
+            return Err(SearchError::Index("Index not ready".to_string()));
+        };
+
+        let mut writer = ready
+            .writer
+            .lock()
+            .map_err(|_| SearchError::Index("Writer lock poisoned".to_string()))?;
+
+        let handle_term = Term::from_field_text(ready.fields.handle, handle);
+        writer.delete_term(handle_term);
+
+        writer
+            .commit()
+            .map_err(|e| SearchError::Index(format!("Failed to commit index: {e}")))?;
+        drop(writer);
+
+        ready
+            .reader
+            .reload()
+            .map_err(|e| SearchError::Index(format!("Failed to reload reader: {e}")))?;
+
+        info!(handle, "product deleted from search index");
         Ok(())
     }
 

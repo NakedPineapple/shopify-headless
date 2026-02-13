@@ -3,11 +3,12 @@
 //! Builds the search index asynchronously from Shopify products/collections
 //! and local content.
 
-use tantivy::Index;
+use tantivy::{Index, IndexWriter, TantivyDocument};
 use tracing::{debug, error, info, instrument, warn};
 
 use crate::content::ContentStore;
 use crate::shopify::StorefrontClient;
+use crate::shopify::types::Product;
 
 use super::{DocType, SearchFields, SearchIndex};
 
@@ -24,9 +25,9 @@ pub fn build_index_async(
     tokio::spawn(async move {
         info!("Search index build task started");
         match build_index(&storefront, &content).await {
-            Ok((index, fields)) => {
+            Ok((index, writer, fields)) => {
                 info!("Search index built successfully, setting as ready");
-                if let Err(e) = search_index.set_ready(index, fields) {
+                if let Err(e) = search_index.set_ready(index, writer, fields) {
                     error!(error = %e, "Failed to set search index as ready");
                 } else {
                     let docs = search_index.num_docs();
@@ -45,7 +46,7 @@ pub fn build_index_async(
 async fn build_index(
     storefront: &StorefrontClient,
     content: &ContentStore,
-) -> Result<(Index, SearchFields), BuildError> {
+) -> Result<(Index, IndexWriter, SearchFields), BuildError> {
     info!("Building search schema");
     let (schema, fields) = SearchIndex::build_schema();
 
@@ -99,7 +100,29 @@ async fn build_index(
     let total = products_count + collections_count + pages_count + articles_count;
     info!(total, "Search index built successfully");
 
-    Ok((index, fields))
+    Ok((index, writer, fields))
+}
+
+/// Build a Tantivy document from a storefront product.
+///
+/// Used by both the initial full index build and incremental updates.
+pub(super) fn build_product_doc(fields: &SearchFields, product: &Product) -> TantivyDocument {
+    let price_cents = parse_price_cents(&product.price_range.min_variant_price.amount);
+    let available = u64::from(product.available_for_sale);
+
+    tantivy::doc!(
+        fields.doc_type => DocType::Product.as_str(),
+        fields.handle => product.handle.clone(),
+        fields.title => product.title.clone(),
+        fields.description => strip_html(&product.description_html),
+        fields.image_url => product.featured_image.as_ref().map_or(String::new(), |img| img.url.clone()),
+        fields.price => format_price(&product.price_range.min_variant_price.amount),
+        fields.price_cents => price_cents,
+        fields.available => available,
+        fields.title_text => product.title.clone(),
+        fields.description_text => strip_html(&product.description_html),
+        fields.tags_text => product.tags.join(" ")
+    )
 }
 
 /// Index all products from Shopify.
@@ -125,23 +148,7 @@ async fn index_products(
                 let batch_size = connection.products.len();
                 debug!(page, batch_size, "Received products batch");
                 for product in &connection.products {
-                    let price_cents =
-                        parse_price_cents(&product.price_range.min_variant_price.amount);
-                    let available = u64::from(product.available_for_sale);
-
-                    let doc = tantivy::doc!(
-                        fields.doc_type => DocType::Product.as_str(),
-                        fields.handle => product.handle.clone(),
-                        fields.title => product.title.clone(),
-                        fields.description => strip_html(&product.description_html),
-                        fields.image_url => product.featured_image.as_ref().map_or(String::new(), |img| img.url.clone()),
-                        fields.price => format_price(&product.price_range.min_variant_price.amount),
-                        fields.price_cents => price_cents,
-                        fields.available => available,
-                        fields.title_text => product.title.clone(),
-                        fields.description_text => strip_html(&product.description_html),
-                        fields.tags_text => product.tags.join(" ")
-                    );
+                    let doc = build_product_doc(fields, product);
 
                     if let Err(e) = writer.add_document(doc) {
                         warn!(error = %e, handle = %product.handle, "Failed to index product");
