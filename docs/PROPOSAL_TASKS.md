@@ -17,6 +17,10 @@ Features described in `crates/admin/templates/proposal/` that are not yet implem
 - [X] **Document search tool** — Add a Claude tool that retrieves relevant chunks from uploaded documents so the assistant can reference internal knowledge. All 126 current tools are Shopify-specific.
 - [X] **Slack approve / deny buttons** — The `pending_actions` table and `action_queue` service exist, but the Slack message with interactive Approve / Deny buttons and the callback handler to execute or discard the action need to be completed and verified end-to-end.
 
+## Finances
+
+- [ ] Expense tracking spreadsheet - QuickBooks-like expense tracking to capture capital expenses like product manufacturing, operational expenses like email marketing and advertisement, and all other expenses. This will allow for accurately capturing COGS and performing detailed financial modeling.
+
 ## Analytics
 
 - [ ] **Revenue attribution dashboard** — All 10 ad-tracking pixels fire on the storefront, but there is no admin view that aggregates conversion data to show which channels drive revenue.

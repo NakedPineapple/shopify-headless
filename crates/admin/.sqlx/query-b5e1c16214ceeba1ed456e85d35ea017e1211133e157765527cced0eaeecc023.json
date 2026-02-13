@@ -1,0 +1,50 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                c.expense_type as \"expense_type!: ExpenseType\",\n                COALESCE(SUM(e.amount), 0) as \"total_amount!: Decimal\",\n                COUNT(e.id) as \"expense_count!\"\n            FROM admin.expense e\n            INNER JOIN admin.expense_category c ON c.id = e.category_id\n            WHERE e.expense_date >= $1 AND e.expense_date <= $2\n            GROUP BY c.expense_type\n            ORDER BY SUM(e.amount) DESC\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "expense_type!: ExpenseType",
+        "type_info": {
+          "Custom": {
+            "name": "admin.expense_type",
+            "kind": {
+              "Enum": [
+                "advertising",
+                "saas",
+                "shipping",
+                "labor",
+                "supplies",
+                "services",
+                "other"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "total_amount!: Decimal",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 2,
+        "name": "expense_count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Date",
+        "Date"
+      ]
+    },
+    "nullable": [
+      false,
+      null,
+      null
+    ]
+  },
+  "hash": "b5e1c16214ceeba1ed456e85d35ea017e1211133e157765527cced0eaeecc023"
+}

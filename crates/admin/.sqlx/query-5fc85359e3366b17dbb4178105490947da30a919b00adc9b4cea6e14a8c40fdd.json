@@ -1,0 +1,90 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO admin.expense_category (name, expense_type, description)\n            VALUES ($1, $2, $3)\n            RETURNING\n                id, name,\n                expense_type as \"expense_type: ExpenseType\",\n                description, is_system,\n                created_at as \"created_at: DateTime<Utc>\",\n                updated_at as \"updated_at: DateTime<Utc>\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "expense_type: ExpenseType",
+        "type_info": {
+          "Custom": {
+            "name": "admin.expense_type",
+            "kind": {
+              "Enum": [
+                "advertising",
+                "saas",
+                "shipping",
+                "labor",
+                "supplies",
+                "services",
+                "other"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "is_system",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 5,
+        "name": "created_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "updated_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        {
+          "Custom": {
+            "name": "admin.expense_type",
+            "kind": {
+              "Enum": [
+                "advertising",
+                "saas",
+                "shipping",
+                "labor",
+                "supplies",
+                "services",
+                "other"
+              ]
+            }
+          }
+        },
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "5fc85359e3366b17dbb4178105490947da30a919b00adc9b4cea6e14a8c40fdd"
+}

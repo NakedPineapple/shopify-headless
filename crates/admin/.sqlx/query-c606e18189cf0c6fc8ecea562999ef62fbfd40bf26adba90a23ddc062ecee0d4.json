@@ -1,0 +1,75 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE admin.expense_category\n            SET\n                name = COALESCE($2, name),\n                description = COALESCE($3, description)\n            WHERE id = $1 AND is_system = false\n            RETURNING\n                id, name,\n                expense_type as \"expense_type: ExpenseType\",\n                description, is_system,\n                created_at as \"created_at: DateTime<Utc>\",\n                updated_at as \"updated_at: DateTime<Utc>\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "expense_type: ExpenseType",
+        "type_info": {
+          "Custom": {
+            "name": "admin.expense_type",
+            "kind": {
+              "Enum": [
+                "advertising",
+                "saas",
+                "shipping",
+                "labor",
+                "supplies",
+                "services",
+                "other"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "is_system",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 5,
+        "name": "created_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "updated_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "c606e18189cf0c6fc8ecea562999ef62fbfd40bf26adba90a23ddc062ecee0d4"
+}

@@ -1,0 +1,139 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                e.id, e.category_id, e.description,\n                e.amount as \"amount: Decimal\",\n                e.currency_code,\n                e.expense_date as \"expense_date: NaiveDate\",\n                e.is_recurring,\n                e.recurrence_interval,\n                e.recurrence_end_date as \"recurrence_end_date: NaiveDate\",\n                e.channel_name, e.vendor, e.notes, e.created_by,\n                e.created_at as \"created_at: DateTime<Utc>\",\n                e.updated_at as \"updated_at: DateTime<Utc>\",\n                c.name as category_name,\n                c.expense_type as \"category_type: ExpenseType\"\n            FROM admin.expense e\n            INNER JOIN admin.expense_category c ON c.id = e.category_id\n            WHERE\n                ($1::int IS NULL OR e.category_id = $1)\n                AND ($2::text IS NULL OR c.expense_type::text = $2)\n                AND ($3::date IS NULL OR e.expense_date >= $3)\n                AND ($4::date IS NULL OR e.expense_date <= $4)\n                AND ($5::text IS NULL OR e.channel_name = $5)\n            ORDER BY e.expense_date DESC, e.created_at DESC\n            LIMIT $6 OFFSET $7\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "category_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "amount: Decimal",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 4,
+        "name": "currency_code",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "expense_date: NaiveDate",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 6,
+        "name": "is_recurring",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 7,
+        "name": "recurrence_interval",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "recurrence_end_date: NaiveDate",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 9,
+        "name": "channel_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "vendor",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 11,
+        "name": "notes",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 12,
+        "name": "created_by",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 13,
+        "name": "created_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 14,
+        "name": "updated_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 15,
+        "name": "category_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 16,
+        "name": "category_type: ExpenseType",
+        "type_info": {
+          "Custom": {
+            "name": "admin.expense_type",
+            "kind": {
+              "Enum": [
+                "advertising",
+                "saas",
+                "shipping",
+                "labor",
+                "supplies",
+                "services",
+                "other"
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Text",
+        "Date",
+        "Date",
+        "Text",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "964fa7fa656419ada025346785f5d659210cae68791ec34d8c4ee4a832311937"
+}

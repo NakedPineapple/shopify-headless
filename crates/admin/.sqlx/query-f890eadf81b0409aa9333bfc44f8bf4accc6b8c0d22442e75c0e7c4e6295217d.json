@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            DELETE FROM admin.expense_category\n            WHERE id = $1 AND is_system = false\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f890eadf81b0409aa9333bfc44f8bf4accc6b8c0d22442e75c0e7c4e6295217d"
+}

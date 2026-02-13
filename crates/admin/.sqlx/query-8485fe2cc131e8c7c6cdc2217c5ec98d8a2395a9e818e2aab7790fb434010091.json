@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT COALESCE(SUM(amount), 0) as \"total!: Decimal\"\n            FROM admin.expense\n            WHERE expense_date >= $1 AND expense_date <= $2\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "total!: Decimal",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Date",
+        "Date"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "8485fe2cc131e8c7c6cdc2217c5ec98d8a2395a9e818e2aab7790fb434010091"
+}

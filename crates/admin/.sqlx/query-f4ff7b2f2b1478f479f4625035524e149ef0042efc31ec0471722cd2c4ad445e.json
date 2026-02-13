@@ -1,0 +1,117 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE admin.expense\n            SET\n                category_id = COALESCE($2, category_id),\n                description = COALESCE($3, description),\n                amount = COALESCE($4, amount),\n                currency_code = COALESCE($5, currency_code),\n                expense_date = COALESCE($6, expense_date),\n                is_recurring = COALESCE($7, is_recurring),\n                recurrence_interval = COALESCE($8, recurrence_interval),\n                recurrence_end_date = COALESCE($9, recurrence_end_date),\n                channel_name = COALESCE($10, channel_name),\n                vendor = COALESCE($11, vendor),\n                notes = COALESCE($12, notes)\n            WHERE id = $1\n            RETURNING\n                id, category_id, description,\n                amount as \"amount: Decimal\",\n                currency_code,\n                expense_date as \"expense_date: NaiveDate\",\n                is_recurring,\n                recurrence_interval,\n                recurrence_end_date as \"recurrence_end_date: NaiveDate\",\n                channel_name, vendor, notes, created_by,\n                created_at as \"created_at: DateTime<Utc>\",\n                updated_at as \"updated_at: DateTime<Utc>\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "category_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "amount: Decimal",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 4,
+        "name": "currency_code",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "expense_date: NaiveDate",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 6,
+        "name": "is_recurring",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 7,
+        "name": "recurrence_interval",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "recurrence_end_date: NaiveDate",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 9,
+        "name": "channel_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "vendor",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 11,
+        "name": "notes",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 12,
+        "name": "created_by",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 13,
+        "name": "created_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 14,
+        "name": "updated_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Int4",
+        "Text",
+        "Numeric",
+        "Text",
+        "Date",
+        "Bool",
+        "Text",
+        "Date",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "f4ff7b2f2b1478f479f4625035524e149ef0042efc31ec0471722cd2c4ad445e"
+}

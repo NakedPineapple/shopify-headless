@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT COUNT(*) as \"count!\"\n            FROM admin.expense e\n            INNER JOIN admin.expense_category c ON c.id = e.category_id\n            WHERE\n                ($1::int IS NULL OR e.category_id = $1)\n                AND ($2::text IS NULL OR c.expense_type::text = $2)\n                AND ($3::date IS NULL OR e.expense_date >= $3)\n                AND ($4::date IS NULL OR e.expense_date <= $4)\n                AND ($5::text IS NULL OR e.channel_name = $5)\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Text",
+        "Date",
+        "Date",
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "545be6ba62e3553204ecd4cbc3695c9f515e4a82bf92414fb64efc64a64e5972"
+}

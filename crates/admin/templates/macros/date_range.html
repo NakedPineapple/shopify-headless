@@ -1,0 +1,43 @@
+<!--
+  Reusable date range selector macro.
+
+  Parameters:
+  - base_path: the page URL to link presets to (e.g., "/analytics", "/financials/margins")
+  - current_range: the currently selected preset key (e.g., "30d")
+  - start_value: current custom start date value (optional, for pre-filling input)
+  - end_value: current custom end date value (optional, for pre-filling input)
+-->
+{% macro date_range_selector(base_path, current_range, start_value="", end_value="") %}
+<div class="flex flex-wrap items-center gap-2">
+    <a href="{{ base_path }}?range=7d"
+       class="px-4 py-2 text-sm rounded-lg transition-colors {% if current_range == "7d" %}bg-coral text-white{% else %}bg-muted text-foreground hover:bg-accent{% endif %}">
+        Last 7 Days
+    </a>
+    <a href="{{ base_path }}?range=30d"
+       class="px-4 py-2 text-sm rounded-lg transition-colors {% if current_range == "30d" %}bg-coral text-white{% else %}bg-muted text-foreground hover:bg-accent{% endif %}">
+        Last 30 Days
+    </a>
+    <a href="{{ base_path }}?range=90d"
+       class="px-4 py-2 text-sm rounded-lg transition-colors {% if current_range == "90d" %}bg-coral text-white{% else %}bg-muted text-foreground hover:bg-accent{% endif %}">
+        Last 90 Days
+    </a>
+    <a href="{{ base_path }}?range=ytd"
+       class="px-4 py-2 text-sm rounded-lg transition-colors {% if current_range == "ytd" %}bg-coral text-white{% else %}bg-muted text-foreground hover:bg-accent{% endif %}">
+        Year to Date
+    </a>
+
+    <span class="text-muted-foreground mx-1">|</span>
+
+    <form action="{{ base_path }}" method="get" class="flex items-center gap-2">
+        <input type="date" name="start" value="{{ start_value }}"
+               class="px-3 py-1.5 text-sm bg-input text-foreground border border-border rounded-lg focus:ring-2 focus:ring-ring">
+        <span class="text-muted-foreground text-sm">to</span>
+        <input type="date" name="end" value="{{ end_value }}"
+               class="px-3 py-1.5 text-sm bg-input text-foreground border border-border rounded-lg focus:ring-2 focus:ring-ring">
+        <button type="submit"
+                class="px-3 py-1.5 text-sm bg-muted text-foreground rounded-lg hover:bg-accent transition-colors">
+            Apply
+        </button>
+    </form>
+</div>
+{% endmacro %}

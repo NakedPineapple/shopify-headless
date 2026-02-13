@@ -1,0 +1,35 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                e.channel_name as \"channel_name!\",\n                COALESCE(SUM(e.amount), 0) as \"total_spend!: Decimal\",\n                COUNT(e.id) as \"expense_count!\"\n            FROM admin.expense e\n            INNER JOIN admin.expense_category c ON c.id = e.category_id\n            WHERE\n                e.expense_date >= $1\n                AND e.expense_date <= $2\n                AND e.channel_name IS NOT NULL\n                AND c.expense_type = 'advertising'\n            GROUP BY e.channel_name\n            ORDER BY SUM(e.amount) DESC\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "channel_name!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "total_spend!: Decimal",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 2,
+        "name": "expense_count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Date",
+        "Date"
+      ]
+    },
+    "nullable": [
+      true,
+      null,
+      null
+    ]
+  },
+  "hash": "0c0eada1921b86ea234d629953e835aa6f7cd89ba1ca7ace149146bac76c9fc5"
+}

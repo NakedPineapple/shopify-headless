@@ -9,6 +9,21 @@ use tracing::{debug, info, instrument, warn};
 
 use naked_pineapple_core::{AdminUserId, InventoryLotId, LotAllocationId, ManufacturingBatchId};
 
+/// COGS (cost of goods sold) per product for margin reporting.
+#[derive(Debug, Clone)]
+pub struct ProductCogs {
+    pub shopify_product_id: String,
+    pub total_cogs: Decimal,
+    pub units_allocated: i64,
+}
+
+/// COGS per order for margin reporting.
+#[derive(Debug, Clone)]
+pub struct OrderCogs {
+    pub shopify_order_id: String,
+    pub total_cogs: Decimal,
+}
+
 /// Convert chrono `NaiveDate` to `time::Date` for `SQLx` compatibility.
 ///
 /// This conversion is necessary due to `SQLx`'s type resolution when both `chrono` and `time`
@@ -36,6 +51,20 @@ fn to_time_date(date: NaiveDate) -> time::Date {
         day,
     )
     .expect("valid date")
+}
+
+/// Convert chrono `NaiveDate` to `time::OffsetDateTime` at midnight UTC for `SQLx` TIMESTAMPTZ binds.
+fn to_time_offset_midnight(date: NaiveDate) -> time::OffsetDateTime {
+    to_time_date(date).midnight().assume_utc()
+}
+
+/// Convert chrono `NaiveDate` to `time::OffsetDateTime` at midnight of the *next* day (exclusive upper bound).
+fn to_time_offset_next_midnight(date: NaiveDate) -> time::OffsetDateTime {
+    to_time_date(date)
+        .next_day()
+        .expect("valid date")
+        .midnight()
+        .assume_utc()
 }
 
 use super::RepositoryError;
@@ -783,5 +812,133 @@ impl<'a> InventoryLotRepository<'a> {
             "FIFO allocation completed"
         );
         Ok(allocations)
+    }
+
+    // =========================================================================
+    // COGS Aggregation (for profit margin reporting)
+    // =========================================================================
+
+    /// Get COGS aggregated by product for a date range.
+    ///
+    /// Uses allocation dates to determine which COGS fall within the range.
+    ///
+    /// # Errors
+    ///
+    /// Returns `RepositoryError::Database` if the query fails.
+    #[instrument(skip(self), level = "debug")]
+    pub async fn get_cogs_by_product(
+        &self,
+        start: NaiveDate,
+        end: NaiveDate,
+    ) -> Result<Vec<ProductCogs>, RepositoryError> {
+        debug!("Aggregating COGS by product");
+
+        let start_ts = to_time_offset_midnight(start);
+        let end_exclusive = to_time_offset_next_midnight(end);
+
+        let rows = sqlx::query!(
+            r#"
+            SELECT
+                mb.shopify_product_id,
+                COALESCE(SUM(la.quantity::numeric * mb.cost_per_unit), 0) as "total_cogs!: Decimal",
+                COALESCE(SUM(la.quantity), 0)::bigint as "units_allocated!"
+            FROM admin.lot_allocation la
+            JOIN admin.inventory_lot il ON la.lot_id = il.id
+            JOIN admin.manufacturing_batch mb ON il.batch_id = mb.id
+            WHERE la.allocated_at >= $1
+              AND la.allocated_at < $2
+            GROUP BY mb.shopify_product_id
+            "#,
+            start_ts,
+            end_exclusive,
+        )
+        .fetch_all(self.pool)
+        .await?;
+
+        Ok(rows
+            .into_iter()
+            .map(|r| ProductCogs {
+                shopify_product_id: r.shopify_product_id,
+                total_cogs: r.total_cogs,
+                units_allocated: r.units_allocated,
+            })
+            .collect())
+    }
+
+    /// Get COGS aggregated by order for a date range.
+    ///
+    /// # Errors
+    ///
+    /// Returns `RepositoryError::Database` if the query fails.
+    #[instrument(skip(self), level = "debug")]
+    pub async fn get_cogs_by_order(
+        &self,
+        start: NaiveDate,
+        end: NaiveDate,
+    ) -> Result<Vec<OrderCogs>, RepositoryError> {
+        debug!("Aggregating COGS by order");
+
+        let start_ts = to_time_offset_midnight(start);
+        let end_exclusive = to_time_offset_next_midnight(end);
+
+        let rows = sqlx::query!(
+            r#"
+            SELECT
+                la.shopify_order_id,
+                COALESCE(SUM(la.quantity::numeric * mb.cost_per_unit), 0) as "total_cogs!: Decimal"
+            FROM admin.lot_allocation la
+            JOIN admin.inventory_lot il ON la.lot_id = il.id
+            JOIN admin.manufacturing_batch mb ON il.batch_id = mb.id
+            WHERE la.allocated_at >= $1
+              AND la.allocated_at < $2
+            GROUP BY la.shopify_order_id
+            "#,
+            start_ts,
+            end_exclusive,
+        )
+        .fetch_all(self.pool)
+        .await?;
+
+        Ok(rows
+            .into_iter()
+            .map(|r| OrderCogs {
+                shopify_order_id: r.shopify_order_id,
+                total_cogs: r.total_cogs,
+            })
+            .collect())
+    }
+
+    /// Get total COGS for a date range.
+    ///
+    /// # Errors
+    ///
+    /// Returns `RepositoryError::Database` if the query fails.
+    #[instrument(skip(self), level = "debug")]
+    pub async fn get_total_cogs(
+        &self,
+        start: NaiveDate,
+        end: NaiveDate,
+    ) -> Result<Decimal, RepositoryError> {
+        debug!("Calculating total COGS");
+
+        let start_ts = to_time_offset_midnight(start);
+        let end_exclusive = to_time_offset_next_midnight(end);
+
+        let total = sqlx::query_scalar!(
+            r#"
+            SELECT COALESCE(SUM(la.quantity::numeric * mb.cost_per_unit), 0) as "total!: Decimal"
+            FROM admin.lot_allocation la
+            JOIN admin.inventory_lot il ON la.lot_id = il.id
+            JOIN admin.manufacturing_batch mb ON il.batch_id = mb.id
+            WHERE la.allocated_at >= $1
+              AND la.allocated_at < $2
+            "#,
+            start_ts,
+            end_exclusive,
+        )
+        .fetch_one(self.pool)
+        .await?;
+
+        Ok(total)
     }
 }

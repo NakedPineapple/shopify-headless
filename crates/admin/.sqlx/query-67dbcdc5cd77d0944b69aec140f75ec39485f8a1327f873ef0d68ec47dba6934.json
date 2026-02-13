@@ -1,0 +1,35 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                mb.shopify_product_id,\n                COALESCE(SUM(la.quantity::numeric * mb.cost_per_unit), 0) as \"total_cogs!: Decimal\",\n                COALESCE(SUM(la.quantity), 0)::bigint as \"units_allocated!\"\n            FROM admin.lot_allocation la\n            JOIN admin.inventory_lot il ON la.lot_id = il.id\n            JOIN admin.manufacturing_batch mb ON il.batch_id = mb.id\n            WHERE la.allocated_at >= $1\n              AND la.allocated_at < $2\n            GROUP BY mb.shopify_product_id\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "shopify_product_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "total_cogs!: Decimal",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 2,
+        "name": "units_allocated!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Timestamptz",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false,
+      null,
+      null
+    ]
+  },
+  "hash": "67dbcdc5cd77d0944b69aec140f75ec39485f8a1327f873ef0d68ec47dba6934"
+}

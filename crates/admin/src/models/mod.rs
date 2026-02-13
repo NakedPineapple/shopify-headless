@@ -2,6 +2,7 @@
 
 pub mod admin_user;
 pub mod chat;
+pub mod expense;
 pub mod inventory_lot;
 pub mod manufacturing;
 pub mod request_board;
@@ -9,6 +10,10 @@ pub mod session;
 
 pub use admin_user::{AdminCredential, AdminRole, AdminUser};
 pub use chat::{ChatMessage, ChatSession};
+pub use expense::{
+    ChannelAdSpend, CreateExpenseInput, Expense, ExpenseCategory, ExpenseCategorySummary,
+    ExpenseFilter, ExpenseType, ExpenseTypeSummary, ExpenseWithCategory, UpdateExpenseInput,
+};
 pub use inventory_lot::{
     AllocateLotInput, CreateLotInput, InventoryLot, InventoryLotWithBatch,
     InventoryLotWithRemaining, LotAllocation, LotAllocationWithContext, LotFilter, UpdateLotInput,

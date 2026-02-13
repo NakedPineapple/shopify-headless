@@ -1,0 +1,62 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                c.id as \"category_id!\",\n                c.name as \"category_name!\",\n                c.expense_type as \"expense_type!: ExpenseType\",\n                COALESCE(SUM(e.amount), 0) as \"total_amount!: Decimal\",\n                COUNT(e.id) as \"expense_count!\"\n            FROM admin.expense_category c\n            LEFT JOIN admin.expense e\n                ON e.category_id = c.id\n                AND e.expense_date >= $1\n                AND e.expense_date <= $2\n            GROUP BY c.id, c.name, c.expense_type\n            HAVING COUNT(e.id) > 0\n            ORDER BY SUM(e.amount) DESC NULLS LAST\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "category_id!",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "category_name!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "expense_type!: ExpenseType",
+        "type_info": {
+          "Custom": {
+            "name": "admin.expense_type",
+            "kind": {
+              "Enum": [
+                "advertising",
+                "saas",
+                "shipping",
+                "labor",
+                "supplies",
+                "services",
+                "other"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "total_amount!: Decimal",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 4,
+        "name": "expense_count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Date",
+        "Date"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      null,
+      null
+    ]
+  },
+  "hash": "7218d1564f6c0218b7a3827215c184b9a4081985cb8328a8b5339ab9845cebc0"
+}

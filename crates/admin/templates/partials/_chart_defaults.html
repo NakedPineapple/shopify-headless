@@ -1,0 +1,86 @@
+<!--
+  Shared Chart.js theme configuration for Midnight Lagoon.
+  Include this partial once per page that uses Chart.js, before any chart scripts.
+
+  Provides:
+  - lagoonChart.colors: palette object
+  - lagoonChart.defaults(): apply default styling to Chart.js
+  - lagoonChart.isDark(): current dark-mode state
+-->
+<script src="/static/vendor/chart.umd.min.js"></script>
+<script>
+(function() {
+    var lagoonChart = {
+        colors: {
+            coral:     '#d63a2f',
+            coralMuted:'rgba(214, 58, 47, 0.5)',
+            honey:     '#d4a14a',
+            honeyMuted:'rgba(212, 161, 74, 0.5)',
+            leaf:      '#3a9d5c',
+            leafMuted: 'rgba(58, 157, 92, 0.5)',
+            lagoon:    '#1e4d6e',
+            secondary: '#6b8fa3',
+            purple:    '#8b5cf6',
+            red:       '#ef4444',
+            // Dark mode surfaces
+            gridDark:  'rgba(255, 255, 255, 0.08)',
+            gridLight: 'rgba(0, 0, 0, 0.08)',
+            textDark:  'rgba(255, 255, 255, 0.6)',
+            textLight: 'rgba(0, 0, 0, 0.6)',
+        },
+
+        isDark: function() {
+            return document.documentElement.classList.contains('dark');
+        },
+
+        palette: function() {
+            return [
+                this.colors.coral,
+                this.colors.honey,
+                this.colors.leaf,
+                this.colors.secondary,
+                this.colors.purple,
+                this.colors.lagoon,
+            ];
+        },
+
+        defaults: function() {
+            var dark = this.isDark();
+            var c = this.colors;
+
+            Chart.defaults.font.family = "'DM Sans', sans-serif";
+            Chart.defaults.font.size = 12;
+            Chart.defaults.color = dark ? c.textDark : c.textLight;
+            Chart.defaults.responsive = true;
+            Chart.defaults.maintainAspectRatio = false;
+
+            // Grid styling
+            Chart.defaults.scales = Chart.defaults.scales || {};
+
+            // Tooltip styling
+            Chart.defaults.plugins.tooltip.backgroundColor = dark ? '#1a3447' : '#ffffff';
+            Chart.defaults.plugins.tooltip.titleColor = dark ? '#ffffff' : '#1a1a2e';
+            Chart.defaults.plugins.tooltip.bodyColor = dark ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.7)';
+            Chart.defaults.plugins.tooltip.borderColor = dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
+            Chart.defaults.plugins.tooltip.borderWidth = 1;
+            Chart.defaults.plugins.tooltip.cornerRadius = 8;
+            Chart.defaults.plugins.tooltip.padding = 10;
+
+            // Legend styling
+            Chart.defaults.plugins.legend.labels.usePointStyle = true;
+            Chart.defaults.plugins.legend.labels.pointStyleWidth = 8;
+            Chart.defaults.plugins.legend.labels.padding = 16;
+        },
+
+        gridColor: function() {
+            return this.isDark() ? this.colors.gridDark : this.colors.gridLight;
+        }
+    };
+
+    // Apply defaults immediately
+    lagoonChart.defaults();
+
+    // Expose globally for page scripts
+    window.lagoonChart = lagoonChart;
+})();
+</script>
