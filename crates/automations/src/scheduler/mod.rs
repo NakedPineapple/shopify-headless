@@ -88,6 +88,7 @@ impl Scheduler {
         let mut subscription_check =
             interval(Duration::from_secs(config.subscription_check_interval_secs));
         let mut webhook_events = interval(Duration::from_secs(config.webhook_event_interval_secs));
+        let mut summary_check = interval(Duration::from_secs(config.summary_check_interval_secs));
 
         tracing::info!(
             email_poll_secs = config.email_poll_interval_secs,
@@ -97,6 +98,7 @@ impl Scheduler {
             segment_sync_secs = config.segment_sync_interval_secs,
             subscription_check_secs = config.subscription_check_interval_secs,
             webhook_event_secs = config.webhook_event_interval_secs,
+            summary_check_secs = config.summary_check_interval_secs,
             "scheduler started"
         );
 
@@ -113,6 +115,7 @@ impl Scheduler {
                 _ = segment_sync.tick() => { guarded!(self, "segment_sync", sync_customer_segments); },
                 _ = subscription_check.tick() => { guarded!(self, "subscription_check", check_subscriptions); },
                 _ = webhook_events.tick() => { guarded!(self, "webhook_events", process_webhook_events); },
+                _ = summary_check.tick() => { guarded!(self, "summary_check", check_summaries); },
             }
         }
 
@@ -367,5 +370,92 @@ impl Scheduler {
 
         workflows::segmentation::run(&clients).await;
         true
+    }
+
+    /// Check wall clock and fire daily/weekly summary emails if due.
+    async fn check_summaries(&self) -> bool {
+        use crate::db::summary_state;
+        use chrono::{Datelike, Timelike, Utc};
+
+        let config = &self.state.config().scheduler;
+
+        // Skip if no recipients or required services are missing
+        if config.summary_email_recipients.is_empty() {
+            return true;
+        }
+        let (Some(shopify), Some(email_service)) =
+            (self.state.shopify(), self.state.email_service())
+        else {
+            return true;
+        };
+
+        let now = Utc::now();
+        let hour = u8::try_from(now.hour()).unwrap_or(0);
+        let minute = u8::try_from(now.minute()).unwrap_or(0);
+        let pool = self.state.pool();
+
+        // Daily summary check
+        if hour == config.daily_summary_hour
+            && minute == config.daily_summary_minute
+            && should_run(pool, "daily_summary", &now).await
+        {
+            let clients = workflows::business_summary::daily::DailySummaryClients {
+                pool,
+                shopify,
+                email_service,
+                recipients: &config.summary_email_recipients,
+                low_stock_threshold: config.low_stock_threshold,
+            };
+            workflows::business_summary::daily::run(&clients).await;
+            let _ = summary_state::record_run(pool, "daily_summary", now).await;
+        }
+
+        // Weekly summary check
+        let today_day = now.weekday().to_string().to_lowercase();
+        if today_day == config.weekly_summary_day
+            && hour == config.weekly_summary_hour
+            && minute == config.weekly_summary_minute
+            && should_run(pool, "weekly_summary", &now).await
+        {
+            let clients = workflows::business_summary::weekly::WeeklySummaryClients {
+                pool,
+                shopify,
+                email_service,
+                recipients: &config.summary_email_recipients,
+                low_stock_threshold: config.low_stock_threshold,
+            };
+            workflows::business_summary::weekly::run(&clients).await;
+            let _ = summary_state::record_run(pool, "weekly_summary", now).await;
+        }
+
+        true
+    }
+}
+
+/// Check whether a summary workflow should run, based on last-run time.
+///
+/// Returns `true` if the workflow has never run or last ran more than 23
+/// hours ago (prevents double-runs within the same day).
+async fn should_run(
+    pool: &sqlx::PgPool,
+    workflow: &str,
+    now: &chrono::DateTime<chrono::Utc>,
+) -> bool {
+    use crate::db::summary_state;
+
+    match summary_state::get_last_run(pool, workflow).await {
+        Ok(Some(last)) => {
+            let elapsed = *now - last;
+            elapsed.num_hours() >= 23
+        }
+        Ok(None) => true,
+        Err(e) => {
+            tracing::warn!(
+                workflow = workflow,
+                error = %e,
+                "failed to check summary last-run state, skipping"
+            );
+            false
+        }
     }
 }

@@ -6,9 +6,12 @@
 
 pub mod abandoned_cart;
 pub mod automation_log;
+pub mod cogs;
 pub mod email_sync_state;
+pub mod expense;
 pub mod inbound_email;
 pub mod outbound_queue;
+pub mod summary_state;
 
 use std::time::Duration;
 

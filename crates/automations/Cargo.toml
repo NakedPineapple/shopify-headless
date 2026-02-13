@@ -36,6 +36,9 @@ tokio = { workspace = true }
 # fail. Adding it explicitly ensures `sqlx prepare` succeeds in isolation.
 sqlx = { workspace = true, features = ["time"] }
 
+# Templates (email rendering)
+askama = { workspace = true }
+
 # Serialization
 serde = { workspace = true }
 serde_json = { workspace = true }

@@ -113,6 +113,20 @@ pub struct SchedulerConfig {
     pub subscription_winback_delay_days: u64,
     /// Webhook event processing interval in seconds.
     pub webhook_event_interval_secs: u64,
+    /// Summary check interval in seconds (wall-clock check frequency).
+    pub summary_check_interval_secs: u64,
+    /// Hour (0-23) to send the daily summary email.
+    pub daily_summary_hour: u8,
+    /// Minute (0-59) to send the daily summary email.
+    pub daily_summary_minute: u8,
+    /// Day of the week to send the weekly summary email (e.g., "monday").
+    pub weekly_summary_day: String,
+    /// Hour (0-23) to send the weekly summary email.
+    pub weekly_summary_hour: u8,
+    /// Minute (0-59) to send the weekly summary email.
+    pub weekly_summary_minute: u8,
+    /// Email recipients for business summary emails (empty = disabled).
+    pub summary_email_recipients: Vec<String>,
 }
 
 impl SchedulerConfig {
@@ -157,6 +171,24 @@ impl SchedulerConfig {
                 "AUTOMATION_WEBHOOK_EVENT_INTERVAL_SECS",
                 15,
             ),
+            summary_check_interval_secs: parse_env_u64(
+                "AUTOMATION_SUMMARY_CHECK_INTERVAL_SECS",
+                60,
+            ),
+            daily_summary_hour: parse_env_u8("AUTOMATION_DAILY_SUMMARY_HOUR", 7),
+            daily_summary_minute: parse_env_u8("AUTOMATION_DAILY_SUMMARY_MINUTE", 0),
+            weekly_summary_day: get_env_or_default("AUTOMATION_WEEKLY_SUMMARY_DAY", "monday")
+                .to_lowercase(),
+            weekly_summary_hour: parse_env_u8("AUTOMATION_WEEKLY_SUMMARY_HOUR", 7),
+            weekly_summary_minute: parse_env_u8("AUTOMATION_WEEKLY_SUMMARY_MINUTE", 0),
+            summary_email_recipients: get_optional_env("AUTOMATION_SUMMARY_EMAIL_RECIPIENTS")
+                .map(|s| {
+                    s.split(',')
+                        .map(|e| e.trim().to_string())
+                        .filter(|e| !e.is_empty())
+                        .collect()
+                })
+                .unwrap_or_default(),
         }
     }
 }
@@ -243,6 +275,12 @@ impl WebhookConfig {
 }
 
 fn parse_env_u64(key: &str, default: u64) -> u64 {
+    get_env_or_default(key, &default.to_string())
+        .parse()
+        .unwrap_or(default)
+}
+
+fn parse_env_u8(key: &str, default: u8) -> u8 {
     get_env_or_default(key, &default.to_string())
         .parse()
         .unwrap_or(default)

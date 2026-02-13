@@ -3437,6 +3437,7 @@ dependencies = [
 name = "naked-pineapple-automations"
 version = "0.9.0"
 dependencies = [
+ "askama",
  "axum",
  "base64 0.22.1",
  "chrono",

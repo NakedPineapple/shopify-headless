@@ -7,6 +7,7 @@
 //! - Webhook event processing (dispatches stored webhook events)
 
 pub mod abandoned_cart;
+pub mod business_summary;
 pub mod low_stock;
 pub mod segmentation;
 pub mod subscription_lifecycle;

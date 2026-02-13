@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Weekly Business Report — {{ week_start }} – {{ week_end }}</title>
+</head>
+<body style="margin:0;padding:0;background-color:#faf8f5;font-family:'DM Sans',Helvetica,Arial,sans-serif;color:#2d2420;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#faf8f5;">
+<tr><td align="center" style="padding:24px 16px;">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:8px;overflow:hidden;">
+
+<!-- Header -->
+<tr><td style="background-color:#d63a2f;padding:32px 40px;text-align:center;">
+  <h1 style="margin:0;font-family:'Playfair Display',Georgia,serif;font-size:24px;font-weight:700;color:#ffffff;letter-spacing:0.5px;">Weekly Business Report</h1>
+  <p style="margin:8px 0 0;font-size:14px;color:#fce4e2;">{{ week_start }} &ndash; {{ week_end }}</p>
+</td></tr>
+
+<!-- Week Summary -->
+<tr><td style="padding:32px 40px 16px;">
+  <h2 style="margin:0 0 16px;font-family:'Playfair Display',Georgia,serif;font-size:18px;color:#2d2420;border-bottom:2px solid #d4a574;padding-bottom:8px;">Week Summary</h2>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+  <tr>
+    <td width="25%" style="text-align:center;padding:12px 4px;background-color:#fef7f0;border-radius:6px;">
+      <p style="margin:0;font-size:22px;font-weight:700;color:#d63a2f;">{{ revenue }}</p>
+      <p style="margin:4px 0 0;font-size:11px;color:#8b7355;text-transform:uppercase;letter-spacing:1px;">Revenue</p>
+      <p style="margin:4px 0 0;font-size:11px;color:#6b8f71;">{{ revenue_change }} WoW</p>
+    </td>
+    <td width="4"></td>
+    <td width="25%" style="text-align:center;padding:12px 4px;background-color:#fef7f0;border-radius:6px;">
+      <p style="margin:0;font-size:22px;font-weight:700;color:#d63a2f;">{{ orders }}</p>
+      <p style="margin:4px 0 0;font-size:11px;color:#8b7355;text-transform:uppercase;letter-spacing:1px;">Orders</p>
+      <p style="margin:4px 0 0;font-size:11px;color:#6b8f71;">{{ orders_change }} WoW</p>
+    </td>
+    <td width="4"></td>
+    <td width="25%" style="text-align:center;padding:12px 4px;background-color:#fef7f0;border-radius:6px;">
+      <p style="margin:0;font-size:22px;font-weight:700;color:#d63a2f;">{{ units }}</p>
+      <p style="margin:4px 0 0;font-size:11px;color:#8b7355;text-transform:uppercase;letter-spacing:1px;">Units</p>
+    </td>
+    <td width="4"></td>
+    <td width="25%" style="text-align:center;padding:12px 4px;background-color:#fef7f0;border-radius:6px;">
+      <p style="margin:0;font-size:22px;font-weight:700;color:#d63a2f;">{{ aov }}</p>
+      <p style="margin:4px 0 0;font-size:11px;color:#8b7355;text-transform:uppercase;letter-spacing:1px;">AOV</p>
+      <p style="margin:4px 0 0;font-size:11px;color:#6b8f71;">{{ aov_change }} WoW</p>
+    </td>
+  </tr>
+  </table>
+  <p style="margin:12px 0 0;font-size:13px;color:#8b7355;">Previous week: {{ prev_revenue }} revenue, {{ prev_orders }} orders</p>
+</td></tr>
+
+{% if !channels.is_empty() %}
+<!-- Channel Attribution -->
+<tr><td style="padding:16px 40px;">
+  <h2 style="margin:0 0 12px;font-family:'Playfair Display',Georgia,serif;font-size:18px;color:#2d2420;border-bottom:2px solid #d4a574;padding-bottom:8px;">Channel Attribution</h2>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;">
+  <tr style="background-color:#fef7f0;">
+    <td style="padding:8px 12px;font-weight:700;color:#8b7355;">Channel</td>
+    <td style="padding:8px 12px;font-weight:700;color:#8b7355;text-align:right;">Revenue</td>
+    <td style="padding:8px 12px;font-weight:700;color:#8b7355;text-align:right;">Orders</td>
+  </tr>
+  {% for c in channels %}
+  <tr style="border-bottom:1px solid #f0ebe4;">
+    <td style="padding:8px 12px;color:#2d2420;">{{ c.channel_name }}</td>
+    <td style="padding:8px 12px;text-align:right;color:#2d2420;">${{ c.revenue.round_dp(2) }}</td>
+    <td style="padding:8px 12px;text-align:right;color:#2d2420;">{{ c.orders }}</td>
+  </tr>
+  {% endfor %}
+  </table>
+</td></tr>
+{% endif %}
+
+<!-- Expense Summary -->
+<tr><td style="padding:16px 40px;">
+  <h2 style="margin:0 0 12px;font-family:'Playfair Display',Georgia,serif;font-size:18px;color:#2d2420;border-bottom:2px solid #d4a574;padding-bottom:8px;">Expense Summary</h2>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;">
+  <tr style="border-bottom:1px solid #f0ebe4;">
+    <td style="padding:8px 12px;color:#2d2420;">Total Expenses</td>
+    <td style="padding:8px 12px;text-align:right;font-weight:700;color:#2d2420;">{{ total_expenses }}</td>
+  </tr>
+  <tr style="border-bottom:1px solid #f0ebe4;">
+    <td style="padding:8px 12px;color:#2d2420;">Ad Spend</td>
+    <td style="padding:8px 12px;text-align:right;color:#2d2420;">{{ ad_spend }}</td>
+  </tr>
+  {% for ac in ad_channels %}
+  <tr style="border-bottom:1px solid #f0ebe4;">
+    <td style="padding:8px 12px 8px 32px;color:#8b7355;font-size:13px;">{{ ac.channel_name }}</td>
+    <td style="padding:8px 12px;text-align:right;color:#8b7355;font-size:13px;">${{ ac.total_spend.round_dp(2) }}</td>
+  </tr>
+  {% endfor %}
+  </table>
+</td></tr>
+
+<!-- Profit Margins -->
+<tr><td style="padding:16px 40px;">
+  <h2 style="margin:0 0 12px;font-family:'Playfair Display',Georgia,serif;font-size:18px;color:#2d2420;border-bottom:2px solid #d4a574;padding-bottom:8px;">Profit Margins</h2>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+  <tr>
+    <td width="50%" style="text-align:center;padding:16px 8px;background-color:#fef7f0;border-radius:6px;">
+      <p style="margin:0;font-size:22px;font-weight:700;color:#6b8f71;">{{ gross_profit }}</p>
+      <p style="margin:4px 0 0;font-size:12px;color:#8b7355;">Gross Profit ({{ gross_margin }})</p>
+    </td>
+    <td width="8"></td>
+    <td width="50%" style="text-align:center;padding:16px 8px;background-color:#fef7f0;border-radius:6px;">
+      <p style="margin:0;font-size:22px;font-weight:700;color:#6b8f71;">{{ net_profit }}</p>
+      <p style="margin:4px 0 0;font-size:12px;color:#8b7355;">Net Profit ({{ net_margin }})</p>
+    </td>
+  </tr>
+  </table>
+</td></tr>
+
+{% if !top_products.is_empty() %}
+<!-- Top Products -->
+<tr><td style="padding:16px 40px;">
+  <h2 style="margin:0 0 12px;font-family:'Playfair Display',Georgia,serif;font-size:18px;color:#2d2420;border-bottom:2px solid #d4a574;padding-bottom:8px;">Top Products</h2>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;">
+  <tr style="background-color:#fef7f0;">
+    <td style="padding:8px 12px;font-weight:700;color:#8b7355;">Product</td>
+    <td style="padding:8px 12px;font-weight:700;color:#8b7355;text-align:right;">Revenue</td>
+    <td style="padding:8px 12px;font-weight:700;color:#8b7355;text-align:right;">Units</td>
+  </tr>
+  {% for p in top_products %}
+  <tr style="border-bottom:1px solid #f0ebe4;">
+    <td style="padding:8px 12px;color:#2d2420;">{{ p.title }}</td>
+    <td style="padding:8px 12px;text-align:right;color:#2d2420;">${{ p.revenue.round_dp(2) }}</td>
+    <td style="padding:8px 12px;text-align:right;color:#2d2420;">{{ p.units }}</td>
+  </tr>
+  {% endfor %}
+  </table>
+</td></tr>
+{% endif %}
+
+{% if !low_stock_items.is_empty() %}
+<!-- Low Stock Alerts -->
+<tr><td style="padding:16px 40px;">
+  <h2 style="margin:0 0 12px;font-family:'Playfair Display',Georgia,serif;font-size:18px;color:#d63a2f;border-bottom:2px solid #d63a2f;padding-bottom:8px;">Low Stock Alerts</h2>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;">
+  {% for item in low_stock_items %}
+  <tr style="border-bottom:1px solid #f0ebe4;">
+    <td style="padding:8px 12px;color:#2d2420;">{{ item.title }}</td>
+    <td style="padding:8px 12px;text-align:right;color:#d63a2f;font-weight:700;">{{ item.inventory }} units</td>
+  </tr>
+  {% endfor %}
+  </table>
+</td></tr>
+{% endif %}
+
+<!-- Footer -->
+<tr><td style="padding:24px 40px;text-align:center;background-color:#fef7f0;border-top:1px solid #f0ebe4;">
+  <p style="margin:0;font-size:12px;color:#8b7355;">Automated weekly report from Naked Pineapple</p>
+</td></tr>
+
+</table>
+</td></tr>
+</table>
+</body>
+</html>

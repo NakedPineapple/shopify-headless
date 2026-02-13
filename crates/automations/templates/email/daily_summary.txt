@@ -1,0 +1,34 @@
+YOUR DAILY SNAPSHOT — {{ date }}
+=====================================
+
+Revenue:  {{ revenue }}
+Orders:   {{ orders }}
+Units:    {{ units }}
+AOV:      {{ aov }}
+{% if !top_products.is_empty() %}
+
+TOP PRODUCTS
+------------
+{% for p in top_products %}
+  {{ p.title }} — ${{ p.revenue.round_dp(2) }} ({{ p.orders }} orders)
+{% endfor %}
+{% endif %}
+{% if !channels.is_empty() %}
+
+CHANNEL BREAKDOWN
+-----------------
+{% for c in channels %}
+  {{ c.channel_name }} — ${{ c.revenue.round_dp(2) }} ({{ c.orders }} orders)
+{% endfor %}
+{% endif %}
+{% if !low_stock_items.is_empty() %}
+
+LOW STOCK ALERTS
+----------------
+{% for item in low_stock_items %}
+  {{ item.title }} — {{ item.inventory }} units remaining
+{% endfor %}
+{% endif %}
+
+--
+Automated daily summary from Naked Pineapple

@@ -29,7 +29,7 @@ Features described in `crates/admin/templates/proposal/` that are not yet implem
 
 ## Automation
 
-- [ ] **Daily / weekly business summary emails** — Automated reports compiling revenue, order count, top products, marketing performance, and inventory alerts. No scheduled job or template exists.
+- [X] **Daily / weekly business summary emails** — Automated reports compiling revenue, order count, top products, marketing performance, and inventory alerts. No scheduled job or template exists.
 - [ ] **Cross-channel product sync** — The proposal claims edits in the admin panel propagate to Shopify and onward to every connected sales channel. Today the admin reads from Shopify (source of truth) but does not push changes back through admin-initiated writes that fan out to other channels.
 
 ## Storefront
@@ -43,5 +43,9 @@ Features described in `crates/admin/templates/proposal/` that are not yet implem
 
 ~~~- [ ] **Mosyle (Fuse) device management** — Listed in the cost table (`_cost.html`) and features grid (`_features.html`) but no integration code exists.~~~
 - [ ] **Amazon Seller Central** — Mentioned as a connected sales channel; no API client or sync logic implemented.
+- [ ] **Facebook and Instagram** — Mentioned as a connected sales channel; no API client or sync logic implemented.
+- [ ] **TikTok** — Mentioned as a connected sales channel; no API client or sync logic implemented.
+- [ ] **Pinterest** — Mentioned as a connected sales channel; no API client or sync logic implemented.
+- [ ] **Google and Youtubet** — Mentioned as a connected sales channel; no API client or sync logic implemented.
 - [ ] **Faire wholesale marketplace** — Mentioned as a connected sales channel; no API client or sync logic implemented.
 

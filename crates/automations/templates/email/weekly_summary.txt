@@ -1,0 +1,51 @@
+WEEKLY BUSINESS REPORT — {{ week_start }} – {{ week_end }}
+==========================================================
+
+WEEK SUMMARY
+------------
+Revenue:  {{ revenue }} ({{ revenue_change }} WoW)
+Orders:   {{ orders }} ({{ orders_change }} WoW)
+Units:    {{ units }}
+AOV:      {{ aov }} ({{ aov_change }} WoW)
+
+Previous week: {{ prev_revenue }} revenue, {{ prev_orders }} orders
+{% if !channels.is_empty() %}
+
+CHANNEL ATTRIBUTION
+-------------------
+{% for c in channels %}
+  {{ c.channel_name }} — ${{ c.revenue.round_dp(2) }} ({{ c.orders }} orders)
+{% endfor %}
+{% endif %}
+
+EXPENSE SUMMARY
+---------------
+Total Expenses:  {{ total_expenses }}
+Ad Spend:        {{ ad_spend }}
+{% for ac in ad_channels %}
+  {{ ac.channel_name }}: ${{ ac.total_spend.round_dp(2) }}
+{% endfor %}
+
+PROFIT MARGINS
+--------------
+Gross Profit: {{ gross_profit }} ({{ gross_margin }})
+Net Profit:   {{ net_profit }} ({{ net_margin }})
+{% if !top_products.is_empty() %}
+
+TOP PRODUCTS
+------------
+{% for p in top_products %}
+  {{ p.title }} — ${{ p.revenue.round_dp(2) }} ({{ p.units }} units)
+{% endfor %}
+{% endif %}
+{% if !low_stock_items.is_empty() %}
+
+LOW STOCK ALERTS
+----------------
+{% for item in low_stock_items %}
+  {{ item.title }} — {{ item.inventory }} units remaining
+{% endfor %}
+{% endif %}
+
+--
+Automated weekly report from Naked Pineapple
