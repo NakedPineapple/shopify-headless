@@ -1,0 +1,96 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Financials{% endblock %}
+
+{% block page_title %}
+<div>
+    <h1 class="text-2xl font-semibold text-foreground">Financials</h1>
+    <p class="text-sm text-muted-foreground mt-1">{{ period_label }}</p>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Cost Summary Cards -->
+<div class="grid sm:grid-cols-3 gap-4 mb-8">
+    <div class="bg-card rounded-xl border border-border p-5">
+        <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Manufacturing (COGS)</p>
+        <p class="text-2xl font-semibold text-foreground tabular-nums">{{ manufacturing_cost }}</p>
+        <p class="text-xs text-muted-foreground mt-1">{{ batch_count }} batches tracked</p>
+    </div>
+    <div class="bg-card rounded-xl border border-border p-5">
+        <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Operating Expenses</p>
+        <p class="text-2xl font-semibold text-foreground tabular-nums">{{ operating_expenses }}</p>
+        <p class="text-xs text-muted-foreground mt-1">{{ expense_count }} entries recorded</p>
+    </div>
+    <div class="bg-card rounded-xl border border-border p-5">
+        <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Total Costs</p>
+        <p class="text-2xl font-semibold text-coral tabular-nums">{{ total_costs }}</p>
+        <p class="text-xs text-muted-foreground mt-1">Last 30 days</p>
+    </div>
+</div>
+
+<!-- Quick Links -->
+<div class="grid sm:grid-cols-3 gap-4 mb-8">
+    <a href="/financials/manufacturing" class="group bg-card rounded-xl border border-border p-5 hover:border-coral/40 transition-colors">
+        <div class="flex items-center gap-3 mb-2">
+            <div class="w-9 h-9 rounded-lg bg-muted flex items-center justify-center group-hover:bg-coral/10 transition-colors">
+                <i class="ph ph-factory text-lg text-muted-foreground group-hover:text-coral transition-colors"></i>
+            </div>
+            <h3 class="font-medium text-foreground">Manufacturing</h3>
+        </div>
+        <p class="text-sm text-muted-foreground">Production batches, lots, and per-unit costs</p>
+    </a>
+    <a href="/financials/expenses" class="group bg-card rounded-xl border border-border p-5 hover:border-coral/40 transition-colors">
+        <div class="flex items-center gap-3 mb-2">
+            <div class="w-9 h-9 rounded-lg bg-muted flex items-center justify-center group-hover:bg-coral/10 transition-colors">
+                <i class="ph ph-money text-lg text-muted-foreground group-hover:text-coral transition-colors"></i>
+            </div>
+            <h3 class="font-medium text-foreground">Expenses</h3>
+        </div>
+        <p class="text-sm text-muted-foreground">Operating costs, ad spend, and SaaS subscriptions</p>
+    </a>
+    <a href="/financials/margins" class="group bg-card rounded-xl border border-border p-5 hover:border-coral/40 transition-colors">
+        <div class="flex items-center gap-3 mb-2">
+            <div class="w-9 h-9 rounded-lg bg-muted flex items-center justify-center group-hover:bg-coral/10 transition-colors">
+                <i class="ph ph-chart-line-up text-lg text-muted-foreground group-hover:text-coral transition-colors"></i>
+            </div>
+            <h3 class="font-medium text-foreground">Profit Margins</h3>
+        </div>
+        <p class="text-sm text-muted-foreground">Per-product and business-wide profitability</p>
+    </a>
+</div>
+
+<!-- Recent Expenses -->
+<div class="bg-card rounded-xl border border-border overflow-hidden">
+    <div class="px-6 py-4 border-b border-border flex items-center justify-between">
+        <h3 class="font-medium text-foreground">Recent Expenses</h3>
+        <a href="/financials/expenses" class="text-sm text-coral hover:underline">View all</a>
+    </div>
+    {% if recent_expenses.is_empty() %}
+    <div class="p-8 text-center">
+        <p class="text-sm text-muted-foreground">No expenses recorded yet.</p>
+        <a href="/financials/expenses/new" class="inline-flex items-center gap-2 mt-3 px-4 py-2 bg-coral text-white rounded-lg hover:bg-coral/90 transition-colors text-sm">
+            <i class="ph ph-plus"></i>
+            Add Expense
+        </a>
+    </div>
+    {% else %}
+    <table class="w-full">
+        <tbody class="divide-y divide-border">
+            {% for expense in recent_expenses %}
+            <tr class="hover:bg-muted/30 transition-colors">
+                <td class="px-6 py-3 text-sm text-muted-foreground w-20">{{ expense.date }}</td>
+                <td class="px-6 py-3 text-sm text-foreground">{{ expense.description }}</td>
+                <td class="px-6 py-3">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-foreground">
+                        {{ expense.category_name }}
+                    </span>
+                </td>
+                <td class="px-6 py-3 text-sm font-medium text-foreground text-right tabular-nums">{{ expense.amount }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+</div>
+{% endblock %}

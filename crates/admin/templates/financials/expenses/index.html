@@ -1,0 +1,164 @@
+{% extends "layouts/base.html" %}
+{% import "macros/date_range.html" as dr %}
+
+{% block title %}Expenses{% endblock %}
+
+{% block page_title %}
+<div class="flex items-center justify-between">
+    <div>
+        <h1 class="text-2xl font-semibold text-foreground">Expenses</h1>
+        <p class="text-sm text-muted-foreground mt-1">Track operating costs and ad spend</p>
+    </div>
+    <div class="flex items-center gap-3">
+        <a href="/financials/expenses/categories"
+           class="inline-flex items-center gap-2 px-4 py-2 text-sm bg-muted text-foreground rounded-lg hover:bg-accent transition-colors">
+            <i class="ph ph-folders"></i>
+            Categories
+        </a>
+        <a href="/financials/expenses/new"
+           class="inline-flex items-center gap-2 px-4 py-2 bg-coral text-white rounded-lg hover:bg-coral/90 transition-colors">
+            <i class="ph ph-plus"></i>
+            New Expense
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Tab Navigation -->
+<div class="mb-6 border-b border-border">
+    <nav class="flex gap-6">
+        <a href="/financials/manufacturing" class="text-muted-foreground py-3 hover:text-foreground transition-colors">
+            Manufacturing
+        </a>
+        <a href="/financials/expenses" class="text-foreground py-3 border-b-2 border-coral">
+            Expenses
+        </a>
+    </nav>
+</div>
+
+<!-- Filters -->
+<div class="mb-6 flex flex-wrap items-center gap-4">
+    <form method="GET" action="/financials/expenses" class="flex flex-wrap items-center gap-3">
+        <select name="category_id" class="px-3 py-1.5 text-sm bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring">
+            <option value="">All Categories</option>
+            {% for cat in categories %}
+            <option value="{{ cat.id }}" {% if query.category_id == Some(cat.id.clone()) %}selected{% endif %}>{{ cat.name }}</option>
+            {% endfor %}
+        </select>
+
+        <select name="expense_type" class="px-3 py-1.5 text-sm bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring">
+            <option value="">All Types</option>
+            <option value="advertising" {% if query.expense_type.as_deref() == Some("advertising") %}selected{% endif %}>Advertising</option>
+            <option value="saas" {% if query.expense_type.as_deref() == Some("saas") %}selected{% endif %}>SaaS</option>
+            <option value="shipping" {% if query.expense_type.as_deref() == Some("shipping") %}selected{% endif %}>Shipping</option>
+            <option value="labor" {% if query.expense_type.as_deref() == Some("labor") %}selected{% endif %}>Labor</option>
+            <option value="supplies" {% if query.expense_type.as_deref() == Some("supplies") %}selected{% endif %}>Supplies</option>
+            <option value="services" {% if query.expense_type.as_deref() == Some("services") %}selected{% endif %}>Services</option>
+            <option value="other" {% if query.expense_type.as_deref() == Some("other") %}selected{% endif %}>Other</option>
+        </select>
+
+        <input type="date" name="start" value="{% if let Some(d) = query.start %}{{ d }}{% endif %}"
+               class="px-3 py-1.5 text-sm bg-input text-foreground border border-border rounded-lg focus:ring-2 focus:ring-ring">
+        <span class="text-muted-foreground text-sm">to</span>
+        <input type="date" name="end" value="{% if let Some(d) = query.end %}{{ d }}{% endif %}"
+               class="px-3 py-1.5 text-sm bg-input text-foreground border border-border rounded-lg focus:ring-2 focus:ring-ring">
+
+        <button type="submit" class="px-3 py-1.5 text-sm bg-muted text-foreground rounded-lg hover:bg-accent transition-colors">
+            Filter
+        </button>
+        {% if query.category_id.is_some() || query.expense_type.is_some() || query.start.is_some() || query.end.is_some() %}
+        <a href="/financials/expenses" class="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
+            Clear
+        </a>
+        {% endif %}
+    </form>
+</div>
+
+<!-- Running Total -->
+{% if !expenses.is_empty() %}
+<div class="mb-4 text-sm text-muted-foreground">
+    Showing {{ expenses.len() }} of {{ total_count }} expenses &middot; Page total: <span class="font-medium text-foreground">{{ total_amount }}</span>
+</div>
+{% endif %}
+
+<!-- Expenses Table -->
+<div class="bg-card rounded-xl border border-border overflow-hidden">
+    {% if expenses.is_empty() %}
+    <div class="p-12 text-center">
+        <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center">
+            <i class="ph ph-money text-2xl text-muted-foreground"></i>
+        </div>
+        <h3 class="text-lg font-medium text-foreground mb-2">No expenses yet</h3>
+        <p class="text-sm text-muted-foreground mb-4">Start tracking your business costs to understand profitability.</p>
+        <a href="/financials/expenses/new"
+           class="inline-flex items-center gap-2 px-4 py-2 bg-coral text-white rounded-lg hover:bg-coral/90 transition-colors">
+            <i class="ph ph-plus"></i>
+            Add Expense
+        </a>
+    </div>
+    {% else %}
+    <table class="w-full">
+        <thead class="bg-muted/50 border-b border-border">
+            <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Date</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Description</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Category</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Vendor</th>
+                <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Amount</th>
+                <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-border">
+            {% for expense in expenses %}
+            <tr class="hover:bg-muted/30 transition-colors">
+                <td class="px-6 py-4 text-sm text-muted-foreground tabular-nums">{{ expense.date }}</td>
+                <td class="px-6 py-4">
+                    <div>
+                        <p class="text-sm font-medium text-foreground">{{ expense.description }}</p>
+                        {% if expense.is_recurring %}
+                        <span class="inline-flex items-center gap-1 mt-0.5 text-xs text-secondary">
+                            <i class="ph ph-repeat text-xs"></i>
+                            {{ expense.recurrence_interval.as_deref().unwrap_or("Recurring") }}
+                        </span>
+                        {% endif %}
+                    </div>
+                </td>
+                <td class="px-6 py-4">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-foreground">
+                        {{ expense.category_name }}
+                    </span>
+                </td>
+                <td class="px-6 py-4 text-sm text-muted-foreground">{{ expense.vendor.as_deref().unwrap_or("--") }}</td>
+                <td class="px-6 py-4 text-sm font-medium text-foreground text-right tabular-nums">{{ expense.amount }}</td>
+                <td class="px-6 py-4 text-right">
+                    <div class="flex items-center justify-end gap-2">
+                        <a href="/financials/expenses/{{ expense.id }}/edit" class="text-sm text-muted-foreground hover:text-primary transition-colors">Edit</a>
+                        <form method="POST" action="/financials/expenses/{{ expense.id }}/delete"
+                              onsubmit="return confirm('Delete this expense?')">
+                            <button type="submit" class="text-sm text-muted-foreground hover:text-destructive transition-colors">Delete</button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Pagination -->
+    {% if has_prev || has_next %}
+    <div class="px-6 py-4 border-t border-border flex items-center justify-between">
+        <p class="text-sm text-muted-foreground">{{ total_count }} expenses total</p>
+        <div class="flex gap-2">
+            {% if has_prev %}
+            <a href="/financials/expenses?page={{ page - 1 }}" class="px-3 py-1 text-sm bg-muted rounded hover:bg-accent transition-colors">Previous</a>
+            {% endif %}
+            {% if has_next %}
+            <a href="/financials/expenses?page={{ page + 1 }}" class="px-3 py-1 text-sm bg-muted rounded hover:bg-accent transition-colors">Next</a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+    {% endif %}
+</div>
+{% endblock %}

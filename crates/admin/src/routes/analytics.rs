@@ -13,6 +13,7 @@ use serde::Deserialize;
 use tracing::{debug, info, instrument, warn};
 
 use crate::{
+    db::ExpenseRepository,
     filters,
     middleware::auth::RequireAdminAuth,
     shopify::types::{AnalyticsSummary, ChannelMetrics, DailyMetrics, DateRange, SalesChannel},
@@ -179,6 +180,12 @@ pub struct AnalyticsIndexTemplate {
     pub trend: Vec<DailyMetricsView>,
     pub channels: Vec<SalesChannelView>,
     pub current_range: String,
+    pub trend_labels: String,
+    pub trend_data: String,
+    pub total_expenses: String,
+    pub net_income: String,
+    pub custom_start: String,
+    pub custom_end: String,
 }
 
 /// Channels list page template.
@@ -216,56 +223,18 @@ pub async fn index(
     debug!("Fetching analytics overview page with date range query");
     let date_range = query.to_date_range();
 
-    // Fetch analytics data in parallel
-    let (analytics_result, trend_result, channels_result) = tokio::join!(
+    // Fetch analytics and expense data in parallel
+    let (analytics_result, trend_result, channels_result, expenses_total) = tokio::join!(
         state.shopify().get_channel_analytics(&date_range),
         state.shopify().get_channel_trend(None, &date_range),
-        state.shopify().get_sales_channels()
+        state.shopify().get_sales_channels(),
+        fetch_expense_total(state.pool(), &query),
     );
 
-    let summary = match analytics_result {
-        Ok(analytics) => {
-            info!(
-                total_sales = %analytics.total_sales,
-                total_orders = %analytics.total_orders,
-                "Successfully fetched channel analytics"
-            );
-            AnalyticsSummaryView::from(&analytics)
-        }
-        Err(e) => {
-            warn!("Failed to fetch channel analytics: {e}");
-            AnalyticsSummaryView {
-                total_sales: "$0.00".to_string(),
-                total_net_sales: "$0.00".to_string(),
-                total_orders: "0".to_string(),
-                total_units: "0".to_string(),
-                average_order_value: "$0.00".to_string(),
-                channels: vec![],
-            }
-        }
-    };
-
-    let trend = match trend_result {
-        Ok(metrics) => {
-            debug!(data_points = %metrics.len(), "Fetched trend data");
-            metrics.iter().map(DailyMetricsView::from).collect()
-        }
-        Err(e) => {
-            warn!("Failed to fetch trend data: {e}");
-            vec![]
-        }
-    };
-
-    let channels = match channels_result {
-        Ok(channels) => {
-            debug!(channel_count = %channels.len(), "Fetched sales channels");
-            channels.iter().map(SalesChannelView::from).collect()
-        }
-        Err(e) => {
-            warn!("Failed to fetch sales channels: {e}");
-            vec![]
-        }
-    };
+    let (summary, raw_total_sales) = process_analytics(analytics_result);
+    let (trend, trend_labels, trend_data) = process_trend(trend_result);
+    let channels = process_channels(channels_result);
+    let net = raw_total_sales - expenses_total;
 
     let template = AnalyticsIndexTemplate {
         admin_user: AdminUserView::from(&admin),
@@ -274,12 +243,120 @@ pub async fn index(
         trend,
         channels,
         current_range: query.current_range().to_string(),
+        trend_labels,
+        trend_data,
+        total_expenses: format_currency(expenses_total),
+        net_income: format_currency(net),
+        custom_start: query.start.clone().unwrap_or_default(),
+        custom_end: query.end.clone().unwrap_or_default(),
     };
 
     Html(template.render().unwrap_or_else(|e| {
         tracing::error!("Template render error: {e}");
         "Internal Server Error".to_string()
     }))
+}
+
+/// Fetch total expenses for the analytics date range.
+async fn fetch_expense_total(pool: &sqlx::PgPool, query: &AnalyticsQuery) -> f64 {
+    let now = chrono::Utc::now().date_naive();
+    let (start, end) = if let (Some(s), Some(e)) = (&query.start, &query.end) {
+        let start = chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d")
+            .unwrap_or(now - chrono::Duration::days(30));
+        let end = chrono::NaiveDate::parse_from_str(e, "%Y-%m-%d").unwrap_or(now);
+        (start, end)
+    } else {
+        let days = match query.range.as_deref() {
+            Some("7d") => 7,
+            Some("90d") => 90,
+            Some("ytd") => 365,
+            _ => 30,
+        };
+        (now - chrono::Duration::days(days), now)
+    };
+
+    let repo = ExpenseRepository::new(pool);
+    repo.get_total_expenses(start, end)
+        .await
+        .map(|d| d.to_string().parse::<f64>().unwrap_or(0.0))
+        .unwrap_or(0.0)
+}
+
+/// Process analytics result into summary view and raw total.
+fn process_analytics(
+    result: Result<AnalyticsSummary, crate::shopify::AdminShopifyError>,
+) -> (AnalyticsSummaryView, f64) {
+    match result {
+        Ok(analytics) => {
+            info!(
+                total_sales = %analytics.total_sales,
+                total_orders = %analytics.total_orders,
+                "Successfully fetched channel analytics"
+            );
+            let total = analytics.total_sales;
+            (AnalyticsSummaryView::from(&analytics), total)
+        }
+        Err(e) => {
+            warn!("Failed to fetch channel analytics: {e}");
+            (
+                AnalyticsSummaryView {
+                    total_sales: "$0.00".to_string(),
+                    total_net_sales: "$0.00".to_string(),
+                    total_orders: "0".to_string(),
+                    total_units: "0".to_string(),
+                    average_order_value: "$0.00".to_string(),
+                    channels: vec![],
+                },
+                0.0,
+            )
+        }
+    }
+}
+
+/// Process trend result into views and Chart.js JSON arrays.
+fn process_trend(
+    result: Result<Vec<DailyMetrics>, crate::shopify::AdminShopifyError>,
+) -> (Vec<DailyMetricsView>, String, String) {
+    match result {
+        Ok(metrics) => {
+            debug!(data_points = %metrics.len(), "Fetched trend data");
+            let views: Vec<DailyMetricsView> = metrics.iter().map(DailyMetricsView::from).collect();
+            let labels: Vec<String> = metrics
+                .iter()
+                .map(|d| {
+                    chrono::NaiveDate::parse_from_str(&d.date, "%Y-%m-%d")
+                        .map_or_else(|_| d.date.clone(), |dt| dt.format("%b %d").to_string())
+                })
+                .collect();
+            let data: Vec<String> = metrics
+                .iter()
+                .map(|d| format!("{:.2}", d.total_sales))
+                .collect();
+            let labels_json = serde_json::to_string(&labels).unwrap_or_else(|_| "[]".to_string());
+            let data_json = format!("[{}]", data.join(","));
+            (views, labels_json, data_json)
+        }
+        Err(e) => {
+            warn!("Failed to fetch trend data: {e}");
+            (vec![], "[]".to_string(), "[]".to_string())
+        }
+    }
+}
+
+/// Process channels result into views.
+fn process_channels(
+    result: Result<Vec<SalesChannel>, crate::shopify::AdminShopifyError>,
+) -> Vec<SalesChannelView> {
+    match result {
+        Ok(channels) => {
+            debug!(channel_count = %channels.len(), "Fetched sales channels");
+            channels.iter().map(SalesChannelView::from).collect()
+        }
+        Err(e) => {
+            warn!("Failed to fetch sales channels: {e}");
+            vec![]
+        }
+    }
 }
 
 /// Sales channels list page.

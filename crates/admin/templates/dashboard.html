@@ -48,65 +48,84 @@
 {% endif %}
 
 <!-- Metrics Cards -->
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-    <!-- Total Orders -->
-    <div class="bg-card rounded-xl p-6 border border-border">
-        <div class="flex items-center justify-between mb-4">
-            <div class="w-12 h-12 rounded-lg bg-coral/10 flex items-center justify-center">
-                <i class="ph ph-receipt text-2xl text-coral"></i>
-            </div>
-            <span class="text-sm font-medium text-success flex items-center gap-1">
-                <i class="ph ph-trend-up text-sm"></i>
-                +12%
-            </span>
-        </div>
-        <p class="text-2xl font-semibold text-foreground">{{ metrics.orders }}</p>
-        <p class="text-sm text-muted-foreground mt-1">Total Orders</p>
-    </div>
-
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
     <!-- Revenue -->
     <div class="bg-card rounded-xl p-6 border border-border">
         <div class="flex items-center justify-between mb-4">
             <div class="w-12 h-12 rounded-lg bg-honey/20 flex items-center justify-center">
                 <i class="ph ph-currency-dollar text-2xl text-honey"></i>
             </div>
-            <span class="text-sm font-medium text-success flex items-center gap-1">
-                <i class="ph ph-trend-up text-sm"></i>
-                +8%
+            <span class="text-sm font-medium {{ metrics.revenue_growth.css_class }} flex items-center gap-1">
+                <i class="ph ph-{{ metrics.revenue_growth.icon }} text-sm"></i>
+                {{ metrics.revenue_growth.label }}
             </span>
         </div>
-        <p class="text-2xl font-semibold text-foreground">{{ metrics.revenue }}</p>
-        <p class="text-sm text-muted-foreground mt-1">Total Revenue</p>
+        <p class="text-2xl font-semibold text-foreground tabular-nums">{{ metrics.revenue }}</p>
+        <p class="text-sm text-muted-foreground mt-1">Revenue (30d)</p>
     </div>
 
-    <!-- Total Customers -->
+    <!-- Expenses -->
+    <div class="bg-card rounded-xl p-6 border border-border">
+        <div class="flex items-center justify-between mb-4">
+            <div class="w-12 h-12 rounded-lg bg-coral/10 flex items-center justify-center">
+                <i class="ph ph-money text-2xl text-coral"></i>
+            </div>
+        </div>
+        <p class="text-2xl font-semibold text-foreground tabular-nums">{{ metrics.expenses }}</p>
+        <p class="text-sm text-muted-foreground mt-1">Total Costs (30d)</p>
+    </div>
+
+    <!-- Net Income -->
     <div class="bg-card rounded-xl p-6 border border-border">
         <div class="flex items-center justify-between mb-4">
             <div class="w-12 h-12 rounded-lg bg-leaf/10 flex items-center justify-center">
-                <i class="ph ph-users text-2xl text-leaf"></i>
+                <i class="ph ph-chart-line-up text-2xl text-leaf"></i>
             </div>
-            <span class="text-sm font-medium text-success flex items-center gap-1">
-                <i class="ph ph-trend-up text-sm"></i>
-                +23%
-            </span>
         </div>
-        <p class="text-2xl font-semibold text-foreground">{{ metrics.customers }}</p>
-        <p class="text-sm text-muted-foreground mt-1">Total Customers</p>
+        <p class="text-2xl font-semibold text-foreground tabular-nums">{{ metrics.net_income }}</p>
+        <p class="text-sm text-muted-foreground mt-1">Net Income (30d)</p>
     </div>
+</div>
 
-    <!-- Products -->
-    <div class="bg-card rounded-xl p-6 border border-border">
-        <div class="flex items-center justify-between mb-4">
-            <div class="w-12 h-12 rounded-lg bg-secondary/20 flex items-center justify-center">
-                <i class="ph ph-package text-2xl text-secondary"></i>
+<!-- Secondary Metrics -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+    <!-- Orders -->
+    <div class="bg-card rounded-xl p-5 border border-border">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-2xl font-semibold text-foreground tabular-nums">{{ metrics.orders }}</p>
+                <p class="text-sm text-muted-foreground mt-0.5">Orders</p>
             </div>
-            <span class="text-sm font-medium text-muted-foreground flex items-center gap-1">
-                <i class="ph ph-minus text-sm"></i>
-                0%
+            <span class="text-sm font-medium {{ metrics.order_growth.css_class }} flex items-center gap-1">
+                <i class="ph ph-{{ metrics.order_growth.icon }} text-sm"></i>
+                {{ metrics.order_growth.label }}
             </span>
         </div>
-        <p class="text-2xl font-semibold text-foreground">{{ metrics.products }}</p>
-        <p class="text-sm text-muted-foreground mt-1">Active Products</p>
+    </div>
+    <!-- Customers -->
+    <div class="bg-card rounded-xl p-5 border border-border">
+        <div>
+            <p class="text-2xl font-semibold text-foreground tabular-nums">{{ metrics.customers }}</p>
+            <p class="text-sm text-muted-foreground mt-0.5">Customers</p>
+        </div>
+    </div>
+    <!-- Products -->
+    <div class="bg-card rounded-xl p-5 border border-border">
+        <div>
+            <p class="text-2xl font-semibold text-foreground tabular-nums">{{ metrics.products }}</p>
+            <p class="text-sm text-muted-foreground mt-0.5">Active Products</p>
+        </div>
+    </div>
+</div>
+
+<!-- Revenue Trend Chart -->
+<div class="bg-card rounded-xl border border-border p-6 mb-8">
+    <div class="flex items-center justify-between mb-4">
+        <h3 class="font-semibold text-foreground">Revenue Trend (30 Days)</h3>
+        <a href="/analytics" class="text-sm text-coral hover:underline">View Full Analytics</a>
+    </div>
+    <div class="h-64">
+        <canvas id="revenueTrendChart"></canvas>
     </div>
 </div>
 
@@ -153,36 +172,36 @@
         </div>
     </div>
 
-    <!-- Recent Activity -->
-    <div class="bg-card rounded-xl border border-border">
-        <div class="px-6 py-4 border-b border-border">
-            <h3 class="font-semibold text-foreground">Recent Activity</h3>
+    <!-- Quick Links -->
+    <div class="space-y-4">
+        <div class="bg-card rounded-xl border border-border p-5">
+            <h3 class="font-semibold text-foreground mb-3">Quick Links</h3>
+            <div class="space-y-2">
+                <a href="/analytics" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-muted/50 transition-colors">
+                    <i class="ph ph-chart-bar text-lg text-coral"></i>
+                    <span class="text-sm text-foreground">Sales Analytics</span>
+                </a>
+                <a href="/financials" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-muted/50 transition-colors">
+                    <i class="ph ph-wallet text-lg text-coral"></i>
+                    <span class="text-sm text-foreground">Financial Overview</span>
+                </a>
+                <a href="/financials/expenses" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-muted/50 transition-colors">
+                    <i class="ph ph-money text-lg text-coral"></i>
+                    <span class="text-sm text-foreground">Expense Tracker</span>
+                </a>
+                <a href="/financials/manufacturing" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-muted/50 transition-colors">
+                    <i class="ph ph-factory text-lg text-coral"></i>
+                    <span class="text-sm text-foreground">Manufacturing</span>
+                </a>
+            </div>
         </div>
-        <div class="p-6">
-            {% if recent_activity.is_empty() %}
-            <div class="text-center text-muted-foreground py-4">
-                <i class="ph ph-clock-counter-clockwise text-4xl mb-2"></i>
-                <p>No recent activity</p>
+
+        <!-- Channel Breakdown -->
+        <div class="bg-card rounded-xl border border-border p-5">
+            <h3 class="font-semibold text-foreground mb-3">Revenue by Channel</h3>
+            <div class="h-48">
+                <canvas id="channelChart"></canvas>
             </div>
-            {% else %}
-            <div class="space-y-4">
-                {% for activity in recent_activity %}
-                <div class="flex gap-3">
-                    <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0
-                        {% if activity.activity_type == "order" %}bg-coral/10 text-coral
-                        {% elif activity.activity_type == "customer" %}bg-leaf/10 text-leaf
-                        {% elif activity.activity_type == "product" %}bg-secondary/20 text-secondary
-                        {% else %}bg-muted text-muted-foreground{% endif %}">
-                        <i class="ph ph-{{ activity.icon }} text-sm"></i>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <p class="text-sm text-foreground">{{ activity.description }}</p>
-                        <p class="text-xs text-muted-foreground mt-0.5">{{ activity.time_ago }}</p>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-            {% endif %}
         </div>
     </div>
 </div>
@@ -221,4 +240,115 @@
         </a>
     </div>
 </div>
+
+{% include "partials/_chart_defaults.html" %}
+<script>
+(function() {
+    const labels = {{ revenue_trend_labels|safe }};
+    const data = {{ revenue_trend_data|safe }};
+    const channelLabels = {{ channel_labels|safe }};
+    const channelData = {{ channel_data|safe }};
+    const style = getComputedStyle(document.documentElement);
+    const coral = style.getPropertyValue('--color-coral').trim() || '#d63a2f';
+    const muted = style.getPropertyValue('--color-muted-foreground').trim() || '#64748b';
+    const border = style.getPropertyValue('--color-border').trim() || '#334155';
+
+    // Revenue Trend Line Chart
+    const trendCtx = document.getElementById('revenueTrendChart');
+    if (trendCtx && labels.length > 0) {
+        new Chart(trendCtx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Revenue',
+                    data: data,
+                    borderColor: coral,
+                    backgroundColor: coral + '20',
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 0,
+                    pointHoverRadius: 4,
+                    borderWidth: 2,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(ctx) { return '$' + Number(ctx.parsed.y).toFixed(2); }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: muted, maxTicksLimit: 7, font: { size: 11 } },
+                        border: { color: border }
+                    },
+                    y: {
+                        grid: { color: border + '40' },
+                        ticks: {
+                            color: muted,
+                            font: { size: 11 },
+                            callback: function(v) { return '$' + v.toLocaleString(); }
+                        },
+                        border: { display: false }
+                    }
+                }
+            }
+        });
+    }
+
+    // Channel Horizontal Bar Chart
+    const chCtx = document.getElementById('channelChart');
+    if (chCtx && channelLabels.length > 0) {
+        const colors = [coral, '#e8a87c', '#41b3a3', '#c38d9e', '#85cdca'];
+        new Chart(chCtx, {
+            type: 'bar',
+            data: {
+                labels: channelLabels,
+                datasets: [{
+                    data: channelData,
+                    backgroundColor: colors.slice(0, channelLabels.length),
+                    borderRadius: 4,
+                    barThickness: 20,
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(ctx) { return '$' + Number(ctx.parsed.x).toFixed(2); }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { color: border + '40' },
+                        ticks: {
+                            color: muted,
+                            font: { size: 11 },
+                            callback: function(v) { return '$' + v.toLocaleString(); }
+                        },
+                        border: { display: false }
+                    },
+                    y: {
+                        grid: { display: false },
+                        ticks: { color: muted, font: { size: 11 } },
+                        border: { color: border }
+                    }
+                }
+            }
+        });
+    }
+})();
+</script>
 {% endblock %}

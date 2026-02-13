@@ -15,9 +15,10 @@ use serde::Deserialize;
 use tracing::{debug, info, instrument, warn};
 
 use crate::{
-    db::{InventoryLotRepository, ManufacturingRepository, RepositoryError},
+    db::{ExpenseRepository, InventoryLotRepository, ManufacturingRepository, RepositoryError},
     filters,
     middleware::auth::RequireAdminAuth,
+    models::expense::ExpenseFilter,
     models::inventory_lot::{CreateLotInput, UpdateLotInput},
     models::manufacturing::{BatchFilter, CreateBatchInput, UpdateBatchInput},
     state::AppState,
@@ -446,15 +447,94 @@ struct ProductSearchResultsTemplate {
     products: Vec<ProductSearchResult>,
 }
 
+/// Financials overview page.
+#[derive(Template)]
+#[template(path = "financials/overview.html")]
+struct FinancialsOverviewTemplate {
+    admin_user: AdminUserView,
+    current_path: String,
+    manufacturing_cost: String,
+    operating_expenses: String,
+    total_costs: String,
+    batch_count: i64,
+    expense_count: i64,
+    recent_expenses: Vec<RecentExpenseView>,
+    period_label: String,
+}
+
+/// Compact expense view for overview page.
+#[derive(Debug, Clone)]
+struct RecentExpenseView {
+    description: String,
+    amount: String,
+    date: String,
+    category_name: String,
+}
+
 // =============================================================================
 // Route Handlers
 // =============================================================================
 
-/// Financials landing page - redirects to manufacturing.
-#[instrument]
-pub async fn index() -> Redirect {
-    debug!("Redirecting from financials landing to manufacturing");
-    Redirect::to("/financials/manufacturing")
+/// Financials overview page — financial health hub.
+#[instrument(skip(state))]
+pub async fn index(
+    RequireAdminAuth(user): RequireAdminAuth,
+    State(state): State<AppState>,
+) -> impl IntoResponse {
+    let pool = state.pool();
+    let now = chrono::Utc::now().date_naive();
+    let start = now - chrono::Duration::days(30);
+
+    let expense_repo = ExpenseRepository::new(pool);
+    let manufacturing_repo = ManufacturingRepository::new(pool);
+    let lot_repo = InventoryLotRepository::new(pool);
+
+    let batch_filter = BatchFilter::default();
+    let expense_filter = ExpenseFilter::default();
+    let recent_filter = ExpenseFilter {
+        limit: Some(5),
+        ..Default::default()
+    };
+
+    let (operating_total, mfg_cost, batch_count, expense_count, recent) = tokio::join!(
+        expense_repo.get_total_expenses(start, now),
+        lot_repo.get_total_cogs(start, now),
+        manufacturing_repo.count_batches(&batch_filter),
+        expense_repo.count_expenses(&expense_filter),
+        expense_repo.list_expenses(&recent_filter),
+    );
+
+    let operating = operating_total.unwrap_or_default();
+    let mfg = mfg_cost.unwrap_or_default();
+    let total = operating + mfg;
+
+    let recent_expenses: Vec<RecentExpenseView> = recent
+        .unwrap_or_default()
+        .iter()
+        .map(|e| RecentExpenseView {
+            description: e.expense.description.clone(),
+            amount: format!("${:.2}", e.expense.amount),
+            date: e.expense.date.format("%b %d").to_string(),
+            category_name: e.category_name.clone(),
+        })
+        .collect();
+
+    let template = FinancialsOverviewTemplate {
+        admin_user: AdminUserView::from(&user),
+        current_path: "/financials".to_string(),
+        manufacturing_cost: format!("${mfg:.2}"),
+        operating_expenses: format!("${operating:.2}"),
+        total_costs: format!("${total:.2}"),
+        batch_count: batch_count.unwrap_or(0),
+        expense_count: expense_count.unwrap_or(0),
+        recent_expenses,
+        period_label: format!("{} — {}", start.format("%b %d"), now.format("%b %d, %Y")),
+    };
+    Html(
+        template
+            .render()
+            .unwrap_or_else(|e| format!("Template error: {e}")),
+    )
 }
 
 /// Manufacturing batches index.

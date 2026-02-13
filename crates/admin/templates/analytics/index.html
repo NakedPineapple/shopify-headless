@@ -10,92 +10,77 @@
 
 {% block content %}
 <!-- Date Range Selector -->
-<div class="mb-6 flex items-center justify-between">
+<div class="mb-6 flex flex-wrap items-center gap-3">
     <div class="flex items-center gap-2">
         <a href="/analytics?range=7d"
            class="px-4 py-2 text-sm rounded-lg transition-colors {% if current_range == "7d" %}bg-coral text-white{% else %}bg-muted text-foreground hover:bg-accent{% endif %}">
-            Last 7 Days
+            7 Days
         </a>
         <a href="/analytics?range=30d"
            class="px-4 py-2 text-sm rounded-lg transition-colors {% if current_range == "30d" %}bg-coral text-white{% else %}bg-muted text-foreground hover:bg-accent{% endif %}">
-            Last 30 Days
+            30 Days
         </a>
         <a href="/analytics?range=90d"
            class="px-4 py-2 text-sm rounded-lg transition-colors {% if current_range == "90d" %}bg-coral text-white{% else %}bg-muted text-foreground hover:bg-accent{% endif %}">
-            Last 90 Days
+            90 Days
         </a>
         <a href="/analytics?range=ytd"
            class="px-4 py-2 text-sm rounded-lg transition-colors {% if current_range == "ytd" %}bg-coral text-white{% else %}bg-muted text-foreground hover:bg-accent{% endif %}">
-            Year to Date
+            YTD
         </a>
     </div>
 
-    <a href="/analytics/channels" class="inline-flex items-center gap-2 px-4 py-2 text-sm text-primary hover:underline">
-        <i class="ph ph-storefront"></i>
-        View All Channels
-    </a>
+    <span class="text-muted-foreground">|</span>
+
+    <form method="GET" action="/analytics" class="flex items-center gap-2">
+        <input type="date" name="start" value="{{ custom_start }}"
+               class="px-3 py-1.5 text-sm bg-input text-foreground border border-border rounded-lg focus:ring-2 focus:ring-ring">
+        <span class="text-muted-foreground text-sm">to</span>
+        <input type="date" name="end" value="{{ custom_end }}"
+               class="px-3 py-1.5 text-sm bg-input text-foreground border border-border rounded-lg focus:ring-2 focus:ring-ring">
+        <button type="submit" class="px-3 py-1.5 text-sm bg-muted text-foreground rounded-lg hover:bg-accent transition-colors">
+            Apply
+        </button>
+    </form>
+
+    <div class="ml-auto">
+        <a href="/analytics/channels" class="inline-flex items-center gap-2 px-4 py-2 text-sm text-primary hover:underline">
+            <i class="ph ph-storefront"></i>
+            View All Channels
+        </a>
+    </div>
 </div>
 
 <!-- Summary Metrics Cards -->
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-    <!-- Total Sales -->
-    <div class="bg-card rounded-xl p-6 border border-border">
-        <div class="flex items-center justify-between mb-4">
-            <div class="w-12 h-12 rounded-lg bg-coral/10 flex items-center justify-center">
-                <i class="ph ph-currency-dollar text-2xl text-coral"></i>
-            </div>
-        </div>
-        <p class="text-2xl font-semibold text-foreground tabular-nums">{{ summary.total_sales }}</p>
-        <p class="text-sm text-muted-foreground mt-1">Total Sales</p>
+<div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+    <div class="bg-card rounded-xl p-5 border border-border">
+        <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Total Sales</p>
+        <p class="text-xl font-semibold text-foreground tabular-nums">{{ summary.total_sales }}</p>
     </div>
-
-    <!-- Net Sales -->
-    <div class="bg-card rounded-xl p-6 border border-border">
-        <div class="flex items-center justify-between mb-4">
-            <div class="w-12 h-12 rounded-lg bg-leaf/10 flex items-center justify-center">
-                <i class="ph ph-chart-line-up text-2xl text-leaf"></i>
-            </div>
-        </div>
-        <p class="text-2xl font-semibold text-foreground tabular-nums">{{ summary.total_net_sales }}</p>
-        <p class="text-sm text-muted-foreground mt-1">Net Sales</p>
+    <div class="bg-card rounded-xl p-5 border border-border">
+        <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Net Sales</p>
+        <p class="text-xl font-semibold text-foreground tabular-nums">{{ summary.total_net_sales }}</p>
     </div>
-
-    <!-- Total Orders -->
-    <div class="bg-card rounded-xl p-6 border border-border">
-        <div class="flex items-center justify-between mb-4">
-            <div class="w-12 h-12 rounded-lg bg-honey/20 flex items-center justify-center">
-                <i class="ph ph-receipt text-2xl text-honey"></i>
-            </div>
-        </div>
-        <p class="text-2xl font-semibold text-foreground tabular-nums">{{ summary.total_orders }}</p>
-        <p class="text-sm text-muted-foreground mt-1">Orders</p>
+    <div class="bg-card rounded-xl p-5 border border-border">
+        <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Expenses</p>
+        <p class="text-xl font-semibold text-foreground tabular-nums">{{ total_expenses }}</p>
     </div>
-
-    <!-- Units Sold -->
-    <div class="bg-card rounded-xl p-6 border border-border">
-        <div class="flex items-center justify-between mb-4">
-            <div class="w-12 h-12 rounded-lg bg-secondary/20 flex items-center justify-center">
-                <i class="ph ph-package text-2xl text-secondary"></i>
-            </div>
-        </div>
-        <p class="text-2xl font-semibold text-foreground tabular-nums">{{ summary.total_units }}</p>
-        <p class="text-sm text-muted-foreground mt-1">Units Sold</p>
+    <div class="bg-card rounded-xl p-5 border border-border">
+        <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Net Income</p>
+        <p class="text-xl font-semibold text-foreground tabular-nums">{{ net_income }}</p>
     </div>
-
-    <!-- Average Order Value -->
-    <div class="bg-card rounded-xl p-6 border border-border">
-        <div class="flex items-center justify-between mb-4">
-            <div class="w-12 h-12 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                <i class="ph ph-shopping-cart text-2xl text-purple-500"></i>
-            </div>
-        </div>
-        <p class="text-2xl font-semibold text-foreground tabular-nums">{{ summary.average_order_value }}</p>
-        <p class="text-sm text-muted-foreground mt-1">Avg Order Value</p>
+    <div class="bg-card rounded-xl p-5 border border-border">
+        <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Orders</p>
+        <p class="text-xl font-semibold text-foreground tabular-nums">{{ summary.total_orders }}</p>
+    </div>
+    <div class="bg-card rounded-xl p-5 border border-border">
+        <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Avg Order</p>
+        <p class="text-xl font-semibold text-foreground tabular-nums">{{ summary.average_order_value }}</p>
     </div>
 </div>
 
 <div class="grid lg:grid-cols-3 gap-6">
-    <!-- Sales Trend Chart -->
+    <!-- Sales Trend Chart (Chart.js) -->
     <div class="lg:col-span-2 bg-card rounded-xl border border-border">
         <div class="px-6 py-4 border-b border-border">
             <h3 class="font-semibold text-foreground">Sales Trend</h3>
@@ -107,35 +92,9 @@
                 <p>No trend data available</p>
             </div>
             {% else %}
-            <!-- Simple visual representation of trend data -->
-            <div class="space-y-3">
-                {% for day in trend %}
-                <div class="flex items-center gap-4">
-                    <span class="text-xs text-muted-foreground w-24 shrink-0 tabular-nums">{{ day.date }}</span>
-                    <div class="flex-1 h-6 bg-muted rounded-full overflow-hidden">
-                        <div class="h-full bg-gradient-to-r from-coral to-honey rounded-full transition-all"
-                             style="width: 50%"
-                             data-sales="{{ day.total_sales_raw }}"></div>
-                    </div>
-                    <span class="text-sm font-medium text-foreground w-20 text-right tabular-nums">{{ day.total_sales }}</span>
-                </div>
-                {% endfor %}
+            <div class="h-72">
+                <canvas id="salesTrendChart"></canvas>
             </div>
-            <script>
-                // Calculate and set bar widths based on max value
-                (function() {
-                    const bars = document.querySelectorAll('[data-sales]');
-                    if (bars.length === 0) return;
-                    const values = Array.from(bars).map(b => parseFloat(b.dataset.sales) || 0);
-                    const max = Math.max(...values);
-                    if (max > 0) {
-                        bars.forEach(bar => {
-                            const pct = (parseFloat(bar.dataset.sales) / max * 100).toFixed(0);
-                            bar.style.width = pct + '%';
-                        });
-                    }
-                })();
-            </script>
             {% endif %}
         </div>
     </div>
@@ -264,4 +223,69 @@
         {% endif %}
     </div>
 </div>
+
+{% if !trend.is_empty() %}
+{% include "partials/_chart_defaults.html" %}
+<script>
+(function() {
+    const labels = {{ trend_labels|safe }};
+    const data = {{ trend_data|safe }};
+    const style = getComputedStyle(document.documentElement);
+    const coral = style.getPropertyValue('--color-coral').trim() || '#d63a2f';
+    const muted = style.getPropertyValue('--color-muted-foreground').trim() || '#64748b';
+    const border = style.getPropertyValue('--color-border').trim() || '#334155';
+
+    const ctx = document.getElementById('salesTrendChart');
+    if (ctx && labels.length > 0) {
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Sales',
+                    data: data,
+                    borderColor: coral,
+                    backgroundColor: coral + '15',
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: labels.length > 30 ? 0 : 3,
+                    pointHoverRadius: 5,
+                    pointBackgroundColor: coral,
+                    borderWidth: 2,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(ctx) { return '$' + Number(ctx.parsed.y).toFixed(2); }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: muted, maxTicksLimit: 10, font: { size: 11 } },
+                        border: { color: border }
+                    },
+                    y: {
+                        grid: { color: border + '40' },
+                        ticks: {
+                            color: muted,
+                            font: { size: 11 },
+                            callback: function(v) { return '$' + v.toLocaleString(); }
+                        },
+                        border: { display: false },
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    }
+})();
+</script>
+{% endif %}
 {% endblock %}
