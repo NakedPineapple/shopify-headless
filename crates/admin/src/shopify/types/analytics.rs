@@ -285,6 +285,44 @@ pub struct MarketingActivity {
     pub scheduled_to_end_at: Option<String>,
 }
 
+// =============================================================================
+// Revenue by Product Types (for profit margin reporting)
+// =============================================================================
+
+/// Revenue data for a single product from `ShopifyQL`.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct ProductRevenue {
+    /// The product title from Shopify.
+    pub product_title: String,
+    /// Product ID (if available from `ShopifyQL`).
+    pub product_id: Option<String>,
+    /// Total sales amount.
+    pub total_sales: f64,
+    /// Net sales (after returns/refunds).
+    pub net_sales: f64,
+    /// Number of orders containing this product.
+    pub orders: i64,
+    /// Units sold.
+    pub units_sold: i64,
+}
+
+// =============================================================================
+// Multi-Channel Trend Types
+// =============================================================================
+
+/// Daily metrics per channel for multi-channel trend chart.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChannelDailyMetrics {
+    /// The date (YYYY-MM-DD format).
+    pub date: String,
+    /// The channel name.
+    pub channel_name: String,
+    /// Total sales for this day/channel.
+    pub total_sales: f64,
+    /// Number of orders for this day/channel.
+    pub orders: i64,
+}
+
 /// Summary of marketing activities.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct MarketingActivitySummary {

@@ -9,6 +9,21 @@
 {% endblock %}
 
 {% block content %}
+<!-- Sub-navigation -->
+<div class="mb-6 border-b border-border">
+    <nav class="flex gap-6">
+        <a href="/analytics" class="text-foreground py-3 border-b-2 border-coral">
+            Overview
+        </a>
+        <a href="/analytics/attribution" class="text-muted-foreground py-3 hover:text-foreground transition-colors">
+            Attribution
+        </a>
+        <a href="/analytics/channels" class="text-muted-foreground py-3 hover:text-foreground transition-colors">
+            Channels
+        </a>
+    </nav>
+</div>
+
 <!-- Date Range Selector -->
 <div class="mb-6 flex flex-wrap items-center gap-3">
     <div class="flex items-center gap-2">

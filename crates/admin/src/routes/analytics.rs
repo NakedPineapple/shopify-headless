@@ -16,7 +16,11 @@ use crate::{
     db::ExpenseRepository,
     filters,
     middleware::auth::RequireAdminAuth,
-    shopify::types::{AnalyticsSummary, ChannelMetrics, DailyMetrics, DateRange, SalesChannel},
+    models::expense::ChannelAdSpend,
+    shopify::types::{
+        AnalyticsSummary, ChannelDailyMetrics, ChannelMetrics, DailyMetrics, DateRange,
+        SalesChannel,
+    },
     state::AppState,
 };
 
@@ -207,6 +211,53 @@ pub struct ChannelDetailTemplate {
     pub channel: SalesChannelView,
     pub trend: Vec<DailyMetricsView>,
     pub current_range: String,
+}
+
+// =============================================================================
+// Attribution View Types
+// =============================================================================
+
+/// Per-channel attribution view combining revenue with ad spend.
+#[derive(Debug, Clone)]
+pub struct ChannelAttributionView {
+    pub channel_name: String,
+    pub revenue: String,
+    pub revenue_raw: f64,
+    pub ad_spend: String,
+    pub ad_spend_raw: f64,
+    pub profit: String,
+    pub profit_raw: f64,
+    pub roas: String,
+    pub orders: String,
+    pub pct_of_revenue: String,
+    pub is_profitable: bool,
+    pub has_ad_spend: bool,
+}
+
+/// Attribution summary view.
+#[derive(Debug, Clone)]
+pub struct AttributionSummaryView {
+    pub total_revenue: String,
+    pub total_ad_spend: String,
+    pub blended_roas: String,
+    pub net_channel_profit: String,
+    pub channels: Vec<ChannelAttributionView>,
+}
+
+/// Attribution page template.
+#[derive(Template)]
+#[template(path = "analytics/attribution.html")]
+struct AttributionTemplate {
+    admin_user: AdminUserView,
+    current_path: String,
+    summary: AttributionSummaryView,
+    current_range: String,
+    custom_start: String,
+    custom_end: String,
+    channel_labels: String,
+    channel_revenue_data: String,
+    trend_labels: String,
+    trend_datasets: String,
 }
 
 // =============================================================================
@@ -454,6 +505,218 @@ pub async fn channel_detail(
         tracing::error!("Template render error: {e}");
         "Internal Server Error".to_string()
     }))
+}
+
+/// Revenue attribution dashboard.
+#[instrument(skip(state), fields(admin_id = %admin.id.as_i32()))]
+pub async fn attribution(
+    RequireAdminAuth(admin): RequireAdminAuth,
+    State(state): State<AppState>,
+    Query(query): Query<AnalyticsQuery>,
+) -> Html<String> {
+    debug!("Fetching attribution dashboard");
+    let date_range = query.to_date_range();
+    let (start, end) = query_to_dates(&query);
+    let expense_repo = ExpenseRepository::new(state.pool());
+
+    // Parallel fetch: channel revenue, multi-channel trend, ad spend
+    let (analytics_result, trend_result, ad_spend_result) = tokio::join!(
+        state.shopify().get_channel_analytics(&date_range),
+        state.shopify().get_multi_channel_trend(&date_range),
+        expense_repo.get_ad_spend_by_channel(start, end),
+    );
+
+    let summary = build_attribution_summary(analytics_result, ad_spend_result);
+    let (trend_labels, trend_datasets) = build_multi_channel_trend(trend_result);
+    let (channel_labels, channel_revenue_data) = build_channel_chart_data(&summary.channels);
+
+    let template = AttributionTemplate {
+        admin_user: AdminUserView::from(&admin),
+        current_path: "/analytics/attribution".to_string(),
+        summary,
+        current_range: query.current_range().to_string(),
+        custom_start: query.start.clone().unwrap_or_default(),
+        custom_end: query.end.clone().unwrap_or_default(),
+        channel_labels,
+        channel_revenue_data,
+        trend_labels,
+        trend_datasets,
+    };
+
+    Html(template.render().unwrap_or_else(|e| {
+        tracing::error!("Template render error: {e}");
+        "Internal Server Error".to_string()
+    }))
+}
+
+/// Build attribution summary by joining channel revenue with ad spend.
+fn build_attribution_summary(
+    analytics_result: Result<AnalyticsSummary, crate::shopify::AdminShopifyError>,
+    ad_spend_result: Result<Vec<ChannelAdSpend>, crate::db::RepositoryError>,
+) -> AttributionSummaryView {
+    let analytics = analytics_result.unwrap_or_default();
+    let ad_spend_list = ad_spend_result.unwrap_or_default();
+
+    let ad_spend_map: std::collections::HashMap<String, f64> = ad_spend_list
+        .iter()
+        .map(|a| {
+            (
+                a.channel_name.clone(),
+                a.total_spend.to_string().parse::<f64>().unwrap_or(0.0),
+            )
+        })
+        .collect();
+
+    let total_revenue = analytics.total_sales;
+    let mut total_ad_spend = 0.0;
+
+    let channels: Vec<ChannelAttributionView> = analytics
+        .channels
+        .iter()
+        .map(|ch| {
+            let spend = ad_spend_map.get(&ch.channel_name).copied().unwrap_or(0.0);
+            total_ad_spend += spend;
+            let profit = ch.total_sales - spend;
+            let roas = if spend > 0.0 {
+                ch.total_sales / spend
+            } else {
+                0.0
+            };
+            let pct = if total_revenue > 0.0 {
+                (ch.total_sales / total_revenue) * 100.0
+            } else {
+                0.0
+            };
+
+            ChannelAttributionView {
+                channel_name: ch.channel_name.clone(),
+                revenue: format_currency(ch.total_sales),
+                revenue_raw: ch.total_sales,
+                ad_spend: if spend > 0.0 {
+                    format_currency(spend)
+                } else {
+                    "\u{2014}".to_string()
+                },
+                ad_spend_raw: spend,
+                profit: format_currency(profit),
+                profit_raw: profit,
+                roas: if spend > 0.0 {
+                    format!("{roas:.1}x")
+                } else {
+                    "\u{2014}".to_string()
+                },
+                orders: ch.orders.to_string(),
+                pct_of_revenue: format!("{pct:.1}%"),
+                is_profitable: profit >= 0.0,
+                has_ad_spend: spend > 0.0,
+            }
+        })
+        .collect();
+
+    let net_profit = total_revenue - total_ad_spend;
+    let blended = if total_ad_spend > 0.0 {
+        format!("{:.1}x", total_revenue / total_ad_spend)
+    } else {
+        "\u{2014}".to_string()
+    };
+
+    AttributionSummaryView {
+        total_revenue: format_currency(total_revenue),
+        total_ad_spend: format_currency(total_ad_spend),
+        blended_roas: blended,
+        net_channel_profit: format_currency(net_profit),
+        channels,
+    }
+}
+
+/// Build Chart.js data for the revenue-by-channel doughnut chart.
+fn build_channel_chart_data(channels: &[ChannelAttributionView]) -> (String, String) {
+    let labels: Vec<&str> = channels.iter().map(|c| c.channel_name.as_str()).collect();
+    let data: Vec<String> = channels
+        .iter()
+        .map(|c| format!("{:.2}", c.revenue_raw))
+        .collect();
+    let labels_json = serde_json::to_string(&labels).unwrap_or_else(|_| "[]".to_string());
+    let data_json = format!("[{}]", data.join(","));
+    (labels_json, data_json)
+}
+
+/// Build Chart.js datasets for the multi-channel stacked area chart.
+fn build_multi_channel_trend(
+    result: Result<Vec<ChannelDailyMetrics>, crate::shopify::AdminShopifyError>,
+) -> (String, String) {
+    let metrics = result.unwrap_or_default();
+    if metrics.is_empty() {
+        return ("[]".to_string(), "[]".to_string());
+    }
+
+    // Collect unique dates and channels
+    let mut dates: Vec<String> = Vec::new();
+    let mut channel_set: Vec<String> = Vec::new();
+    for m in &metrics {
+        if !dates.contains(&m.date) {
+            dates.push(m.date.clone());
+        }
+        if !channel_set.contains(&m.channel_name) {
+            channel_set.push(m.channel_name.clone());
+        }
+    }
+
+    // Build per-channel data arrays
+    let mut datasets = Vec::new();
+    let palette = [
+        "#d63a2f", "#d4a14a", "#3a9d5c", "#6b8fa3", "#8b5cf6", "#1e4d6e",
+    ];
+    for (idx, channel) in channel_set.iter().enumerate() {
+        let data_points: Vec<String> = dates
+            .iter()
+            .map(|date| {
+                metrics
+                    .iter()
+                    .find(|m| &m.date == date && &m.channel_name == channel)
+                    .map_or_else(|| "0".to_string(), |m| format!("{:.2}", m.total_sales))
+            })
+            .collect();
+        let color = palette
+            .get(idx % palette.len())
+            .copied()
+            .unwrap_or("#6b8fa3");
+        datasets.push(format!(
+            "{{label:\"{channel}\",data:[{}],borderColor:\"{color}\",backgroundColor:\"{color}20\",fill:true}}",
+            data_points.join(",")
+        ));
+    }
+
+    let labels: Vec<String> = dates
+        .iter()
+        .map(|d| {
+            chrono::NaiveDate::parse_from_str(d, "%Y-%m-%d")
+                .map_or_else(|_| d.clone(), |dt| dt.format("%b %d").to_string())
+        })
+        .collect();
+    let labels_json = serde_json::to_string(&labels).unwrap_or_else(|_| "[]".to_string());
+    let datasets_json = format!("[{}]", datasets.join(","));
+
+    (labels_json, datasets_json)
+}
+
+/// Convert analytics query to `NaiveDate` pair.
+fn query_to_dates(query: &AnalyticsQuery) -> (chrono::NaiveDate, chrono::NaiveDate) {
+    let now = chrono::Utc::now().date_naive();
+    if let (Some(s), Some(e)) = (&query.start, &query.end) {
+        let start = chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d")
+            .unwrap_or(now - chrono::Duration::days(30));
+        let end = chrono::NaiveDate::parse_from_str(e, "%Y-%m-%d").unwrap_or(now);
+        (start, end)
+    } else {
+        let days = match query.range.as_deref() {
+            Some("7d") => 7,
+            Some("90d") => 90,
+            Some("ytd") => 365,
+            _ => 30,
+        };
+        (now - chrono::Duration::days(days), now)
+    }
 }
 
 // =============================================================================

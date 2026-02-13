@@ -24,6 +24,14 @@ pub struct OrderCogs {
     pub total_cogs: Decimal,
 }
 
+/// Recent order COGS for margin reporting, sorted by most recent allocation.
+#[derive(Debug, Clone)]
+pub struct RecentOrderCogs {
+    pub shopify_order_id: String,
+    pub total_cogs: Decimal,
+    pub last_allocated_at: DateTime<Utc>,
+}
+
 /// Convert chrono `NaiveDate` to `time::Date` for `SQLx` compatibility.
 ///
 /// This conversion is necessary due to `SQLx`'s type resolution when both `chrono` and `time`
@@ -940,5 +948,54 @@ impl<'a> InventoryLotRepository<'a> {
         .await?;
 
         Ok(total)
+    }
+
+    /// Get recent orders with COGS, sorted by most recent allocation.
+    ///
+    /// # Errors
+    ///
+    /// Returns `RepositoryError::Database` if the query fails.
+    #[instrument(skip(self), level = "debug")]
+    pub async fn get_recent_order_cogs(
+        &self,
+        start: NaiveDate,
+        end: NaiveDate,
+        limit: i64,
+    ) -> Result<Vec<RecentOrderCogs>, RepositoryError> {
+        debug!("Fetching recent order COGS");
+
+        let start_ts = to_time_offset_midnight(start);
+        let end_exclusive = to_time_offset_next_midnight(end);
+
+        let rows = sqlx::query!(
+            r#"
+            SELECT
+                la.shopify_order_id,
+                COALESCE(SUM(la.quantity::numeric * mb.cost_per_unit), 0) as "total_cogs!: Decimal",
+                MAX(la.allocated_at) as "last_allocated_at!: DateTime<Utc>"
+            FROM admin.lot_allocation la
+            JOIN admin.inventory_lot il ON la.lot_id = il.id
+            JOIN admin.manufacturing_batch mb ON il.batch_id = mb.id
+            WHERE la.allocated_at >= $1
+              AND la.allocated_at < $2
+            GROUP BY la.shopify_order_id
+            ORDER BY MAX(la.allocated_at) DESC
+            LIMIT $3
+            "#,
+            start_ts,
+            end_exclusive,
+            limit,
+        )
+        .fetch_all(self.pool)
+        .await?;
+
+        Ok(rows
+            .into_iter()
+            .map(|r| RecentOrderCogs {
+                shopify_order_id: r.shopify_order_id,
+                total_cogs: r.total_cogs,
+                last_allocated_at: r.last_allocated_at,
+            })
+            .collect())
     }
 }

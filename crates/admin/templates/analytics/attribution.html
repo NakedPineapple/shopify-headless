@@ -1,0 +1,257 @@
+{% extends "layouts/base.html" %}
+{% import "macros/date_range.html" as dr %}
+
+{% block title %}Revenue Attribution{% endblock %}
+
+{% block page_title %}
+<div>
+    <h1 class="text-2xl font-semibold text-foreground">Revenue Attribution</h1>
+    <p class="text-sm text-muted-foreground mt-1">Channel performance and ad spend ROI</p>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Sub-navigation -->
+<div class="mb-6 border-b border-border">
+    <nav class="flex gap-6">
+        <a href="/analytics" class="text-muted-foreground py-3 hover:text-foreground transition-colors">
+            Overview
+        </a>
+        <a href="/analytics/attribution" class="text-foreground py-3 border-b-2 border-coral">
+            Attribution
+        </a>
+        <a href="/analytics/channels" class="text-muted-foreground py-3 hover:text-foreground transition-colors">
+            Channels
+        </a>
+    </nav>
+</div>
+
+<!-- Date Range Selector -->
+<div class="mb-6">
+    {% call dr::date_range_selector("/analytics/attribution", current_range, custom_start, custom_end) %}{% endcall %}
+</div>
+
+<!-- Summary Cards -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+    <div class="bg-card rounded-xl p-5 border border-border">
+        <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Total Revenue</p>
+        <p class="text-2xl font-semibold text-foreground tabular-nums">{{ summary.total_revenue }}</p>
+    </div>
+    <div class="bg-card rounded-xl p-5 border border-border">
+        <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Total Ad Spend</p>
+        <p class="text-2xl font-semibold text-foreground tabular-nums">{{ summary.total_ad_spend }}</p>
+    </div>
+    <div class="bg-card rounded-xl p-5 border border-border">
+        <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Blended ROAS</p>
+        <p class="text-2xl font-semibold text-foreground tabular-nums">{{ summary.blended_roas }}</p>
+    </div>
+    <div class="bg-card rounded-xl p-5 border border-border">
+        <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Net Channel Profit</p>
+        <p class="text-2xl font-semibold text-foreground tabular-nums">{{ summary.net_channel_profit }}</p>
+    </div>
+</div>
+
+<div class="grid lg:grid-cols-3 gap-6 mb-8">
+    <!-- Revenue Share Doughnut Chart -->
+    <div class="bg-card rounded-xl border border-border">
+        <div class="px-6 py-4 border-b border-border">
+            <h3 class="font-semibold text-foreground">Revenue Share</h3>
+        </div>
+        <div class="p-6">
+            {% if summary.channels.is_empty() %}
+            <div class="text-center text-muted-foreground py-12">
+                <i class="ph ph-chart-donut text-4xl mb-2"></i>
+                <p>No channel data</p>
+            </div>
+            {% else %}
+            <div class="h-64">
+                <canvas id="revenueShareChart"></canvas>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Daily Revenue by Channel Stacked Area -->
+    <div class="lg:col-span-2 bg-card rounded-xl border border-border">
+        <div class="px-6 py-4 border-b border-border">
+            <h3 class="font-semibold text-foreground">Daily Revenue by Channel</h3>
+        </div>
+        <div class="p-6">
+            {% if trend_labels == "[]" %}
+            <div class="text-center text-muted-foreground py-12">
+                <i class="ph ph-chart-line text-4xl mb-2"></i>
+                <p>No trend data available</p>
+            </div>
+            {% else %}
+            <div class="h-64">
+                <canvas id="channelTrendChart"></canvas>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Channel Attribution Table -->
+<div class="bg-card rounded-xl border border-border overflow-hidden">
+    <div class="px-6 py-4 border-b border-border">
+        <h3 class="font-semibold text-foreground">Channel Attribution</h3>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full">
+            <thead class="bg-muted">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Channel</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Revenue</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Ad Spend</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Profit</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">ROAS</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Orders</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">% of Revenue</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-border">
+                {% if summary.channels.is_empty() %}
+                <tr>
+                    <td colspan="7" class="px-6 py-12 text-center text-muted-foreground">
+                        <i class="ph ph-chart-bar text-4xl mb-2 block"></i>
+                        <p>No channel data available</p>
+                        <p class="text-sm mt-1">Revenue data will appear once orders come through your channels.</p>
+                    </td>
+                </tr>
+                {% else %}
+                {% for ch in summary.channels %}
+                <tr class="hover:bg-accent transition-colors">
+                    <td class="px-6 py-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg {% if ch.is_profitable %}bg-green-500/10{% else %}bg-red-500/10{% endif %} flex items-center justify-center">
+                                <i class="ph ph-storefront {% if ch.is_profitable %}text-green-500{% else %}text-red-500{% endif %}"></i>
+                            </div>
+                            <span class="text-sm font-medium text-foreground">{{ ch.channel_name }}</span>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 text-sm text-right text-foreground tabular-nums">{{ ch.revenue }}</td>
+                    <td class="px-6 py-4 text-sm text-right text-foreground tabular-nums">{{ ch.ad_spend }}</td>
+                    <td class="px-6 py-4 text-sm text-right tabular-nums {% if ch.is_profitable %}text-green-500{% else %}text-red-500{% endif %}">{{ ch.profit }}</td>
+                    <td class="px-6 py-4 text-sm text-right text-foreground tabular-nums">{{ ch.roas }}</td>
+                    <td class="px-6 py-4 text-sm text-right text-foreground tabular-nums">{{ ch.orders }}</td>
+                    <td class="px-6 py-4 text-sm text-right text-muted-foreground tabular-nums">{{ ch.pct_of_revenue }}</td>
+                </tr>
+                {% endfor %}
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Chart.js Scripts -->
+{% if !summary.channels.is_empty() %}
+{% include "partials/_chart_defaults.html" %}
+<script>
+(function() {
+    var lc = window.lagoonChart;
+    var palette = lc.palette();
+
+    // Revenue Share Doughnut
+    var doughnutCtx = document.getElementById('revenueShareChart');
+    if (doughnutCtx) {
+        var labels = {{ channel_labels|safe }};
+        var data = {{ channel_revenue_data|safe }};
+        new Chart(doughnutCtx, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: data,
+                    backgroundColor: palette.slice(0, labels.length).map(function(c) { return c + '80'; }),
+                    borderColor: palette.slice(0, labels.length),
+                    borderWidth: 2,
+                    hoverOffset: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { padding: 12, font: { size: 11 } }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(ctx) {
+                                var total = ctx.dataset.data.reduce(function(a,b){ return a+b; }, 0);
+                                var pct = total > 0 ? ((ctx.parsed / total) * 100).toFixed(1) : '0';
+                                return ctx.label + ': $' + Number(ctx.parsed).toLocaleString(undefined, {minimumFractionDigits: 2}) + ' (' + pct + '%)';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Multi-Channel Trend
+    var trendCtx = document.getElementById('channelTrendChart');
+    if (trendCtx) {
+        var trendLabels = {{ trend_labels|safe }};
+        var trendDatasets = {{ trend_datasets|safe }};
+        new Chart(trendCtx, {
+            type: 'line',
+            data: {
+                labels: trendLabels,
+                datasets: trendDatasets.map(function(ds) {
+                    return {
+                        label: ds.label,
+                        data: ds.data,
+                        borderColor: ds.borderColor,
+                        backgroundColor: ds.backgroundColor,
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: trendLabels.length > 30 ? 0 : 2,
+                        pointHoverRadius: 4,
+                        borderWidth: 2,
+                    };
+                })
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { padding: 12, font: { size: 11 } }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(ctx) {
+                                return ctx.dataset.label + ': $' + Number(ctx.parsed.y).toFixed(2);
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        stacked: true,
+                        grid: { display: false },
+                        ticks: { maxTicksLimit: 10, font: { size: 11 } },
+                        border: { color: lc.gridColor() }
+                    },
+                    y: {
+                        stacked: true,
+                        grid: { color: lc.gridColor() },
+                        ticks: {
+                            font: { size: 11 },
+                            callback: function(v) { return '$' + v.toLocaleString(); }
+                        },
+                        border: { display: false },
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    }
+})();
+</script>
+{% endif %}
+{% endblock %}

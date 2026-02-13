@@ -365,6 +365,7 @@ fn gift_card_routes() -> Router<AppState> {
 fn analytics_routes() -> Router<AppState> {
     Router::new()
         .route("/analytics", get(analytics::index))
+        .route("/analytics/attribution", get(analytics::attribution))
         .route("/analytics/channels", get(analytics::channels))
         .route("/analytics/channels/{name}", get(analytics::channel_detail))
 }

@@ -10,8 +10,8 @@ use super::{
     queries::{GetSalesChannels, GetSalesChannelsCount, ShopifyqlQuery},
 };
 use crate::shopify::types::{
-    AnalyticsSummary, ChannelMetrics, DailyMetrics, DateRange, SalesChannel, SalesChannelApp,
-    ShopifyqlColumn, ShopifyqlResult,
+    AnalyticsSummary, ChannelDailyMetrics, ChannelMetrics, DailyMetrics, DateRange, ProductRevenue,
+    SalesChannel, SalesChannelApp, ShopifyqlColumn, ShopifyqlResult,
 };
 
 impl AdminClient {
@@ -294,5 +294,139 @@ impl AdminClient {
         }
 
         Ok(metrics)
+    }
+
+    /// Get daily sales trend grouped by channel (multi-channel trend).
+    ///
+    /// Returns daily sales for each channel over the given date range,
+    /// suitable for a stacked area chart.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the query fails.
+    #[instrument(skip(self))]
+    pub async fn get_multi_channel_trend(
+        &self,
+        date_range: &DateRange,
+    ) -> Result<Vec<ChannelDailyMetrics>, AdminShopifyError> {
+        let query = format!(
+            "FROM sales SHOW total_sales, orders \
+             GROUP BY day, sales_channel SINCE {} UNTIL {} ORDER BY day ASC",
+            date_range.start, date_range.end
+        );
+
+        let result = self.execute_shopifyql(&query).await?;
+
+        let day_idx = result.column_index("day");
+        let channel_idx = result.column_index("sales_channel");
+        let total_sales_idx = result.column_index("total_sales");
+        let orders_idx = result.column_index("orders");
+
+        let mut metrics = Vec::new();
+
+        for row in &result.rows {
+            let row_arr = row.as_array();
+
+            let date = day_idx
+                .and_then(|i| row_arr.and_then(|r| r.get(i)))
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+
+            let channel_name = channel_idx
+                .and_then(|i| row_arr.and_then(|r| r.get(i)))
+                .and_then(|v| v.as_str())
+                .unwrap_or("Unknown")
+                .to_string();
+
+            let total_sales = total_sales_idx
+                .and_then(|i| row_arr.and_then(|r| r.get(i)))
+                .and_then(serde_json::Value::as_f64)
+                .unwrap_or(0.0);
+
+            let orders = orders_idx
+                .and_then(|i| row_arr.and_then(|r| r.get(i)))
+                .and_then(serde_json::Value::as_i64)
+                .unwrap_or(0);
+
+            metrics.push(ChannelDailyMetrics {
+                date,
+                channel_name,
+                total_sales,
+                orders,
+            });
+        }
+
+        Ok(metrics)
+    }
+
+    /// Get revenue grouped by product for a date range.
+    ///
+    /// Uses `ShopifyQL` to aggregate sales data by product title.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the query fails.
+    #[instrument(skip(self))]
+    pub async fn get_revenue_by_product(
+        &self,
+        date_range: &DateRange,
+    ) -> Result<Vec<ProductRevenue>, AdminShopifyError> {
+        let query = format!(
+            "FROM sales SHOW total_sales, net_sales, orders, ordered_item_quantity \
+             GROUP BY product_title SINCE {} UNTIL {}",
+            date_range.start, date_range.end
+        );
+
+        let result = self.execute_shopifyql(&query).await?;
+
+        let title_idx = result.column_index("product_title");
+        let total_sales_idx = result.column_index("total_sales");
+        let net_sales_idx = result.column_index("net_sales");
+        let orders_idx = result.column_index("orders");
+        let units_idx = result.column_index("ordered_item_quantity");
+
+        let mut products = Vec::new();
+
+        for row in &result.rows {
+            let row_arr = row.as_array();
+
+            let product_title = title_idx
+                .and_then(|i| row_arr.and_then(|r| r.get(i)))
+                .and_then(|v| v.as_str())
+                .unwrap_or("Unknown")
+                .to_string();
+
+            let total_sales = total_sales_idx
+                .and_then(|i| row_arr.and_then(|r| r.get(i)))
+                .and_then(serde_json::Value::as_f64)
+                .unwrap_or(0.0);
+
+            let net_sales = net_sales_idx
+                .and_then(|i| row_arr.and_then(|r| r.get(i)))
+                .and_then(serde_json::Value::as_f64)
+                .unwrap_or(0.0);
+
+            let orders = orders_idx
+                .and_then(|i| row_arr.and_then(|r| r.get(i)))
+                .and_then(serde_json::Value::as_i64)
+                .unwrap_or(0);
+
+            let units_sold = units_idx
+                .and_then(|i| row_arr.and_then(|r| r.get(i)))
+                .and_then(serde_json::Value::as_i64)
+                .unwrap_or(0);
+
+            products.push(ProductRevenue {
+                product_title,
+                product_id: None,
+                total_sales,
+                net_sales,
+                orders,
+                units_sold,
+            });
+        }
+
+        Ok(products)
     }
 }

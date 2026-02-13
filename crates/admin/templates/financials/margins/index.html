@@ -1,0 +1,408 @@
+{% extends "layouts/base.html" %}
+{% import "macros/date_range.html" as dr %}
+
+{% block title %}Profit Margins{% endblock %}
+
+{% block page_title %}
+<div>
+    <h1 class="text-2xl font-semibold text-foreground">Profit Margins</h1>
+    <p class="text-sm text-muted-foreground mt-1">Per-product and business-wide profitability</p>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Tab Navigation -->
+<div class="mb-6 border-b border-border">
+    <nav class="flex gap-6">
+        <a href="/financials/manufacturing" class="text-muted-foreground py-3 hover:text-foreground transition-colors">
+            Manufacturing
+        </a>
+        <a href="/financials/expenses" class="text-muted-foreground py-3 hover:text-foreground transition-colors">
+            Expenses
+        </a>
+        <a href="/financials/margins" class="text-foreground py-3 border-b-2 border-coral">
+            Profit Margins
+        </a>
+    </nav>
+</div>
+
+<!-- Date Range Selector -->
+<div class="mb-6">
+    {% call dr::date_range_selector("/financials/margins", current_range, custom_start, custom_end) %}{% endcall %}
+</div>
+
+<!-- Business Summary Cards -->
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+    <div class="bg-card rounded-xl p-5 border border-border">
+        <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Total Revenue</p>
+        <p class="text-2xl font-semibold text-foreground tabular-nums">{{ summary.total_revenue }}</p>
+    </div>
+    <div class="bg-card rounded-xl p-5 border border-border">
+        <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">COGS</p>
+        <p class="text-2xl font-semibold text-foreground tabular-nums">{{ summary.total_cogs }}</p>
+    </div>
+    <div class="bg-card rounded-xl p-5 border border-border">
+        <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Gross Profit</p>
+        <p class="text-2xl font-semibold text-foreground tabular-nums">{{ summary.gross_profit }}</p>
+        <p class="text-xs text-muted-foreground mt-1">{{ summary.gross_margin_pct }} margin</p>
+    </div>
+    <div class="bg-card rounded-xl p-5 border border-border">
+        <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Allocation Coverage</p>
+        <p class="text-2xl font-semibold text-foreground tabular-nums">{{ summary.allocation_coverage_pct }}</p>
+        <p class="text-xs text-muted-foreground mt-1">of units sold have COGS</p>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-8">
+    <div class="bg-card rounded-xl p-5 border border-border">
+        <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Operating Expenses</p>
+        <p class="text-2xl font-semibold text-foreground tabular-nums">{{ summary.total_operating_expenses }}</p>
+    </div>
+    <div class="bg-card rounded-xl p-5 border border-border">
+        <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Net Profit</p>
+        <p class="text-2xl font-semibold text-foreground tabular-nums">{{ summary.net_profit }}</p>
+        <p class="text-xs text-muted-foreground mt-1">{{ summary.net_margin_pct }} net margin</p>
+    </div>
+    <div class="bg-card rounded-xl p-5 border border-border">
+        <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Revenue Waterfall</p>
+        <div class="mt-2 h-32">
+            <canvas id="waterfallChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<div class="grid lg:grid-cols-3 gap-6 mb-8">
+    <!-- Top Products by Gross Profit Chart -->
+    <div class="lg:col-span-2 bg-card rounded-xl border border-border">
+        <div class="px-6 py-4 border-b border-border">
+            <h3 class="font-semibold text-foreground">Top Products by Gross Profit</h3>
+        </div>
+        <div class="p-6">
+            {% if top_products_labels == "[]" %}
+            <div class="text-center text-muted-foreground py-12">
+                <i class="ph ph-chart-bar text-4xl mb-2"></i>
+                <p>No products with COGS data yet</p>
+                <p class="text-sm mt-2">Allocate lots to orders in <a href="/financials/manufacturing" class="text-coral hover:underline">Manufacturing</a> to see margin data.</p>
+            </div>
+            {% else %}
+            <div class="h-64">
+                <canvas id="topProductsChart"></canvas>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Coverage Info -->
+    <div class="bg-card rounded-xl border border-border">
+        <div class="px-6 py-4 border-b border-border">
+            <h3 class="font-semibold text-foreground">Data Coverage</h3>
+        </div>
+        <div class="p-6 space-y-4">
+            <div>
+                <p class="text-sm text-muted-foreground mb-2">Allocation coverage indicates what percentage of units sold have manufacturing cost (COGS) data from lot allocations.</p>
+            </div>
+            <div class="bg-muted rounded-full h-3 overflow-hidden">
+                <div class="bg-coral h-full rounded-full transition-all" style="width: {{ summary.allocation_coverage_pct }}"></div>
+            </div>
+            <p class="text-sm text-muted-foreground">{{ summary.allocation_coverage_pct }} of units have COGS</p>
+            <div class="pt-2 border-t border-border">
+                <p class="text-xs text-muted-foreground">Products without lot allocations show &ldquo;&mdash;&rdquo; for COGS and margin.</p>
+            </div>
+            <a href="/financials/manufacturing" class="inline-flex items-center gap-2 text-sm text-coral hover:underline">
+                <i class="ph ph-factory"></i>
+                Manage Manufacturing
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Per-Product Margins Table -->
+<div class="bg-card rounded-xl border border-border overflow-hidden">
+    <div class="px-6 py-4 border-b border-border">
+        <h3 class="font-semibold text-foreground">Product Margins</h3>
+    </div>
+    <div class="overflow-x-auto">
+        <table id="productMarginsTable" class="w-full">
+            <thead class="bg-muted">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer select-none" data-sort-type="text" onclick="sortTable('productMarginsTable', 0, 'text')">
+                        Product <i class="ph ph-caret-up-down text-xs ml-1 opacity-50"></i>
+                    </th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer select-none" data-sort-type="number" onclick="sortTable('productMarginsTable', 1, 'number')">
+                        Revenue <i class="ph ph-caret-up-down text-xs ml-1 opacity-50"></i>
+                    </th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer select-none" data-sort-type="number" onclick="sortTable('productMarginsTable', 2, 'number')">
+                        COGS <i class="ph ph-caret-up-down text-xs ml-1 opacity-50"></i>
+                    </th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer select-none" data-sort-type="number" onclick="sortTable('productMarginsTable', 3, 'number')">
+                        Gross Profit <i class="ph ph-caret-up-down text-xs ml-1 opacity-50"></i>
+                    </th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer select-none" data-sort-type="number" onclick="sortTable('productMarginsTable', 4, 'number')">
+                        Margin % <i class="ph ph-caret-up-down text-xs ml-1 opacity-50"></i>
+                    </th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer select-none" data-sort-type="number" onclick="sortTable('productMarginsTable', 5, 'number')">
+                        Units Sold <i class="ph ph-caret-up-down text-xs ml-1 opacity-50"></i>
+                    </th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer select-none" data-sort-type="number" onclick="sortTable('productMarginsTable', 6, 'number')">
+                        Coverage <i class="ph ph-caret-up-down text-xs ml-1 opacity-50"></i>
+                    </th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-border">
+                {% if products.is_empty() %}
+                <tr>
+                    <td colspan="7" class="px-6 py-12 text-center text-muted-foreground">
+                        <i class="ph ph-chart-line-up text-4xl mb-2 block"></i>
+                        <p>No product revenue data available</p>
+                        <p class="text-sm mt-1">Sales data will appear once orders come through.</p>
+                    </td>
+                </tr>
+                {% else %}
+                {% for p in products %}
+                <tr class="hover:bg-accent transition-colors">
+                    <td class="px-6 py-4">
+                        <div class="flex items-center gap-3">
+                            {% if let Some(url) = p.image_url %}
+                            <img src="{{ url }}" alt="" class="w-8 h-8 rounded object-cover bg-muted flex-shrink-0">
+                            {% else %}
+                            <div class="w-8 h-8 rounded bg-muted flex items-center justify-center flex-shrink-0">
+                                <i class="ph ph-package text-sm text-muted-foreground"></i>
+                            </div>
+                            {% endif %}
+                            <span class="text-sm font-medium text-foreground">{{ p.product_title }}</span>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 text-sm text-right text-foreground tabular-nums" data-value="{{ p.revenue_raw }}">{{ p.revenue }}</td>
+                    <td class="px-6 py-4 text-sm text-right text-foreground tabular-nums" data-value="{{ p.cogs_raw }}">{{ p.cogs }}</td>
+                    <td class="px-6 py-4 text-sm text-right tabular-nums {{ p.margin_class }}" data-value="{{ p.revenue_raw - p.cogs_raw }}">{{ p.gross_profit }}</td>
+                    <td class="px-6 py-4 text-sm text-right tabular-nums {{ p.margin_class }}" data-value="{% if p.has_cogs %}{{ p.revenue_raw - p.cogs_raw }}{% else %}-999{% endif %}">{{ p.gross_margin_pct }}</td>
+                    <td class="px-6 py-4 text-sm text-right text-foreground tabular-nums" data-value="{{ p.units_sold }}">{{ p.units_sold }}</td>
+                    <td class="px-6 py-4 text-sm text-right text-muted-foreground tabular-nums" data-value="{{ p.units_allocated }}">{{ p.coverage_pct }}</td>
+                </tr>
+                {% endfor %}
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Recent Orders with Margins -->
+<div class="bg-card rounded-xl border border-border overflow-hidden mt-6">
+    <div class="px-6 py-4 border-b border-border">
+        <h3 class="font-semibold text-foreground">Recent Orders with Margins</h3>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full">
+            <thead class="bg-muted">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Order #</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Date</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Total</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">COGS</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Profit</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Margin %</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-border">
+                {% if recent_orders.is_empty() %}
+                <tr>
+                    <td colspan="6" class="px-6 py-12 text-center text-muted-foreground">
+                        <i class="ph ph-receipt text-4xl mb-2 block"></i>
+                        <p>No orders with lot allocations yet</p>
+                        <p class="text-sm mt-1">Allocate inventory lots to orders to see per-order margins.</p>
+                    </td>
+                </tr>
+                {% else %}
+                {% for o in recent_orders %}
+                <tr class="hover:bg-accent transition-colors">
+                    <td class="px-6 py-4 text-sm font-medium text-foreground">{{ o.order_name }}</td>
+                    <td class="px-6 py-4 text-sm text-muted-foreground">{{ o.order_date }}</td>
+                    <td class="px-6 py-4 text-sm text-right text-foreground tabular-nums">{{ o.order_total }}</td>
+                    <td class="px-6 py-4 text-sm text-right text-foreground tabular-nums">{{ o.cogs }}</td>
+                    <td class="px-6 py-4 text-sm text-right tabular-nums {{ o.margin_class }}">{{ o.gross_profit }}</td>
+                    <td class="px-6 py-4 text-sm text-right tabular-nums {{ o.margin_class }}">{{ o.gross_margin_pct }}</td>
+                </tr>
+                {% endfor %}
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Chart.js Scripts -->
+{% include "partials/_chart_defaults.html" %}
+{% if top_products_labels != "[]" %}
+<script>
+(function() {
+    var lc = window.lagoonChart;
+    var ctx = document.getElementById('topProductsChart');
+    if (!ctx) return;
+
+    var labels = {{ top_products_labels|safe }};
+    var data = {{ top_products_data|safe }};
+
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Gross Profit',
+                data: data,
+                backgroundColor: data.map(function(v) {
+                    return v >= 0 ? lc.colors.leaf + '80' : lc.colors.red + '80';
+                }),
+                borderColor: data.map(function(v) {
+                    return v >= 0 ? lc.colors.leaf : lc.colors.red;
+                }),
+                borderWidth: 1,
+                borderRadius: 4
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(ctx) { return 'Profit: $' + Number(ctx.parsed.x).toFixed(2); }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { color: lc.gridColor() },
+                    ticks: {
+                        font: { size: 11 },
+                        callback: function(v) { return '$' + v.toLocaleString(); }
+                    },
+                    border: { display: false }
+                },
+                y: {
+                    grid: { display: false },
+                    ticks: { font: { size: 11 } },
+                    border: { color: lc.gridColor() }
+                }
+            }
+        }
+    });
+})();
+</script>
+{% endif %}
+
+<!-- Waterfall Chart -->
+<script>
+(function() {
+    var lc = window.lagoonChart;
+    var ctx = document.getElementById('waterfallChart');
+    if (!ctx) return;
+
+    var raw = {{ waterfall_data|safe }};
+    var revenue = raw[0], cogs = raw[1], opex = raw[2], net = raw[3];
+
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['Revenue', 'COGS', 'OpEx', 'Net Profit'],
+            datasets: [{
+                data: [revenue, -cogs, -opex, net],
+                backgroundColor: [
+                    lc.colors.leaf + '80',
+                    lc.colors.coral + '80',
+                    lc.colors.coral + '60',
+                    net >= 0 ? lc.colors.leaf + '80' : lc.colors.red + '80'
+                ],
+                borderColor: [
+                    lc.colors.leaf,
+                    lc.colors.coral,
+                    lc.colors.coral,
+                    net >= 0 ? lc.colors.leaf : lc.colors.red
+                ],
+                borderWidth: 1,
+                borderRadius: 3
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(c) {
+                            var v = Math.abs(c.parsed.x);
+                            return c.label + ': $' + v.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { color: lc.gridColor() },
+                    ticks: {
+                        font: { size: 10 },
+                        callback: function(v) { return '$' + Math.abs(v).toLocaleString(); }
+                    },
+                    border: { display: false }
+                },
+                y: {
+                    grid: { display: false },
+                    ticks: { font: { size: 10 } },
+                    border: { color: lc.gridColor() }
+                }
+            }
+        }
+    });
+})();
+</script>
+
+<!-- Table Sorting -->
+<script>
+var sortState = {};
+function sortTable(tableId, colIdx, type) {
+    var table = document.getElementById(tableId);
+    if (!table) return;
+    var tbody = table.querySelector('tbody');
+    var rows = Array.from(tbody.querySelectorAll('tr'));
+    if (rows.length <= 1) return;
+
+    var key = tableId + '-' + colIdx;
+    var asc = sortState[key] === 'asc' ? false : true;
+    sortState[key] = asc ? 'asc' : 'desc';
+
+    rows.sort(function(a, b) {
+        var cellA = a.cells[colIdx];
+        var cellB = b.cells[colIdx];
+        var valA, valB;
+
+        if (type === 'number') {
+            valA = parseFloat(cellA.getAttribute('data-value')) || 0;
+            valB = parseFloat(cellB.getAttribute('data-value')) || 0;
+        } else {
+            valA = (cellA.textContent || '').trim().toLowerCase();
+            valB = (cellB.textContent || '').trim().toLowerCase();
+        }
+
+        if (valA < valB) return asc ? -1 : 1;
+        if (valA > valB) return asc ? 1 : -1;
+        return 0;
+    });
+
+    rows.forEach(function(row) { tbody.appendChild(row); });
+
+    // Update sort icons
+    var headers = table.querySelectorAll('thead th');
+    headers.forEach(function(th, i) {
+        var icon = th.querySelector('i');
+        if (!icon) return;
+        if (i === colIdx) {
+            icon.className = asc ? 'ph ph-caret-up text-xs ml-1' : 'ph ph-caret-down text-xs ml-1';
+        } else {
+            icon.className = 'ph ph-caret-up-down text-xs ml-1 opacity-50';
+        }
+    });
+}
+</script>
+{% endblock %}

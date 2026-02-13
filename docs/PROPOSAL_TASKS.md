@@ -19,13 +19,13 @@ Features described in `crates/admin/templates/proposal/` that are not yet implem
 
 ## Finances
 
-- [ ] Expense tracking spreadsheet - QuickBooks-like expense tracking to capture capital expenses like product manufacturing, operational expenses like email marketing and advertisement, and all other expenses. This will allow for accurately capturing COGS and performing detailed financial modeling.
+- [X] Expense tracking spreadsheet - QuickBooks-like expense tracking to capture capital expenses like product manufacturing, operational expenses like email marketing and advertisement, and all other expenses. This will allow for accurately capturing COGS and performing detailed financial modeling.
 
 ## Analytics
 
-- [ ] **Revenue attribution dashboard** — All 10 ad-tracking pixels fire on the storefront, but there is no admin view that aggregates conversion data to show which channels drive revenue.
-- [ ] **Advanced sales dashboard** — The current dashboard shows headline metrics. Add date-range filtering, time-series trend charts, and per-channel breakdowns as described in the proposal.
-- [ ] **Profit margin reporting** — Manufacturing batch costs and inventory lots are tracked (`admin.manufacturing_batch`, `admin.inventory_lot`). Build a view that calculates and displays per-product and per-order profit margins using COGS from lot allocations.
+- [X] **Revenue attribution dashboard** — All 10 ad-tracking pixels fire on the storefront, but there is no admin view that aggregates conversion data to show which channels drive revenue.
+- [X] **Advanced sales dashboard** — The current dashboard shows headline metrics. Add date-range filtering, time-series trend charts, and per-channel breakdowns as described in the proposal.
+- [X] **Profit margin reporting** — Manufacturing batch costs and inventory lots are tracked (`admin.manufacturing_batch`, `admin.inventory_lot`). Build a view that calculates and displays per-product and per-order profit margins using COGS from lot allocations.
 
 ## Automation
 

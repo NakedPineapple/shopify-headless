@@ -1,0 +1,36 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                la.shopify_order_id,\n                COALESCE(SUM(la.quantity::numeric * mb.cost_per_unit), 0) as \"total_cogs!: Decimal\",\n                MAX(la.allocated_at) as \"last_allocated_at!: DateTime<Utc>\"\n            FROM admin.lot_allocation la\n            JOIN admin.inventory_lot il ON la.lot_id = il.id\n            JOIN admin.manufacturing_batch mb ON il.batch_id = mb.id\n            WHERE la.allocated_at >= $1\n              AND la.allocated_at < $2\n            GROUP BY la.shopify_order_id\n            ORDER BY MAX(la.allocated_at) DESC\n            LIMIT $3\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "shopify_order_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "total_cogs!: Decimal",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 2,
+        "name": "last_allocated_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Timestamptz",
+        "Timestamptz",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      null,
+      null
+    ]
+  },
+  "hash": "37f5c26c47f46fcae0ba668c259f7a75a0867ba7c62904554587a093d14318c0"
+}
