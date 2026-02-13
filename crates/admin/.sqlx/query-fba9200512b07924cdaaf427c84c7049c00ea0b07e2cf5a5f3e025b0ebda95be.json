@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            UPDATE admin.expense\n            SET\n                category_id = COALESCE($2, category_id),\n                description = COALESCE($3, description),\n                amount = COALESCE($4, amount),\n                currency_code = COALESCE($5, currency_code),\n                expense_date = COALESCE($6, expense_date),\n                is_recurring = COALESCE($7, is_recurring),\n                recurrence_interval = COALESCE($8, recurrence_interval),\n                recurrence_end_date = COALESCE($9, recurrence_end_date),\n                channel_name = COALESCE($10, channel_name),\n                vendor = COALESCE($11, vendor),\n                notes = COALESCE($12, notes)\n            WHERE id = $1\n            RETURNING\n                id, category_id, description,\n                amount as \"amount: Decimal\",\n                currency_code,\n                expense_date as \"expense_date: NaiveDate\",\n                is_recurring,\n                recurrence_interval,\n                recurrence_end_date as \"recurrence_end_date: NaiveDate\",\n                channel_name, vendor, notes, created_by,\n                created_at as \"created_at: DateTime<Utc>\",\n                updated_at as \"updated_at: DateTime<Utc>\"\n            ",
+  "query": "\n            INSERT INTO admin.expense (\n                category_id, description, amount, currency_code,\n                expense_date, is_recurring, recurrence_interval,\n                recurrence_end_date, channel_name, vendor, notes, created_by\n            )\n            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)\n            RETURNING\n                id, category_id, description,\n                amount as \"amount: Decimal\",\n                currency_code,\n                expense_date as \"expense_date: NaiveDate\",\n                is_recurring,\n                recurrence_interval as \"recurrence_interval: RecurrenceInterval\",\n                recurrence_end_date as \"recurrence_end_date: NaiveDate\",\n                channel_name, vendor, notes, created_by,\n                created_at as \"created_at: DateTime<Utc>\",\n                updated_at as \"updated_at: DateTime<Utc>\"\n            ",
   "describe": {
     "columns": [
       {
@@ -40,8 +40,19 @@
       },
       {
         "ordinal": 7,
-        "name": "recurrence_interval",
-        "type_info": "Text"
+        "name": "recurrence_interval: RecurrenceInterval",
+        "type_info": {
+          "Custom": {
+            "name": "admin.recurrence_interval",
+            "kind": {
+              "Enum": [
+                "monthly",
+                "quarterly",
+                "yearly"
+              ]
+            }
+          }
+        }
       },
       {
         "ordinal": 8,
@@ -82,17 +93,28 @@
     "parameters": {
       "Left": [
         "Int4",
-        "Int4",
         "Text",
         "Numeric",
         "Text",
         "Date",
         "Bool",
-        "Text",
+        {
+          "Custom": {
+            "name": "admin.recurrence_interval",
+            "kind": {
+              "Enum": [
+                "monthly",
+                "quarterly",
+                "yearly"
+              ]
+            }
+          }
+        },
         "Date",
         "Text",
         "Text",
-        "Text"
+        "Text",
+        "Int4"
       ]
     },
     "nullable": [
@@ -113,5 +135,5 @@
       false
     ]
   },
-  "hash": "f4ff7b2f2b1478f479f4625035524e149ef0042efc31ec0471722cd2c4ad445e"
+  "hash": "fba9200512b07924cdaaf427c84c7049c00ea0b07e2cf5a5f3e025b0ebda95be"
 }

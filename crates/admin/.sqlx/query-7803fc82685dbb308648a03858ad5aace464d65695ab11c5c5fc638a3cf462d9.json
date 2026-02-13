@@ -11,7 +11,12 @@
       {
         "ordinal": 1,
         "name": "email",
-        "type_info": "Text"
+        "type_info": {
+          "Custom": {
+            "name": "citext",
+            "kind": "Simple"
+          }
+        }
       },
       {
         "ordinal": 2,
@@ -21,7 +26,18 @@
       {
         "ordinal": 3,
         "name": "role: AdminRole",
-        "type_info": "Text"
+        "type_info": {
+          "Custom": {
+            "name": "admin.admin_role",
+            "kind": {
+              "Enum": [
+                "super_admin",
+                "admin",
+                "viewer"
+              ]
+            }
+          }
+        }
       },
       {
         "ordinal": 4,
@@ -51,9 +67,25 @@
     ],
     "parameters": {
       "Left": [
+        {
+          "Custom": {
+            "name": "citext",
+            "kind": "Simple"
+          }
+        },
         "Text",
-        "Text",
-        "Text",
+        {
+          "Custom": {
+            "name": "admin.admin_role",
+            "kind": {
+              "Enum": [
+                "super_admin",
+                "admin",
+                "viewer"
+              ]
+            }
+          }
+        },
         "Int4",
         "Int4"
       ]

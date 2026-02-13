@@ -36,34 +36,15 @@ impl ExpenseType {
 }
 
 /// Recurrence interval for recurring expenses.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+///
+/// Maps directly to the `PostgreSQL` `admin.recurrence_interval` enum.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type)]
+#[sqlx(type_name = "recurrence_interval", rename_all = "lowercase")]
+#[serde(rename_all = "lowercase")]
 pub enum RecurrenceInterval {
     Monthly,
     Quarterly,
     Yearly,
-}
-
-impl RecurrenceInterval {
-    /// Parse from database string value.
-    #[must_use]
-    pub fn from_str_value(s: &str) -> Option<Self> {
-        match s {
-            "monthly" => Some(Self::Monthly),
-            "quarterly" => Some(Self::Quarterly),
-            "yearly" => Some(Self::Yearly),
-            _ => None,
-        }
-    }
-
-    /// Convert to database string value.
-    #[must_use]
-    pub const fn as_str(&self) -> &'static str {
-        match self {
-            Self::Monthly => "monthly",
-            Self::Quarterly => "quarterly",
-            Self::Yearly => "yearly",
-        }
-    }
 }
 
 /// A predefined or user-created expense category.
@@ -115,7 +96,7 @@ pub struct CreateExpenseInput {
     pub currency_code: String,
     pub expense_date: NaiveDate,
     pub is_recurring: bool,
-    pub recurrence_interval: Option<String>,
+    pub recurrence_interval: Option<RecurrenceInterval>,
     pub recurrence_end_date: Option<NaiveDate>,
     pub channel_name: Option<String>,
     pub vendor: Option<String>,
@@ -131,7 +112,7 @@ pub struct UpdateExpenseInput {
     pub currency_code: Option<String>,
     pub expense_date: Option<NaiveDate>,
     pub is_recurring: Option<bool>,
-    pub recurrence_interval: Option<String>,
+    pub recurrence_interval: Option<RecurrenceInterval>,
     pub recurrence_end_date: Option<NaiveDate>,
     pub channel_name: Option<String>,
     pub vendor: Option<String>,

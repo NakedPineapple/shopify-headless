@@ -11,9 +11,25 @@
     ],
     "parameters": {
       "Left": [
+        {
+          "Custom": {
+            "name": "citext",
+            "kind": "Simple"
+          }
+        },
         "Text",
-        "Text",
-        "Text",
+        {
+          "Custom": {
+            "name": "admin.admin_role",
+            "kind": {
+              "Enum": [
+                "super_admin",
+                "admin",
+                "viewer"
+              ]
+            }
+          }
+        },
         "Int4"
       ]
     },

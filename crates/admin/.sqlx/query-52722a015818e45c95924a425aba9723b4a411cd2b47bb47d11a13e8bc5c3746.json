@@ -6,7 +6,12 @@
     "parameters": {
       "Left": [
         "Int4",
-        "Text"
+        {
+          "Custom": {
+            "name": "citext",
+            "kind": "Simple"
+          }
+        }
       ]
     },
     "nullable": []

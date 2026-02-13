@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n                e.id, e.category_id, e.description,\n                e.amount as \"amount: Decimal\",\n                e.currency_code,\n                e.expense_date as \"expense_date: NaiveDate\",\n                e.is_recurring,\n                e.recurrence_interval,\n                e.recurrence_end_date as \"recurrence_end_date: NaiveDate\",\n                e.channel_name, e.vendor, e.notes, e.created_by,\n                e.created_at as \"created_at: DateTime<Utc>\",\n                e.updated_at as \"updated_at: DateTime<Utc>\",\n                c.name as category_name,\n                c.expense_type as \"category_type: ExpenseType\"\n            FROM admin.expense e\n            INNER JOIN admin.expense_category c ON c.id = e.category_id\n            WHERE\n                ($1::int IS NULL OR e.category_id = $1)\n                AND ($2::text IS NULL OR c.expense_type::text = $2)\n                AND ($3::date IS NULL OR e.expense_date >= $3)\n                AND ($4::date IS NULL OR e.expense_date <= $4)\n                AND ($5::text IS NULL OR e.channel_name = $5)\n            ORDER BY e.expense_date DESC, e.created_at DESC\n            LIMIT $6 OFFSET $7\n            ",
+  "query": "\n            SELECT\n                e.id, e.category_id, e.description,\n                e.amount as \"amount: Decimal\",\n                e.currency_code,\n                e.expense_date as \"expense_date: NaiveDate\",\n                e.is_recurring,\n                e.recurrence_interval as \"recurrence_interval: RecurrenceInterval\",\n                e.recurrence_end_date as \"recurrence_end_date: NaiveDate\",\n                e.channel_name, e.vendor, e.notes, e.created_by,\n                e.created_at as \"created_at: DateTime<Utc>\",\n                e.updated_at as \"updated_at: DateTime<Utc>\",\n                c.name as category_name,\n                c.expense_type as \"category_type: ExpenseType\"\n            FROM admin.expense e\n            INNER JOIN admin.expense_category c ON c.id = e.category_id\n            WHERE\n                ($1::int IS NULL OR e.category_id = $1)\n                AND ($2::text IS NULL OR c.expense_type::text = $2)\n                AND ($3::date IS NULL OR e.expense_date >= $3)\n                AND ($4::date IS NULL OR e.expense_date <= $4)\n                AND ($5::text IS NULL OR e.channel_name = $5)\n            ORDER BY e.expense_date DESC, e.created_at DESC\n            LIMIT $6 OFFSET $7\n            ",
   "describe": {
     "columns": [
       {
@@ -40,8 +40,19 @@
       },
       {
         "ordinal": 7,
-        "name": "recurrence_interval",
-        "type_info": "Text"
+        "name": "recurrence_interval: RecurrenceInterval",
+        "type_info": {
+          "Custom": {
+            "name": "admin.recurrence_interval",
+            "kind": {
+              "Enum": [
+                "monthly",
+                "quarterly",
+                "yearly"
+              ]
+            }
+          }
+        }
       },
       {
         "ordinal": 8,
@@ -135,5 +146,5 @@
       false
     ]
   },
-  "hash": "964fa7fa656419ada025346785f5d659210cae68791ec34d8c4ee4a832311937"
+  "hash": "190eef24c3cda55445b428afa55c764bb1881f437e8f31ff88225a55663ba976"
 }

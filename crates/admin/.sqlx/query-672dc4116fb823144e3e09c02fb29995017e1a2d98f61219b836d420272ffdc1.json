@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            INSERT INTO admin.expense (\n                category_id, description, amount, currency_code,\n                expense_date, is_recurring, recurrence_interval,\n                recurrence_end_date, channel_name, vendor, notes, created_by\n            )\n            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)\n            RETURNING\n                id, category_id, description,\n                amount as \"amount: Decimal\",\n                currency_code,\n                expense_date as \"expense_date: NaiveDate\",\n                is_recurring,\n                recurrence_interval,\n                recurrence_end_date as \"recurrence_end_date: NaiveDate\",\n                channel_name, vendor, notes, created_by,\n                created_at as \"created_at: DateTime<Utc>\",\n                updated_at as \"updated_at: DateTime<Utc>\"\n            ",
+  "query": "\n            SELECT\n                id, category_id, description,\n                amount as \"amount: Decimal\",\n                currency_code,\n                expense_date as \"expense_date: NaiveDate\",\n                is_recurring,\n                recurrence_interval as \"recurrence_interval: RecurrenceInterval\",\n                recurrence_end_date as \"recurrence_end_date: NaiveDate\",\n                channel_name, vendor, notes, created_by,\n                created_at as \"created_at: DateTime<Utc>\",\n                updated_at as \"updated_at: DateTime<Utc>\"\n            FROM admin.expense\n            WHERE id = $1\n            ",
   "describe": {
     "columns": [
       {
@@ -40,8 +40,19 @@
       },
       {
         "ordinal": 7,
-        "name": "recurrence_interval",
-        "type_info": "Text"
+        "name": "recurrence_interval: RecurrenceInterval",
+        "type_info": {
+          "Custom": {
+            "name": "admin.recurrence_interval",
+            "kind": {
+              "Enum": [
+                "monthly",
+                "quarterly",
+                "yearly"
+              ]
+            }
+          }
+        }
       },
       {
         "ordinal": 8,
@@ -81,17 +92,6 @@
     ],
     "parameters": {
       "Left": [
-        "Int4",
-        "Text",
-        "Numeric",
-        "Text",
-        "Date",
-        "Bool",
-        "Text",
-        "Date",
-        "Text",
-        "Text",
-        "Text",
         "Int4"
       ]
     },
@@ -113,5 +113,5 @@
       false
     ]
   },
-  "hash": "11372614d5f3e276dbbc2a73b7c25bd84ee2403cf5388cc16750333f20ad28cf"
+  "hash": "672dc4116fb823144e3e09c02fb29995017e1a2d98f61219b836d420272ffdc1"
 }
