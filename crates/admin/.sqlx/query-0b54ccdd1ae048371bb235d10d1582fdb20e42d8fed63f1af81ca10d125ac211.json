@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO admin.amazon_sp_credentials (\n                account_name,\n                lwa_client_id,\n                lwa_client_secret,\n                lwa_refresh_token,\n                aws_access_key_id,\n                aws_secret_access_key,\n                seller_id,\n                connected_by,\n                connected_at\n            )\n            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, (CURRENT_TIMESTAMP AT TIME ZONE 'utc'))\n            ON CONFLICT(account_name) DO UPDATE SET\n                lwa_client_id = EXCLUDED.lwa_client_id,\n                lwa_client_secret = EXCLUDED.lwa_client_secret,\n                lwa_refresh_token = EXCLUDED.lwa_refresh_token,\n                aws_access_key_id = EXCLUDED.aws_access_key_id,\n                aws_secret_access_key = EXCLUDED.aws_secret_access_key,\n                seller_id = EXCLUDED.seller_id,\n                connected_by = EXCLUDED.connected_by,\n                connected_at = EXCLUDED.connected_at,\n                updated_at = (CURRENT_TIMESTAMP AT TIME ZONE 'utc')\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0b54ccdd1ae048371bb235d10d1582fdb20e42d8fed63f1af81ca10d125ac211"
+}

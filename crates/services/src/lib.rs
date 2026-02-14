@@ -14,6 +14,7 @@
 
 #![cfg_attr(not(test), forbid(unsafe_code))]
 
+pub mod amazon_sp;
 pub mod claude;
 pub mod config;
 pub mod email;

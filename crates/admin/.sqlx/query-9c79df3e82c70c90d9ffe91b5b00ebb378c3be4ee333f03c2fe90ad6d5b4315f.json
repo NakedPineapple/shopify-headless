@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            DELETE FROM admin.amazon_sp_credentials\n            WHERE account_name = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9c79df3e82c70c90d9ffe91b5b00ebb378c3be4ee333f03c2fe90ad6d5b4315f"
+}

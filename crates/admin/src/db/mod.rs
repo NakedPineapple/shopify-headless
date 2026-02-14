@@ -22,6 +22,7 @@
 
 pub mod admin_invites;
 pub mod admin_users;
+pub mod amazon;
 pub mod chat;
 pub mod documents;
 pub mod expense;
@@ -45,6 +46,7 @@ use thiserror::Error;
 
 pub use admin_invites::{AdminInvite, AdminInviteRepository};
 pub use admin_users::AdminUserRepository;
+pub use amazon::{AmazonSpCredentials, AmazonSpCredentialsRepository, SaveAmazonSpParams};
 pub use chat::ChatRepository;
 pub use expense::ExpenseRepository;
 pub use inventory_lot::InventoryLotRepository;

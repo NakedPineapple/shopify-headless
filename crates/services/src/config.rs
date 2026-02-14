@@ -335,6 +335,16 @@ impl JudgemeConfig {
     }
 }
 
+/// Amazon SP-API configuration.
+///
+/// Unlike other service configs, Amazon credentials are stored in the database
+/// (not environment variables) because they include OAuth tokens that may be
+/// updated at runtime. Use [`crate::amazon_sp::AmazonCredentials`] to construct
+/// an [`crate::amazon_sp::AmazonSpClient`].
+///
+/// See [`crate::amazon_sp`] for the client implementation.
+pub type AmazonSpConfig = crate::amazon_sp::AmazonCredentials;
+
 // =============================================================================
 // Helper Functions
 // =============================================================================

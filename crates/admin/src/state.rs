@@ -7,12 +7,15 @@ use sqlx::PgPool;
 use url::Url;
 use webauthn_rs::prelude::*;
 
+use naked_pineapple_services::amazon_sp::AmazonSpClient;
 use naked_pineapple_services::judgeme::JudgemeClient;
 use naked_pineapple_services::microsoft_graph::M365Client;
 use naked_pineapple_services::openai::EmbeddingClient;
 
 use crate::config::AdminConfig;
-use crate::db::{ShipHeroCredentialsRepository, ShopifyTokenRepository};
+use crate::db::{
+    AmazonSpCredentialsRepository, ShipHeroCredentialsRepository, ShopifyTokenRepository,
+};
 use crate::r2::R2Client;
 use crate::services::EmailService;
 use crate::shiphero::ShipHeroClient;
@@ -52,6 +55,7 @@ struct AppStateInner {
     embedding: Option<EmbeddingClient>,
     shopify: AdminClient,
     shiphero: Option<ShipHeroClient>,
+    amazon: Option<AmazonSpClient>,
     slack: Option<SlackClient>,
     m365: Option<M365Client>,
     webauthn: Webauthn,
@@ -66,6 +70,7 @@ struct Integrations {
     support_pool: Option<PgPool>,
     embedding: Option<EmbeddingClient>,
     shiphero: Option<ShipHeroClient>,
+    amazon: Option<AmazonSpClient>,
     slack: Option<SlackClient>,
     m365: Option<M365Client>,
     r2: Option<R2Client>,
@@ -157,6 +162,7 @@ impl AppState {
                 embedding: integrations.embedding,
                 shopify,
                 shiphero: integrations.shiphero,
+                amazon: integrations.amazon,
                 slack: integrations.slack,
                 m365: integrations.m365,
                 webauthn,
@@ -258,6 +264,12 @@ impl AppState {
         self.inner.judgeme.as_ref()
     }
 
+    /// Get a reference to the Amazon SP-API client (if configured).
+    #[must_use]
+    pub fn amazon(&self) -> Option<&AmazonSpClient> {
+        self.inner.amazon.as_ref()
+    }
+
     /// Initialize optional integrations (Slack, `ShipHero`, M365, R2, support pool, embeddings).
     async fn init_integrations(config: &AdminConfig, pool: &PgPool) -> Integrations {
         let slack = config.slack.as_ref().map(|slack_config| {
@@ -329,10 +341,20 @@ impl AppState {
             tracing::info!("Judge.me not configured — review moderation disabled");
         }
 
+        let amazon = Self::load_amazon_client(pool).await;
+        if amazon.is_some() {
+            tracing::info!("Amazon SP-API client initialized from stored credentials");
+        } else {
+            tracing::info!(
+                "Amazon SP-API not configured — Amazon features disabled until credentials added via /settings/amazon"
+            );
+        }
+
         Integrations {
             support_pool,
             embedding,
             shiphero,
+            amazon,
             slack,
             m365,
             r2,
@@ -394,6 +416,30 @@ impl AppState {
             Ok(None) => None,
             Err(e) => {
                 tracing::error!(error = %e, "Failed to load ShipHero credentials from database");
+                None
+            }
+        }
+    }
+
+    /// Load Amazon SP-API client from stored credentials.
+    async fn load_amazon_client(pool: &PgPool) -> Option<AmazonSpClient> {
+        use naked_pineapple_services::amazon_sp::AmazonCredentials;
+
+        let repo = AmazonSpCredentialsRepository::new(pool);
+
+        match repo.get_default().await {
+            Ok(Some(creds)) => Some(AmazonSpClient::new(AmazonCredentials {
+                lwa_client_id: creds.lwa_client_id,
+                lwa_client_secret: creds.lwa_client_secret,
+                lwa_refresh_token: creds.lwa_refresh_token,
+                aws_access_key_id: creds.aws_access_key_id,
+                aws_secret_access_key: creds.aws_secret_access_key,
+                seller_id: creds.seller_id,
+                marketplace_id: creds.marketplace_id,
+            })),
+            Ok(None) => None,
+            Err(e) => {
+                tracing::error!(error = %e, "Failed to load Amazon SP-API credentials from database");
                 None
             }
         }

@@ -6,6 +6,8 @@ use axum::{
 };
 use thiserror::Error;
 
+use naked_pineapple_services::amazon_sp::AmazonSpError;
+
 use crate::claude::ClaudeError;
 use crate::db::RepositoryError;
 use crate::shopify::AdminShopifyError;
@@ -24,6 +26,10 @@ pub enum AppError {
     /// Claude API operation failed.
     #[error("Claude error: {0}")]
     Claude(#[from] ClaudeError),
+
+    /// Amazon SP-API operation failed.
+    #[error("Amazon SP-API error: {0}")]
+    Amazon(#[from] AmazonSpError),
 
     /// Resource not found.
     #[error("Not found: {0}")]
@@ -51,7 +57,11 @@ impl IntoResponse for AppError {
         // Log server errors with Sentry
         if matches!(
             self,
-            Self::Database(_) | Self::Internal(_) | Self::Shopify(_) | Self::Claude(_)
+            Self::Database(_)
+                | Self::Internal(_)
+                | Self::Shopify(_)
+                | Self::Claude(_)
+                | Self::Amazon(_)
         ) {
             let event_id = sentry::capture_error(&self);
             tracing::error!(
@@ -63,7 +73,7 @@ impl IntoResponse for AppError {
 
         let status = match &self {
             Self::Database(_) | Self::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
-            Self::Shopify(_) | Self::Claude(_) => StatusCode::BAD_GATEWAY,
+            Self::Shopify(_) | Self::Claude(_) | Self::Amazon(_) => StatusCode::BAD_GATEWAY,
             Self::NotFound(_) => StatusCode::NOT_FOUND,
             Self::Unauthorized(_) => StatusCode::UNAUTHORIZED,
             Self::Forbidden(_) => StatusCode::FORBIDDEN,
@@ -73,7 +83,7 @@ impl IntoResponse for AppError {
         // Don't expose internal error details to clients
         let message = match &self {
             Self::Database(_) | Self::Internal(_) => "Internal server error".to_string(),
-            Self::Shopify(_) => "External service error".to_string(),
+            Self::Shopify(_) | Self::Amazon(_) => "External service error".to_string(),
             _ => self.to_string(),
         };
 

@@ -36,6 +36,11 @@ hmac = { workspace = true }
 sha2 = { workspace = true }
 hex = "0.4"
 
+# AWS (Amazon SP-API request signing)
+aws-sigv4 = "1"
+aws-credential-types = { version = "1", features = ["hardcoded-credentials"] }
+http = "1"
+
 # Logging
 tracing = { workspace = true }
 

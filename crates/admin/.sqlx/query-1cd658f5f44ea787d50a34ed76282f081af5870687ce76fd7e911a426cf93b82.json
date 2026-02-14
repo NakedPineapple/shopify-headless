@@ -1,0 +1,100 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                id,\n                account_name,\n                lwa_client_id,\n                lwa_client_secret,\n                lwa_refresh_token,\n                aws_access_key_id,\n                aws_secret_access_key,\n                seller_id,\n                marketplace_id,\n                access_token,\n                access_token_expires_at,\n                connected_by,\n                connected_at as \"connected_at: DateTime<Utc>\",\n                last_used_at as \"last_used_at: DateTime<Utc>\"\n            FROM admin.amazon_sp_credentials\n            WHERE account_name = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "account_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "lwa_client_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "lwa_client_secret",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "lwa_refresh_token",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "aws_access_key_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "aws_secret_access_key",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "seller_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "marketplace_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "access_token",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "access_token_expires_at",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 11,
+        "name": "connected_by",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 12,
+        "name": "connected_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 13,
+        "name": "last_used_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "1cd658f5f44ea787d50a34ed76282f081af5870687ce76fd7e911a426cf93b82"
+}
