@@ -1,0 +1,24 @@
+{# Hub navigation tabs for the unified Customer Hub.
+   The `active` parameter is passed from the parent template scope. #}
+{% macro hub_nav(active) %}
+<nav class="mb-8 animate-fade-in" style="opacity: 0; animation-delay: 50ms;" aria-label="Account navigation">
+    <div class="flex items-center gap-1 border-b border-border overflow-x-auto">
+        <a href="/account"
+           class="px-4 py-3 text-sm font-medium whitespace-nowrap transition-colors border-b-2 -mb-px {% if active == "overview" %}border-primary text-primary{% else %}border-transparent text-muted-foreground hover:text-foreground hover:border-border{% endif %}">
+            <i class="ph ph-house mr-1.5"></i>Overview
+        </a>
+        <a href="/account/orders"
+           class="px-4 py-3 text-sm font-medium whitespace-nowrap transition-colors border-b-2 -mb-px {% if active == "orders" %}border-primary text-primary{% else %}border-transparent text-muted-foreground hover:text-foreground hover:border-border{% endif %}">
+            <i class="ph ph-package mr-1.5"></i>Orders
+        </a>
+        <a href="/account/support"
+           class="px-4 py-3 text-sm font-medium whitespace-nowrap transition-colors border-b-2 -mb-px {% if active == "support" %}border-primary text-primary{% else %}border-transparent text-muted-foreground hover:text-foreground hover:border-border{% endif %}">
+            <i class="ph ph-lifebuoy mr-1.5"></i>Support
+        </a>
+        <a href="/account/profile"
+           class="px-4 py-3 text-sm font-medium whitespace-nowrap transition-colors border-b-2 -mb-px {% if active == "profile" %}border-primary text-primary{% else %}border-transparent text-muted-foreground hover:text-foreground hover:border-border{% endif %}">
+            <i class="ph ph-user mr-1.5"></i>Profile
+        </a>
+    </div>
+</nav>
+{% endmacro %}

@@ -60,6 +60,8 @@
 //! GET  /account/subscriptions/:id        - Subscription detail
 //! POST /account/subscriptions/:id/skip/:idx   - Skip billing cycle
 //! POST /account/subscriptions/:id/unskip/:idx - Unskip billing cycle
+//! GET  /account/support                       - Support hub
+//! GET  /account/support/search                - Support FAQ search (HTMX)
 //! ```
 
 pub mod account;
@@ -194,6 +196,8 @@ pub fn account_routes() -> Router<AppState> {
             "/subscriptions/{id}/unskip/{cycle_index}",
             post(account::unskip_billing_cycle),
         )
+        .route("/support", get(account::support_hub))
+        .route("/support/search", get(account::support_search))
 }
 
 /// Create the support routes router.

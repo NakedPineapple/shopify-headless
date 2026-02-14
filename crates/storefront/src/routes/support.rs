@@ -590,8 +590,8 @@ fn strip_html_tags(html: &str) -> String {
 
 /// OIDC claims from Shopify's `id_token` JWT.
 #[derive(Debug, Deserialize)]
-struct IdTokenClaims {
-    sub: Option<String>,
+pub struct IdTokenClaims {
+    pub sub: Option<String>,
     email: Option<String>,
     name: Option<String>,
 }
@@ -600,7 +600,8 @@ struct IdTokenClaims {
 ///
 /// The token was already verified during the OAuth exchange. We only need
 /// the payload claims for customer enrichment.
-fn decode_id_token_claims(id_token: &str) -> Option<IdTokenClaims> {
+#[must_use]
+pub fn decode_id_token_claims(id_token: &str) -> Option<IdTokenClaims> {
     let payload = id_token.split('.').nth(1)?;
     let bytes = URL_SAFE_NO_PAD.decode(payload).ok()?;
     serde_json::from_slice(&bytes)
@@ -755,7 +756,8 @@ pub struct TicketDetailTemplate {
 // =============================================================================
 
 /// Get sorted FAQ pages from the content store.
-fn sorted_faq_pages(state: &AppState) -> Vec<Page> {
+#[must_use]
+pub fn sorted_faq_pages(state: &AppState) -> Vec<Page> {
     let mut pages: Vec<Page> = state.content().get_all_support_pages().cloned().collect();
     pages.sort_by(|a, b| a.meta.title.cmp(&b.meta.title));
     pages

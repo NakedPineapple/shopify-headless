@@ -91,13 +91,19 @@ async fn build_index(
     let articles_count = index_articles(content, &writer, &fields);
     info!(count = articles_count, "Indexed articles");
 
+    // Index support FAQ pages from local content
+    info!("Indexing support FAQ pages");
+    let support_pages_count = index_support_pages(content, &writer, &fields);
+    info!(count = support_pages_count, "Indexed support pages");
+
     // Commit the index
     info!("Committing index");
     writer
         .commit()
         .map_err(|e| BuildError(format!("Failed to commit index: {e}")))?;
 
-    let total = products_count + collections_count + pages_count + articles_count;
+    let total =
+        products_count + collections_count + pages_count + articles_count + support_pages_count;
     info!(total, "Search index built successfully");
 
     Ok((index, writer, fields))
@@ -259,6 +265,40 @@ fn index_pages(
 
         if let Err(e) = writer.add_document(doc) {
             warn!(error = %e, slug = %page.slug, "Failed to index page");
+        } else {
+            count += 1;
+        }
+    }
+
+    count
+}
+
+/// Index all support FAQ pages from local content.
+fn index_support_pages(
+    content: &ContentStore,
+    writer: &tantivy::IndexWriter,
+    fields: &SearchFields,
+) -> usize {
+    debug!("Starting to index support FAQ pages");
+    let mut count = 0;
+
+    for page in content.get_all_support_pages() {
+        let doc = tantivy::doc!(
+            fields.doc_type => DocType::SupportPage.as_str(),
+            fields.handle => format!("support/faq/{}", page.slug),
+            fields.title => page.meta.title.clone(),
+            fields.description => page.meta.description.clone().unwrap_or_default(),
+            fields.image_url => String::new(),
+            fields.price => String::new(),
+            fields.price_cents => 0u64,
+            fields.available => 1u64,
+            fields.title_text => page.meta.title.clone(),
+            fields.description_text => strip_html(&page.content_html),
+            fields.tags_text => String::new()
+        );
+
+        if let Err(e) = writer.add_document(doc) {
+            warn!(error = %e, slug = %page.slug, "Failed to index support page");
         } else {
             count += 1;
         }

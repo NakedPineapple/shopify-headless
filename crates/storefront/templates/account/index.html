@@ -1,5 +1,6 @@
 {% extends "layouts/base.html" %}
 {% import "macros/analytics_data.html" as analytics_macro %}
+{% import "account/hub_nav.html" as hub %}
 
 {% block body_data %}{{ analytics_macro::body_attrs(analytics=analytics, user_info=analytics_user_info) }}{% endblock %}
 
@@ -15,14 +16,7 @@
     <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-br from-leaf/5 to-transparent rounded-full blur-3xl pointer-events-none" aria-hidden="true"></div>
 
     <div class="page-width relative z-10">
-        {# Breadcrumb #}
-        <nav class="text-sm text-muted-foreground mb-8 animate-fade-in" style="opacity: 0; animation-delay: 50ms;" aria-label="Breadcrumb">
-            <ol class="flex items-center gap-2 list-none">
-                <li><a href="/" class="hover:text-primary transition-colors">Home</a></li>
-                <li aria-hidden="true"><i class="ph ph-caret-right text-xs"></i></li>
-                <li class="text-foreground">Account</li>
-            </ol>
-        </nav>
+        {{ hub::hub_nav(active="overview") }}
 
         <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
             <div>
@@ -42,6 +36,26 @@
                     Sign Out
                 </button>
             </form>
+        </div>
+
+        {# Quick Actions #}
+        <div class="flex flex-wrap gap-3 mb-8 animate-slide-up" style="opacity: 0; animation-delay: 320ms;">
+            <a href="/account/orders" class="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-border bg-card text-sm font-medium text-foreground hover:border-primary/30 hover:text-primary transition-colors">
+                <i class="ph ph-package text-base"></i>
+                Track an Order
+            </a>
+            <a href="/account/support" class="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-border bg-card text-sm font-medium text-foreground hover:border-primary/30 hover:text-primary transition-colors">
+                <i class="ph ph-question text-base"></i>
+                Browse FAQ
+            </a>
+            {% if chat_enabled %}
+            <button type="button"
+                    onclick="if(window.NP_Chat)window.NP_Chat.open()"
+                    class="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-border bg-card text-sm font-medium text-foreground hover:border-primary/30 hover:text-primary transition-colors">
+                <i class="ph ph-chat-circle-dots text-base"></i>
+                Chat With Us
+            </button>
+            {% endif %}
         </div>
 
         <div class="grid md:grid-cols-2 gap-6 md:gap-8 animate-slide-up" style="opacity: 0; animation-delay: 350ms;">
@@ -140,6 +154,29 @@
                 <p class="text-sm text-muted-foreground">No active subscriptions.</p>
                 <a href="/products" class="text-primary text-sm font-medium hover:underline mt-2 inline-block">
                     Subscribe & Save 20%
+                </a>
+                {% endif %}
+            </div>
+
+            {# Support #}
+            <div class="card rounded-2xl p-6 shadow-lg">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-3">
+                        <i class="ph ph-lifebuoy text-xl text-muted-foreground"></i>
+                        <h3 class="font-semibold text-foreground">Support</h3>
+                    </div>
+                    <a href="/account/support" class="text-primary text-sm font-medium hover:underline" aria-label="View support">
+                        View
+                    </a>
+                </div>
+                {% if active_conversation_count > 0 %}
+                <p class="text-sm text-muted-foreground">
+                    {{ active_conversation_count }} active conversation(s)
+                </p>
+                {% else %}
+                <p class="text-sm text-muted-foreground">No active conversations.</p>
+                <a href="/account/support" class="text-primary text-sm font-medium hover:underline mt-2 inline-block">
+                    Browse FAQ
                 </a>
                 {% endif %}
             </div>

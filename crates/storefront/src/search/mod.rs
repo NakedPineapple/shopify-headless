@@ -32,6 +32,7 @@ pub enum DocType {
     Collection,
     Page,
     Article,
+    SupportPage,
 }
 
 impl DocType {
@@ -41,6 +42,7 @@ impl DocType {
             Self::Collection => "collection",
             Self::Page => "page",
             Self::Article => "article",
+            Self::SupportPage => "support_page",
         }
     }
 
@@ -50,6 +52,7 @@ impl DocType {
             "collection" => Some(Self::Collection),
             "page" => Some(Self::Page),
             "article" => Some(Self::Article),
+            "support_page" => Some(Self::SupportPage),
             _ => None,
         }
     }
@@ -465,6 +468,7 @@ impl SearchIndex {
             collections: Vec::new(),
             pages: Vec::new(),
             articles: Vec::new(),
+            support_pages: Vec::new(),
             query: query_str,
             total_count,
             in_stock_count,
@@ -666,7 +670,6 @@ impl SearchIndex {
         })?;
 
         let Some(ready) = guard.as_ref() else {
-            // Index not ready yet, return empty results
             debug!("Search index not ready, returning empty results");
             return Ok(SearchResults {
                 query: query_str,
@@ -675,17 +678,38 @@ impl SearchIndex {
         };
 
         let searcher = ready.reader.searcher();
+        let query = Self::build_suggestion_query(&query_str, &ready.fields);
 
-        // Build a boolean query combining prefix and fuzzy matches
+        // Search for more results than needed to allow grouping by type
+        let top_docs = searcher
+            .search(&query, &TopDocs::with_limit(limit * 4))
+            .map_err(|e| SearchError::Query(format!("Search failed: {e}")))?;
+
+        // Collect and group results by doc type
+        let grouped = Self::group_results(&searcher, &ready.fields, top_docs, limit)?;
+
+        debug!(
+            products_count = grouped.products.len(),
+            collections_count = grouped.collections.len(),
+            pages_count = grouped.pages.len(),
+            articles_count = grouped.articles.len(),
+            support_pages_count = grouped.support_pages.len(),
+            duration_ms = %start.elapsed().as_millis(),
+            "Search completed"
+        );
+
+        Ok(SearchResults {
+            query: query_str,
+            ..grouped
+        })
+    }
+
+    /// Build a boolean query for suggestion/autocomplete search.
+    fn build_suggestion_query(query_str: &str, fields: &SearchFields) -> BooleanQuery {
         let mut subqueries: Vec<(Occur, Box<dyn Query>)> = Vec::new();
 
-        // For each search term, create queries on searchable fields
         for term in query_str.split_whitespace() {
-            // For short terms, use prefix matching (regex)
-            // For longer terms, use exact + fuzzy matching
             if term.len() < 3 {
-                // Prefix match on title using regex (e.g., "f" matches "facial")
-                // Escape basic regex metacharacters for safety
                 let escaped: String = term
                     .chars()
                     .flat_map(|c| match c {
@@ -696,35 +720,32 @@ impl SearchIndex {
                     .collect();
                 let prefix_pattern = format!("{escaped}.*");
                 if let Ok(regex_query) =
-                    RegexQuery::from_pattern(&prefix_pattern, ready.fields.title_text)
+                    RegexQuery::from_pattern(&prefix_pattern, fields.title_text)
                 {
                     subqueries.push((Occur::Should, Box::new(regex_query)));
                 }
-                // Also try prefix on tags
-                if let Ok(regex_query) =
-                    RegexQuery::from_pattern(&prefix_pattern, ready.fields.tags_text)
+                if let Ok(regex_query) = RegexQuery::from_pattern(&prefix_pattern, fields.tags_text)
                 {
                     subqueries.push((Occur::Should, Box::new(regex_query)));
                 }
             } else {
-                // Title exact match
-                let title_term = Term::from_field_text(ready.fields.title_text, term);
+                let title_term = Term::from_field_text(fields.title_text, term);
                 subqueries.push((
                     Occur::Should,
                     Box::new(TermQuery::new(title_term.clone(), IndexRecordOption::Basic)),
                 ));
+                subqueries.push((
+                    Occur::Should,
+                    Box::new(FuzzyTermQuery::new(title_term, 1, true)),
+                ));
 
-                // Title fuzzy match (1 edit distance)
-                let fuzzy_title = FuzzyTermQuery::new(title_term, 1, true);
-                subqueries.push((Occur::Should, Box::new(fuzzy_title)));
+                let desc_term = Term::from_field_text(fields.description_text, term);
+                subqueries.push((
+                    Occur::Should,
+                    Box::new(FuzzyTermQuery::new(desc_term, 1, true)),
+                ));
 
-                // Description fuzzy match
-                let desc_term = Term::from_field_text(ready.fields.description_text, term);
-                let fuzzy_desc = FuzzyTermQuery::new(desc_term, 1, true);
-                subqueries.push((Occur::Should, Box::new(fuzzy_desc)));
-
-                // Tags exact match
-                let tags_term = Term::from_field_text(ready.fields.tags_text, term);
+                let tags_term = Term::from_field_text(fields.tags_text, term);
                 subqueries.push((
                     Occur::Should,
                     Box::new(TermQuery::new(tags_term, IndexRecordOption::Basic)),
@@ -732,56 +753,44 @@ impl SearchIndex {
             }
         }
 
-        let query = BooleanQuery::new(subqueries);
+        BooleanQuery::new(subqueries)
+    }
 
-        // Search for more results than needed to allow grouping by type
-        let top_docs = searcher
-            .search(&query, &TopDocs::with_limit(limit * 4))
-            .map_err(|e| SearchError::Query(format!("Search failed: {e}")))?;
-
-        // Collect and group results
-        let mut products = Vec::new();
-        let mut collections = Vec::new();
-        let mut pages = Vec::new();
-        let mut articles = Vec::new();
+    /// Group search results by document type, limiting each group.
+    fn group_results(
+        searcher: &tantivy::Searcher,
+        fields: &SearchFields,
+        top_docs: Vec<(f32, tantivy::DocAddress)>,
+        limit: usize,
+    ) -> Result<SearchResults, SearchError> {
+        let mut results = SearchResults::default();
 
         for (score, doc_address) in top_docs {
             let doc = searcher
                 .doc::<tantivy::TantivyDocument>(doc_address)
                 .map_err(|e| SearchError::Query(format!("Failed to retrieve doc: {e}")))?;
 
-            let result = Self::doc_to_result(&ready.fields, &doc, score)?;
+            let result = Self::doc_to_result(fields, &doc, score)?;
 
             match result.doc_type {
-                DocType::Product if products.len() < limit => products.push(result),
-                DocType::Collection if collections.len() < limit => collections.push(result),
-                DocType::Page if pages.len() < limit => pages.push(result),
-                DocType::Article if articles.len() < limit => articles.push(result),
+                DocType::Product if results.products.len() < limit => {
+                    results.products.push(result);
+                }
+                DocType::Collection if results.collections.len() < limit => {
+                    results.collections.push(result);
+                }
+                DocType::Page if results.pages.len() < limit => results.pages.push(result),
+                DocType::Article if results.articles.len() < limit => {
+                    results.articles.push(result);
+                }
+                DocType::SupportPage if results.support_pages.len() < limit => {
+                    results.support_pages.push(result);
+                }
                 _ => {}
             }
         }
 
-        debug!(
-            products_count = products.len(),
-            collections_count = collections.len(),
-            pages_count = pages.len(),
-            articles_count = articles.len(),
-            duration_ms = %start.elapsed().as_millis(),
-            "Search completed"
-        );
-
-        Ok(SearchResults {
-            products,
-            collections,
-            pages,
-            articles,
-            query: query_str,
-            total_count: 0,
-            in_stock_count: 0,
-            out_of_stock_count: 0,
-            min_price_cents: 0,
-            max_price_cents: 0,
-        })
+        Ok(results)
     }
 
     /// Convert a Tantivy document to a search result.
@@ -886,6 +895,7 @@ pub struct SearchResults {
     pub collections: Vec<SearchResult>,
     pub pages: Vec<SearchResult>,
     pub articles: Vec<SearchResult>,
+    pub support_pages: Vec<SearchResult>,
     pub query: String,
     /// Total number of matching products (before limit)
     pub total_count: usize,
@@ -907,12 +917,17 @@ impl SearchResults {
             && self.collections.is_empty()
             && self.pages.is_empty()
             && self.articles.is_empty()
+            && self.support_pages.is_empty()
     }
 
     /// Get the total number of results.
     #[must_use]
     pub const fn total(&self) -> usize {
-        self.products.len() + self.collections.len() + self.pages.len() + self.articles.len()
+        self.products.len()
+            + self.collections.len()
+            + self.pages.len()
+            + self.articles.len()
+            + self.support_pages.len()
     }
 }
 

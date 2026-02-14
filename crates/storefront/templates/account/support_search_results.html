@@ -1,0 +1,21 @@
+{% if results.is_empty() %}
+{% if !query.is_empty() %}
+<p class="text-sm text-muted-foreground py-2">No results found for "{{ query }}"</p>
+{% endif %}
+{% else %}
+<div class="space-y-2">
+    {% for result in results %}
+    <a href="/{{ result.handle }}" class="flex items-start gap-3 p-3 rounded-xl hover:bg-muted/50 transition-colors group">
+        <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+            <i class="ph ph-article text-sm text-primary"></i>
+        </div>
+        <div class="min-w-0">
+            <p class="font-medium text-foreground group-hover:text-primary transition-colors text-sm">{{ result.title }}</p>
+            {% if !result.description.is_empty() %}
+            <p class="text-xs text-muted-foreground mt-0.5 line-clamp-1">{{ result.description }}</p>
+            {% endif %}
+        </div>
+    </a>
+    {% endfor %}
+</div>
+{% endif %}

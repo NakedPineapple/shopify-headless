@@ -24,6 +24,8 @@
 //! - `POST /account/subscriptions/:id/activate` - Activate subscription
 //! - `POST /account/subscriptions/:id/skip/:cycle_index` - Skip billing cycle
 //! - `POST /account/subscriptions/:id/unskip/:cycle_index` - Unskip billing cycle
+//! - `GET /account/support` - Support hub
+//! - `GET /account/support/search` - Support FAQ search (HTMX partial)
 
 use askama::Template;
 use askama_web::WebTemplate;
@@ -33,12 +35,18 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Redirect, Response},
 };
+use naked_pineapple_core::SupportConversationStatus;
+use naked_pineapple_support::{
+    db::conversation::ConversationRepository, models::SupportConversation,
+};
 use serde::Deserialize;
 use tracing::{debug, error, info, instrument, warn};
 
 use crate::config::{AnalyticsConfig, AnalyticsUserInfo};
+use crate::content::Page;
 use crate::filters;
 use crate::middleware::RequireShopifyCustomer;
+use crate::search::{DocType, SearchResult};
 use crate::shopify::Money;
 use crate::shopify::customer::{
     Address, AddressInput, Order, ReturnRequestLineItemInput, ReturnStatus, SubscriptionContract,
@@ -87,6 +95,8 @@ pub struct AccountIndexTemplate {
     pub default_address: Option<AddressView>,
     pub subscription_count: u32,
     pub store_credit_balance: Option<String>,
+    pub active_conversation_count: usize,
+    pub chat_enabled: bool,
     pub analytics: AnalyticsConfig,
     pub analytics_user_info: AnalyticsUserInfo,
     pub site: crate::middleware::SiteContext,
@@ -297,6 +307,33 @@ pub struct ReturnFormTemplate {
     pub nonce: String,
 }
 
+/// Account support hub page template.
+#[derive(Template, WebTemplate)]
+#[template(path = "account/support.html")]
+pub struct AccountSupportTemplate {
+    pub faq_pages: Vec<Page>,
+    pub conversations: Vec<SupportConversation>,
+    pub chat_enabled: bool,
+    pub analytics: AnalyticsConfig,
+    pub analytics_user_info: AnalyticsUserInfo,
+    pub site: crate::middleware::SiteContext,
+    pub nonce: String,
+}
+
+/// Account support search results (HTMX partial).
+#[derive(Template, WebTemplate)]
+#[template(path = "account/support_search_results.html")]
+pub struct SupportSearchResultsTemplate {
+    pub results: Vec<SearchResult>,
+    pub query: String,
+}
+
+/// Query parameters for support search.
+#[derive(Debug, Deserialize)]
+pub struct SupportSearchQuery {
+    pub q: Option<String>,
+}
+
 // =============================================================================
 // Form Data
 // =============================================================================
@@ -437,6 +474,37 @@ pub async fn index(
         _ => None,
     };
 
+    // Count active support conversations
+    let customer_id = token
+        .id_token
+        .as_deref()
+        .and_then(super::support::decode_id_token_claims)
+        .and_then(|claims| claims.sub);
+
+    let active_conversation_count = match customer_id {
+        Some(ref id) => {
+            let conv_repo = ConversationRepository::new(state.pool());
+            conv_repo
+                .list_by_customer(id, 50)
+                .await
+                .map(|convos| {
+                    convos
+                        .iter()
+                        .filter(|c| {
+                            !matches!(
+                                c.status,
+                                SupportConversationStatus::Closed
+                                    | SupportConversationStatus::Resolved
+                            )
+                        })
+                        .count()
+                })
+                .unwrap_or(0)
+        }
+        None => 0,
+    };
+
+    let chat_enabled = site.chat_enabled;
     let user = build_user_view(&customer);
     let default_address = customer.default_address.as_ref().map(build_address_view);
 
@@ -448,6 +516,8 @@ pub async fn index(
         default_address,
         subscription_count,
         store_credit_balance,
+        active_conversation_count,
+        chat_enabled,
         analytics: state.config().analytics.clone(),
         analytics_user_info: AnalyticsUserInfo::default(),
         nonce,
@@ -1288,6 +1358,85 @@ pub async fn unskip_billing_cycle(
     }
 
     Redirect::to(&format!("/account/subscriptions/{id}")).into_response()
+}
+
+// =============================================================================
+// Support Hub
+// =============================================================================
+
+/// Display the support hub within the account section.
+///
+/// # Route
+///
+/// `GET /account/support`
+#[instrument(skip(state, token, nonce, site))]
+pub async fn support_hub(
+    State(state): State<AppState>,
+    RequireShopifyCustomer(token): RequireShopifyCustomer,
+    crate::middleware::CspNonce(nonce): crate::middleware::CspNonce,
+    site: crate::middleware::SiteContext,
+) -> impl IntoResponse {
+    debug!("Rendering account support hub");
+
+    let customer_id = token
+        .id_token
+        .as_deref()
+        .and_then(super::support::decode_id_token_claims)
+        .and_then(|claims| claims.sub);
+
+    let conversations = match customer_id {
+        Some(ref id) => {
+            let conv_repo = ConversationRepository::new(state.pool());
+            conv_repo.list_by_customer(id, 5).await.unwrap_or_default()
+        }
+        None => Vec::new(),
+    };
+
+    let chat_enabled = site.chat_enabled;
+
+    info!("Successfully rendered account support hub");
+
+    AccountSupportTemplate {
+        faq_pages: super::support::sorted_faq_pages(&state),
+        conversations,
+        chat_enabled,
+        analytics: state.config().analytics.clone(),
+        analytics_user_info: AnalyticsUserInfo::default(),
+        nonce,
+        site,
+    }
+}
+
+/// Search support FAQ pages (HTMX partial).
+///
+/// # Route
+///
+/// `GET /account/support/search?q=...`
+#[instrument(skip(state, _token))]
+pub async fn support_search(
+    State(state): State<AppState>,
+    RequireShopifyCustomer(_token): RequireShopifyCustomer,
+    Query(query): Query<SupportSearchQuery>,
+) -> impl IntoResponse {
+    let query_str = query.q.unwrap_or_default();
+    debug!(query = %query_str, "Searching support FAQ");
+
+    let results = if query_str.trim().is_empty() {
+        Vec::new()
+    } else {
+        match state.search().search(&query_str, 10) {
+            Ok(search_results) => search_results.support_pages,
+            Err(e) => {
+                warn!(error = %e, "Support search failed");
+                Vec::new()
+            }
+        }
+    };
+
+    SupportSearchResultsTemplate {
+        query: query_str,
+        results,
+    }
 }
 
 // =============================================================================

@@ -1,5 +1,6 @@
 {% extends "layouts/base.html" %}
 {% import "macros/analytics_data.html" as analytics_macro %}
+{% import "account/hub_nav.html" as hub %}
 
 {% block body_data %}{{ analytics_macro::body_attrs(analytics=analytics, user_info=analytics_user_info) }}{% endblock %}
 
@@ -15,16 +16,7 @@
     <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-br from-leaf/5 to-transparent rounded-full blur-3xl pointer-events-none" aria-hidden="true"></div>
 
     <div class="page-width relative z-10 max-w-lg mx-auto">
-        {# Breadcrumb #}
-        <nav class="text-sm text-muted-foreground mb-8 animate-fade-in" style="opacity: 0; animation-delay: 50ms;" aria-label="Breadcrumb">
-            <ol class="flex items-center gap-2 list-none">
-                <li><a href="/" class="hover:text-primary transition-colors">Home</a></li>
-                <li aria-hidden="true"><i class="ph ph-caret-right text-xs"></i></li>
-                <li><a href="/account" class="hover:text-primary transition-colors">Account</a></li>
-                <li aria-hidden="true"><i class="ph ph-caret-right text-xs"></i></li>
-                <li class="text-foreground">Edit Profile</li>
-            </ol>
-        </nav>
+        {{ hub::hub_nav(active="profile") }}
 
         {# Heading #}
         <div class="mb-10 text-center">
