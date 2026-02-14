@@ -1,0 +1,183 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Amazon FBA Inventory{% endblock %}
+
+{% block page_title %}FBA Inventory{% endblock %}
+
+{% block page_subtitle %}
+<p class="text-sm text-muted-foreground mt-1">Unified cross-channel inventory — Shopify, ShipHero, and Amazon FBA</p>
+{% endblock %}
+
+{% block content %}
+{% if !connected %}
+<div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4 mb-6">
+    <div class="flex items-center gap-3">
+        <i class="ph ph-warning text-amber-500 text-xl"></i>
+        <div>
+            <p class="text-sm font-medium text-foreground">Amazon SP-API not connected</p>
+            <p class="text-sm text-muted-foreground">
+                <a href="/settings/amazon" class="text-coral hover:underline">Connect your credentials</a> to view FBA inventory.
+            </p>
+        </div>
+    </div>
+</div>
+{% else %}
+
+{% if error.is_some() %}
+<div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 mb-6">
+    <div class="flex items-center gap-3">
+        <i class="ph ph-warning-circle text-red-500 text-xl"></i>
+        <p class="text-sm text-foreground">{{ error.as_deref().unwrap_or("") }}</p>
+    </div>
+</div>
+{% endif %}
+
+<!-- Summary Cards -->
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+    <div class="bg-card rounded-xl border border-border p-5">
+        <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Total FBA Units</p>
+        <p class="text-2xl font-bold text-foreground">{{ total_fba_units }}</p>
+    </div>
+    <div class="bg-card rounded-xl border border-border p-5">
+        <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Mapped Products</p>
+        <p class="text-2xl font-bold text-foreground">{{ mapped_count }}</p>
+    </div>
+    <div class="bg-card rounded-xl border border-border p-5">
+        <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Unmapped FBA SKUs</p>
+        <p class="text-2xl font-bold text-foreground">{{ fba_only.len() }}</p>
+    </div>
+</div>
+
+<!-- Mapped Inventory Table -->
+<div class="bg-card rounded-xl border border-border overflow-hidden mb-6">
+    <div class="px-4 py-3 border-b border-border bg-muted/50">
+        <h3 class="text-sm font-semibold text-foreground">Mapped Inventory</h3>
+        <p class="text-xs text-muted-foreground mt-0.5">Products linked to Shopify via product mappings</p>
+    </div>
+    {% if items.is_empty() %}
+    <div class="text-center py-12">
+        <i class="ph ph-link-break text-4xl text-muted-foreground mb-3 block opacity-40"></i>
+        <p class="text-sm text-muted-foreground mb-4">No mapped inventory found</p>
+        <a href="/amazon/mappings"
+           class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-coral rounded-lg hover:bg-coral/90 transition-colors">
+            <i class="ph ph-link"></i>
+            Manage Mappings
+        </a>
+    </div>
+    {% else %}
+    <div class="overflow-x-auto">
+        <table class="w-full">
+            <thead>
+                <tr class="border-b border-border">
+                    <th class="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-3">Product</th>
+                    <th class="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-3">SKU / ASIN</th>
+                    <th class="text-right text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-3">Shopify</th>
+                    <th class="text-right text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-3">ShipHero</th>
+                    <th class="text-right text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-3">FBA</th>
+                    <th class="text-right text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-3">Inbound</th>
+                    <th class="text-right text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-3">Reserved</th>
+                    <th class="text-right text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-3">Total</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-border">
+                {% for item in items %}
+                <tr class="hover:bg-muted/30 transition-colors">
+                    <td class="px-4 py-3">
+                        <div class="text-sm font-medium text-foreground truncate max-w-xs">{{ item.product_name }}</div>
+                        {% if item.shopify_product_id.is_some() %}
+                        <div class="text-xs text-muted-foreground mt-0.5">Shopify: {{ item.shopify_product_id.as_deref().unwrap_or("") }}</div>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-3">
+                        <div class="text-sm text-foreground font-mono">{{ item.amazon_sku }}</div>
+                        <div class="text-xs text-muted-foreground mt-0.5">{{ item.asin }}</div>
+                    </td>
+                    <td class="text-right px-4 py-3">
+                        {% if item.shopify_stock.is_some() %}
+                        <span class="text-sm text-foreground">{{ item.shopify_stock.unwrap_or(0) }}</span>
+                        {% else %}
+                        <span class="text-sm text-muted-foreground">&mdash;</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-right px-4 py-3">
+                        {% if item.shiphero_stock.is_some() %}
+                        <span class="text-sm text-foreground">{{ item.shiphero_stock.unwrap_or(0) }}</span>
+                        {% else %}
+                        <span class="text-sm text-muted-foreground">&mdash;</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-right px-4 py-3">
+                        <span class="text-sm font-medium {% if item.fba_fulfillable == 0 %}text-red-400{% else %}text-green-400{% endif %}">
+                            {{ item.fba_fulfillable }}
+                        </span>
+                    </td>
+                    <td class="text-right px-4 py-3">
+                        <span class="text-sm text-foreground">{{ item.fba_inbound }}</span>
+                    </td>
+                    <td class="text-right px-4 py-3">
+                        <span class="text-sm text-foreground">{{ item.fba_reserved }}</span>
+                    </td>
+                    <td class="text-right px-4 py-3">
+                        <span class="text-sm font-semibold text-foreground">{{ item.fba_total }}</span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Unmapped FBA SKUs -->
+{% if !fba_only.is_empty() %}
+<div class="bg-card rounded-xl border border-border overflow-hidden">
+    <div class="px-4 py-3 border-b border-border bg-muted/50">
+        <h3 class="text-sm font-semibold text-foreground">Unmapped FBA SKUs</h3>
+        <p class="text-xs text-muted-foreground mt-0.5">Amazon FBA inventory not yet linked to Shopify products</p>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full">
+            <thead>
+                <tr class="border-b border-border">
+                    <th class="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-3">Product</th>
+                    <th class="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-3">SKU / ASIN</th>
+                    <th class="text-right text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-3">FBA Stock</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-border">
+                {% for s in fba_only %}
+                <tr class="hover:bg-muted/30 transition-colors">
+                    <td class="px-4 py-3">
+                        <div class="text-sm text-foreground truncate max-w-xs">{{ s.product_name.as_deref().unwrap_or("—") }}</div>
+                    </td>
+                    <td class="px-4 py-3">
+                        <div class="text-sm text-foreground font-mono">{{ s.seller_sku.as_deref().unwrap_or("—") }}</div>
+                        <div class="text-xs text-muted-foreground mt-0.5">{{ s.asin.as_deref().unwrap_or("—") }}</div>
+                    </td>
+                    <td class="text-right px-4 py-3">
+                        <span class="text-sm font-medium text-foreground">{{ s.total_quantity.unwrap_or(0) }}</span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+{% endif %}
+
+<!-- Navigation -->
+<div class="mt-8 flex items-center gap-4">
+    <a href="/amazon/catalog"
+       class="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+        <i class="ph ph-magnifying-glass text-lg"></i>
+        Search Catalog
+    </a>
+    <a href="/amazon/mappings"
+       class="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+        <i class="ph ph-link text-lg"></i>
+        Product Mappings
+    </a>
+</div>
+{% endblock %}

@@ -105,6 +105,9 @@ sha2 = "0.10"
 # Security
 secrecy = "0.10"
 
+# Caching
+moka = { version = "0.12", features = ["future"] }
+
 # Async utilities
 futures = "0.3"
 

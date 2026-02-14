@@ -1,13 +1,15 @@
 //! Application state shared across handlers.
 
 use std::sync::Arc;
+use std::time::Duration;
 
+use moka::future::Cache;
 use secrecy::ExposeSecret;
 use sqlx::PgPool;
 use url::Url;
 use webauthn_rs::prelude::*;
 
-use naked_pineapple_services::amazon_sp::AmazonSpClient;
+use naked_pineapple_services::amazon_sp::{AmazonSpClient, InventorySummary};
 use naked_pineapple_services::judgeme::JudgemeClient;
 use naked_pineapple_services::microsoft_graph::M365Client;
 use naked_pineapple_services::openai::EmbeddingClient;
@@ -56,6 +58,7 @@ struct AppStateInner {
     shopify: AdminClient,
     shiphero: Option<ShipHeroClient>,
     amazon: Option<AmazonSpClient>,
+    fba_cache: Cache<String, Vec<InventorySummary>>,
     slack: Option<SlackClient>,
     m365: Option<M365Client>,
     webauthn: Webauthn,
@@ -154,6 +157,11 @@ impl AppState {
 
         let integrations = Self::init_integrations(&config, &pool).await;
 
+        let fba_cache = Cache::builder()
+            .max_capacity(10)
+            .time_to_live(Duration::from_secs(300))
+            .build();
+
         Ok(Self {
             inner: Arc::new(AppStateInner {
                 config,
@@ -163,6 +171,7 @@ impl AppState {
                 shopify,
                 shiphero: integrations.shiphero,
                 amazon: integrations.amazon,
+                fba_cache,
                 slack: integrations.slack,
                 m365: integrations.m365,
                 webauthn,
@@ -268,6 +277,12 @@ impl AppState {
     #[must_use]
     pub fn amazon(&self) -> Option<&AmazonSpClient> {
         self.inner.amazon.as_ref()
+    }
+
+    /// Get a reference to the FBA inventory cache (5-min TTL).
+    #[must_use]
+    pub fn fba_cache(&self) -> &Cache<String, Vec<InventorySummary>> {
+        &self.inner.fba_cache
     }
 
     /// Initialize optional integrations (Slack, `ShipHero`, M365, R2, support pool, embeddings).

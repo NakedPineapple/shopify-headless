@@ -98,6 +98,9 @@ pdf-extract = "0.10"
 # Image processing (gallery thumbnails)
 image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp", "gif"] }
 
+# Caching
+moka = { workspace = true }
+
 # Streaming
 async-stream = "0.3"
 futures = { workspace = true }

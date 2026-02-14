@@ -12,11 +12,13 @@ use axum::{
     response::{Html, IntoResponse, Redirect, Response},
     routing::{get, post},
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use tower_sessions::Session;
 use tracing::instrument;
 
-use naked_pineapple_services::amazon_sp::{AmazonSpError, CatalogItem, CatalogPagination};
+use naked_pineapple_services::amazon_sp::{
+    AmazonSpClient, AmazonSpError, CatalogItem, CatalogPagination,
+};
 
 use crate::db::{AmazonProductMapping, AmazonProductMappingRepository, CreateMappingParams};
 use crate::filters;
@@ -299,23 +301,203 @@ async fn delete_mapping(
     }
 }
 
-/// POST /amazon/mappings/auto-match — Auto-match by SKU/UPC (stub).
+/// POST /amazon/mappings/auto-match — Auto-match Shopify products to Amazon by SKU/UPC.
 #[instrument(skip(state, session))]
 async fn auto_match(State(state): State<AppState>, session: Session) -> Response {
     if let Err(response) = require_super_admin(&state, &session).await {
         return response;
     }
 
-    // Auto-match requires iterating Shopify products and searching Amazon catalog
-    // by SKU/UPC — this is a long-running operation best done in the background.
-    // For now, return a placeholder response.
-    (
-        StatusCode::OK,
-        Json(ApiResponse::success(
-            "Auto-match is not yet implemented. Please create mappings manually.",
-        )),
-    )
-        .into_response()
+    let Some(amazon) = state.amazon() else {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(ApiResponse::error("Amazon SP-API not connected")),
+        )
+            .into_response();
+    };
+
+    let marketplace_id = amazon.marketplace_id().to_string();
+    let repo = AmazonProductMappingRepository::new(state.pool());
+
+    match run_auto_match(state.shopify(), amazon, &repo, &marketplace_id).await {
+        Ok(result) => (StatusCode::OK, Json(result)).into_response(),
+        Err(e) => {
+            tracing::error!(error = %e, "Auto-match failed");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::error(format!("Auto-match failed: {e}"))),
+            )
+                .into_response()
+        }
+    }
+}
+
+/// Result of an auto-match run.
+#[derive(Debug, Serialize)]
+struct AutoMatchResult {
+    matched: usize,
+    skipped: usize,
+    failed: usize,
+    message: String,
+}
+
+/// Run auto-match across all Shopify products.
+async fn run_auto_match(
+    shopify: &crate::shopify::AdminClient,
+    amazon: &AmazonSpClient,
+    repo: &AmazonProductMappingRepository<'_>,
+    marketplace_id: &str,
+) -> Result<AutoMatchResult, String> {
+    let mut matched = 0usize;
+    let mut skipped = 0usize;
+    let mut failed = 0usize;
+    let mut cursor: Option<String> = None;
+
+    loop {
+        let page = shopify
+            .get_products(50, cursor, None)
+            .await
+            .map_err(|e| format!("Shopify API error: {e}"))?;
+
+        for product in &page.products {
+            for variant in &product.variants {
+                let result =
+                    try_match_variant(amazon, repo, &product.id, variant, marketplace_id).await;
+                match result {
+                    MatchOutcome::Matched => matched += 1,
+                    MatchOutcome::Skipped => skipped += 1,
+                    MatchOutcome::Failed => failed += 1,
+                }
+            }
+        }
+
+        if page.page_info.has_next_page {
+            cursor = page.page_info.end_cursor;
+        } else {
+            break;
+        }
+    }
+
+    let message =
+        format!("Auto-match complete: {matched} matched, {skipped} skipped, {failed} failed");
+    tracing::info!(%message);
+    Ok(AutoMatchResult {
+        matched,
+        skipped,
+        failed,
+        message,
+    })
+}
+
+enum MatchOutcome {
+    Matched,
+    Skipped,
+    Failed,
+}
+
+/// Try to match a single Shopify variant to an Amazon catalog item.
+async fn try_match_variant(
+    amazon: &AmazonSpClient,
+    repo: &AmazonProductMappingRepository<'_>,
+    product_id: &str,
+    variant: &crate::shopify::types::AdminProductVariant,
+    marketplace_id: &str,
+) -> MatchOutcome {
+    let sku = variant.sku.as_deref().filter(|s| !s.trim().is_empty());
+    let barcode = variant.barcode.as_deref().filter(|s| !s.trim().is_empty());
+
+    // Need at least one identifier to search
+    let Some(identifier) = sku.or(barcode) else {
+        return MatchOutcome::Skipped;
+    };
+
+    // Check if a mapping already exists for this variant's SKU
+    if let Some(s) = sku
+        && repo
+            .get_by_sku(s, marketplace_id)
+            .await
+            .ok()
+            .flatten()
+            .is_some()
+    {
+        return MatchOutcome::Skipped;
+    }
+
+    // Rate-limit: Amazon catalog search allows 2 req/sec
+    tokio::time::sleep(std::time::Duration::from_millis(550)).await;
+
+    let search_result = amazon.search_catalog_items(identifier, None).await;
+    match search_result {
+        Ok(response) => {
+            find_and_create_mapping(
+                repo,
+                &response.items,
+                product_id,
+                variant,
+                marketplace_id,
+                sku,
+                barcode,
+            )
+            .await
+        }
+        Err(e) => {
+            tracing::warn!(identifier = identifier, error = %e, "Auto-match search failed");
+            MatchOutcome::Failed
+        }
+    }
+}
+
+/// Find a matching catalog item and create a mapping.
+async fn find_and_create_mapping(
+    repo: &AmazonProductMappingRepository<'_>,
+    items: &[CatalogItem],
+    product_id: &str,
+    variant: &crate::shopify::types::AdminProductVariant,
+    marketplace_id: &str,
+    sku: Option<&str>,
+    barcode: Option<&str>,
+) -> MatchOutcome {
+    let sku_val = sku.unwrap_or("");
+
+    for item in items {
+        // Check if any identifier matches the barcode (UPC/EAN match)
+        let barcode_match = barcode.is_some_and(|bc| {
+            item.identifiers
+                .iter()
+                .any(|id_group| id_group.identifiers.iter().any(|id| id.identifier == bc))
+        });
+
+        let match_type = if barcode_match {
+            "upc_match"
+        } else if sku.is_some() {
+            "sku_match"
+        } else {
+            continue;
+        };
+
+        let params = CreateMappingParams {
+            shopify_product_id: product_id,
+            shopify_variant_id: Some(&variant.id),
+            asin: &item.asin,
+            amazon_sku: if sku_val.is_empty() {
+                &item.asin
+            } else {
+                sku_val
+            },
+            marketplace_id,
+            match_type,
+        };
+
+        return match repo.create(&params).await {
+            Ok(_) => MatchOutcome::Matched,
+            Err(e) => {
+                tracing::warn!(error = %e, "Failed to create auto-match mapping");
+                MatchOutcome::Failed
+            }
+        };
+    }
+
+    MatchOutcome::Skipped
 }
 
 // =============================================================================

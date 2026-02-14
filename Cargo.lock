@@ -3476,6 +3476,7 @@ dependencies = [
  "image",
  "jsonschema",
  "lettre",
+ "moka",
  "naked-pineapple-core",
  "naked-pineapple-crypto",
  "naked-pineapple-services",

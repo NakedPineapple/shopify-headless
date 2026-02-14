@@ -383,3 +383,134 @@ pub struct ListingsItemSubmissionResponse {
     #[serde(default)]
     pub issues: Vec<ListingIssue>,
 }
+
+// ---------------------------------------------------------------------------
+// FBA Inventory API v1
+// ---------------------------------------------------------------------------
+
+/// Query parameters for `GET /fba/inventory/v1/summaries`.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InventorySummariesQuery {
+    /// Comma-separated marketplace IDs.
+    pub marketplace_ids: String,
+    /// Granularity type (always "Marketplace").
+    pub granularity_type: String,
+    /// Granularity ID (marketplace ID).
+    pub granularity_id: String,
+    /// Pagination token from a previous response.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub next_token: Option<String>,
+    /// Filter by seller SKUs (comma-separated, max 50).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub seller_skus: Option<String>,
+}
+
+/// Response from `GET /fba/inventory/v1/summaries`.
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GetInventorySummariesResponse {
+    /// Inventory summaries payload.
+    pub payload: Option<InventorySummariesPayload>,
+    /// Pagination info.
+    pub pagination: Option<InventoryPagination>,
+    /// Errors.
+    pub errors: Option<Vec<SpApiError>>,
+}
+
+/// Inventory summaries payload.
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InventorySummariesPayload {
+    /// Granularity of the data.
+    pub granularity: Option<InventoryGranularity>,
+    /// Inventory summaries.
+    pub inventory_summaries: Vec<InventorySummary>,
+}
+
+/// Granularity descriptor.
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InventoryGranularity {
+    pub granularity_type: Option<String>,
+    pub granularity_id: Option<String>,
+}
+
+/// A single FBA inventory summary for a SKU.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InventorySummary {
+    /// Amazon ASIN.
+    pub asin: Option<String>,
+    /// FNSKU (Fulfillment Network SKU).
+    pub fn_sku: Option<String>,
+    /// Seller SKU.
+    pub seller_sku: Option<String>,
+    /// Product name.
+    pub product_name: Option<String>,
+    /// Condition (e.g., "`NewItem`").
+    pub condition: Option<String>,
+    /// Detailed inventory data.
+    pub inventory_details: Option<InventoryDetails>,
+    /// Last updated timestamp.
+    pub last_updated_time: Option<String>,
+    /// Total fulfillable quantity.
+    pub total_quantity: Option<i32>,
+}
+
+/// Detailed FBA inventory breakdown.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InventoryDetails {
+    /// Quantity available for fulfillment.
+    pub fulfillable_quantity: Option<i32>,
+    /// Quantity inbound to FBA (receiving).
+    pub inbound_receiving_quantity: Option<i32>,
+    /// Quantity inbound to FBA (working).
+    pub inbound_working_quantity: Option<i32>,
+    /// Quantity inbound to FBA (shipped).
+    pub inbound_shipped_quantity: Option<i32>,
+    /// Reserved quantity breakdown.
+    pub reserved_quantity: Option<ReservedQuantity>,
+    /// Unfulfillable quantity breakdown.
+    pub unfulfillable_quantity: Option<UnfulfillableQuantity>,
+    /// Quantity being researched.
+    pub researching_quantity: Option<ResearchingQuantity>,
+}
+
+/// Reserved inventory breakdown.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReservedQuantity {
+    pub total_reserved_quantity: Option<i32>,
+    pub pending_customer_order_quantity: Option<i32>,
+    pub pending_transshipment_quantity: Option<i32>,
+    pub fc_processing_quantity: Option<i32>,
+}
+
+/// Unfulfillable inventory breakdown.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UnfulfillableQuantity {
+    pub total_unfulfillable_quantity: Option<i32>,
+    pub customer_damaged_quantity: Option<i32>,
+    pub warehouse_damaged_quantity: Option<i32>,
+    pub distributor_damaged_quantity: Option<i32>,
+    pub carrier_damaged_quantity: Option<i32>,
+    pub defective_quantity: Option<i32>,
+    pub expired_quantity: Option<i32>,
+}
+
+/// Researching inventory breakdown.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ResearchingQuantity {
+    pub total_researching_quantity: Option<i32>,
+}
+
+/// Pagination for inventory summaries.
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InventoryPagination {
+    pub next_token: Option<String>,
+}

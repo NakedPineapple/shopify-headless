@@ -13,10 +13,12 @@
 mod auth;
 mod catalog;
 mod client;
+mod inventory;
 mod listings;
 mod types;
 
 pub use client::AmazonSpClient;
+pub use inventory::InventorySummariesPage;
 pub use types::*;
 
 use thiserror::Error;
