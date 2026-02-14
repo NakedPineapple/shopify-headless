@@ -1,0 +1,145 @@
+<div class="flex flex-col lg:flex-row gap-6 p-6">
+    <!-- Image preview -->
+    <div class="lg:flex-1 flex items-center justify-center bg-muted/30 rounded-xl min-h-[300px] max-h-[70vh]">
+        <img src="{{ image.original_url }}"
+             alt="{{ image.alt_text }}"
+             class="max-w-full max-h-[70vh] object-contain rounded-lg">
+    </div>
+
+    <!-- Metadata panel -->
+    <div class="lg:w-96 space-y-4">
+        <!-- Header -->
+        <div class="flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-foreground truncate" title="{{ image.filename }}">{{ image.filename }}</h3>
+            <button type="button" onclick="galleryCloseLightbox()" class="p-1.5 text-muted-foreground hover:text-foreground transition-colors">
+                <i class="ph ph-x text-xl"></i>
+            </button>
+        </div>
+
+        <!-- File info badges -->
+        <div class="flex flex-wrap gap-2">
+            <span class="px-2 py-1 bg-muted rounded text-xs text-muted-foreground">{{ image.content_type }}</span>
+            <span class="px-2 py-1 bg-muted rounded text-xs text-muted-foreground">{{ image.file_size_display }}</span>
+            <span class="px-2 py-1 bg-muted rounded text-xs text-muted-foreground">{{ image.last_modified|humanize_datetime }}</span>
+        </div>
+
+        <!-- Metadata form -->
+        <form hx-post="/gallery/image/{{ image.key }}/metadata"
+              hx-target="#gallery-metadata-save-status"
+              hx-swap="innerHTML"
+              class="space-y-4">
+
+            <div>
+                <label class="block text-sm font-medium text-foreground mb-1">Alt Text</label>
+                <textarea name="alt_text" rows="2"
+                          class="w-full bg-input text-foreground border-0 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-ring placeholder:text-muted-foreground"
+                          placeholder="Describe the image for accessibility...">{{ image.alt_text }}</textarea>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-foreground mb-1">Description</label>
+                <textarea name="description" rows="3"
+                          class="w-full bg-input text-foreground border-0 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-ring placeholder:text-muted-foreground"
+                          placeholder="Internal notes about this image...">{{ image.description }}</textarea>
+            </div>
+
+            <!-- Custom metadata -->
+            <div>
+                <div class="flex items-center justify-between mb-2">
+                    <label class="text-sm font-medium text-foreground">Custom Metadata</label>
+                    <button type="button" onclick="galleryAddMetadataRow()" class="text-xs text-coral hover:text-coral/80 transition-colors">
+                        + Add field
+                    </button>
+                </div>
+                <div id="gallery-custom-metadata" class="space-y-2">
+                    <!-- Dynamic rows populated by JS -->
+                </div>
+                <input type="hidden" name="custom_metadata_json" id="gallery-custom-metadata-json" value='{{ image.custom_metadata }}'>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <button type="submit" class="px-4 py-2 bg-coral text-white rounded-lg hover:bg-coral/90 transition-colors text-sm">
+                    Save Metadata
+                </button>
+                <div id="gallery-metadata-save-status"></div>
+            </div>
+        </form>
+
+        <!-- Actions -->
+        <div class="pt-4 border-t border-border flex items-center gap-3">
+            <a href="{{ image.original_url }}"
+               download="{{ image.filename }}"
+               class="inline-flex items-center gap-2 px-3 py-1.5 border border-border text-foreground rounded-lg hover:bg-muted/50 transition-colors text-sm">
+                <i class="ph ph-download-simple"></i>
+                Download
+            </a>
+            <button type="button"
+                    onclick="galleryDeleteSingle('{{ image.key }}'); galleryCloseLightbox();"
+                    class="inline-flex items-center gap-2 px-3 py-1.5 border border-red-600/30 text-red-400 rounded-lg hover:bg-red-600/10 transition-colors text-sm">
+                <i class="ph ph-trash"></i>
+                Delete
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    // Initialize custom metadata rows from existing data
+    var metadataJson = document.getElementById('gallery-custom-metadata-json');
+    var container = document.getElementById('gallery-custom-metadata');
+    if (metadataJson && container) {
+        try {
+            var data = JSON.parse(metadataJson.value);
+            Object.keys(data).forEach(function(key) {
+                addRow(key, data[key]);
+            });
+        } catch (e) {}
+    }
+
+    function addRow(key, value) {
+        var row = document.createElement('div');
+        row.className = 'flex items-center gap-2';
+        row.innerHTML =
+            '<input type="text" class="meta-key flex-1 bg-input text-foreground border-0 rounded-lg px-2 py-1.5 text-xs focus:ring-2 focus:ring-ring placeholder:text-muted-foreground" placeholder="Key" value="' + escapeHtml(key || '') + '">' +
+            '<input type="text" class="meta-value flex-1 bg-input text-foreground border-0 rounded-lg px-2 py-1.5 text-xs focus:ring-2 focus:ring-ring placeholder:text-muted-foreground" placeholder="Value" value="' + escapeHtml(String(value || '')) + '">' +
+            '<button type="button" onclick="this.parentElement.remove(); galleryCollectMetadata();" class="p-1 text-muted-foreground hover:text-red-400 transition-colors"><i class="ph ph-x text-sm"></i></button>';
+        container.appendChild(row);
+
+        row.querySelectorAll('input').forEach(function(input) {
+            input.addEventListener('input', galleryCollectMetadata);
+        });
+    }
+
+    window.galleryAddMetadataRow = function() {
+        addRow('', '');
+    };
+
+    window.galleryCollectMetadata = function() {
+        var rows = container.querySelectorAll('.flex');
+        var obj = {};
+        rows.forEach(function(row) {
+            var k = row.querySelector('.meta-key').value.trim();
+            var v = row.querySelector('.meta-value').value.trim();
+            if (k) obj[k] = v;
+        });
+        metadataJson.value = JSON.stringify(obj);
+    };
+
+    // Wire up form submission to collect metadata first
+    var form = container.closest('form');
+    if (form) {
+        form.addEventListener('htmx:configRequest', function() {
+            if (typeof galleryCollectMetadata === 'function') {
+                galleryCollectMetadata();
+            }
+        });
+    }
+
+    function escapeHtml(str) {
+        var div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML.replace(/"/g, '&quot;');
+    }
+})();
+</script>

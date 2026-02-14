@@ -13,6 +13,7 @@ pub mod auth;
 pub mod chat;
 pub mod documents;
 pub mod email;
+pub mod gallery;
 pub mod klaviyo;
 
 pub use action_queue::{ActionQueueService, EnqueueParams, EnqueueResult};

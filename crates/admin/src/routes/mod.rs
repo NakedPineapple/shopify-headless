@@ -59,6 +59,7 @@ pub mod documents;
 pub mod emails;
 pub mod expenses;
 pub mod financials;
+pub mod gallery;
 pub mod gift_cards;
 pub mod inventory;
 pub mod newsletter;
@@ -428,6 +429,8 @@ pub fn routes() -> Router<AppState> {
         .merge(expenses::router())
         // Documents (AI knowledge base)
         .merge(documents::router())
+        // Gallery (original images in R2)
+        .merge(gallery::router())
         // Newsletter (Klaviyo)
         .merge(newsletter::router())
         // Promotions (cart page upsells)

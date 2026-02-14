@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM admin.gallery_metadata WHERE r2_key = ANY($1)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "TextArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "665cbd48696f1a6218081a4dca5321be772ffd0daa6155e50af8ecbcfa3662f9"
+}

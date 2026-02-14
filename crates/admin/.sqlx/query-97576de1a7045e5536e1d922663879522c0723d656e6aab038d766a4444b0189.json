@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO admin.gallery_metadata (r2_key, alt_text, description, custom_metadata, updated_by)\n        VALUES ($1, $2, $3, $4, $5)\n        ON CONFLICT (r2_key) DO UPDATE SET\n            alt_text = EXCLUDED.alt_text,\n            description = EXCLUDED.description,\n            custom_metadata = EXCLUDED.custom_metadata,\n            updated_by = EXCLUDED.updated_by\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Jsonb",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "97576de1a7045e5536e1d922663879522c0723d656e6aab038d766a4444b0189"
+}

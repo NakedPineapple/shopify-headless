@@ -1,0 +1,35 @@
+<!-- Folders -->
+{% if !folders.is_empty() %}
+<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-6">
+    {% for folder in folders %}
+    <a href="/gallery/folder/{{ folder.path }}"
+       class="flex items-center gap-3 px-4 py-3 bg-card rounded-xl border border-border hover:border-coral/30 hover:bg-muted/30 transition-colors group">
+        <i class="ph ph-folder text-xl text-amber-400 group-hover:text-amber-300"></i>
+        <span class="text-sm font-medium text-foreground truncate">{{ folder.name }}</span>
+    </a>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Image grid -->
+{% if images.is_empty() && folders.is_empty() %}
+<div class="bg-card rounded-xl border border-border p-12 text-center">
+    <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center">
+        <i class="ph ph-images text-2xl text-muted-foreground"></i>
+    </div>
+    <h3 class="text-lg font-medium text-foreground mb-2">No images in this folder</h3>
+    <p class="text-sm text-muted-foreground mb-4">Upload images to get started.</p>
+    <button type="button"
+            onclick="document.getElementById('gallery-file-input').click()"
+            class="inline-flex items-center gap-2 px-4 py-2 bg-coral text-white rounded-lg hover:bg-coral/90 transition-colors">
+        <i class="ph ph-upload-simple"></i>
+        Upload Images
+    </button>
+</div>
+{% else if !images.is_empty() %}
+<div id="gallery-image-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4" data-prefix="{{ prefix }}">
+    {% for img in images %}
+    {% include "gallery/partials/image_grid.html" %}
+    {% endfor %}
+</div>
+{% endif %}

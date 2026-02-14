@@ -174,8 +174,10 @@ pub struct R2Config {
     pub access_key_id: String,
     /// R2 secret access key.
     pub secret_access_key: SecretString,
-    /// R2 bucket name.
+    /// R2 bucket name (documents).
     pub bucket_name: String,
+    /// R2 bucket name for original images gallery (optional).
+    pub gallery_bucket_name: Option<String>,
 }
 
 impl std::fmt::Debug for R2Config {
@@ -185,6 +187,7 @@ impl std::fmt::Debug for R2Config {
             .field("access_key_id", &self.access_key_id)
             .field("secret_access_key", &"[REDACTED]")
             .field("bucket_name", &self.bucket_name)
+            .field("gallery_bucket_name", &self.gallery_bucket_name)
             .finish()
     }
 }
@@ -198,12 +201,14 @@ impl R2Config {
         let access_key_id = get_optional_env("R2_ACCESS_KEY_ID")?;
         let secret_access_key = SecretString::from(get_optional_env("R2_SECRET_ACCESS_KEY")?);
         let bucket_name = get_optional_env("R2_BUCKET_NAME")?;
+        let gallery_bucket_name = get_optional_env("R2_BUCKET_ORIGINAL_IMAGES");
 
         Some(Self {
             account_id,
             access_key_id,
             secret_access_key,
             bucket_name,
+            gallery_bucket_name,
         })
     }
 }

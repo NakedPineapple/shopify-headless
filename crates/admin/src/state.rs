@@ -57,6 +57,7 @@ struct AppStateInner {
     webauthn: Webauthn,
     email_service: Option<EmailService>,
     r2: Option<R2Client>,
+    r2_gallery: Option<R2Client>,
     judgeme: Option<JudgemeClient>,
 }
 
@@ -68,6 +69,7 @@ struct Integrations {
     slack: Option<SlackClient>,
     m365: Option<M365Client>,
     r2: Option<R2Client>,
+    r2_gallery: Option<R2Client>,
     judgeme: Option<JudgemeClient>,
 }
 
@@ -160,6 +162,7 @@ impl AppState {
                 webauthn,
                 email_service,
                 r2: integrations.r2,
+                r2_gallery: integrations.r2_gallery,
                 judgeme: integrations.judgeme,
             }),
         })
@@ -243,6 +246,12 @@ impl AppState {
         self.inner.r2.as_ref()
     }
 
+    /// Get a reference to the R2 gallery client for original images (if configured).
+    #[must_use]
+    pub fn r2_gallery(&self) -> Option<&R2Client> {
+        self.inner.r2_gallery.as_ref()
+    }
+
     /// Get a reference to the Judge.me client (if configured).
     #[must_use]
     pub fn judgeme(&self) -> Option<&JudgemeClient> {
@@ -297,6 +306,21 @@ impl AppState {
             tracing::info!("R2 not configured — document upload disabled");
         }
 
+        let r2_gallery = config.r2.as_ref().and_then(|r2_config| {
+            r2_config.gallery_bucket_name.as_ref().map(|bucket| {
+                tracing::info!("R2 gallery storage initialized");
+                R2Client::new(
+                    &r2_config.account_id,
+                    &r2_config.access_key_id,
+                    &r2_config.secret_access_key,
+                    bucket.clone(),
+                )
+            })
+        });
+        if r2_gallery.is_none() {
+            tracing::info!("R2 gallery not configured — image gallery disabled");
+        }
+
         let judgeme = config.judgeme.as_ref().map(|c| {
             tracing::info!("Judge.me review integration initialized");
             JudgemeClient::new(c)
@@ -312,6 +336,7 @@ impl AppState {
             slack,
             m365,
             r2,
+            r2_gallery,
             judgeme,
         }
     }

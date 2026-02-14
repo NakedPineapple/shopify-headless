@@ -1,0 +1,155 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Gallery{% endblock %}
+
+{% block page_title %}
+<div class="flex items-center justify-between w-full">
+    <div>
+        <nav class="flex items-center gap-1 text-sm">
+            {% for crumb in breadcrumbs %}
+                {% if loop.last %}
+                    <span class="text-foreground font-medium">{{ crumb.name }}</span>
+                {% else %}
+                    <a href="{{ crumb.path }}" class="text-muted-foreground hover:text-coral transition-colors">{{ crumb.name }}</a>
+                    <i class="ph ph-caret-right text-xs text-muted-foreground"></i>
+                {% endif %}
+            {% endfor %}
+        </nav>
+    </div>
+    {% if r2_configured %}
+    <div class="flex items-center gap-2">
+        <button type="button"
+                onclick="document.getElementById('new-folder-form').classList.toggle('hidden')"
+                class="inline-flex items-center gap-2 px-3 py-2 border border-border text-foreground rounded-lg hover:bg-muted/50 transition-colors text-sm">
+            <i class="ph ph-folder-plus"></i>
+            New Folder
+        </button>
+        <button type="button"
+                onclick="document.getElementById('gallery-file-input').click()"
+                class="inline-flex items-center gap-2 px-4 py-2 bg-coral text-white rounded-lg hover:bg-coral/90 transition-colors text-sm">
+            <i class="ph ph-upload-simple"></i>
+            Upload
+        </button>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block content %}
+{% if !r2_configured %}
+<!-- R2 not configured -->
+<div class="bg-card rounded-xl border border-border p-8 text-center">
+    <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center">
+        <i class="ph ph-cloud-slash text-2xl text-muted-foreground"></i>
+    </div>
+    <h3 class="text-lg font-medium text-foreground mb-2">Gallery Not Configured</h3>
+    <p class="text-sm text-muted-foreground max-w-md mx-auto">
+        Set the <code class="px-1.5 py-0.5 bg-muted rounded text-xs">R2_BUCKET_ORIGINAL_IMAGES</code> environment variable
+        to enable the image gallery.
+    </p>
+</div>
+{% else %}
+
+<!-- New folder form (hidden) -->
+<div id="new-folder-form" class="hidden mb-4">
+    <form method="post" action="/gallery/folder" class="flex items-center gap-3 bg-card rounded-xl border border-border p-4">
+        <input type="hidden" name="parent_prefix" value="{{ prefix }}">
+        <i class="ph ph-folder-plus text-xl text-muted-foreground"></i>
+        <input type="text" name="folder_name" placeholder="Folder name..."
+               class="flex-1 bg-input text-foreground border-0 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-ring placeholder:text-muted-foreground"
+               required pattern="[a-zA-Z0-9_\-]+">
+        <button type="submit" class="px-4 py-2 bg-coral text-white rounded-lg hover:bg-coral/90 transition-colors text-sm">
+            Create
+        </button>
+        <button type="button"
+                onclick="document.getElementById('new-folder-form').classList.add('hidden')"
+                class="px-3 py-2 text-muted-foreground hover:text-foreground transition-colors text-sm">
+            Cancel
+        </button>
+    </form>
+</div>
+
+<!-- Upload drop zone -->
+<div id="gallery-drop-zone"
+     class="mb-6 border-2 border-dashed border-border rounded-xl p-8 text-center transition-colors cursor-pointer hover:border-coral/50"
+     onclick="document.getElementById('gallery-file-input').click()">
+    <input type="file" id="gallery-file-input" name="files" multiple accept="image/*" class="hidden">
+    <i class="ph ph-cloud-arrow-up text-3xl text-muted-foreground mb-2"></i>
+    <p class="text-sm text-muted-foreground">Drag and drop images here, or click to browse</p>
+    <p class="text-xs text-muted-foreground mt-1">JPEG, PNG, WebP, GIF up to 50 MB</p>
+</div>
+
+<!-- Upload progress -->
+<div id="gallery-upload-progress" class="hidden mb-6 bg-card rounded-xl border border-border p-4">
+    <div class="flex items-center gap-3 mb-3">
+        <div class="animate-spin">
+            <i class="ph ph-spinner text-coral text-lg"></i>
+        </div>
+        <span id="gallery-upload-status" class="text-sm text-foreground">Uploading...</span>
+    </div>
+    <div class="w-full bg-muted rounded-full h-2">
+        <div id="gallery-upload-bar" class="bg-coral h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+    </div>
+</div>
+
+<!-- Folders -->
+{% if !folders.is_empty() %}
+<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-6">
+    {% for folder in folders %}
+    <a href="/gallery/folder/{{ folder.path }}"
+       class="flex items-center gap-3 px-4 py-3 bg-card rounded-xl border border-border hover:border-coral/30 hover:bg-muted/30 transition-colors group">
+        <i class="ph ph-folder text-xl text-amber-400 group-hover:text-amber-300"></i>
+        <span class="text-sm font-medium text-foreground truncate">{{ folder.name }}</span>
+    </a>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Image grid -->
+{% if images.is_empty() && folders.is_empty() %}
+<div class="bg-card rounded-xl border border-border p-12 text-center">
+    <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center">
+        <i class="ph ph-images text-2xl text-muted-foreground"></i>
+    </div>
+    <h3 class="text-lg font-medium text-foreground mb-2">No images in this folder</h3>
+    <p class="text-sm text-muted-foreground mb-4">Upload images to get started.</p>
+    <button type="button"
+            onclick="document.getElementById('gallery-file-input').click()"
+            class="inline-flex items-center gap-2 px-4 py-2 bg-coral text-white rounded-lg hover:bg-coral/90 transition-colors">
+        <i class="ph ph-upload-simple"></i>
+        Upload Images
+    </button>
+</div>
+{% else if !images.is_empty() %}
+<div id="gallery-image-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4" data-prefix="{{ prefix }}">
+    {% for img in images %}
+    {% include "gallery/partials/image_grid.html" %}
+    {% endfor %}
+</div>
+
+<!-- Bulk action bar -->
+<div id="gallery-bulk-bar" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-card border border-border rounded-xl shadow-xl px-6 py-3 flex items-center gap-4">
+    <span class="text-sm text-foreground"><span id="gallery-selected-count">0</span> selected</span>
+    <button type="button" onclick="galleryBulkDelete()" class="inline-flex items-center gap-2 px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm">
+        <i class="ph ph-trash"></i>
+        Delete
+    </button>
+    <button type="button" onclick="galleryClearSelection()" class="text-sm text-muted-foreground hover:text-foreground transition-colors">
+        Clear
+    </button>
+</div>
+{% endif %}
+
+<!-- Lightbox modal -->
+<div id="gallery-lightbox" class="hidden fixed inset-0 z-50 bg-black/80 flex items-center justify-center" onclick="galleryCloseLightbox(event)">
+    <div id="gallery-lightbox-content" class="bg-card rounded-xl border border-border max-w-6xl w-full mx-4 max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+        <!-- Content loaded via HTMX -->
+    </div>
+</div>
+
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/gallery.js"></script>
+{% endblock %}
