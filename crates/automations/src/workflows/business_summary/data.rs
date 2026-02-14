@@ -180,12 +180,20 @@ async fn collect_expenses(pool: &PgPool, start: NaiveDate, end: NaiveDate) -> Ex
             Vec::new()
         });
 
+    let by_category = expense::get_expenses_by_category(pool, start, end)
+        .await
+        .unwrap_or_else(|e| {
+            warn!(error = %e, "failed to fetch expenses by category for summary");
+            Vec::new()
+        });
+
     let ad_spend_total = by_channel.iter().map(|c| c.total_spend).sum();
 
     ExpenseSummary {
         total,
         ad_spend_total,
         by_channel,
+        by_category,
     }
 }
 

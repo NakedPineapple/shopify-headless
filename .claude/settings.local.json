@@ -27,6 +27,7 @@
       "Bash(task fmt:*)",
       "Bash(task lint:*)",
       "Bash(task sqlx:prepare:*)",
+      "Bash(wc:*)",
       "Read(~/.claude/plans/)",
       "Skill(frontend-design)",
       "Skill(frontend-design:frontend-design)",

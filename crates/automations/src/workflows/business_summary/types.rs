@@ -79,6 +79,8 @@ pub struct ExpenseSummary {
     pub ad_spend_total: Decimal,
     /// Ad spend broken down by channel.
     pub by_channel: Vec<crate::db::expense::ChannelAdSpend>,
+    /// Expenses broken down by category type (advertising, saas, shipping, etc.).
+    pub by_category: Vec<crate::db::expense::ExpenseCategorySummary>,
 }
 
 /// Profit margin calculations for the weekly summary.

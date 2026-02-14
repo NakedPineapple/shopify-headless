@@ -144,10 +144,8 @@ impl AppState {
     /// and indexes them along with local content. Until complete, search returns
     /// empty results.
     pub fn start_search_indexing(&self) {
-        crate::search::build_index_async(
-            self.inner.search.clone(),
-            self.inner.storefront.clone(),
-            self.inner.content.clone(),
-        );
+        self.inner
+            .search
+            .trigger_full_rebuild(self.inner.storefront.clone(), self.inner.content.clone());
     }
 }

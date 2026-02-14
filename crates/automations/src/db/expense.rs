@@ -66,6 +66,61 @@ struct ChannelAdSpendRow {
     total_spend: Decimal,
 }
 
+/// Expenses grouped by category type for a date range.
+#[derive(Debug, Clone)]
+pub struct ExpenseCategorySummary {
+    pub expense_type: String,
+    pub total_amount: Decimal,
+}
+
+/// Internal row type for the category query.
+#[derive(Debug, sqlx::FromRow)]
+struct ExpenseCategoryRow {
+    expense_type: String,
+    total_amount: Decimal,
+}
+
+/// Get expenses grouped by category type for a date range.
+///
+/// # Errors
+///
+/// Returns `RepositoryError::Database` if the query fails.
+#[instrument(skip(pool), level = "debug")]
+pub async fn get_expenses_by_category(
+    pool: &PgPool,
+    start: NaiveDate,
+    end: NaiveDate,
+) -> Result<Vec<ExpenseCategorySummary>, RepositoryError> {
+    debug!("aggregating expenses by category for summary");
+    let rows = sqlx::query_as!(
+        ExpenseCategoryRow,
+        r#"
+        SELECT
+            c.expense_type::TEXT as "expense_type!",
+            COALESCE(SUM(e.amount), 0) as "total_amount!: Decimal"
+        FROM admin.expense e
+        INNER JOIN admin.expense_category c ON c.id = e.category_id
+        WHERE
+            e.expense_date >= $1
+            AND e.expense_date <= $2
+        GROUP BY c.expense_type
+        ORDER BY SUM(e.amount) DESC
+        "#,
+        to_time_date(start),
+        to_time_date(end)
+    )
+    .fetch_all(pool)
+    .await?;
+
+    Ok(rows
+        .into_iter()
+        .map(|r| ExpenseCategorySummary {
+            expense_type: r.expense_type,
+            total_amount: r.total_amount,
+        })
+        .collect())
+}
+
 /// Get ad spend grouped by channel for a date range.
 ///
 /// # Errors

@@ -25,6 +25,12 @@ Ad Spend:        {{ ad_spend }}
 {% for ac in ad_channels %}
   {{ ac.channel_name }}: ${{ ac.total_spend.round_dp(2) }}
 {% endfor %}
+{% if !expense_categories.is_empty() %}
+By Category:
+{% for cat in expense_categories %}
+  {{ cat.expense_type }}: ${{ cat.total_amount.round_dp(2) }}
+{% endfor %}
+{% endif %}
 
 PROFIT MARGINS
 --------------

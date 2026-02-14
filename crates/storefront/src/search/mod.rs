@@ -259,6 +259,18 @@ impl SearchIndex {
         Ok(())
     }
 
+    /// Trigger a full asynchronous index rebuild without restarting.
+    ///
+    /// Spawns a background task that fetches all products, collections,
+    /// and content, rebuilds the index, and swaps it in atomically.
+    pub fn trigger_full_rebuild(
+        &self,
+        storefront: crate::shopify::StorefrontClient,
+        content: crate::content::ContentStore,
+    ) {
+        build_index_async(self.clone(), storefront, content);
+    }
+
     /// Build the schema for the search index.
     pub(crate) fn build_schema() -> (Schema, SearchFields) {
         use tantivy::schema::{FAST, INDEXED, NumericOptions, STRING};

@@ -87,6 +87,15 @@
     <td style="padding:8px 12px;text-align:right;color:#8b7355;font-size:13px;">${{ ac.total_spend.round_dp(2) }}</td>
   </tr>
   {% endfor %}
+  {% if !expense_categories.is_empty() %}
+  <tr><td colspan="2" style="padding:12px 12px 4px;font-size:13px;color:#8b7355;font-weight:700;">By Category</td></tr>
+  {% for cat in expense_categories %}
+  <tr style="border-bottom:1px solid #f0ebe4;">
+    <td style="padding:8px 12px 8px 32px;color:#8b7355;font-size:13px;text-transform:capitalize;">{{ cat.expense_type }}</td>
+    <td style="padding:8px 12px;text-align:right;color:#8b7355;font-size:13px;">${{ cat.total_amount.round_dp(2) }}</td>
+  </tr>
+  {% endfor %}
+  {% endif %}
   </table>
 </td></tr>
 
