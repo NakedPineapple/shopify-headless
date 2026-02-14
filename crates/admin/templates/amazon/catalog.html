@@ -1,0 +1,65 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Amazon Catalog Search{% endblock %}
+
+{% block page_title %}Amazon Catalog{% endblock %}
+
+{% block page_subtitle %}
+<p class="text-sm text-muted-foreground mt-1">Search the Amazon product catalog and create product mappings</p>
+{% endblock %}
+
+{% block content %}
+{% if !connected %}
+<div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4 mb-6">
+    <div class="flex items-center gap-3">
+        <i class="ph ph-warning text-amber-500 text-xl"></i>
+        <div>
+            <p class="text-sm font-medium text-foreground">Amazon SP-API not connected</p>
+            <p class="text-sm text-muted-foreground">
+                <a href="/settings/amazon" class="text-coral hover:underline">Connect your credentials</a> to search the Amazon catalog.
+            </p>
+        </div>
+    </div>
+</div>
+{% else %}
+<!-- Search -->
+<div class="bg-card rounded-xl border border-border overflow-hidden mb-6">
+    <div class="p-6">
+        <div class="flex items-center gap-4">
+            <div class="relative flex-1">
+                <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"></i>
+                <input type="search"
+                       id="catalog-search"
+                       name="q"
+                       placeholder="Search by keyword, ASIN, UPC, or product name..."
+                       hx-get="/amazon/catalog/search"
+                       hx-trigger="keyup changed delay:500ms"
+                       hx-target="#search-results"
+                       hx-indicator="#search-spinner"
+                       class="w-full pl-10 pr-4 py-2.5 bg-background border border-input rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+            </div>
+            <span id="search-spinner" class="htmx-indicator">
+                <i class="ph ph-spinner-gap text-xl text-muted-foreground animate-spin"></i>
+            </span>
+        </div>
+    </div>
+</div>
+
+<!-- Results -->
+<div id="search-results">
+    <div class="text-center text-muted-foreground py-12">
+        <i class="ph ph-magnifying-glass text-4xl mb-3 block opacity-40"></i>
+        <p class="text-sm">Search the Amazon catalog to find products</p>
+    </div>
+</div>
+{% endif %}
+
+<!-- Navigation -->
+<div class="mt-8 flex items-center gap-4">
+    <a href="/amazon/mappings"
+       class="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+        <i class="ph ph-link text-lg"></i>
+        View Product Mappings
+    </a>
+</div>
+{% endblock %}

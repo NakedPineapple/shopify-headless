@@ -47,6 +47,7 @@
 //! ```
 
 pub mod admin_users;
+pub mod amazon_catalog;
 pub mod amazon_settings;
 pub mod analytics;
 pub mod api;
@@ -463,6 +464,8 @@ pub fn routes() -> Router<AppState> {
         .merge(shiphero_settings::router())
         // Amazon SP-API settings (super_admin only)
         .merge(amazon_settings::router())
+        // Amazon catalog search & product mappings (super_admin only)
+        .merge(amazon_catalog::router())
         // Warehouse (ShipHero visibility)
         .merge(warehouse::router())
         // Well-known endpoints (WebAuthn ROR, security.txt)

@@ -100,7 +100,7 @@ pub struct ApiResponse {
 }
 
 impl ApiResponse {
-    fn success(message: impl Into<String>) -> Self {
+    pub(crate) fn success(message: impl Into<String>) -> Self {
         Self {
             success: true,
             message: Some(message.into()),
@@ -108,7 +108,7 @@ impl ApiResponse {
         }
     }
 
-    fn error(error: impl Into<String>) -> Self {
+    pub(crate) fn error(error: impl Into<String>) -> Self {
         Self {
             success: false,
             message: None,

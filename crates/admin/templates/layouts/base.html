@@ -93,6 +93,11 @@
                         <i class="ph ph-buildings text-xl"></i>
                         <span class="sidebar-text">Warehouse</span>
                     </a>
+                    <a href="/amazon/catalog"
+                       class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors {% if current_path.starts_with("/amazon") %}bg-coral text-white{% else %}text-sidebar-foreground hover:bg-sidebar-accent hover:text-white{% endif %}">
+                        <i class="ph ph-amazon-logo text-xl"></i>
+                        <span class="sidebar-text">Amazon</span>
+                    </a>
                     <a href="/discounts"
                        class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors {% if current_path.starts_with("/discounts") %}bg-coral text-white{% else %}text-sidebar-foreground hover:bg-sidebar-accent hover:text-white{% endif %}">
                         <i class="ph ph-tag text-xl"></i>

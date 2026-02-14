@@ -100,7 +100,7 @@ impl AmazonSpClient {
     }
 
     /// Execute a request with retry logic for 429 (throttling).
-    async fn execute_with_retry<T: serde::de::DeserializeOwned>(
+    pub(super) async fn execute_with_retry<T: serde::de::DeserializeOwned>(
         &self,
         method: reqwest::Method,
         path: &str,

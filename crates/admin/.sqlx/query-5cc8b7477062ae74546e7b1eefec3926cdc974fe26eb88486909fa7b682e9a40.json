@@ -1,0 +1,83 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                id,\n                shopify_product_id,\n                shopify_variant_id,\n                asin,\n                amazon_sku,\n                marketplace_id,\n                match_type,\n                status,\n                last_sync_at as \"last_sync_at: DateTime<Utc>\",\n                created_at as \"created_at: DateTime<Utc>\",\n                updated_at as \"updated_at: DateTime<Utc>\"\n            FROM admin.amazon_product_mapping\n            WHERE amazon_sku = $1 AND marketplace_id = $2\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "shopify_product_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "shopify_variant_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "asin",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "amazon_sku",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "marketplace_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "match_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "last_sync_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "updated_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "5cc8b7477062ae74546e7b1eefec3926cdc974fe26eb88486909fa7b682e9a40"
+}

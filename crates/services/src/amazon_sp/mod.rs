@@ -11,7 +11,9 @@
 //! - Auth: LWA access token + AWS `SigV4` on every request
 
 mod auth;
+mod catalog;
 mod client;
+mod listings;
 mod types;
 
 pub use client::AmazonSpClient;

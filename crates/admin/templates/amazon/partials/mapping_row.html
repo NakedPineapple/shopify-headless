@@ -1,0 +1,46 @@
+<tr id="mapping-{{ mapping.id }}" class="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
+    <td class="px-4 py-3">
+        <div class="text-sm text-foreground font-mono truncate max-w-[200px]" title="{{ mapping.shopify_product_id }}">
+            {{ mapping.shopify_product_id }}
+        </div>
+        {% if let Some(vid) = mapping.shopify_variant_id %}
+        <div class="text-xs text-muted-foreground font-mono truncate max-w-[200px]" title="{{ vid }}">
+            {{ vid }}
+        </div>
+        {% endif %}
+    </td>
+    <td class="px-4 py-3">
+        <span class="text-sm font-mono text-foreground">{{ mapping.asin }}</span>
+    </td>
+    <td class="px-4 py-3">
+        <span class="text-sm font-mono text-foreground">{{ mapping.amazon_sku }}</span>
+    </td>
+    <td class="px-4 py-3">
+        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
+            {% if mapping.match_type == "manual" %}bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300
+            {% elif mapping.match_type == "sku_match" %}bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300
+            {% elif mapping.match_type == "upc_match" %}bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300
+            {% else %}bg-muted text-muted-foreground{% endif %}">
+            {{ mapping.match_type }}
+        </span>
+    </td>
+    <td class="px-4 py-3">
+        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
+            {% if mapping.status == "active" %}bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300
+            {% elif mapping.status == "paused" %}bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300
+            {% elif mapping.status == "error" %}bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300
+            {% else %}bg-muted text-muted-foreground{% endif %}">
+            {{ mapping.status }}
+        </span>
+    </td>
+    <td class="px-4 py-3 text-right">
+        <button hx-delete="/amazon/mappings/{{ mapping.id }}"
+                hx-target="#mapping-{{ mapping.id }}"
+                hx-swap="outerHTML"
+                hx-confirm="Remove this product mapping?"
+                class="p-1.5 rounded-lg hover:bg-destructive/10 transition-colors"
+                title="Delete mapping">
+            <i class="ph ph-trash text-lg text-destructive"></i>
+        </button>
+    </td>
+</tr>

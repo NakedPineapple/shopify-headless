@@ -1,0 +1,107 @@
+{% if let Some(err) = error %}
+<div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
+    <div class="flex items-center gap-3">
+        <i class="ph ph-warning-circle text-red-500 text-xl"></i>
+        <p class="text-sm text-foreground">{{ err }}</p>
+    </div>
+</div>
+{% else %}
+{% if items.is_empty() %}
+<div class="text-center text-muted-foreground py-12">
+    <i class="ph ph-package text-4xl mb-3 block opacity-40"></i>
+    <p class="text-sm">No products found</p>
+</div>
+{% else %}
+<!-- Results Header -->
+<div class="flex items-center justify-between mb-4">
+    <p class="text-sm text-muted-foreground">
+        {{ total }} result{% if total != 1 %}s{% endif %} found
+    </p>
+</div>
+
+<!-- Results Grid -->
+<div class="space-y-3">
+    {% for item in items %}
+    <div class="bg-card rounded-xl border border-border p-4 hover:border-coral/30 transition-colors">
+        <div class="flex gap-4">
+            <!-- Image -->
+            <div class="w-16 h-16 rounded-lg bg-muted flex items-center justify-center overflow-hidden shrink-0">
+                {% if let Some(img_set) = item.images.first() %}
+                    {% if let Some(img) = img_set.images.first() %}
+                    <img src="{{ img.link }}" alt="" class="w-full h-full object-cover">
+                    {% else %}
+                    <i class="ph ph-image text-2xl text-muted-foreground"></i>
+                    {% endif %}
+                {% else %}
+                <i class="ph ph-image text-2xl text-muted-foreground"></i>
+                {% endif %}
+            </div>
+
+            <!-- Details -->
+            <div class="flex-1 min-w-0">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <h3 class="text-sm font-medium text-foreground truncate">
+                            {% if let Some(summary) = item.summaries.first() %}
+                                {{ summary.item_name.as_deref().unwrap_or("Untitled") }}
+                            {% else %}
+                                Untitled
+                            {% endif %}
+                        </h3>
+                        <div class="flex items-center gap-3 mt-1">
+                            <span class="text-xs font-mono text-muted-foreground">ASIN: {{ item.asin }}</span>
+                            {% if let Some(summary) = item.summaries.first() %}
+                                {% if let Some(brand) = summary.brand.as_deref() %}
+                                <span class="text-xs text-muted-foreground">{{ brand }}</span>
+                                {% endif %}
+                            {% endif %}
+                        </div>
+                        {% if let Some(id_set) = item.identifiers.first() %}
+                            {% for ident in id_set.identifiers.iter() %}
+                            <span class="text-xs text-muted-foreground">{{ ident.identifier_type }}: {{ ident.identifier }}</span>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+
+                    <!-- Map Button -->
+                    <button type="button"
+                            onclick="openMapModal('{{ item.asin }}', this.closest('.bg-card').querySelector('h3')?.textContent?.trim() || '')"
+                            class="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-coral border border-coral/30 rounded-lg hover:bg-coral/10 transition-colors">
+                        <i class="ph ph-link text-sm"></i>
+                        Map
+                    </button>
+                </div>
+
+                <!-- Sales Ranks -->
+                {% if let Some(rank_set) = item.sales_ranks.first() %}
+                    {% if let Some(rank) = rank_set.display_group_ranks.first() %}
+                    <div class="mt-2">
+                        <span class="text-xs text-muted-foreground">
+                            #{{ rank.rank }} in {{ rank.title }}
+                        </span>
+                    </div>
+                    {% endif %}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Load More -->
+{% if has_next %}
+    {% if let Some(token) = next_token %}
+    <div class="mt-4 text-center">
+        <button hx-get="/amazon/catalog/search?q=&page_token={{ token }}"
+                hx-target="#search-results"
+                hx-swap="innerHTML"
+                hx-include="#catalog-search"
+                class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-foreground bg-muted hover:bg-muted/80 rounded-lg transition-colors">
+            <i class="ph ph-arrow-down text-lg"></i>
+            Load More
+        </button>
+    </div>
+    {% endif %}
+{% endif %}
+{% endif %}
+{% endif %}
