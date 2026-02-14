@@ -1,0 +1,86 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                id,\n                account_name,\n                app_id,\n                app_secret,\n                page_access_token,\n                page_id,\n                commerce_account_id,\n                catalog_id,\n                token_expires_at,\n                connected_by,\n                connected_at as \"connected_at: DateTime<Utc>\",\n                last_used_at as \"last_used_at: DateTime<Utc>\"\n            FROM admin.meta_commerce_credentials\n            WHERE account_name = 'default'\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "account_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "app_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "app_secret",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "page_access_token",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "page_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "commerce_account_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "catalog_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "token_expires_at",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 9,
+        "name": "connected_by",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 10,
+        "name": "connected_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 11,
+        "name": "last_used_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "8150233affc72b74cd551cebe41589d291759b80dd118f128f0a68b783d63451"
+}

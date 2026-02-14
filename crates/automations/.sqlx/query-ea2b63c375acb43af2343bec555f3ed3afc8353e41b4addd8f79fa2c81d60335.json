@@ -1,0 +1,30 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO admin.meta_orders (\n            facebook_order_id, created_time, last_updated_time,\n            order_status, channel, buyer_name, buyer_email,\n            ship_name, ship_street1, ship_street2,\n            ship_city, ship_state, ship_postal_code, ship_country,\n            estimated_payment_amount, estimated_payment_currency,\n            raw_json\n        )\n        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)\n        ON CONFLICT (facebook_order_id) DO UPDATE SET\n            last_updated_time = EXCLUDED.last_updated_time,\n            order_status = EXCLUDED.order_status,\n            buyer_name = EXCLUDED.buyer_name,\n            buyer_email = EXCLUDED.buyer_email,\n            raw_json = EXCLUDED.raw_json,\n            updated_at = (CURRENT_TIMESTAMP AT TIME ZONE 'utc')\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Timestamptz",
+        "Timestamptz",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Jsonb"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ea2b63c375acb43af2343bec555f3ed3afc8353e41b4addd8f79fa2c81d60335"
+}

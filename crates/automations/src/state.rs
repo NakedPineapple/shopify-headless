@@ -6,6 +6,7 @@ use naked_pineapple_services::amazon_sp::AmazonSpClient;
 use naked_pineapple_services::claude::ClaudeClient;
 use naked_pineapple_services::email::EmailService;
 use naked_pineapple_services::klaviyo::KlaviyoClient;
+use naked_pineapple_services::meta_commerce::MetaCommerceClient;
 use naked_pineapple_services::slack::SlackClient;
 use sqlx::PgPool;
 
@@ -29,6 +30,7 @@ struct AppStateInner {
     klaviyo: Option<KlaviyoClient>,
     shopify: Option<ShopifyClient>,
     amazon: Option<AmazonSpClient>,
+    meta: Option<MetaCommerceClient>,
     email_service: Option<EmailService>,
 }
 
@@ -43,6 +45,7 @@ pub struct AppStateParams {
     pub klaviyo: Option<KlaviyoClient>,
     pub shopify: Option<ShopifyClient>,
     pub amazon: Option<AmazonSpClient>,
+    pub meta: Option<MetaCommerceClient>,
     pub email_service: Option<EmailService>,
 }
 
@@ -61,6 +64,7 @@ impl AppState {
                 klaviyo: params.klaviyo,
                 shopify: params.shopify,
                 amazon: params.amazon,
+                meta: params.meta,
                 email_service: params.email_service,
             }),
         }
@@ -112,6 +116,12 @@ impl AppState {
     #[must_use]
     pub fn amazon(&self) -> Option<&AmazonSpClient> {
         self.inner.amazon.as_ref()
+    }
+
+    /// Get a reference to the Meta Commerce client (if configured).
+    #[must_use]
+    pub fn meta(&self) -> Option<&MetaCommerceClient> {
+        self.inner.meta.as_ref()
     }
 
     /// Get a reference to the SMTP email service (if configured).

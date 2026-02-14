@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                COALESCE(SUM(CAST(estimated_payment_amount AS DECIMAL)), 0) as \"revenue!: rust_decimal::Decimal\",\n                COUNT(*) as \"count!\"\n            FROM admin.meta_orders\n            WHERE order_status != 'CANCELED'\n              AND created_time >= $1::date\n              AND created_time < ($2::date + INTERVAL '1 day')\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "revenue!: rust_decimal::Decimal",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 1,
+        "name": "count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Date",
+        "Date"
+      ]
+    },
+    "nullable": [
+      null,
+      null
+    ]
+  },
+  "hash": "6d597843147d5706629b33dd4a1c7adc1dcbd9171ae831c316f7ca98f87809f2"
+}

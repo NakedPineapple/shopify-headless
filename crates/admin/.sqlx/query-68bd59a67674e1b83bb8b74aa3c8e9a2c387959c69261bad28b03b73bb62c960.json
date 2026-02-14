@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                order_status as \"status!\",\n                COUNT(*) as \"count!\"\n            FROM admin.meta_orders\n            WHERE created_time >= $1::date\n              AND created_time < ($2::date + INTERVAL '1 day')\n            GROUP BY order_status\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "status!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Date",
+        "Date"
+      ]
+    },
+    "nullable": [
+      false,
+      null
+    ]
+  },
+  "hash": "68bd59a67674e1b83bb8b74aa3c8e9a2c387959c69261bad28b03b73bb62c960"
+}

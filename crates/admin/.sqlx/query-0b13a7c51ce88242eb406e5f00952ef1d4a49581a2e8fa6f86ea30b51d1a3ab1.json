@@ -1,0 +1,76 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                id,\n                shopify_product_id,\n                shopify_variant_id,\n                facebook_product_id,\n                retailer_id,\n                match_type,\n                status,\n                last_sync_at as \"last_sync_at: DateTime<Utc>\",\n                created_at as \"created_at: DateTime<Utc>\",\n                updated_at as \"updated_at: DateTime<Utc>\"\n            FROM admin.meta_product_mapping\n            WHERE shopify_product_id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "shopify_product_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "shopify_variant_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "facebook_product_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "retailer_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "match_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "last_sync_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "created_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "updated_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      true,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "0b13a7c51ce88242eb406e5f00952ef1d4a49581a2e8fa6f86ea30b51d1a3ab1"
+}

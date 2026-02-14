@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO admin.meta_commerce_credentials (\n                account_name,\n                app_id,\n                app_secret,\n                page_access_token,\n                page_id,\n                commerce_account_id,\n                catalog_id,\n                connected_by,\n                connected_at\n            )\n            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, (CURRENT_TIMESTAMP AT TIME ZONE 'utc'))\n            ON CONFLICT(account_name) DO UPDATE SET\n                app_id = EXCLUDED.app_id,\n                app_secret = EXCLUDED.app_secret,\n                page_access_token = EXCLUDED.page_access_token,\n                page_id = EXCLUDED.page_id,\n                commerce_account_id = EXCLUDED.commerce_account_id,\n                catalog_id = EXCLUDED.catalog_id,\n                connected_by = EXCLUDED.connected_by,\n                connected_at = EXCLUDED.connected_at,\n                updated_at = (CURRENT_TIMESTAMP AT TIME ZONE 'utc')\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "fd26be24fc7a718dfab666a74d59582b5588059ee182b4c1a7fda947a8b9bff3"
+}

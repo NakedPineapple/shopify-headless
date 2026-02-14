@@ -1,0 +1,35 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                channel as \"channel!\",\n                COALESCE(SUM(CAST(estimated_payment_amount AS DECIMAL)), 0) as \"revenue!: rust_decimal::Decimal\",\n                COUNT(*) as \"count!\"\n            FROM admin.meta_orders\n            WHERE order_status != 'CANCELED'\n              AND created_time >= $1::date\n              AND created_time < ($2::date + INTERVAL '1 day')\n            GROUP BY channel\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "channel!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "revenue!: rust_decimal::Decimal",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 2,
+        "name": "count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Date",
+        "Date"
+      ]
+    },
+    "nullable": [
+      false,
+      null,
+      null
+    ]
+  },
+  "hash": "797552f04526eab3888a1df97fa5587a5defe04773087c4c994ab3a7cece0589"
+}

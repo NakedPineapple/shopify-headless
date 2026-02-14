@@ -1,0 +1,136 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                id, facebook_order_id, shopify_order_id,\n                created_time as \"created_time: DateTime<Utc>\",\n                last_updated_time as \"last_updated_time: DateTime<Utc>\",\n                order_status, channel,\n                buyer_name, buyer_email,\n                ship_name, ship_street1, ship_street2,\n                ship_city, ship_state, ship_postal_code, ship_country,\n                estimated_payment_amount, estimated_payment_currency,\n                created_at as \"created_at: DateTime<Utc>\",\n                updated_at as \"updated_at: DateTime<Utc>\"\n            FROM admin.meta_orders\n            WHERE id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "facebook_order_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "shopify_order_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "created_time: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 4,
+        "name": "last_updated_time: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "order_status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "channel",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "buyer_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "buyer_email",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "ship_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "ship_street1",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 11,
+        "name": "ship_street2",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 12,
+        "name": "ship_city",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 13,
+        "name": "ship_state",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 14,
+        "name": "ship_postal_code",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 15,
+        "name": "ship_country",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 16,
+        "name": "estimated_payment_amount",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 17,
+        "name": "estimated_payment_currency",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 18,
+        "name": "created_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 19,
+        "name": "updated_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "47218379e856ed119c1ea50b77ca9a993e40617ba8bbf22740eeba85952b777f"
+}

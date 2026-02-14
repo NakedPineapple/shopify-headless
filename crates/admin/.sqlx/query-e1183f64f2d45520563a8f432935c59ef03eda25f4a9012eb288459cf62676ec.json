@@ -1,0 +1,58 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                id, facebook_order_id, product_id, retailer_id,\n                quantity, price_per_unit, currency\n            FROM admin.meta_order_items\n            WHERE facebook_order_id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "facebook_order_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "product_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "retailer_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "quantity",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 5,
+        "name": "price_per_unit",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "currency",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "e1183f64f2d45520563a8f432935c59ef03eda25f4a9012eb288459cf62676ec"
+}

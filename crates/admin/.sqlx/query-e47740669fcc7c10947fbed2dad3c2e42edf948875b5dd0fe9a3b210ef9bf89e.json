@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT COUNT(*) as \"count!\"\n            FROM admin.meta_orders\n            WHERE ($1::text IS NULL OR order_status = $1)\n              AND ($2::text IS NULL OR channel = $2)\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "e47740669fcc7c10947fbed2dad3c2e42edf948875b5dd0fe9a3b210ef9bf89e"
+}

@@ -32,6 +32,9 @@ pub mod gallery;
 pub mod inbound_email;
 pub mod inventory_lot;
 pub mod manufacturing;
+pub mod meta_commerce;
+pub mod meta_orders;
+pub mod meta_products;
 pub mod pending_actions;
 pub mod request_board;
 pub mod settings;
@@ -60,6 +63,16 @@ pub use chat::ChatRepository;
 pub use expense::ExpenseRepository;
 pub use inventory_lot::InventoryLotRepository;
 pub use manufacturing::ManufacturingRepository;
+pub use meta_commerce::{
+    MetaCommerceCredentials, MetaCommerceCredentialsRepository, SaveMetaCommerceParams,
+};
+pub use meta_orders::{
+    CachedMetaOrder, CachedMetaOrderItem, ChannelBreakdown, MetaDailyRevenue, MetaOrderRepository,
+    MetaRevenueSummary, MetaStatusBreakdown,
+};
+pub use meta_products::{
+    CreateMetaMappingParams, MetaProductMapping, MetaProductMappingRepository,
+};
 pub use request_board::RequestBoardRepository;
 pub use shiphero::{SaveCredentialsParams, ShipHeroCredentials, ShipHeroCredentialsRepository};
 pub use shopify::ShopifyTokenRepository;

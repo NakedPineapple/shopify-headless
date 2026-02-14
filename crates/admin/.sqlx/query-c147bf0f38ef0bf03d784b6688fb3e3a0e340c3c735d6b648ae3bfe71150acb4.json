@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM admin.meta_product_mapping WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c147bf0f38ef0bf03d784b6688fb3e3a0e340c3c735d6b648ae3bfe71150acb4"
+}

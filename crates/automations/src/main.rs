@@ -36,6 +36,7 @@ mod config;
 mod db;
 mod error;
 mod logging;
+mod meta;
 mod outbound;
 mod scheduler;
 mod shopify;
@@ -153,6 +154,13 @@ async fn main() {
         tracing::info!("Amazon SP-API not configured, order sync disabled");
     }
 
+    let meta_client = load_meta_client(&pool).await;
+    if meta_client.is_some() {
+        tracing::info!("Meta Commerce client initialized for order sync");
+    } else {
+        tracing::info!("Meta Commerce not configured, order sync disabled");
+    }
+
     let support_pool = create_support_pool(&config).await;
     let health_port = config.health_port;
     let webhook_config = config.webhook.clone();
@@ -166,6 +174,7 @@ async fn main() {
         klaviyo: klaviyo_client,
         shopify: shopify_client,
         amazon: amazon_client,
+        meta: meta_client,
         email_service,
     });
 
@@ -345,6 +354,42 @@ async fn load_amazon_client(
         Ok(None) => None,
         Err(e) => {
             tracing::error!(error = %e, "failed to load Amazon SP-API credentials");
+            None
+        }
+    }
+}
+
+/// Load Meta Commerce client from stored credentials in the admin database.
+///
+/// Follows the same credential loading pattern as the Amazon SP-API client.
+async fn load_meta_client(
+    pool: &sqlx::PgPool,
+) -> Option<naked_pineapple_services::meta_commerce::MetaCommerceClient> {
+    use naked_pineapple_services::meta_commerce::{MetaCommerceClient, MetaCommerceCredentials};
+
+    let row = sqlx::query!(
+        r"
+        SELECT app_id, app_secret, page_access_token, page_id,
+               commerce_account_id, catalog_id
+        FROM admin.meta_commerce_credentials
+        WHERE account_name = 'default'
+        "
+    )
+    .fetch_optional(pool)
+    .await;
+
+    match row {
+        Ok(Some(creds)) => Some(MetaCommerceClient::new(MetaCommerceCredentials {
+            app_id: creds.app_id,
+            app_secret: creds.app_secret.into(),
+            page_access_token: creds.page_access_token.into(),
+            page_id: creds.page_id,
+            commerce_account_id: creds.commerce_account_id,
+            catalog_id: creds.catalog_id,
+        })),
+        Ok(None) => None,
+        Err(e) => {
+            tracing::error!(error = %e, "failed to load Meta Commerce credentials");
             None
         }
     }

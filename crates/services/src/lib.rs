@@ -20,6 +20,7 @@ pub mod config;
 pub mod email;
 pub mod judgeme;
 pub mod klaviyo;
+pub mod meta_commerce;
 pub mod microsoft_graph;
 pub mod openai;
 pub mod slack;

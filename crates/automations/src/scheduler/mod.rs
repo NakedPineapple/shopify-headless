@@ -19,6 +19,7 @@ use tokio::sync::watch;
 use tokio::time::interval;
 
 use crate::amazon;
+use crate::meta;
 use crate::outbound;
 use crate::state::AppState;
 use crate::triage;
@@ -92,11 +93,14 @@ impl Scheduler {
         let mut summary_check = interval(Duration::from_secs(config.summary_check_interval_secs));
         let mut amazon_order_poll =
             interval(Duration::from_secs(config.amazon_order_poll_interval_secs));
+        let mut meta_order_poll =
+            interval(Duration::from_secs(config.meta_order_poll_interval_secs));
 
         tracing::info!(
             email_poll_secs = config.email_poll_interval_secs,
             order_poll_secs = config.order_poll_interval_secs,
             amazon_order_poll_secs = config.amazon_order_poll_interval_secs,
+            meta_order_poll_secs = config.meta_order_poll_interval_secs,
             cart_check_secs = config.cart_check_interval_secs,
             stock_check_secs = config.stock_check_interval_secs,
             segment_sync_secs = config.segment_sync_interval_secs,
@@ -120,6 +124,7 @@ impl Scheduler {
                 _ = subscription_check.tick() => { guarded!(self, "subscription_check", check_subscriptions); },
                 _ = webhook_events.tick() => { guarded!(self, "webhook_events", process_webhook_events); },
                 _ = amazon_order_poll.tick() => { guarded!(self, "amazon_order_poll", poll_amazon_orders); },
+                _ = meta_order_poll.tick() => { guarded!(self, "meta_order_poll", poll_meta_orders); },
                 _ = summary_check.tick() => { guarded!(self, "summary_check", check_summaries); },
             }
         }
@@ -381,6 +386,15 @@ impl Scheduler {
 
         workflows::segmentation::run(&clients).await;
         true
+    }
+
+    /// Poll Meta Commerce API for new orders and cache locally.
+    async fn poll_meta_orders(&self) -> bool {
+        let Some(client) = self.state.meta() else {
+            return true;
+        };
+
+        meta::order_sync::poll_meta_orders(self.state.pool(), client).await
     }
 
     /// Poll Amazon SP-API for new orders and cache locally.

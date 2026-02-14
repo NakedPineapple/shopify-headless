@@ -11,6 +11,7 @@ use webauthn_rs::prelude::*;
 
 use naked_pineapple_services::amazon_sp::{AmazonSpClient, InventorySummary, PricingResult};
 use naked_pineapple_services::judgeme::JudgemeClient;
+use naked_pineapple_services::meta_commerce::MetaCommerceClient;
 use naked_pineapple_services::microsoft_graph::M365Client;
 use naked_pineapple_services::openai::EmbeddingClient;
 
@@ -58,6 +59,7 @@ struct AppStateInner {
     shopify: AdminClient,
     shiphero: Option<ShipHeroClient>,
     amazon: Option<AmazonSpClient>,
+    meta: Option<MetaCommerceClient>,
     fba_cache: Cache<String, Vec<InventorySummary>>,
     pricing_cache: Cache<String, Vec<PricingResult>>,
     slack: Option<SlackClient>,
@@ -75,6 +77,7 @@ struct Integrations {
     embedding: Option<EmbeddingClient>,
     shiphero: Option<ShipHeroClient>,
     amazon: Option<AmazonSpClient>,
+    meta: Option<MetaCommerceClient>,
     slack: Option<SlackClient>,
     m365: Option<M365Client>,
     r2: Option<R2Client>,
@@ -177,6 +180,7 @@ impl AppState {
                 shopify,
                 shiphero: integrations.shiphero,
                 amazon: integrations.amazon,
+                meta: integrations.meta,
                 fba_cache,
                 pricing_cache,
                 slack: integrations.slack,
@@ -286,6 +290,12 @@ impl AppState {
         self.inner.amazon.as_ref()
     }
 
+    /// Get a reference to the Meta Commerce client (if configured).
+    #[must_use]
+    pub fn meta(&self) -> Option<&MetaCommerceClient> {
+        self.inner.meta.as_ref()
+    }
+
     /// Get a reference to the FBA inventory cache (5-min TTL).
     #[must_use]
     pub fn fba_cache(&self) -> &Cache<String, Vec<InventorySummary>> {
@@ -378,11 +388,21 @@ impl AppState {
             );
         }
 
+        let meta = Self::load_meta_client(pool).await;
+        if meta.is_some() {
+            tracing::info!("Meta Commerce client initialized from stored credentials");
+        } else {
+            tracing::info!(
+                "Meta Commerce not configured — Meta features disabled until credentials added via /settings/meta"
+            );
+        }
+
         Integrations {
             support_pool,
             embedding,
             shiphero,
             amazon,
+            meta,
             slack,
             m365,
             r2,
@@ -468,6 +488,30 @@ impl AppState {
             Ok(None) => None,
             Err(e) => {
                 tracing::error!(error = %e, "Failed to load Amazon SP-API credentials from database");
+                None
+            }
+        }
+    }
+
+    /// Load Meta Commerce client from stored credentials.
+    async fn load_meta_client(pool: &PgPool) -> Option<MetaCommerceClient> {
+        use crate::db::MetaCommerceCredentialsRepository;
+        use naked_pineapple_services::meta_commerce::MetaCommerceCredentials;
+
+        let repo = MetaCommerceCredentialsRepository::new(pool);
+
+        match repo.get_default().await {
+            Ok(Some(creds)) => Some(MetaCommerceClient::new(MetaCommerceCredentials {
+                app_id: creds.app_id,
+                app_secret: creds.app_secret,
+                page_access_token: creds.page_access_token,
+                page_id: creds.page_id,
+                commerce_account_id: creds.commerce_account_id,
+                catalog_id: creds.catalog_id,
+            })),
+            Ok(None) => None,
+            Err(e) => {
+                tracing::error!(error = %e, "Failed to load Meta Commerce credentials from database");
                 None
             }
         }

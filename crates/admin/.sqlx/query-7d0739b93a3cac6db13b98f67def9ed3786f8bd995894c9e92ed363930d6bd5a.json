@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT last_sync_at as \"last_sync_at: DateTime<Utc>\"\n        FROM admin.meta_sync_state\n        WHERE sync_type = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "last_sync_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "7d0739b93a3cac6db13b98f67def9ed3786f8bd995894c9e92ed363930d6bd5a"
+}

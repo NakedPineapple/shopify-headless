@@ -98,6 +98,11 @@
                         <i class="ph ph-amazon-logo text-xl"></i>
                         <span class="sidebar-text">Amazon</span>
                     </a>
+                    <a href="/meta/catalog"
+                       class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors {% if current_path.starts_with("/meta") %}bg-coral text-white{% else %}text-sidebar-foreground hover:bg-sidebar-accent hover:text-white{% endif %}">
+                        <i class="ph ph-meta-logo text-xl"></i>
+                        <span class="sidebar-text">Meta Commerce</span>
+                    </a>
                     <a href="/discounts"
                        class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors {% if current_path.starts_with("/discounts") %}bg-coral text-white{% else %}text-sidebar-foreground hover:bg-sidebar-accent hover:text-white{% endif %}">
                         <i class="ph ph-tag text-xl"></i>
@@ -225,6 +230,11 @@
                            class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors {% if current_path.starts_with("/settings/amazon") %}bg-coral text-white{% else %}text-sidebar-foreground hover:bg-sidebar-accent hover:text-white{% endif %}">
                             <i class="ph ph-amazon-logo text-xl"></i>
                             <span class="sidebar-text">Amazon SP-API</span>
+                        </a>
+                        <a href="/settings/meta"
+                           class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors {% if current_path.starts_with("/settings/meta") %}bg-coral text-white{% else %}text-sidebar-foreground hover:bg-sidebar-accent hover:text-white{% endif %}">
+                            <i class="ph ph-meta-logo text-xl"></i>
+                            <span class="sidebar-text">Meta Commerce</span>
                         </a>
                     </div>
                 </div>

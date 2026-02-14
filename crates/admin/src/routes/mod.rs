@@ -54,6 +54,7 @@ pub mod amazon_orders;
 pub mod amazon_settings;
 pub mod analytics;
 pub mod api;
+
 pub mod auth;
 pub mod chat;
 pub mod collections;
@@ -67,6 +68,10 @@ pub mod financials;
 pub mod gallery;
 pub mod gift_cards;
 pub mod inventory;
+pub mod meta_analytics;
+pub mod meta_catalog;
+pub mod meta_orders;
+pub mod meta_settings;
 pub mod newsletter;
 pub mod orders;
 pub mod payouts;
@@ -381,6 +386,7 @@ fn analytics_routes() -> Router<AppState> {
             "/analytics/amazon/pricing",
             get(amazon_analytics::amazon_pricing),
         )
+        .route("/analytics/meta", get(meta_analytics::meta_sales))
 }
 
 /// Build payout routes.
@@ -478,6 +484,12 @@ pub fn routes() -> Router<AppState> {
         .merge(amazon_inventory::router())
         // Amazon orders (super_admin only)
         .merge(amazon_orders::router())
+        // Meta Commerce settings (super_admin only)
+        .merge(meta_settings::router())
+        // Meta catalog search & product mappings (super_admin only)
+        .merge(meta_catalog::router())
+        // Meta orders (super_admin only)
+        .merge(meta_orders::router())
         // Warehouse (ShipHero visibility)
         .merge(warehouse::router())
         // Well-known endpoints (WebAuthn ROR, security.txt)
