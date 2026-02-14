@@ -47,6 +47,21 @@ query GetProduct($id: ID!, $mediaCount: Int = 10, $variantCount: Int = 50) {
         }
       }
     }
+    resourcePublicationsV2(first: 20) {
+      edges {
+        node {
+          publication {
+            id
+            name
+            catalog {
+              __typename
+              title
+            }
+          }
+          isPublished
+        }
+      }
+    }
     variants(first: $variantCount) {
       edges {
         node {

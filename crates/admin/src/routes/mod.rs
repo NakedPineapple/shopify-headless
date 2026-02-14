@@ -98,6 +98,7 @@ fn product_routes() -> Router<AppState> {
             "/products/{id}/variants/{variant_id}",
             post(products::update_variant),
         )
+        .route("/products/{id}/publish", post(products::toggle_publication))
         .route("/products/{id}/images", post(products::upload_image))
         .route(
             "/products/{id}/images/{media_id}",

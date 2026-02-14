@@ -30,7 +30,7 @@ Features described in `crates/admin/templates/proposal/` that are not yet implem
 ## Automation
 
 - [X] **Daily / weekly business summary emails** — Automated reports compiling revenue, order count, top products, marketing performance, and inventory alerts. No scheduled job or template exists.
-- [ ] **Cross-channel product sync** — The proposal claims edits in the admin panel propagate to Shopify and onward to every connected sales channel. Today the admin reads from Shopify (source of truth) but does not push changes back through admin-initiated writes that fan out to other channels.
+- [X] **Cross-channel product sync** — The proposal claims edits in the admin panel propagate to Shopify and onward to every connected sales channel. Today the admin reads from Shopify (source of truth) but does not push changes back through admin-initiated writes that fan out to other channels.
 
 ## Storefront
 

@@ -2,7 +2,7 @@
 
 use crate::shopify::types::{
     AdminProduct, AdminProductConnection, AdminProductVariant, Image, Money, PageInfo,
-    ProductStatus,
+    ProductStatus, Publication, ResourcePublication,
 };
 
 use super::super::queries::{get_product, get_products};
@@ -68,6 +68,24 @@ pub fn convert_product(product: get_product::GetProductProduct) -> AdminProduct 
             .edges
             .into_iter()
             .map(|e| convert_variant_single(e.node))
+            .collect(),
+        publications: product
+            .resource_publications_v2
+            .edges
+            .into_iter()
+            .map(|e| ResourcePublication {
+                publication: Publication {
+                    id: e.node.publication.id.clone(),
+                    #[allow(deprecated)]
+                    name: e
+                        .node
+                        .publication
+                        .catalog
+                        .map(|c| c.title)
+                        .unwrap_or(e.node.publication.name),
+                },
+                is_published: e.node.is_published,
+            })
             .collect(),
     }
 }
@@ -197,6 +215,7 @@ fn convert_products_list_product(
             .into_iter()
             .map(|e| convert_products_list_variant(e.node))
             .collect(),
+        publications: Vec::new(), // Not fetched in list query
     }
 }
 

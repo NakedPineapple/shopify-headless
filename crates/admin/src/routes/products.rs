@@ -146,7 +146,16 @@ pub struct ProductEditTemplate {
     pub admin_user: AdminUserView,
     pub current_path: String,
     pub product: ProductDetailView,
+    pub publications: Vec<PublicationView>,
     pub error: Option<String>,
+}
+
+/// Sales channel publication status for templates.
+#[derive(Debug, Clone)]
+pub struct PublicationView {
+    pub id: String,
+    pub name: String,
+    pub is_published: bool,
 }
 
 /// Detailed product view for detail/edit pages.
@@ -431,10 +440,13 @@ pub async fn edit(
 
     match state.shopify().get_product(&product_id).await {
         Ok(Some(product)) => {
+            let publications = build_publication_views(&state, &product).await;
+
             let template = ProductEditTemplate {
                 admin_user: AdminUserView::from(&admin),
                 current_path: "/products".to_string(),
                 product: ProductDetailView::from(&product),
+                publications,
                 error: None,
             };
 
@@ -529,10 +541,13 @@ pub async fn update(
         }
         Err(e) => {
             tracing::error!(product_id = %product_id, error = %e, "Failed to update product");
+            let publications = build_publication_views(&state, &current_product).await;
+
             let template = ProductEditTemplate {
                 admin_user: AdminUserView::from(&admin),
                 current_path: "/products".to_string(),
                 product: ProductDetailView::from(&current_product),
+                publications,
                 error: Some(e.to_string()),
             };
 
@@ -893,6 +908,136 @@ pub async fn update_image_alt(
                 Json(serde_json::json!({"error": e.to_string()})),
             )
                 .into_response()
+        }
+    }
+}
+
+// ============================================================================
+// Publication Management
+// ============================================================================
+
+/// Build publication views by merging all available channels with product's current state.
+async fn build_publication_views(state: &AppState, product: &AdminProduct) -> Vec<PublicationView> {
+    match state.shopify().get_publications().await {
+        Ok(all_pubs) => all_pubs
+            .into_iter()
+            .map(|pub_info| {
+                let is_published = product
+                    .publications
+                    .iter()
+                    .any(|rp| rp.publication.id == pub_info.id && rp.is_published);
+                PublicationView {
+                    id: pub_info.id,
+                    name: pub_info.name,
+                    is_published,
+                }
+            })
+            .collect(),
+        Err(e) => {
+            tracing::error!(error = %e, "Failed to fetch publications");
+            Vec::new()
+        }
+    }
+}
+
+/// Form input for toggling publication.
+#[derive(Debug, Deserialize)]
+pub struct PublishToggleInput {
+    /// Publication (sales channel) ID.
+    pub publication_id: String,
+    /// Whether to publish (true) or unpublish (false).
+    pub publish: bool,
+}
+
+/// Toggle product publication on a sales channel (HTMX).
+#[instrument(skip(admin, state), fields(admin_id = %admin.id.as_i32(), product_id = %id))]
+pub async fn toggle_publication(
+    RequireAdminAuth(admin): RequireAdminAuth,
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    Form(input): Form<PublishToggleInput>,
+) -> impl IntoResponse {
+    debug!(publish = %input.publish, publication_id = %input.publication_id, "Toggling publication");
+    let product_id = if id.starts_with("gid://") {
+        id
+    } else {
+        format!("gid://shopify/Product/{id}")
+    };
+
+    let result = if input.publish {
+        state
+            .shopify()
+            .publish_product(&product_id, std::slice::from_ref(&input.publication_id))
+            .await
+    } else {
+        state
+            .shopify()
+            .unpublish_product(&product_id, std::slice::from_ref(&input.publication_id))
+            .await
+    };
+
+    match result {
+        Ok(()) => {
+            let action = if input.publish {
+                "published"
+            } else {
+                "unpublished"
+            };
+            info!(product_id = %product_id, publication_id = %input.publication_id, "Product {action}");
+            let (icon, label, toggle_val, classes) = if input.publish {
+                (
+                    "ph-check-circle",
+                    "Published",
+                    "false",
+                    "bg-green-500/10 text-green-600 dark:text-green-400",
+                )
+            } else {
+                (
+                    "ph-minus-circle",
+                    "Unpublished",
+                    "true",
+                    "bg-zinc-500/10 text-zinc-500 dark:text-zinc-400",
+                )
+            };
+            let html = format!(
+                r#"<div class="flex items-center justify-between p-3 bg-muted rounded-lg border border-border">
+                    <div class="flex items-center gap-2">
+                        <i class="ph {icon} text-lg {classes}"></i>
+                        <span class="text-sm text-foreground">{}</span>
+                    </div>
+                    <form hx-post="/products/{}/publish"
+                          hx-target="closest div.flex.items-center.justify-between"
+                          hx-swap="outerHTML">
+                        <input type="hidden" name="publication_id" value="{}">
+                        <input type="hidden" name="publish" value="{toggle_val}">
+                        <button type="submit"
+                                class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors {}"
+                                title="Toggle publication">
+                            <span class="inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform {}"></span>
+                        </button>
+                    </form>
+                </div>"#,
+                label,
+                product_id.split('/').next_back().unwrap_or(""),
+                input.publication_id,
+                if input.publish {
+                    "bg-green-500"
+                } else {
+                    "bg-zinc-300 dark:bg-zinc-600"
+                },
+                if input.publish {
+                    "translate-x-6"
+                } else {
+                    "translate-x-1"
+                },
+            );
+            (StatusCode::OK, Html(html)).into_response()
+        }
+        Err(e) => {
+            tracing::error!(error = %e, "Failed to toggle publication");
+            let html =
+                format!(r#"<div class="text-red-600 dark:text-red-400 text-sm">Error: {e}</div>"#);
+            (StatusCode::BAD_REQUEST, Html(html)).into_response()
         }
     }
 }

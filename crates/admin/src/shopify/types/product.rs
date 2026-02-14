@@ -91,6 +91,8 @@ pub struct AdminProduct {
     pub images: Vec<Image>,
     /// Product variants.
     pub variants: Vec<AdminProductVariant>,
+    /// Sales channel publication status.
+    pub publications: Vec<super::customer::ResourcePublication>,
 }
 
 // =============================================================================

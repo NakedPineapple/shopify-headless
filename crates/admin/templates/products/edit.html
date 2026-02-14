@@ -223,6 +223,38 @@
                 </select>
             </div>
 
+            <!-- Sales Channels -->
+            {% if !publications.is_empty() %}
+            <div class="space-y-4">
+                <h3 class="font-semibold text-foreground">Sales Channels</h3>
+                <div class="space-y-2">
+                    {% for pub_view in publications %}
+                    <div id="pub-{{ loop.index }}" class="flex items-center justify-between p-3 bg-muted rounded-lg border border-border">
+                        <div class="flex items-center gap-2">
+                            {% if pub_view.is_published %}
+                            <i class="ph ph-check-circle text-lg bg-green-500/10 text-green-600 dark:text-green-400"></i>
+                            {% else %}
+                            <i class="ph ph-minus-circle text-lg bg-zinc-500/10 text-zinc-500 dark:text-zinc-400"></i>
+                            {% endif %}
+                            <span class="text-sm text-foreground">{{ pub_view.name }}</span>
+                        </div>
+                        <form hx-post="/products/{{ product.id.split("/").last().unwrap_or("") }}/publish"
+                              hx-target="#pub-{{ loop.index }}"
+                              hx-swap="outerHTML">
+                            <input type="hidden" name="publication_id" value="{{ pub_view.id }}">
+                            <input type="hidden" name="publish" value="{{ !pub_view.is_published }}">
+                            <button type="submit"
+                                    class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors {% if pub_view.is_published %}bg-green-500{% else %}bg-zinc-300 dark:bg-zinc-600{% endif %}"
+                                    title="{% if pub_view.is_published %}Unpublish from{% else %}Publish to{% endif %} {{ pub_view.name }}">
+                                <span class="inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform {% if pub_view.is_published %}translate-x-6{% else %}translate-x-1{% endif %}"></span>
+                            </button>
+                        </form>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
             <!-- Variants Section -->
             {% if !product.variants.is_empty() %}
             <div class="space-y-4">

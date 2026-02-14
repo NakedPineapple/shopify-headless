@@ -7,7 +7,7 @@ use super::{
     conversions::{convert_product, convert_product_connection},
     queries::{
         GetProduct, GetProducts, ProductCreate, ProductDelete, ProductUpdate,
-        ProductVariantsBulkUpdate,
+        ProductVariantsBulkUpdate, PublishablePublish, PublishableUnpublish,
     },
 };
 use crate::shopify::types::{AdminProduct, AdminProductConnection, AdminProductVariant, Money};
@@ -390,5 +390,99 @@ impl AdminClient {
             locations: vec![],
             path: vec![],
         }]))
+    }
+
+    /// Publish a product to specified sales channels.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails or returns user errors.
+    #[instrument(skip(self))]
+    pub async fn publish_product(
+        &self,
+        product_id: &str,
+        publication_ids: &[String],
+    ) -> Result<(), AdminShopifyError> {
+        if publication_ids.is_empty() {
+            return Ok(());
+        }
+
+        let variables = super::queries::publishable_publish::Variables {
+            id: product_id.to_string(),
+            input: publication_ids
+                .iter()
+                .map(
+                    |pub_id| super::queries::publishable_publish::PublicationInput {
+                        publication_id: Some(pub_id.clone()),
+                        publish_date: None,
+                    },
+                )
+                .collect(),
+        };
+
+        let response = self.execute::<PublishablePublish>(variables).await?;
+
+        if let Some(payload) = response.publishable_publish
+            && !payload.user_errors.is_empty()
+        {
+            let error_messages: Vec<String> = payload
+                .user_errors
+                .iter()
+                .map(|e| {
+                    let field = e.field.as_ref().map_or_else(String::new, |f| f.join("."));
+                    format!("{field}: {}", e.message)
+                })
+                .collect();
+            return Err(AdminShopifyError::UserError(error_messages.join("; ")));
+        }
+
+        Ok(())
+    }
+
+    /// Unpublish a product from specified sales channels.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails or returns user errors.
+    #[instrument(skip(self))]
+    pub async fn unpublish_product(
+        &self,
+        product_id: &str,
+        publication_ids: &[String],
+    ) -> Result<(), AdminShopifyError> {
+        if publication_ids.is_empty() {
+            return Ok(());
+        }
+
+        let variables = super::queries::publishable_unpublish::Variables {
+            id: product_id.to_string(),
+            input: publication_ids
+                .iter()
+                .map(
+                    |pub_id| super::queries::publishable_unpublish::PublicationInput {
+                        publication_id: Some(pub_id.clone()),
+                        publish_date: None,
+                    },
+                )
+                .collect(),
+        };
+
+        let response = self.execute::<PublishableUnpublish>(variables).await?;
+
+        if let Some(payload) = response.publishable_unpublish
+            && !payload.user_errors.is_empty()
+        {
+            let error_messages: Vec<String> = payload
+                .user_errors
+                .iter()
+                .map(|e| {
+                    let field = e.field.as_ref().map_or_else(String::new, |f| f.join("."));
+                    format!("{field}: {}", e.message)
+                })
+                .collect();
+            return Err(AdminShopifyError::UserError(error_messages.join("; ")));
+        }
+
+        Ok(())
     }
 }
