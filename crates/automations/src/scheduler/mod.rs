@@ -18,6 +18,7 @@ use std::time::Duration;
 use tokio::sync::watch;
 use tokio::time::interval;
 
+use crate::amazon;
 use crate::outbound;
 use crate::state::AppState;
 use crate::triage;
@@ -89,10 +90,13 @@ impl Scheduler {
             interval(Duration::from_secs(config.subscription_check_interval_secs));
         let mut webhook_events = interval(Duration::from_secs(config.webhook_event_interval_secs));
         let mut summary_check = interval(Duration::from_secs(config.summary_check_interval_secs));
+        let mut amazon_order_poll =
+            interval(Duration::from_secs(config.amazon_order_poll_interval_secs));
 
         tracing::info!(
             email_poll_secs = config.email_poll_interval_secs,
             order_poll_secs = config.order_poll_interval_secs,
+            amazon_order_poll_secs = config.amazon_order_poll_interval_secs,
             cart_check_secs = config.cart_check_interval_secs,
             stock_check_secs = config.stock_check_interval_secs,
             segment_sync_secs = config.segment_sync_interval_secs,
@@ -115,6 +119,7 @@ impl Scheduler {
                 _ = segment_sync.tick() => { guarded!(self, "segment_sync", sync_customer_segments); },
                 _ = subscription_check.tick() => { guarded!(self, "subscription_check", check_subscriptions); },
                 _ = webhook_events.tick() => { guarded!(self, "webhook_events", process_webhook_events); },
+                _ = amazon_order_poll.tick() => { guarded!(self, "amazon_order_poll", poll_amazon_orders); },
                 _ = summary_check.tick() => { guarded!(self, "summary_check", check_summaries); },
             }
         }
@@ -376,6 +381,15 @@ impl Scheduler {
 
         workflows::segmentation::run(&clients).await;
         true
+    }
+
+    /// Poll Amazon SP-API for new orders and cache locally.
+    async fn poll_amazon_orders(&self) -> bool {
+        let Some(client) = self.state.amazon() else {
+            return true;
+        };
+
+        amazon::order_sync::poll_amazon_orders(self.state.pool(), client).await
     }
 
     /// Check wall clock and fire daily/weekly summary emails if due.

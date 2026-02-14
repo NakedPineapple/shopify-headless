@@ -2,6 +2,7 @@
 
 use std::sync::Arc;
 
+use naked_pineapple_services::amazon_sp::AmazonSpClient;
 use naked_pineapple_services::claude::ClaudeClient;
 use naked_pineapple_services::email::EmailService;
 use naked_pineapple_services::klaviyo::KlaviyoClient;
@@ -27,6 +28,7 @@ struct AppStateInner {
     slack: Option<SlackClient>,
     klaviyo: Option<KlaviyoClient>,
     shopify: Option<ShopifyClient>,
+    amazon: Option<AmazonSpClient>,
     email_service: Option<EmailService>,
 }
 
@@ -40,6 +42,7 @@ pub struct AppStateParams {
     pub slack: Option<SlackClient>,
     pub klaviyo: Option<KlaviyoClient>,
     pub shopify: Option<ShopifyClient>,
+    pub amazon: Option<AmazonSpClient>,
     pub email_service: Option<EmailService>,
 }
 
@@ -57,6 +60,7 @@ impl AppState {
                 slack: params.slack,
                 klaviyo: params.klaviyo,
                 shopify: params.shopify,
+                amazon: params.amazon,
                 email_service: params.email_service,
             }),
         }
@@ -102,6 +106,12 @@ impl AppState {
     #[must_use]
     pub fn shopify(&self) -> Option<&ShopifyClient> {
         self.inner.shopify.as_ref()
+    }
+
+    /// Get a reference to the Amazon SP-API client (if configured).
+    #[must_use]
+    pub fn amazon(&self) -> Option<&AmazonSpClient> {
+        self.inner.amazon.as_ref()
     }
 
     /// Get a reference to the SMTP email service (if configured).

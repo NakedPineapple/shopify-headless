@@ -110,6 +110,8 @@ pub struct SchedulerConfig {
     pub segment_sync_interval_secs: u64,
     /// Shopify order/fulfillment poll interval in seconds.
     pub order_poll_interval_secs: u64,
+    /// Amazon order poll interval in seconds.
+    pub amazon_order_poll_interval_secs: u64,
     /// Subscription lifecycle check interval in seconds.
     pub subscription_check_interval_secs: u64,
     /// Minutes of inactivity before a checkout is considered abandoned.
@@ -154,6 +156,10 @@ impl SchedulerConfig {
                 86400,
             ),
             order_poll_interval_secs: parse_env_u64("AUTOMATION_ORDER_POLL_INTERVAL_SECS", 300),
+            amazon_order_poll_interval_secs: parse_env_u64(
+                "AUTOMATION_AMAZON_ORDER_POLL_INTERVAL_SECS",
+                900,
+            ),
             subscription_check_interval_secs: parse_env_u64(
                 "AUTOMATION_SUBSCRIPTION_CHECK_INTERVAL_SECS",
                 86400,

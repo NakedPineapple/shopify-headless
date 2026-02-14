@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO admin.amazon_order_items (\n                amazon_order_id, order_item_id, asin, seller_sku, title,\n                quantity_ordered, quantity_shipped,\n                item_price_amount, item_price_currency,\n                item_tax_amount, item_tax_currency\n            )\n            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)\n            ON CONFLICT (amazon_order_id, order_item_id) DO UPDATE SET\n                quantity_ordered = EXCLUDED.quantity_ordered,\n                quantity_shipped = EXCLUDED.quantity_shipped,\n                item_price_amount = EXCLUDED.item_price_amount,\n                item_price_currency = EXCLUDED.item_price_currency,\n                item_tax_amount = EXCLUDED.item_tax_amount,\n                item_tax_currency = EXCLUDED.item_tax_currency\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Int4",
+        "Int4",
+        "Text",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "7859a7beb845d5c89474d0dacf56463a72be65dd741205918a1488d42dedd4a0"
+}

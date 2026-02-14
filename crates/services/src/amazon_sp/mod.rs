@@ -15,10 +15,12 @@ mod catalog;
 mod client;
 mod inventory;
 mod listings;
+mod orders;
 mod types;
 
 pub use client::AmazonSpClient;
 pub use inventory::InventorySummariesPage;
+pub use orders::OrdersPage;
 pub use types::*;
 
 use thiserror::Error;

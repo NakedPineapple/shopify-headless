@@ -23,6 +23,7 @@
 pub mod admin_invites;
 pub mod admin_users;
 pub mod amazon;
+pub mod amazon_orders;
 pub mod amazon_products;
 pub mod chat;
 pub mod documents;
@@ -48,6 +49,7 @@ use thiserror::Error;
 pub use admin_invites::{AdminInvite, AdminInviteRepository};
 pub use admin_users::AdminUserRepository;
 pub use amazon::{AmazonSpCredentials, AmazonSpCredentialsRepository, SaveAmazonSpParams};
+pub use amazon_orders::{AmazonOrderRepository, CachedAmazonOrder, CachedAmazonOrderItem};
 pub use amazon_products::{
     AmazonProductMapping, AmazonProductMappingRepository, CreateMappingParams,
 };

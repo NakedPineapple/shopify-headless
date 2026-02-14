@@ -49,6 +49,7 @@
 pub mod admin_users;
 pub mod amazon_catalog;
 pub mod amazon_inventory;
+pub mod amazon_orders;
 pub mod amazon_settings;
 pub mod analytics;
 pub mod api;
@@ -469,6 +470,8 @@ pub fn routes() -> Router<AppState> {
         .merge(amazon_catalog::router())
         // Amazon FBA inventory view (super_admin only)
         .merge(amazon_inventory::router())
+        // Amazon orders (super_admin only)
+        .merge(amazon_orders::router())
         // Warehouse (ShipHero visibility)
         .merge(warehouse::router())
         // Well-known endpoints (WebAuthn ROR, security.txt)

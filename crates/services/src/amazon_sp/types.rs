@@ -514,3 +514,164 @@ pub struct ResearchingQuantity {
 pub struct InventoryPagination {
     pub next_token: Option<String>,
 }
+
+// ---------------------------------------------------------------------------
+// Orders API v0
+// ---------------------------------------------------------------------------
+
+/// Query parameters for `GET /orders/v0/orders`.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct GetOrdersQuery {
+    /// Marketplace IDs (comma-separated).
+    pub marketplace_ids: String,
+    /// Only orders created after this date (ISO 8601).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub created_after: Option<String>,
+    /// Filter by order statuses (comma-separated).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub order_statuses: Option<String>,
+    /// Fulfillment channels (comma-separated: AFN, MFN).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fulfillment_channels: Option<String>,
+    /// Pagination token.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub next_token: Option<String>,
+    /// Maximum results per page (1-100).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_results_per_page: Option<i32>,
+}
+
+/// Response from `GET /orders/v0/orders`.
+#[derive(Debug, Deserialize)]
+pub struct GetOrdersResponse {
+    pub payload: Option<OrdersList>,
+    pub errors: Option<Vec<SpApiError>>,
+}
+
+/// Orders list payload.
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct OrdersList {
+    pub orders: Vec<AmazonOrder>,
+    pub next_token: Option<String>,
+}
+
+/// Response from `GET /orders/v0/orders/{orderId}`.
+#[derive(Debug, Deserialize)]
+pub struct GetOrderResponse {
+    pub payload: Option<AmazonOrder>,
+    pub errors: Option<Vec<SpApiError>>,
+}
+
+/// An Amazon order.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct AmazonOrder {
+    pub amazon_order_id: String,
+    pub purchase_date: Option<String>,
+    pub last_update_date: Option<String>,
+    pub order_status: Option<String>,
+    pub fulfillment_channel: Option<String>,
+    pub sales_channel: Option<String>,
+    pub order_channel: Option<String>,
+    pub ship_service_level: Option<String>,
+    pub order_total: Option<AmazonMoney>,
+    pub number_of_items_shipped: Option<i32>,
+    pub number_of_items_unshipped: Option<i32>,
+    pub payment_method: Option<String>,
+    #[serde(default)]
+    pub payment_method_details: Vec<String>,
+    pub is_replacement_order: Option<bool>,
+    pub replaced_order_id: Option<String>,
+    pub marketplace_id: Option<String>,
+    pub shipment_service_level_category: Option<String>,
+    pub order_type: Option<String>,
+    pub earliest_ship_date: Option<String>,
+    pub latest_ship_date: Option<String>,
+    pub earliest_delivery_date: Option<String>,
+    pub latest_delivery_date: Option<String>,
+    pub is_business_order: Option<bool>,
+    pub is_prime: Option<bool>,
+    pub is_premium_order: Option<bool>,
+    pub is_global_express_enabled: Option<bool>,
+    pub is_sold_by_ab: Option<bool>,
+    pub is_ispu: Option<bool>,
+    pub shipping_address: Option<AmazonAddress>,
+    pub buyer_info: Option<BuyerInfo>,
+}
+
+/// Monetary amount with currency.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct AmazonMoney {
+    pub currency_code: Option<String>,
+    pub amount: Option<String>,
+}
+
+/// Shipping address.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct AmazonAddress {
+    pub name: Option<String>,
+    pub address_line1: Option<String>,
+    pub address_line2: Option<String>,
+    pub address_line3: Option<String>,
+    pub city: Option<String>,
+    pub county: Option<String>,
+    pub district: Option<String>,
+    pub state_or_region: Option<String>,
+    pub postal_code: Option<String>,
+    pub country_code: Option<String>,
+    pub phone: Option<String>,
+}
+
+/// Buyer information.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct BuyerInfo {
+    pub buyer_email: Option<String>,
+    pub buyer_name: Option<String>,
+    pub buyer_county: Option<String>,
+    pub buyer_tax_info: Option<serde_json::Value>,
+    pub purchase_order_number: Option<String>,
+}
+
+/// Response from `GET /orders/v0/orders/{orderId}/orderItems`.
+#[derive(Debug, Deserialize)]
+pub struct GetOrderItemsResponse {
+    pub payload: Option<OrderItemsList>,
+    pub errors: Option<Vec<SpApiError>>,
+}
+
+/// Order items list payload.
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct OrderItemsList {
+    pub order_items: Vec<AmazonOrderItem>,
+    pub next_token: Option<String>,
+    pub amazon_order_id: Option<String>,
+}
+
+/// A single order item.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct AmazonOrderItem {
+    #[serde(rename = "ASIN")]
+    pub asin: String,
+    pub seller_sku: Option<String>,
+    pub order_item_id: String,
+    pub title: Option<String>,
+    pub quantity_ordered: i32,
+    pub quantity_shipped: Option<i32>,
+    pub item_price: Option<AmazonMoney>,
+    pub item_tax: Option<AmazonMoney>,
+    pub shipping_price: Option<AmazonMoney>,
+    pub shipping_tax: Option<AmazonMoney>,
+    pub promotion_discount: Option<AmazonMoney>,
+    pub promotion_discount_tax: Option<AmazonMoney>,
+    pub is_gift: Option<bool>,
+    pub condition_id: Option<String>,
+    pub condition_subtype_id: Option<String>,
+    pub condition_note: Option<String>,
+}

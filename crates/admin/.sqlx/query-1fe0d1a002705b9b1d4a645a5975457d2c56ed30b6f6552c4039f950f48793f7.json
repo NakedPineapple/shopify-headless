@@ -1,0 +1,88 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                id, amazon_order_id, order_item_id, asin, seller_sku,\n                title, quantity_ordered, quantity_shipped,\n                item_price_amount, item_price_currency,\n                item_tax_amount, item_tax_currency\n            FROM admin.amazon_order_items\n            WHERE amazon_order_id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "amazon_order_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "order_item_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "asin",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "seller_sku",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "quantity_ordered",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 7,
+        "name": "quantity_shipped",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 8,
+        "name": "item_price_amount",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "item_price_currency",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "item_tax_amount",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 11,
+        "name": "item_tax_currency",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "1fe0d1a002705b9b1d4a645a5975457d2c56ed30b6f6552c4039f950f48793f7"
+}

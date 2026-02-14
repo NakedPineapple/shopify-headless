@@ -1,0 +1,182 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Amazon Order {{ order.amazon_order_id }}{% endblock %}
+
+{% block page_title %}Order {{ order.amazon_order_id }}{% endblock %}
+
+{% block page_subtitle %}
+<p class="text-sm text-muted-foreground mt-1">
+    <a href="/amazon/orders" class="text-coral hover:underline">Amazon Orders</a>
+    <span class="mx-1">/</span>
+    {{ order.amazon_order_id }}
+</p>
+{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Main Content -->
+    <div class="lg:col-span-2 space-y-6">
+        <!-- Order Items -->
+        <div class="bg-card rounded-xl border border-border overflow-hidden">
+            <div class="px-4 py-3 border-b border-border bg-muted/50">
+                <h3 class="text-sm font-semibold text-foreground">Order Items</h3>
+            </div>
+            {% if items.is_empty() %}
+            <div class="text-center py-8">
+                <p class="text-sm text-muted-foreground">No line items synced yet</p>
+            </div>
+            {% else %}
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="border-b border-border">
+                            <th class="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-3">Product</th>
+                            <th class="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-3">SKU / ASIN</th>
+                            <th class="text-right text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-3">Qty</th>
+                            <th class="text-right text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-3">Price</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-border">
+                        {% for item in items %}
+                        <tr class="hover:bg-muted/30 transition-colors">
+                            <td class="px-4 py-3">
+                                <div class="text-sm font-medium text-foreground truncate max-w-xs">{{ item.title.as_deref().unwrap_or("Unknown") }}</div>
+                            </td>
+                            <td class="px-4 py-3">
+                                <div class="text-sm text-foreground font-mono">{{ item.seller_sku.as_deref().unwrap_or("—") }}</div>
+                                <div class="text-xs text-muted-foreground mt-0.5">{{ item.asin }}</div>
+                            </td>
+                            <td class="text-right px-4 py-3">
+                                <span class="text-sm text-foreground">{{ item.quantity_ordered }}</span>
+                                {% if item.quantity_shipped.unwrap_or(0) > 0 %}
+                                <span class="text-xs text-muted-foreground ml-1">({{ item.quantity_shipped.unwrap_or(0) }} shipped)</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-right px-4 py-3">
+                                {% if item.item_price_amount.is_some() %}
+                                <span class="text-sm font-medium text-foreground">${{ item.item_price_amount.as_deref().unwrap_or("0.00") }}</span>
+                                {% else %}
+                                <span class="text-sm text-muted-foreground">&mdash;</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="space-y-6">
+        <!-- Order Summary -->
+        <div class="bg-card rounded-xl border border-border p-5 space-y-4">
+            <h3 class="text-sm font-semibold text-foreground">Summary</h3>
+
+            <div class="space-y-3">
+                <div class="flex justify-between">
+                    <span class="text-sm text-muted-foreground">Status</span>
+                    {% let status = order.order_status.as_str() %}
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium
+                        {% if status == "Shipped" %}bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400
+                        {% else if status == "Unshipped" %}bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400
+                        {% else if status == "Pending" %}bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400
+                        {% else if status == "Canceled" %}bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400
+                        {% else %}bg-muted text-muted-foreground{% endif %}">
+                        {{ status }}
+                    </span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-sm text-muted-foreground">Channel</span>
+                    <span class="text-sm text-foreground">
+                        {% if order.fulfillment_channel.as_deref() == Some("AFN") %}FBA
+                        {% else if order.fulfillment_channel.as_deref() == Some("MFN") %}Merchant
+                        {% else %}{{ order.fulfillment_channel.as_deref().unwrap_or("—") }}{% endif %}
+                    </span>
+                </div>
+                {% if order.order_total_amount.is_some() %}
+                <div class="flex justify-between">
+                    <span class="text-sm text-muted-foreground">Total</span>
+                    <span class="text-sm font-semibold text-foreground">${{ order.order_total_amount.as_deref().unwrap_or("0.00") }} {{ order.order_total_currency.as_deref().unwrap_or("") }}</span>
+                </div>
+                {% endif %}
+                {% if let Some(dt) = order.purchase_date %}
+                <div class="flex justify-between">
+                    <span class="text-sm text-muted-foreground">Purchased</span>
+                    <span class="text-sm text-foreground">{{ dt|datetime_short }}</span>
+                </div>
+                {% endif %}
+                {% if order.is_prime == Some(true) %}
+                <div class="flex justify-between">
+                    <span class="text-sm text-muted-foreground">Prime</span>
+                    <span class="text-sm text-blue-400 font-medium">Yes</span>
+                </div>
+                {% endif %}
+                {% if order.is_business_order == Some(true) %}
+                <div class="flex justify-between">
+                    <span class="text-sm text-muted-foreground">Business</span>
+                    <span class="text-sm text-foreground">Yes</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Customer Info -->
+        <div class="bg-card rounded-xl border border-border p-5 space-y-4">
+            <h3 class="text-sm font-semibold text-foreground">Customer</h3>
+
+            <div class="space-y-2">
+                {% if order.buyer_name.is_some() %}
+                <p class="text-sm text-foreground">{{ order.buyer_name.as_deref().unwrap_or("") }}</p>
+                {% endif %}
+                {% if order.buyer_email.is_some() %}
+                <p class="text-sm text-muted-foreground">{{ order.buyer_email.as_deref().unwrap_or("") }}</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Shipping -->
+        {% if order.ship_name.is_some() || order.ship_city.is_some() %}
+        <div class="bg-card rounded-xl border border-border p-5 space-y-4">
+            <h3 class="text-sm font-semibold text-foreground">Shipping</h3>
+
+            <div class="text-sm text-foreground space-y-1">
+                {% if order.ship_name.is_some() %}
+                <p>{{ order.ship_name.as_deref().unwrap_or("") }}</p>
+                {% endif %}
+                {% if order.ship_city.is_some() || order.ship_state.is_some() %}
+                <p class="text-muted-foreground">
+                    {{ order.ship_city.as_deref().unwrap_or("") }}{% if order.ship_city.is_some() && order.ship_state.is_some() %}, {% endif %}{{ order.ship_state.as_deref().unwrap_or("") }} {{ order.ship_postal_code.as_deref().unwrap_or("") }}
+                </p>
+                {% endif %}
+                {% if order.ship_country.is_some() %}
+                <p class="text-muted-foreground">{{ order.ship_country.as_deref().unwrap_or("") }}</p>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Cross-Reference -->
+        {% if order.shopify_order_id.is_some() %}
+        <div class="bg-card rounded-xl border border-border p-5 space-y-4">
+            <h3 class="text-sm font-semibold text-foreground">Shopify Link</h3>
+            <a href="/orders/{{ order.shopify_order_id.as_deref().unwrap_or("") }}"
+               class="inline-flex items-center gap-2 text-sm text-coral hover:underline">
+                <i class="ph ph-storefront text-lg"></i>
+                View in Shopify
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Navigation -->
+<div class="mt-8">
+    <a href="/amazon/orders"
+       class="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+        <i class="ph ph-arrow-left text-lg"></i>
+        Back to Amazon Orders
+    </a>
+</div>
+{% endblock %}

@@ -1,0 +1,56 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT lwa_client_id, lwa_client_secret, lwa_refresh_token,\n               aws_access_key_id, aws_secret_access_key,\n               seller_id, marketplace_id\n        FROM admin.amazon_sp_credentials\n        WHERE account_name = 'default'\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "lwa_client_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "lwa_client_secret",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "lwa_refresh_token",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "aws_access_key_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "aws_secret_access_key",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "seller_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "marketplace_id",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "2eb45b6cf17675fa1b114adfcc55d7856f2845a4f0c56d21d4d51d9afa18c34a"
+}

@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT last_sync_at as \"last_sync_at: DateTime<Utc>\"\n        FROM admin.amazon_sync_state\n        WHERE sync_type = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "last_sync_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "dc60b71dad33d15a0312d06eb7c48c086ab5b39512819d0b615041078e3bee28"
+}

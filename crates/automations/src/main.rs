@@ -31,6 +31,7 @@ use naked_pineapple_services::email::EmailService;
 use naked_pineapple_services::klaviyo::KlaviyoClient;
 use naked_pineapple_services::slack::SlackClient;
 
+mod amazon;
 mod config;
 mod db;
 mod error;
@@ -145,22 +146,14 @@ async fn main() {
         }
     });
 
-    let support_pool = if let Some(ref url) = config.storefront_database_url {
-        match db::create_pool(url).await {
-            Ok(p) => {
-                tracing::info!("support pool created (storefront DB)");
-                Some(p)
-            }
-            Err(e) => {
-                tracing::warn!(error = %e, "failed to create support pool, email→chat disabled");
-                None
-            }
-        }
+    let amazon_client = load_amazon_client(&pool).await;
+    if amazon_client.is_some() {
+        tracing::info!("Amazon SP-API client initialized for order sync");
     } else {
-        tracing::info!("STOREFRONT_DATABASE_URL not set, email→chat integration disabled");
-        None
-    };
+        tracing::info!("Amazon SP-API not configured, order sync disabled");
+    }
 
+    let support_pool = create_support_pool(&config).await;
     let health_port = config.health_port;
     let webhook_config = config.webhook.clone();
     let state = AppState::new(state::AppStateParams {
@@ -172,6 +165,7 @@ async fn main() {
         slack: slack_client,
         klaviyo: klaviyo_client,
         shopify: shopify_client,
+        amazon: amazon_client,
         email_service,
     });
 
@@ -239,6 +233,21 @@ async fn start_webhook_listener(state: &AppState, webhook_config: Option<&config
     }
 }
 
+/// Create the optional support pool for storefront database access.
+async fn create_support_pool(config: &AutomationConfig) -> Option<sqlx::PgPool> {
+    let url = config.storefront_database_url.as_ref()?;
+    match db::create_pool(url).await {
+        Ok(p) => {
+            tracing::info!("support pool created (storefront DB)");
+            Some(p)
+        }
+        Err(e) => {
+            tracing::warn!(error = %e, "failed to create support pool, email→chat disabled");
+            None
+        }
+    }
+}
+
 /// Wait for shutdown signal and stop the scheduler gracefully.
 async fn await_graceful_shutdown(
     shutdown_tx: tokio::sync::watch::Sender<bool>,
@@ -301,6 +310,44 @@ async fn spawn_webhook_listener(state: webhooks::state::WebhookState, port: u16)
     axum::serve(listener, app)
         .await
         .expect("Webhook listener error");
+}
+
+/// Load Amazon SP-API client from stored credentials in the admin database.
+///
+/// Follows the same credential loading pattern as the admin crate.
+async fn load_amazon_client(
+    pool: &sqlx::PgPool,
+) -> Option<naked_pineapple_services::amazon_sp::AmazonSpClient> {
+    use naked_pineapple_services::amazon_sp::{AmazonCredentials, AmazonSpClient};
+
+    let row = sqlx::query!(
+        r"
+        SELECT lwa_client_id, lwa_client_secret, lwa_refresh_token,
+               aws_access_key_id, aws_secret_access_key,
+               seller_id, marketplace_id
+        FROM admin.amazon_sp_credentials
+        WHERE account_name = 'default'
+        "
+    )
+    .fetch_optional(pool)
+    .await;
+
+    match row {
+        Ok(Some(creds)) => Some(AmazonSpClient::new(AmazonCredentials {
+            lwa_client_id: creds.lwa_client_id,
+            lwa_client_secret: creds.lwa_client_secret.into(),
+            lwa_refresh_token: creds.lwa_refresh_token.into(),
+            aws_access_key_id: creds.aws_access_key_id,
+            aws_secret_access_key: creds.aws_secret_access_key.into(),
+            seller_id: creds.seller_id,
+            marketplace_id: creds.marketplace_id,
+        })),
+        Ok(None) => None,
+        Err(e) => {
+            tracing::error!(error = %e, "failed to load Amazon SP-API credentials");
+            None
+        }
+    }
 }
 
 /// Wait for shutdown signal (Ctrl+C or SIGTERM).
