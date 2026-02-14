@@ -219,6 +219,7 @@ async fn main() {
         content_dir,
         config.claude.as_ref(),
         config.openai.as_ref(),
+        config.judgeme.as_ref(),
     )
     .expect("Failed to initialize application state");
 

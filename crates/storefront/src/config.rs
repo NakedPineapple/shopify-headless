@@ -27,7 +27,7 @@
 use std::collections::{HashMap, HashSet};
 use std::net::{IpAddr, SocketAddr};
 
-use naked_pineapple_services::config::{ClaudeConfig, OpenAIConfig};
+use naked_pineapple_services::config::{ClaudeConfig, JudgemeConfig, OpenAIConfig};
 use secrecy::{ExposeSecret, SecretString};
 use thiserror::Error;
 
@@ -108,6 +108,8 @@ pub struct StorefrontConfig {
     pub turnstile_site_key: Option<String>,
     /// Cloudflare Turnstile secret key (server-side verification)
     pub turnstile_secret_key: Option<SecretString>,
+    /// Judge.me API configuration (optional - reviews disabled if not set)
+    pub judgeme: Option<JudgemeConfig>,
 }
 
 /// Klaviyo API configuration.
@@ -271,6 +273,7 @@ impl StorefrontConfig {
         let openai = OpenAIConfig::from_env();
         let turnstile_site_key = get_optional_env("TURNSTILE_SITE_KEY");
         let turnstile_secret_key = get_optional_env("TURNSTILE_SECRET_KEY").map(SecretString::from);
+        let judgeme = JudgemeConfig::from_env();
 
         Ok(Self {
             database_url,
@@ -294,6 +297,7 @@ impl StorefrontConfig {
             openai,
             turnstile_site_key,
             turnstile_secret_key,
+            judgeme,
         })
     }
 
@@ -632,6 +636,7 @@ mod tests {
             openai: None,
             turnstile_site_key: None,
             turnstile_secret_key: None,
+            judgeme: None,
         };
 
         let addr = config.socket_addr();

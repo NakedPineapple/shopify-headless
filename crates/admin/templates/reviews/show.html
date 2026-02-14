@@ -1,0 +1,167 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Review #{{ review.id }}{% endblock %}
+
+{% block page_title %}
+<div class="flex items-center justify-between">
+    <div class="flex items-center gap-4">
+        <a href="/reviews" class="text-muted-foreground hover:text-foreground transition-colors">
+            <i class="ph ph-arrow-left text-xl"></i>
+        </a>
+        <div>
+            <h1 class="text-2xl font-semibold text-foreground">{{ review.title }}</h1>
+            <p class="text-sm text-muted-foreground mt-1">Review #{{ review.id }}</p>
+        </div>
+    </div>
+    <div class="flex items-center gap-2">
+        {% if review.curated != "ok" %}
+        <form action="/reviews/{{ review.id }}/approve" method="POST" class="inline">
+            <button type="submit"
+                    class="inline-flex items-center gap-2 px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                <i class="ph ph-check-circle"></i>
+                Approve
+            </button>
+        </form>
+        {% endif %}
+        {% if review.curated != "spam" %}
+        <form action="/reviews/{{ review.id }}/reject" method="POST" class="inline"
+              onsubmit="return confirm('Mark this review as spam?')">
+            <button type="submit"
+                    class="inline-flex items-center gap-2 px-4 py-2 text-sm bg-destructive/10 text-destructive rounded-lg hover:bg-destructive/20 transition-colors">
+                <i class="ph ph-x-circle"></i>
+                Reject
+            </button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="grid gap-6 lg:grid-cols-3">
+    {# Main content #}
+    <div class="lg:col-span-2 space-y-6">
+        {# Review content card #}
+        <div class="bg-card rounded-xl border border-border p-6">
+            {# Rating stars #}
+            <div class="flex items-center gap-2 mb-4">
+                <div class="flex items-center gap-0.5 text-amber-400">
+                    {% for i in 1..=5 %}
+                    {% if i <= review.rating %}
+                    <i class="ph-fill ph-star text-xl"></i>
+                    {% else %}
+                    <i class="ph ph-star text-xl text-muted-foreground/30"></i>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+                <span class="text-sm text-muted-foreground">({{ review.rating }}/5)</span>
+            </div>
+
+            {# Title #}
+            <h2 class="text-lg font-medium text-foreground mb-3">{{ review.title }}</h2>
+
+            {# Body #}
+            <div class="text-foreground leading-relaxed whitespace-pre-line">{{ review.body }}</div>
+
+            {# Photos #}
+            {% if !review.pictures.is_empty() %}
+            <div class="flex items-center gap-3 mt-4 pt-4 border-t border-border">
+                {% for url in review.pictures %}
+                <a href="{{ url }}" target="_blank" class="block rounded-lg overflow-hidden border border-border hover:border-coral transition-colors">
+                    <img src="{{ url }}" alt="Review photo" class="w-20 h-20 object-cover">
+                </a>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+
+        {# Reply form #}
+        <div class="bg-card rounded-xl border border-border overflow-hidden">
+            <div class="px-6 py-4 border-b border-border">
+                <h2 class="text-lg font-medium text-foreground">Reply</h2>
+                <p class="text-sm text-muted-foreground mt-0.5">Send a public reply to this review</p>
+            </div>
+            <div class="p-6">
+                <form action="/reviews/{{ review.id }}/reply" method="POST">
+                    <textarea name="body" rows="4" required
+                              class="w-full px-3 py-2 bg-input border border-border rounded-lg text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-colors resize-none text-sm"
+                              placeholder="Write your reply..."></textarea>
+                    <div class="mt-3 flex justify-end">
+                        <button type="submit"
+                                class="inline-flex items-center gap-2 px-4 py-2 text-sm bg-coral text-white rounded-lg hover:bg-coral/90 transition-colors">
+                            <i class="ph ph-paper-plane-tilt"></i>
+                            Send Reply
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    {# Sidebar #}
+    <div class="space-y-6">
+        {# Status card #}
+        <div class="bg-card rounded-xl border border-border p-6">
+            <h2 class="text-lg font-medium text-foreground mb-4">Status</h2>
+            <div class="mb-4">
+                {% if review.curated == "ok" %}
+                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-full bg-green-500/10 text-green-500">
+                    <i class="ph-fill ph-check-circle"></i>
+                    Approved
+                </span>
+                {% elif review.curated == "spam" %}
+                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-full bg-red-500/10 text-red-500">
+                    <i class="ph-fill ph-x-circle"></i>
+                    Spam
+                </span>
+                {% else %}
+                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-full bg-yellow-500/10 text-yellow-500">
+                    <i class="ph-fill ph-clock"></i>
+                    Pending Review
+                </span>
+                {% endif %}
+            </div>
+        </div>
+
+        {# Reviewer details #}
+        <div class="bg-card rounded-xl border border-border p-6">
+            <h2 class="text-lg font-medium text-foreground mb-4">Reviewer</h2>
+            <dl class="space-y-3">
+                <div>
+                    <dt class="text-sm text-muted-foreground">Name</dt>
+                    <dd class="text-foreground mt-0.5">{{ review.reviewer_name }}</dd>
+                </div>
+                <div>
+                    <dt class="text-sm text-muted-foreground">Email</dt>
+                    <dd class="text-foreground text-sm mt-0.5">{{ review.reviewer_email }}</dd>
+                </div>
+                <div>
+                    <dt class="text-sm text-muted-foreground">Verified Buyer</dt>
+                    <dd class="mt-0.5">
+                        {% if review.verified %}
+                        <span class="text-green-500"><i class="ph-fill ph-seal-check"></i> Yes</span>
+                        {% else %}
+                        <span class="text-muted-foreground">No</span>
+                        {% endif %}
+                    </dd>
+                </div>
+            </dl>
+        </div>
+
+        {# Product info #}
+        <div class="bg-card rounded-xl border border-border p-6">
+            <h2 class="text-lg font-medium text-foreground mb-4">Product</h2>
+            <dl class="space-y-3">
+                <div>
+                    <dt class="text-sm text-muted-foreground">Title</dt>
+                    <dd class="text-foreground mt-0.5">{{ review.product_title }}</dd>
+                </div>
+                <div>
+                    <dt class="text-sm text-muted-foreground">Date</dt>
+                    <dd class="text-sm text-foreground mt-0.5">{{ review.created_at }}</dd>
+                </div>
+            </dl>
+        </div>
+    </div>
+</div>
+{% endblock %}

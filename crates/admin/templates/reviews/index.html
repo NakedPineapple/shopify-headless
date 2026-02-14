@@ -1,0 +1,152 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Reviews{% endblock %}
+
+{% block page_title %}
+<div class="flex items-center justify-between">
+    <div>
+        <h1 class="text-2xl font-semibold text-foreground">Reviews</h1>
+        <p class="text-sm text-muted-foreground mt-1">Moderate customer product reviews</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+{# Filter tabs #}
+<div class="flex items-center gap-1 mb-6 border-b border-border">
+    <a href="/reviews?status=pending"
+       class="px-4 py-2.5 text-sm font-medium border-b-2 transition-colors {% if active_tab == "pending" %}border-coral text-coral{% else %}border-transparent text-muted-foreground hover:text-foreground{% endif %}">
+        Pending
+    </a>
+    <a href="/reviews?status=approved"
+       class="px-4 py-2.5 text-sm font-medium border-b-2 transition-colors {% if active_tab == "approved" %}border-coral text-coral{% else %}border-transparent text-muted-foreground hover:text-foreground{% endif %}">
+        Approved
+    </a>
+    <a href="/reviews?status=spam"
+       class="px-4 py-2.5 text-sm font-medium border-b-2 transition-colors {% if active_tab == "spam" %}border-coral text-coral{% else %}border-transparent text-muted-foreground hover:text-foreground{% endif %}">
+        Spam
+    </a>
+</div>
+
+{% if reviews.is_empty() %}
+<div class="text-center py-16">
+    <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-muted mb-4">
+        <i class="ph ph-star text-2xl text-muted-foreground"></i>
+    </div>
+    <p class="text-muted-foreground">No {{ active_tab }} reviews found.</p>
+</div>
+{% else %}
+{# Reviews table #}
+<div class="bg-card rounded-xl border border-border overflow-hidden">
+    <table class="w-full text-sm">
+        <thead>
+            <tr class="border-b border-border bg-muted/30">
+                <th class="text-left px-4 py-3 font-medium text-muted-foreground">Review</th>
+                <th class="text-left px-4 py-3 font-medium text-muted-foreground">Product</th>
+                <th class="text-left px-4 py-3 font-medium text-muted-foreground">Rating</th>
+                <th class="text-left px-4 py-3 font-medium text-muted-foreground">Status</th>
+                <th class="text-left px-4 py-3 font-medium text-muted-foreground">Date</th>
+                <th class="text-right px-4 py-3 font-medium text-muted-foreground">Actions</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-border">
+            {% for review in reviews %}
+            <tr class="hover:bg-muted/20 transition-colors">
+                {# Review content #}
+                <td class="px-4 py-3">
+                    <a href="/reviews/{{ review.id }}" class="block group">
+                        <div class="font-medium text-foreground group-hover:text-coral transition-colors">{{ review.title }}</div>
+                        <div class="text-muted-foreground text-xs mt-0.5 line-clamp-1">{{ review.body }}</div>
+                        <div class="text-muted-foreground text-xs mt-0.5">
+                            by {{ review.reviewer_name }}
+                            {% if review.verified %}
+                            <span class="text-green-500 ml-1"><i class="ph-fill ph-seal-check"></i> Verified</span>
+                            {% endif %}
+                        </div>
+                    </a>
+                </td>
+                {# Product #}
+                <td class="px-4 py-3 text-muted-foreground">
+                    {{ review.product_title }}
+                </td>
+                {# Rating stars #}
+                <td class="px-4 py-3">
+                    <div class="flex items-center gap-0.5 text-amber-400">
+                        {% for i in 1..=5 %}
+                        {% if i <= review.rating %}
+                        <i class="ph-fill ph-star text-sm"></i>
+                        {% else %}
+                        <i class="ph ph-star text-sm text-muted-foreground/30"></i>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+                </td>
+                {# Status badge #}
+                <td class="px-4 py-3">
+                    {% if review.curated == "ok" %}
+                    <span class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-green-500/10 text-green-500">Approved</span>
+                    {% elif review.curated == "spam" %}
+                    <span class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-red-500/10 text-red-500">Spam</span>
+                    {% else %}
+                    <span class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-yellow-500/10 text-yellow-500">Pending</span>
+                    {% endif %}
+                </td>
+                {# Date #}
+                <td class="px-4 py-3 text-muted-foreground text-xs whitespace-nowrap">
+                    {{ review.created_at }}
+                </td>
+                {# Actions #}
+                <td class="px-4 py-3 text-right">
+                    <div class="flex items-center justify-end gap-1">
+                        {% if review.curated != "ok" %}
+                        <form action="/reviews/{{ review.id }}/approve" method="POST" class="inline">
+                            <button type="submit" title="Approve"
+                                    class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-green-500 hover:bg-green-500/10 transition-colors">
+                                <i class="ph ph-check-circle text-lg"></i>
+                            </button>
+                        </form>
+                        {% endif %}
+                        {% if review.curated != "spam" %}
+                        <form action="/reviews/{{ review.id }}/reject" method="POST" class="inline">
+                            <button type="submit" title="Mark as spam"
+                                    class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-red-500 hover:bg-red-500/10 transition-colors">
+                                <i class="ph ph-x-circle text-lg"></i>
+                            </button>
+                        </form>
+                        {% endif %}
+                        <a href="/reviews/{{ review.id }}" title="View details"
+                           class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:bg-muted transition-colors">
+                            <i class="ph ph-arrow-right text-lg"></i>
+                        </a>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{# Pagination #}
+<div class="flex items-center justify-between mt-4">
+    <div class="text-sm text-muted-foreground">
+        Page {{ current_page }}
+    </div>
+    <div class="flex items-center gap-2">
+        {% if current_page > 1 %}
+        <a href="/reviews?status={{ active_tab }}&page={{ current_page - 1 }}"
+           class="inline-flex items-center gap-1 px-3 py-1.5 text-sm bg-muted text-foreground rounded-lg hover:bg-accent transition-colors">
+            <i class="ph ph-caret-left"></i>
+            Previous
+        </a>
+        {% endif %}
+        {% if has_more %}
+        <a href="/reviews?status={{ active_tab }}&page={{ current_page + 1 }}"
+           class="inline-flex items-center gap-1 px-3 py-1.5 text-sm bg-muted text-foreground rounded-lg hover:bg-accent transition-colors">
+            Next
+            <i class="ph ph-caret-right"></i>
+        </a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}

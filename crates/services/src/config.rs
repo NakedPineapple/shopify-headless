@@ -297,6 +297,44 @@ impl KlaviyoConfig {
     }
 }
 
+/// Judge.me API configuration for product reviews.
+#[derive(Clone)]
+pub struct JudgemeConfig {
+    /// Judge.me private API token.
+    pub api_token: SecretString,
+    /// Shopify store domain (e.g., "store.myshopify.com").
+    pub shop_domain: String,
+}
+
+impl std::fmt::Debug for JudgemeConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("JudgemeConfig")
+            .field("api_token", &"[REDACTED]")
+            .field("shop_domain", &self.shop_domain)
+            .finish()
+    }
+}
+
+impl JudgemeConfig {
+    /// Load from environment. Returns `None` if `JUDGEME_API_TOKEN` is not set.
+    ///
+    /// Reuses `SHOPIFY_STORE` for the shop domain.
+    #[must_use]
+    pub fn from_env() -> Option<Self> {
+        let api_token = get_optional_env("JUDGEME_API_TOKEN")?;
+        let shop_domain = get_optional_env("SHOPIFY_STORE")?;
+
+        if let Err(e) = validate_secret_strength(&api_token, "JUDGEME_API_TOKEN") {
+            tracing::warn!("JUDGEME_API_TOKEN validation warning: {e}");
+        }
+
+        Some(Self {
+            api_token: SecretString::from(api_token),
+            shop_domain,
+        })
+    }
+}
+
 // =============================================================================
 // Helper Functions
 // =============================================================================

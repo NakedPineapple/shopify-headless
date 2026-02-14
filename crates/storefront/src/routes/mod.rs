@@ -74,6 +74,7 @@ pub mod manifest;
 pub mod newsletter;
 pub mod pages;
 pub mod products;
+pub mod reviews;
 pub mod search;
 pub mod shopify_auth;
 pub mod support;
@@ -112,6 +113,10 @@ pub fn product_routes() -> Router<AppState> {
         .route("/", get(products::index))
         .route("/{handle}", get(products::show))
         .route("/{handle}/quick-view", get(products::quick_view))
+        .route(
+            "/{handle}/reviews",
+            get(reviews::product_reviews).post(reviews::submit_review),
+        )
 }
 
 /// Create the collection routes router.

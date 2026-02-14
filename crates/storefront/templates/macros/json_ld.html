@@ -39,6 +39,15 @@
     "@type": "Brand",
     "name": "Naked Pineapple"
   },
+  {% if let Some(rating) = product.rating %}
+  "aggregateRating": {
+    "@type": "AggregateRating",
+    "ratingValue": "{{ rating.value }}",
+    "reviewCount": "{{ rating.count }}",
+    "bestRating": "5",
+    "worstRating": "1"
+  },
+  {% endif %}
   "offers": {
     "@type": "Offer",
     "price": "{{ product.price|strip_currency }}",

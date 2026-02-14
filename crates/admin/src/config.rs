@@ -47,9 +47,9 @@ use secrecy::SecretString;
 // Re-export shared config types from services crate
 pub use naked_pineapple_services::config::DEFAULT_CLAUDE_MODEL;
 pub use naked_pineapple_services::config::{
-    ClaudeConfig, ConfigError, EmailConfig, KlaviyoConfig, M365Config, OpenAIConfig, SlackConfig,
-    get_database_url, get_env_or_default, get_optional_env, get_required_env, get_validated_secret,
-    validate_secret_strength, validate_session_secret,
+    ClaudeConfig, ConfigError, EmailConfig, JudgemeConfig, KlaviyoConfig, M365Config, OpenAIConfig,
+    SlackConfig, get_database_url, get_env_or_default, get_optional_env, get_required_env,
+    get_validated_secret, validate_secret_strength, validate_session_secret,
 };
 
 /// Admin application configuration.
@@ -97,6 +97,8 @@ pub struct AdminConfig {
     pub storefront_database_url: Option<SecretString>,
     /// Cloudflare R2 configuration (optional — enables document upload)
     pub r2: Option<R2Config>,
+    /// Judge.me API configuration (optional — enables review moderation)
+    pub judgeme: Option<JudgemeConfig>,
 }
 
 /// Shopify Admin API configuration.
@@ -253,6 +255,7 @@ impl AdminConfig {
         let storefront_database_url =
             get_optional_env("STOREFRONT_DATABASE_URL").map(SecretString::from);
         let r2 = R2Config::from_env();
+        let judgeme = JudgemeConfig::from_env();
 
         Ok(Self {
             database_url,
@@ -276,6 +279,7 @@ impl AdminConfig {
             tls,
             storefront_database_url,
             r2,
+            judgeme,
         })
     }
 
@@ -411,6 +415,7 @@ mod tests {
             tls: None,
             storefront_database_url: None,
             r2: None,
+            judgeme: None,
         };
 
         let addr = config.socket_addr();

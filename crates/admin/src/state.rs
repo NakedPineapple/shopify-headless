@@ -7,6 +7,7 @@ use sqlx::PgPool;
 use url::Url;
 use webauthn_rs::prelude::*;
 
+use naked_pineapple_services::judgeme::JudgemeClient;
 use naked_pineapple_services::microsoft_graph::M365Client;
 use naked_pineapple_services::openai::EmbeddingClient;
 
@@ -56,6 +57,7 @@ struct AppStateInner {
     webauthn: Webauthn,
     email_service: Option<EmailService>,
     r2: Option<R2Client>,
+    judgeme: Option<JudgemeClient>,
 }
 
 /// Bundle of optional integrations initialized during startup.
@@ -66,6 +68,7 @@ struct Integrations {
     slack: Option<SlackClient>,
     m365: Option<M365Client>,
     r2: Option<R2Client>,
+    judgeme: Option<JudgemeClient>,
 }
 
 impl AppState {
@@ -157,6 +160,7 @@ impl AppState {
                 webauthn,
                 email_service,
                 r2: integrations.r2,
+                judgeme: integrations.judgeme,
             }),
         })
     }
@@ -239,6 +243,12 @@ impl AppState {
         self.inner.r2.as_ref()
     }
 
+    /// Get a reference to the Judge.me client (if configured).
+    #[must_use]
+    pub fn judgeme(&self) -> Option<&JudgemeClient> {
+        self.inner.judgeme.as_ref()
+    }
+
     /// Initialize optional integrations (Slack, `ShipHero`, M365, R2, support pool, embeddings).
     async fn init_integrations(config: &AdminConfig, pool: &PgPool) -> Integrations {
         let slack = config.slack.as_ref().map(|slack_config| {
@@ -287,6 +297,14 @@ impl AppState {
             tracing::info!("R2 not configured — document upload disabled");
         }
 
+        let judgeme = config.judgeme.as_ref().map(|c| {
+            tracing::info!("Judge.me review integration initialized");
+            JudgemeClient::new(c)
+        });
+        if judgeme.is_none() {
+            tracing::info!("Judge.me not configured — review moderation disabled");
+        }
+
         Integrations {
             support_pool,
             embedding,
@@ -294,6 +312,7 @@ impl AppState {
             slack,
             m365,
             r2,
+            judgeme,
         }
     }
 

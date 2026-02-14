@@ -69,6 +69,7 @@ pub mod promotions;
 pub mod proposal;
 pub mod queue;
 pub mod request_board;
+pub mod reviews;
 pub mod settings;
 pub mod setup;
 pub mod shiphero_settings;
@@ -450,6 +451,8 @@ pub fn routes() -> Router<AppState> {
         .merge(slack::router())
         // Request Board (bug reports & feature requests)
         .merge(request_board::router())
+        // Reviews (Judge.me moderation)
+        .merge(reviews::router())
         // Settings
         .merge(settings::router())
         // ShipHero settings (super_admin only)
