@@ -1,0 +1,163 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Amazon Pricing{% endblock %}
+
+{% block page_title %}
+<div>
+    <h1 class="text-2xl font-semibold text-foreground">Competitive Pricing</h1>
+    <p class="text-sm text-muted-foreground mt-1">Buy box position and competitive intelligence</p>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Sub-navigation -->
+<div class="mb-6 border-b border-border">
+    <nav class="flex gap-6">
+        <a href="/analytics" class="text-muted-foreground py-3 hover:text-foreground transition-colors">
+            Overview
+        </a>
+        <a href="/analytics/attribution" class="text-muted-foreground py-3 hover:text-foreground transition-colors">
+            Attribution
+        </a>
+        <a href="/analytics/channels" class="text-muted-foreground py-3 hover:text-foreground transition-colors">
+            Channels
+        </a>
+        <a href="/analytics/amazon" class="text-muted-foreground py-3 hover:text-foreground transition-colors">
+            Amazon
+        </a>
+        <a href="/analytics/amazon/pricing" class="text-foreground py-3 border-b-2 border-coral">
+            Pricing
+        </a>
+    </nav>
+</div>
+
+{% if !connected %}
+<!-- Not Connected State -->
+<div class="bg-amber-500/10 border border-amber-500/30 rounded-xl p-6 mb-6">
+    <div class="flex items-start gap-4">
+        <div class="w-10 h-10 rounded-lg bg-amber-500/20 flex items-center justify-center shrink-0">
+            <i class="ph ph-warning text-xl text-amber-500"></i>
+        </div>
+        <div>
+            <p class="font-medium text-foreground mb-1">Amazon SP-API Not Connected</p>
+            <p class="text-sm text-muted-foreground mb-3">
+                Connect your Amazon Seller account to view competitive pricing data.
+            </p>
+            <a href="/settings/amazon" class="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors text-sm">
+                <i class="ph ph-gear"></i>
+                Configure Amazon Settings
+            </a>
+        </div>
+    </div>
+</div>
+{% elif !has_mappings %}
+<!-- No Mappings State -->
+<div class="bg-card rounded-xl border border-border p-12 text-center">
+    <div class="w-16 h-16 rounded-full bg-coral/10 flex items-center justify-center mx-auto mb-4">
+        <i class="ph ph-link text-3xl text-coral"></i>
+    </div>
+    <h3 class="text-lg font-semibold text-foreground mb-2">No Product Mappings</h3>
+    <p class="text-muted-foreground max-w-md mx-auto mb-4">
+        Map your Shopify products to Amazon ASINs first. Pricing data will appear once mappings are configured.
+    </p>
+    <a href="/amazon/catalog" class="inline-flex items-center gap-2 px-4 py-2 bg-coral text-white rounded-lg hover:bg-coral/90 transition-colors">
+        <i class="ph ph-magnifying-glass"></i>
+        Set Up Product Mappings
+    </a>
+</div>
+{% else %}
+<!-- Summary Cards -->
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+    <div class="bg-card rounded-xl p-5 border border-border">
+        <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Mapped Products</p>
+        <p class="text-2xl font-semibold text-foreground tabular-nums">{{ mapped_count }}</p>
+    </div>
+    <div class="bg-card rounded-xl p-5 border border-border">
+        <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Winning Buy Box</p>
+        <p class="text-2xl font-semibold text-green-500 tabular-nums">{{ winning_count }}</p>
+    </div>
+    <div class="bg-card rounded-xl p-5 border border-border">
+        <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Behind</p>
+        <p class="text-2xl font-semibold text-red-500 tabular-nums">{{ behind_count }}</p>
+    </div>
+</div>
+
+<!-- Pricing Table -->
+<div class="bg-card rounded-xl border border-border overflow-hidden">
+    <div class="px-6 py-4 border-b border-border flex items-center justify-between">
+        <h3 class="font-semibold text-foreground">Competitive Position</h3>
+        <a href="/analytics/amazon/pricing" class="text-sm text-primary hover:underline flex items-center gap-1">
+            <i class="ph ph-arrows-clockwise"></i>
+            Refresh
+        </a>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full">
+            <thead class="bg-muted">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">ASIN</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">SKU</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Buy Box</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Offers</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Rank</th>
+                    <th class="px-6 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-border">
+                {% if items.is_empty() %}
+                <tr>
+                    <td colspan="6" class="px-6 py-12 text-center text-muted-foreground">
+                        <i class="ph ph-chart-bar text-4xl mb-2 block"></i>
+                        <p>No pricing data available</p>
+                    </td>
+                </tr>
+                {% else %}
+                {% for item in items %}
+                <tr class="hover:bg-accent transition-colors">
+                    <td class="px-6 py-4">
+                        <span class="text-sm font-mono text-foreground">{{ item.asin }}</span>
+                    </td>
+                    <td class="px-6 py-4">
+                        <span class="text-sm text-foreground">{{ item.amazon_sku }}</span>
+                    </td>
+                    <td class="px-6 py-4 text-sm text-right text-foreground tabular-nums">
+                        {% match item.buy_box_price %}
+                            {% when Some with (price) %}{{ price }}{% when None %}&mdash;{% endmatch %}
+                    </td>
+                    <td class="px-6 py-4 text-sm text-right text-foreground tabular-nums">{{ item.num_offers }}</td>
+                    <td class="px-6 py-4 text-sm text-right text-foreground tabular-nums">
+                        {% match item.sales_rank %}
+                            {% when Some with (rank) %}#{{ rank }}{% when None %}&mdash;{% endmatch %}
+                    </td>
+                    <td class="px-6 py-4 text-center">
+                        {% if item.status == "Winning" %}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                            <i class="ph ph-check-circle mr-1"></i>
+                            Winning
+                        </span>
+                        {% elif item.status == "Behind" %}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                            <i class="ph ph-arrow-down mr-1"></i>
+                            Behind
+                        </span>
+                        {% else %}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+                            Unknown
+                        </span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Cache Info -->
+<div class="mt-4 text-xs text-muted-foreground text-right">
+    <i class="ph ph-clock mr-1"></i>
+    Pricing data cached for ~5 minutes
+</div>
+{% endif %}
+{% endblock %}

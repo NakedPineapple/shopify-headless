@@ -3,11 +3,25 @@
 //! Caches Amazon orders locally because the Orders API rate limit is
 //! 1 request per 60 seconds. Orders are upserted by `amazon_order_id`.
 
-use chrono::{DateTime, Datelike, Timelike, Utc};
+use chrono::{DateTime, Datelike, NaiveDate, Timelike, Utc};
 use sqlx::PgPool;
 use tracing::{debug, instrument};
 
 use super::RepositoryError;
+
+/// Convert chrono `NaiveDate` to `time::Date` for `SQLx` bind params.
+///
+/// See `crates/admin/src/db/inventory_lot.rs` for documentation on why this is needed.
+fn to_time_date(date: NaiveDate) -> time::Date {
+    let month = u8::try_from(date.month()).expect("month in range 1-12");
+    let day = u8::try_from(date.day()).expect("day in range 1-31");
+    time::Date::from_calendar_date(
+        date.year(),
+        time::Month::try_from(month).expect("valid month"),
+        day,
+    )
+    .expect("valid date")
+}
 
 /// Convert chrono `DateTime<Utc>` to `time::OffsetDateTime` for `SQLx` bind params.
 ///
@@ -396,6 +410,212 @@ impl<'a> AmazonOrderRepository<'a> {
         Ok(row)
     }
 
+    // =========================================================================
+    // Analytics Queries
+    // =========================================================================
+
+    /// Revenue summary for a date range (excludes canceled orders).
+    ///
+    /// # Errors
+    ///
+    /// Returns `RepositoryError::Database` if the query fails.
+    #[instrument(skip(self), level = "debug")]
+    pub async fn revenue_summary(
+        &self,
+        start: NaiveDate,
+        end: NaiveDate,
+    ) -> Result<AmazonRevenueSummary, RepositoryError> {
+        let start_t = to_time_date(start);
+        let end_t = to_time_date(end);
+
+        let row = sqlx::query!(
+            r#"
+            SELECT
+                COALESCE(SUM(CAST(order_total_amount AS DECIMAL)), 0) as "revenue!: rust_decimal::Decimal",
+                COUNT(*) as "count!"
+            FROM admin.amazon_orders
+            WHERE order_status != 'Canceled'
+              AND purchase_date >= $1::date
+              AND purchase_date < ($2::date + INTERVAL '1 day')
+            "#,
+            start_t,
+            end_t,
+        )
+        .fetch_one(self.pool)
+        .await?;
+
+        let revenue: f64 = row.revenue.to_string().parse().unwrap_or(0.0);
+        let count = row.count;
+        #[allow(
+            clippy::cast_precision_loss,
+            reason = "order count will never approach 2^52"
+        )]
+        let aov = if count > 0 {
+            revenue / count as f64
+        } else {
+            0.0
+        };
+
+        Ok(AmazonRevenueSummary {
+            total_revenue: revenue,
+            order_count: count,
+            average_order_value: aov,
+        })
+    }
+
+    /// Daily revenue for a date range (for Chart.js trend line).
+    ///
+    /// # Errors
+    ///
+    /// Returns `RepositoryError::Database` if the query fails.
+    #[instrument(skip(self), level = "debug")]
+    pub async fn daily_revenue(
+        &self,
+        start: NaiveDate,
+        end: NaiveDate,
+    ) -> Result<Vec<AmazonDailyRevenue>, RepositoryError> {
+        let start_t = to_time_date(start);
+        let end_t = to_time_date(end);
+
+        let rows = sqlx::query!(
+            r#"
+            SELECT
+                purchase_date::date as "date!: NaiveDate",
+                COALESCE(SUM(CAST(order_total_amount AS DECIMAL)), 0) as "revenue!: rust_decimal::Decimal",
+                COUNT(*) as "orders!"
+            FROM admin.amazon_orders
+            WHERE order_status != 'Canceled'
+              AND purchase_date >= $1::date
+              AND purchase_date < ($2::date + INTERVAL '1 day')
+            GROUP BY purchase_date::date
+            ORDER BY purchase_date::date
+            "#,
+            start_t,
+            end_t,
+        )
+        .fetch_all(self.pool)
+        .await?;
+
+        Ok(rows
+            .into_iter()
+            .map(|r| AmazonDailyRevenue {
+                date: r.date,
+                revenue: r.revenue.to_string().parse().unwrap_or(0.0),
+                orders: r.orders,
+            })
+            .collect())
+    }
+
+    /// Order count by status for a date range.
+    ///
+    /// # Errors
+    ///
+    /// Returns `RepositoryError::Database` if the query fails.
+    #[instrument(skip(self), level = "debug")]
+    pub async fn status_breakdown(
+        &self,
+        start: NaiveDate,
+        end: NaiveDate,
+    ) -> Result<Vec<StatusBreakdown>, RepositoryError> {
+        let start_t = to_time_date(start);
+        let end_t = to_time_date(end);
+
+        let rows = sqlx::query!(
+            r#"
+            SELECT
+                order_status as "status!",
+                COUNT(*) as "count!"
+            FROM admin.amazon_orders
+            WHERE purchase_date >= $1::date
+              AND purchase_date < ($2::date + INTERVAL '1 day')
+            GROUP BY order_status
+            "#,
+            start_t,
+            end_t,
+        )
+        .fetch_all(self.pool)
+        .await?;
+
+        Ok(rows
+            .into_iter()
+            .map(|r| StatusBreakdown {
+                status: r.status,
+                count: r.count,
+            })
+            .collect())
+    }
+
+    /// Order count by fulfillment channel (AFN = FBA, MFN = Merchant).
+    ///
+    /// # Errors
+    ///
+    /// Returns `RepositoryError::Database` if the query fails.
+    #[instrument(skip(self), level = "debug")]
+    pub async fn fulfillment_breakdown(
+        &self,
+        start: NaiveDate,
+        end: NaiveDate,
+    ) -> Result<Vec<FulfillmentBreakdown>, RepositoryError> {
+        let start_t = to_time_date(start);
+        let end_t = to_time_date(end);
+
+        let rows = sqlx::query!(
+            r#"
+            SELECT
+                COALESCE(fulfillment_channel, 'Unknown') as "channel!",
+                COUNT(*) as "count!"
+            FROM admin.amazon_orders
+            WHERE purchase_date >= $1::date
+              AND purchase_date < ($2::date + INTERVAL '1 day')
+            GROUP BY fulfillment_channel
+            "#,
+            start_t,
+            end_t,
+        )
+        .fetch_all(self.pool)
+        .await?;
+
+        Ok(rows
+            .into_iter()
+            .map(|r| FulfillmentBreakdown {
+                channel: r.channel,
+                count: r.count,
+            })
+            .collect())
+    }
+
+    /// Count Prime vs non-Prime orders in a date range.
+    ///
+    /// # Errors
+    ///
+    /// Returns `RepositoryError::Database` if the query fails.
+    #[instrument(skip(self), level = "debug")]
+    pub async fn prime_count(
+        &self,
+        start: NaiveDate,
+        end: NaiveDate,
+    ) -> Result<(i64, i64), RepositoryError> {
+        let start_t = to_time_date(start);
+        let end_t = to_time_date(end);
+
+        let row = sqlx::query!(
+            r#"
+            SELECT
+                COUNT(*) FILTER (WHERE is_prime = true) as "prime!",
+                COUNT(*) FILTER (WHERE is_prime IS DISTINCT FROM true) as "non_prime!"
+            FROM admin.amazon_orders
+            WHERE purchase_date >= $1::date
+              AND purchase_date < ($2::date + INTERVAL '1 day')
+            "#,
+            start_t,
+            end_t,
+        )
+        .fetch_one(self.pool)
+        .await?;
+
+        Ok((row.prime, row.non_prime))
+    }
+
     /// Upsert order items (insert or update on conflict).
     ///
     /// # Errors
@@ -440,6 +660,40 @@ impl<'a> AmazonOrderRepository<'a> {
 
         Ok(())
     }
+}
+
+// =============================================================================
+// Analytics Types
+// =============================================================================
+
+/// Revenue summary for a date range.
+#[derive(Debug, Clone)]
+pub struct AmazonRevenueSummary {
+    pub total_revenue: f64,
+    pub order_count: i64,
+    pub average_order_value: f64,
+}
+
+/// Daily revenue data point for trend charts.
+#[derive(Debug, Clone)]
+pub struct AmazonDailyRevenue {
+    pub date: NaiveDate,
+    pub revenue: f64,
+    pub orders: i64,
+}
+
+/// Order count by status.
+#[derive(Debug, Clone)]
+pub struct StatusBreakdown {
+    pub status: String,
+    pub count: i64,
+}
+
+/// Order count by fulfillment channel.
+#[derive(Debug, Clone)]
+pub struct FulfillmentBreakdown {
+    pub channel: String,
+    pub count: i64,
 }
 
 // =============================================================================

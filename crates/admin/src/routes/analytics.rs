@@ -59,7 +59,8 @@ impl AnalyticsQuery {
     }
 
     /// Get the current range selection for UI highlighting.
-    fn current_range(&self) -> &str {
+    #[must_use]
+    pub fn current_range(&self) -> &str {
         self.range.as_deref().unwrap_or("30d")
     }
 }

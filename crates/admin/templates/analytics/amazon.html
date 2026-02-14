@@ -1,0 +1,250 @@
+{% extends "layouts/base.html" %}
+{% import "macros/date_range.html" as dr %}
+
+{% block title %}Amazon Sales{% endblock %}
+
+{% block page_title %}
+<div>
+    <h1 class="text-2xl font-semibold text-foreground">Amazon Sales</h1>
+    <p class="text-sm text-muted-foreground mt-1">Sales performance from Amazon order data</p>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Sub-navigation -->
+<div class="mb-6 border-b border-border">
+    <nav class="flex gap-6">
+        <a href="/analytics" class="text-muted-foreground py-3 hover:text-foreground transition-colors">
+            Overview
+        </a>
+        <a href="/analytics/attribution" class="text-muted-foreground py-3 hover:text-foreground transition-colors">
+            Attribution
+        </a>
+        <a href="/analytics/channels" class="text-muted-foreground py-3 hover:text-foreground transition-colors">
+            Channels
+        </a>
+        <a href="/analytics/amazon" class="text-foreground py-3 border-b-2 border-coral">
+            Amazon
+        </a>
+        <a href="/analytics/amazon/pricing" class="text-muted-foreground py-3 hover:text-foreground transition-colors">
+            Pricing
+        </a>
+    </nav>
+</div>
+
+<!-- Date Range Selector -->
+<div class="mb-6">
+    {% call dr::date_range_selector("/analytics/amazon", current_range, custom_start, custom_end) %}{% endcall %}
+</div>
+
+{% if !has_data %}
+<!-- Empty State -->
+<div class="bg-card rounded-xl border border-border p-12 text-center">
+    <div class="w-16 h-16 rounded-full bg-coral/10 flex items-center justify-center mx-auto mb-4">
+        <i class="ph ph-amazon-logo text-3xl text-coral"></i>
+    </div>
+    <h3 class="text-lg font-semibold text-foreground mb-2">No Amazon Orders Yet</h3>
+    <p class="text-muted-foreground max-w-md mx-auto mb-4">
+        Once Amazon orders are synced, sales analytics will appear here. Make sure the order sync background job is running.
+    </p>
+    <a href="/amazon/orders" class="inline-flex items-center gap-2 px-4 py-2 bg-coral text-white rounded-lg hover:bg-coral/90 transition-colors">
+        <i class="ph ph-arrows-clockwise"></i>
+        View Order Sync
+    </a>
+</div>
+{% else %}
+<!-- Summary Cards -->
+<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+    <div class="bg-card rounded-xl p-5 border border-border">
+        <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Revenue</p>
+        <p class="text-xl font-semibold text-foreground tabular-nums">{{ summary.total_revenue }}</p>
+    </div>
+    <div class="bg-card rounded-xl p-5 border border-border">
+        <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Orders</p>
+        <p class="text-xl font-semibold text-foreground tabular-nums">{{ summary.order_count }}</p>
+    </div>
+    <div class="bg-card rounded-xl p-5 border border-border">
+        <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">AOV</p>
+        <p class="text-xl font-semibold text-foreground tabular-nums">{{ summary.aov }}</p>
+    </div>
+    <div class="bg-card rounded-xl p-5 border border-border">
+        <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Shipped</p>
+        <p class="text-xl font-semibold text-green-500 tabular-nums">{{ summary.shipped }}</p>
+    </div>
+    <div class="bg-card rounded-xl p-5 border border-border">
+        <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Pending</p>
+        <p class="text-xl font-semibold text-amber-500 tabular-nums">{{ summary.pending }}</p>
+    </div>
+    <div class="bg-card rounded-xl p-5 border border-border">
+        <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Canceled</p>
+        <p class="text-xl font-semibold text-red-500 tabular-nums">{{ summary.canceled }}</p>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div class="grid lg:grid-cols-3 gap-6 mb-8">
+    <!-- Daily Sales Trend -->
+    <div class="lg:col-span-2 bg-card rounded-xl border border-border">
+        <div class="px-6 py-4 border-b border-border">
+            <h3 class="font-semibold text-foreground">Daily Sales Trend</h3>
+        </div>
+        <div class="p-6">
+            {% if trend_labels == "[]" %}
+            <div class="text-center text-muted-foreground py-12">
+                <i class="ph ph-chart-line text-4xl mb-2"></i>
+                <p>No trend data available</p>
+            </div>
+            {% else %}
+            <div class="h-72">
+                <canvas id="amazonSalesTrendChart"></canvas>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Fulfillment Split -->
+    <div class="bg-card rounded-xl border border-border">
+        <div class="px-6 py-4 border-b border-border">
+            <h3 class="font-semibold text-foreground">Fulfillment Split</h3>
+        </div>
+        <div class="p-6">
+            {% if fba_count == 0 && merchant_count == 0 %}
+            <div class="text-center text-muted-foreground py-12">
+                <i class="ph ph-chart-donut text-4xl mb-2"></i>
+                <p>No fulfillment data</p>
+            </div>
+            {% else %}
+            <div class="h-64">
+                <canvas id="fulfillmentChart"></canvas>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Prime vs Non-Prime -->
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <div class="bg-card rounded-xl p-5 border border-border flex items-center gap-4">
+        <div class="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+            <i class="ph ph-crown text-xl text-blue-500"></i>
+        </div>
+        <div>
+            <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Prime Orders</p>
+            <p class="text-xl font-semibold text-foreground tabular-nums">{{ summary.prime_count }}</p>
+        </div>
+    </div>
+    <div class="bg-card rounded-xl p-5 border border-border flex items-center gap-4">
+        <div class="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
+            <i class="ph ph-package text-xl text-muted-foreground"></i>
+        </div>
+        <div>
+            <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Non-Prime Orders</p>
+            <p class="text-xl font-semibold text-foreground tabular-nums">{{ summary.non_prime_count }}</p>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if has_data && trend_labels != "[]" %}
+{% include "partials/_chart_defaults.html" %}
+<script>
+(function() {
+    var lc = window.lagoonChart;
+    var palette = lc.palette();
+    var coral = palette[0] || '#d63a2f';
+
+    // Daily Sales Trend
+    var trendCtx = document.getElementById('amazonSalesTrendChart');
+    if (trendCtx) {
+        var labels = {{ trend_labels|safe }};
+        var data = {{ trend_data|safe }};
+        new Chart(trendCtx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Revenue',
+                    data: data,
+                    borderColor: coral,
+                    backgroundColor: coral + '15',
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: labels.length > 30 ? 0 : 3,
+                    pointHoverRadius: 5,
+                    pointBackgroundColor: coral,
+                    borderWidth: 2,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(ctx) { return '$' + Number(ctx.parsed.y).toFixed(2); }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: { maxTicksLimit: 10, font: { size: 11 } },
+                        border: { color: lc.gridColor() }
+                    },
+                    y: {
+                        grid: { color: lc.gridColor() },
+                        ticks: {
+                            font: { size: 11 },
+                            callback: function(v) { return '$' + v.toLocaleString(); }
+                        },
+                        border: { display: false },
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    }
+
+    // Fulfillment Doughnut
+    var ffCtx = document.getElementById('fulfillmentChart');
+    if (ffCtx) {
+        var fba = {{ fba_count }};
+        var merchant = {{ merchant_count }};
+        new Chart(ffCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['FBA (Amazon)', 'Merchant Fulfilled'],
+                datasets: [{
+                    data: [fba, merchant],
+                    backgroundColor: [palette[0] + '80', palette[3] + '80'],
+                    borderColor: [palette[0], palette[3]],
+                    borderWidth: 2,
+                    hoverOffset: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { padding: 12, font: { size: 11 } }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(ctx) {
+                                var total = ctx.dataset.data.reduce(function(a,b){ return a+b; }, 0);
+                                var pct = total > 0 ? ((ctx.parsed / total) * 100).toFixed(1) : '0';
+                                return ctx.label + ': ' + ctx.parsed + ' (' + pct + '%)';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+})();
+</script>
+{% endif %}
+{% endblock %}

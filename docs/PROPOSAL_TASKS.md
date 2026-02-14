@@ -42,7 +42,7 @@ Features described in `crates/admin/templates/proposal/` that are not yet implem
 ## External Integrations
 
 ~~~- [ ] **Mosyle (Fuse) device management** — Listed in the cost table (`_cost.html`) and features grid (`_features.html`) but no integration code exists.~~~
-- [ ] **Amazon Seller Central** — Mentioned as a connected sales channel; no API client or sync logic implemented.
+- [X] **Amazon Seller Central** — Mentioned as a connected sales channel; no API client or sync logic implemented.
 - [ ] **Facebook and Instagram** — Mentioned as a connected sales channel; no API client or sync logic implemented.
 - [ ] **TikTok** — Mentioned as a connected sales channel; no API client or sync logic implemented.
 - [ ] **Pinterest** — Mentioned as a connected sales channel; no API client or sync logic implemented.

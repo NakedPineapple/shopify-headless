@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                COALESCE(fulfillment_channel, 'Unknown') as \"channel!\",\n                COUNT(*) as \"count!\"\n            FROM admin.amazon_orders\n            WHERE purchase_date >= $1::date\n              AND purchase_date < ($2::date + INTERVAL '1 day')\n            GROUP BY fulfillment_channel\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "channel!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Date",
+        "Date"
+      ]
+    },
+    "nullable": [
+      null,
+      null
+    ]
+  },
+  "hash": "1b43ad24d1e56140fe383bc7326e956b17befa3f9bbacbbb0357bca1eea05be0"
+}

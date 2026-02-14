@@ -47,6 +47,7 @@
 //! ```
 
 pub mod admin_users;
+pub mod amazon_analytics;
 pub mod amazon_catalog;
 pub mod amazon_inventory;
 pub mod amazon_orders;
@@ -375,6 +376,11 @@ fn analytics_routes() -> Router<AppState> {
         .route("/analytics/attribution", get(analytics::attribution))
         .route("/analytics/channels", get(analytics::channels))
         .route("/analytics/channels/{name}", get(analytics::channel_detail))
+        .route("/analytics/amazon", get(amazon_analytics::amazon_sales))
+        .route(
+            "/analytics/amazon/pricing",
+            get(amazon_analytics::amazon_pricing),
+        )
 }
 
 /// Build payout routes.

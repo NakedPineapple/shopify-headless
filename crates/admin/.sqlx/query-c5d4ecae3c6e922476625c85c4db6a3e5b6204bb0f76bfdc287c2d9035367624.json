@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                COUNT(*) FILTER (WHERE is_prime = true) as \"prime!\",\n                COUNT(*) FILTER (WHERE is_prime IS DISTINCT FROM true) as \"non_prime!\"\n            FROM admin.amazon_orders\n            WHERE purchase_date >= $1::date\n              AND purchase_date < ($2::date + INTERVAL '1 day')\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "prime!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "non_prime!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Date",
+        "Date"
+      ]
+    },
+    "nullable": [
+      null,
+      null
+    ]
+  },
+  "hash": "c5d4ecae3c6e922476625c85c4db6a3e5b6204bb0f76bfdc287c2d9035367624"
+}

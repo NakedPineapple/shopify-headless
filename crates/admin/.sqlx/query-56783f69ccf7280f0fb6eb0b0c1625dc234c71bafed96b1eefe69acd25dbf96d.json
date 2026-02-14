@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                COALESCE(SUM(CAST(order_total_amount AS DECIMAL)), 0) as \"revenue!: rust_decimal::Decimal\",\n                COUNT(*) as \"count!\"\n            FROM admin.amazon_orders\n            WHERE order_status != 'Canceled'\n              AND purchase_date >= $1::date\n              AND purchase_date < ($2::date + INTERVAL '1 day')\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "revenue!: rust_decimal::Decimal",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 1,
+        "name": "count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Date",
+        "Date"
+      ]
+    },
+    "nullable": [
+      null,
+      null
+    ]
+  },
+  "hash": "56783f69ccf7280f0fb6eb0b0c1625dc234c71bafed96b1eefe69acd25dbf96d"
+}

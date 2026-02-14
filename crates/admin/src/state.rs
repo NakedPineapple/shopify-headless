@@ -9,7 +9,7 @@ use sqlx::PgPool;
 use url::Url;
 use webauthn_rs::prelude::*;
 
-use naked_pineapple_services::amazon_sp::{AmazonSpClient, InventorySummary};
+use naked_pineapple_services::amazon_sp::{AmazonSpClient, InventorySummary, PricingResult};
 use naked_pineapple_services::judgeme::JudgemeClient;
 use naked_pineapple_services::microsoft_graph::M365Client;
 use naked_pineapple_services::openai::EmbeddingClient;
@@ -59,6 +59,7 @@ struct AppStateInner {
     shiphero: Option<ShipHeroClient>,
     amazon: Option<AmazonSpClient>,
     fba_cache: Cache<String, Vec<InventorySummary>>,
+    pricing_cache: Cache<String, Vec<PricingResult>>,
     slack: Option<SlackClient>,
     m365: Option<M365Client>,
     webauthn: Webauthn,
@@ -162,6 +163,11 @@ impl AppState {
             .time_to_live(Duration::from_secs(300))
             .build();
 
+        let pricing_cache = Cache::builder()
+            .max_capacity(100)
+            .time_to_live(Duration::from_secs(300))
+            .build();
+
         Ok(Self {
             inner: Arc::new(AppStateInner {
                 config,
@@ -172,6 +178,7 @@ impl AppState {
                 shiphero: integrations.shiphero,
                 amazon: integrations.amazon,
                 fba_cache,
+                pricing_cache,
                 slack: integrations.slack,
                 m365: integrations.m365,
                 webauthn,
@@ -283,6 +290,12 @@ impl AppState {
     #[must_use]
     pub fn fba_cache(&self) -> &Cache<String, Vec<InventorySummary>> {
         &self.inner.fba_cache
+    }
+
+    /// Get a reference to the competitive pricing cache (5-min TTL).
+    #[must_use]
+    pub fn pricing_cache(&self) -> &Cache<String, Vec<PricingResult>> {
+        &self.inner.pricing_cache
     }
 
     /// Initialize optional integrations (Slack, `ShipHero`, M365, R2, support pool, embeddings).

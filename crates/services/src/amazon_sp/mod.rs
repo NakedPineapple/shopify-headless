@@ -16,11 +16,15 @@ mod client;
 mod inventory;
 mod listings;
 mod orders;
+mod pricing;
+mod reports;
 mod types;
 
 pub use client::AmazonSpClient;
 pub use inventory::InventorySummariesPage;
 pub use orders::OrdersPage;
+pub use pricing::PricingResult;
+pub use reports::{CreateReportRequest, Report, ReportDocument};
 pub use types::*;
 
 use thiserror::Error;

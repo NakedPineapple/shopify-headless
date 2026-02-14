@@ -49,7 +49,10 @@ use thiserror::Error;
 pub use admin_invites::{AdminInvite, AdminInviteRepository};
 pub use admin_users::AdminUserRepository;
 pub use amazon::{AmazonSpCredentials, AmazonSpCredentialsRepository, SaveAmazonSpParams};
-pub use amazon_orders::{AmazonOrderRepository, CachedAmazonOrder, CachedAmazonOrderItem};
+pub use amazon_orders::{
+    AmazonDailyRevenue, AmazonOrderRepository, AmazonRevenueSummary, CachedAmazonOrder,
+    CachedAmazonOrderItem, FulfillmentBreakdown, StatusBreakdown,
+};
 pub use amazon_products::{
     AmazonProductMapping, AmazonProductMappingRepository, CreateMappingParams,
 };
