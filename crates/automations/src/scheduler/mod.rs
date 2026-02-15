@@ -21,6 +21,7 @@ use tokio::time::interval;
 use crate::amazon;
 use crate::meta;
 use crate::outbound;
+use crate::pinterest;
 use crate::state::AppState;
 use crate::tiktok;
 use crate::triage;
@@ -106,6 +107,9 @@ impl Scheduler {
         let mut tiktok_performance_poll = interval(Duration::from_secs(
             config.tiktok_performance_poll_interval_secs,
         ));
+        let mut pinterest_conversion_poll = interval(Duration::from_secs(
+            config.pinterest_conversion_poll_interval_secs,
+        ));
 
         tracing::info!(
             email_poll_secs = config.email_poll_interval_secs,
@@ -116,6 +120,7 @@ impl Scheduler {
             tiktok_settlement_poll_secs = config.tiktok_settlement_poll_interval_secs,
             tiktok_return_poll_secs = config.tiktok_return_poll_interval_secs,
             tiktok_performance_poll_secs = config.tiktok_performance_poll_interval_secs,
+            pinterest_conversion_poll_secs = config.pinterest_conversion_poll_interval_secs,
             cart_check_secs = config.cart_check_interval_secs,
             stock_check_secs = config.stock_check_interval_secs,
             segment_sync_secs = config.segment_sync_interval_secs,
@@ -144,6 +149,7 @@ impl Scheduler {
                 _ = tiktok_settlement_poll.tick() => { guarded!(self, "tiktok_settlement_poll", poll_tiktok_settlements); },
                 _ = tiktok_return_poll.tick() => { guarded!(self, "tiktok_return_poll", poll_tiktok_returns); },
                 _ = tiktok_performance_poll.tick() => { guarded!(self, "tiktok_performance_poll", poll_tiktok_performance); },
+                _ = pinterest_conversion_poll.tick() => { guarded!(self, "pinterest_conversion_poll", sync_pinterest_conversions); },
                 _ = summary_check.tick() => { guarded!(self, "summary_check", check_summaries); },
             }
         }
@@ -446,6 +452,16 @@ impl Scheduler {
             return true;
         };
         tiktok::performance_sync::poll_tiktok_performance(self.state.pool(), client).await
+    }
+
+    /// Send recent Shopify orders as conversion events to Pinterest CAPI.
+    async fn sync_pinterest_conversions(&self) -> bool {
+        let (Some(shopify), Some(pinterest)) = (self.state.shopify(), self.state.pinterest())
+        else {
+            return true;
+        };
+
+        pinterest::conversion_sync::sync_conversions(shopify, pinterest).await
     }
 
     /// Poll Amazon SP-API for new orders and cache locally.

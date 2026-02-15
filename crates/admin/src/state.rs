@@ -14,6 +14,7 @@ use naked_pineapple_services::judgeme::JudgemeClient;
 use naked_pineapple_services::meta_commerce::MetaCommerceClient;
 use naked_pineapple_services::microsoft_graph::M365Client;
 use naked_pineapple_services::openai::EmbeddingClient;
+use naked_pineapple_services::pinterest::PinterestClient;
 use naked_pineapple_services::tiktok_shop::TikTokShopClient;
 
 use crate::config::AdminConfig;
@@ -62,6 +63,7 @@ struct AppStateInner {
     amazon: Option<AmazonSpClient>,
     meta: Option<MetaCommerceClient>,
     tiktok: Option<TikTokShopClient>,
+    pinterest: Option<PinterestClient>,
     fba_cache: Cache<String, Vec<InventorySummary>>,
     pricing_cache: Cache<String, Vec<PricingResult>>,
     slack: Option<SlackClient>,
@@ -81,6 +83,7 @@ struct Integrations {
     amazon: Option<AmazonSpClient>,
     meta: Option<MetaCommerceClient>,
     tiktok: Option<TikTokShopClient>,
+    pinterest: Option<PinterestClient>,
     slack: Option<SlackClient>,
     m365: Option<M365Client>,
     r2: Option<R2Client>,
@@ -185,6 +188,7 @@ impl AppState {
                 amazon: integrations.amazon,
                 meta: integrations.meta,
                 tiktok: integrations.tiktok,
+                pinterest: integrations.pinterest,
                 fba_cache,
                 pricing_cache,
                 slack: integrations.slack,
@@ -306,6 +310,12 @@ impl AppState {
         self.inner.tiktok.as_ref()
     }
 
+    /// Get a reference to the Pinterest client (if configured).
+    #[must_use]
+    pub fn pinterest(&self) -> Option<&PinterestClient> {
+        self.inner.pinterest.as_ref()
+    }
+
     /// Get a reference to the FBA inventory cache (5-min TTL).
     #[must_use]
     pub fn fba_cache(&self) -> &Cache<String, Vec<InventorySummary>> {
@@ -329,6 +339,7 @@ impl AppState {
         let amazon = Self::init_amazon(pool).await;
         let meta = Self::init_meta(pool).await;
         let tiktok = Self::init_tiktok(pool).await;
+        let pinterest = Self::init_pinterest(pool).await;
 
         Integrations {
             support_pool,
@@ -337,6 +348,7 @@ impl AppState {
             amazon,
             meta,
             tiktok,
+            pinterest,
             slack,
             m365,
             r2,
@@ -457,6 +469,19 @@ impl AppState {
             );
         }
         meta
+    }
+
+    /// Initialize Pinterest from stored credentials.
+    async fn init_pinterest(pool: &PgPool) -> Option<PinterestClient> {
+        let pinterest = Self::load_pinterest_client(pool).await;
+        if pinterest.is_some() {
+            tracing::info!("Pinterest client initialized from stored credentials");
+        } else {
+            tracing::info!(
+                "Pinterest not configured — Pinterest features disabled until credentials added via /settings/pinterest"
+            );
+        }
+        pinterest
     }
 
     /// Initialize TikTok Shop from stored credentials.
@@ -597,6 +622,29 @@ impl AppState {
             Ok(None) => None,
             Err(e) => {
                 tracing::error!(error = %e, "Failed to load TikTok Shop credentials from database");
+                None
+            }
+        }
+    }
+
+    /// Load Pinterest client from stored credentials.
+    async fn load_pinterest_client(pool: &PgPool) -> Option<PinterestClient> {
+        use crate::db::PinterestCredentialsRepository;
+        use naked_pineapple_services::pinterest::PinterestCredentials as ApiCredentials;
+
+        let repo = PinterestCredentialsRepository::new(pool);
+
+        match repo.get_default().await {
+            Ok(Some(creds)) => Some(PinterestClient::new(ApiCredentials {
+                app_id: creds.app_id,
+                app_secret: creds.app_secret,
+                access_token: creds.access_token,
+                refresh_token: creds.refresh_token,
+                ad_account_id: creds.ad_account_id,
+            })),
+            Ok(None) => None,
+            Err(e) => {
+                tracing::error!(error = %e, "Failed to load Pinterest credentials from database");
                 None
             }
         }

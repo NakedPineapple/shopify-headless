@@ -122,6 +122,8 @@ pub struct SchedulerConfig {
     pub tiktok_return_poll_interval_secs: u64,
     /// TikTok Shop performance metrics poll interval in seconds.
     pub tiktok_performance_poll_interval_secs: u64,
+    /// Pinterest conversion sync interval in seconds.
+    pub pinterest_conversion_poll_interval_secs: u64,
     /// Subscription lifecycle check interval in seconds.
     pub subscription_check_interval_secs: u64,
     /// Minutes of inactivity before a checkout is considered abandoned.
@@ -189,6 +191,10 @@ impl SchedulerConfig {
             tiktok_performance_poll_interval_secs: parse_env_u64(
                 "AUTOMATION_TIKTOK_PERFORMANCE_POLL_INTERVAL_SECS",
                 86400,
+            ),
+            pinterest_conversion_poll_interval_secs: parse_env_u64(
+                "AUTOMATION_PINTEREST_CONVERSION_POLL_INTERVAL_SECS",
+                900,
             ),
             subscription_check_interval_secs: parse_env_u64(
                 "AUTOMATION_SUBSCRIPTION_CHECK_INTERVAL_SECS",

@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO admin.pinterest_credentials (\n                account_name,\n                app_id,\n                app_secret,\n                access_token,\n                refresh_token,\n                ad_account_id,\n                connected_by,\n                connected_at\n            )\n            VALUES ($1, $2, $3, $4, $5, $6, $7, (CURRENT_TIMESTAMP AT TIME ZONE 'utc'))\n            ON CONFLICT(account_name) DO UPDATE SET\n                app_id = EXCLUDED.app_id,\n                app_secret = EXCLUDED.app_secret,\n                access_token = EXCLUDED.access_token,\n                refresh_token = EXCLUDED.refresh_token,\n                ad_account_id = EXCLUDED.ad_account_id,\n                connected_by = EXCLUDED.connected_by,\n                connected_at = EXCLUDED.connected_at,\n                updated_at = (CURRENT_TIMESTAMP AT TIME ZONE 'utc')\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "df58154e88aec3ed12d685ae0738b3afaecb59d5398cf9ff1f035f4bdbd0bd7f"
+}

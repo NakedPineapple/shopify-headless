@@ -108,6 +108,11 @@
                         <i class="ph ph-tiktok-logo text-xl"></i>
                         <span class="sidebar-text">TikTok Shop</span>
                     </a>
+                    <a href="/pinterest/catalog"
+                       class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors {% if current_path.starts_with("/pinterest") %}bg-coral text-white{% else %}text-sidebar-foreground hover:bg-sidebar-accent hover:text-white{% endif %}">
+                        <i class="ph ph-pinterest-logo text-xl"></i>
+                        <span class="sidebar-text">Pinterest</span>
+                    </a>
                     <a href="/discounts"
                        class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors {% if current_path.starts_with("/discounts") %}bg-coral text-white{% else %}text-sidebar-foreground hover:bg-sidebar-accent hover:text-white{% endif %}">
                         <i class="ph ph-tag text-xl"></i>
@@ -245,6 +250,11 @@
                            class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors {% if current_path.starts_with("/settings/tiktok") %}bg-coral text-white{% else %}text-sidebar-foreground hover:bg-sidebar-accent hover:text-white{% endif %}">
                             <i class="ph ph-tiktok-logo text-xl"></i>
                             <span class="sidebar-text">TikTok Shop</span>
+                        </a>
+                        <a href="/settings/pinterest"
+                           class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors {% if current_path.starts_with("/settings/pinterest") %}bg-coral text-white{% else %}text-sidebar-foreground hover:bg-sidebar-accent hover:text-white{% endif %}">
+                            <i class="ph ph-pinterest-logo text-xl"></i>
+                            <span class="sidebar-text">Pinterest</span>
                         </a>
                     </div>
                 </div>

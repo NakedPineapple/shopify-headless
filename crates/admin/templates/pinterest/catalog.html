@@ -1,0 +1,95 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Pinterest Catalog Search{% endblock %}
+
+{% block page_title %}Pinterest Catalog{% endblock %}
+
+{% block page_subtitle %}
+<p class="text-sm text-muted-foreground mt-1">Search the Pinterest product catalog and create product mappings</p>
+{% endblock %}
+
+{% block content %}
+{% if !connected %}
+<div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4 mb-6">
+    <div class="flex items-center gap-3">
+        <i class="ph ph-warning text-amber-500 text-xl"></i>
+        <div>
+            <p class="text-sm font-medium text-foreground">Pinterest not connected</p>
+            <p class="text-sm text-muted-foreground">
+                <a href="/settings/pinterest" class="text-coral hover:underline">Connect your credentials</a> to search the Pinterest catalog.
+            </p>
+        </div>
+    </div>
+</div>
+{% else %}
+
+<!-- Search -->
+<div class="bg-card rounded-xl border border-border overflow-hidden mb-6">
+    <div class="p-6 space-y-4">
+        <div>
+            <label for="product-group-id" class="block text-sm font-medium text-foreground mb-2">Product Group ID</label>
+            <input type="text"
+                   id="product-group-id"
+                   name="product_group_id"
+                   placeholder="Enter your Pinterest Product Group ID..."
+                   class="w-full px-3 py-2.5 bg-background border border-input rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+            <p class="text-xs text-muted-foreground mt-1">Find this in your Pinterest Catalogs dashboard</p>
+        </div>
+        <div class="flex items-center gap-4">
+            <div class="relative flex-1">
+                <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"></i>
+                <input type="search"
+                       id="catalog-search"
+                       name="q"
+                       placeholder="Filter by keyword or item ID..."
+                       hx-get="/pinterest/catalog/search"
+                       hx-trigger="keyup changed delay:500ms"
+                       hx-target="#search-results"
+                       hx-indicator="#search-spinner"
+                       hx-include="#product-group-id"
+                       class="w-full pl-10 pr-4 py-2.5 bg-background border border-input rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+            </div>
+            <button type="button"
+                    id="search-btn"
+                    class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-coral rounded-lg hover:bg-coral/90 transition-colors">
+                <i class="ph ph-magnifying-glass"></i>
+                Search
+            </button>
+            <span id="search-spinner" class="htmx-indicator">
+                <i class="ph ph-spinner-gap text-xl text-muted-foreground animate-spin"></i>
+            </span>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('search-btn')?.addEventListener('click', function() {
+    var pgId = document.getElementById('product-group-id').value;
+    var q = document.getElementById('catalog-search').value;
+    htmx.ajax('GET', '/pinterest/catalog/search?product_group_id=' + encodeURIComponent(pgId) + '&q=' + encodeURIComponent(q), '#search-results');
+});
+</script>
+
+<!-- Results -->
+<div id="search-results">
+    <div class="text-center text-muted-foreground py-12">
+        <i class="ph ph-magnifying-glass text-4xl mb-3 block opacity-40"></i>
+        <p class="text-sm">Search the Pinterest catalog to find products</p>
+    </div>
+</div>
+{% endif %}
+
+<!-- Navigation -->
+<div class="mt-8 flex items-center gap-4">
+    <a href="/pinterest/mappings"
+       class="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+        <i class="ph ph-link text-lg"></i>
+        Product Mappings
+    </a>
+    <a href="/analytics/pinterest"
+       class="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+        <i class="ph ph-chart-bar text-lg"></i>
+        Catalog Analytics
+    </a>
+</div>
+{% endblock %}

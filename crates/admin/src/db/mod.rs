@@ -36,6 +36,8 @@ pub mod meta_commerce;
 pub mod meta_orders;
 pub mod meta_products;
 pub mod pending_actions;
+pub mod pinterest_commerce;
+pub mod pinterest_products;
 pub mod request_board;
 pub mod settings;
 pub mod shiphero;
@@ -78,6 +80,12 @@ pub use meta_orders::{
 };
 pub use meta_products::{
     CreateMetaMappingParams, MetaProductMapping, MetaProductMappingRepository,
+};
+pub use pinterest_commerce::{
+    PinterestCredentials, PinterestCredentialsRepository, SavePinterestParams,
+};
+pub use pinterest_products::{
+    CreatePinterestMappingParams, PinterestProductMapping, PinterestProductMappingRepository,
 };
 pub use request_board::RequestBoardRepository;
 pub use shiphero::{SaveCredentialsParams, ShipHeroCredentials, ShipHeroCredentialsRepository};

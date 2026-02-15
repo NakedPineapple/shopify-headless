@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            DELETE FROM admin.pinterest_credentials\n            WHERE account_name = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2799b4f98929d096f6b48191b546306840b7e6ae988798aba3b89b8630eaa440"
+}

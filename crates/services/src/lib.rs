@@ -23,5 +23,6 @@ pub mod klaviyo;
 pub mod meta_commerce;
 pub mod microsoft_graph;
 pub mod openai;
+pub mod pinterest;
 pub mod slack;
 pub mod tiktok_shop;

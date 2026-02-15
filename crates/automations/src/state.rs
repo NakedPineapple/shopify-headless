@@ -7,6 +7,7 @@ use naked_pineapple_services::claude::ClaudeClient;
 use naked_pineapple_services::email::EmailService;
 use naked_pineapple_services::klaviyo::KlaviyoClient;
 use naked_pineapple_services::meta_commerce::MetaCommerceClient;
+use naked_pineapple_services::pinterest::PinterestClient;
 use naked_pineapple_services::slack::SlackClient;
 use naked_pineapple_services::tiktok_shop::TikTokShopClient;
 use sqlx::PgPool;
@@ -33,6 +34,7 @@ struct AppStateInner {
     amazon: Option<AmazonSpClient>,
     meta: Option<MetaCommerceClient>,
     tiktok: Option<TikTokShopClient>,
+    pinterest: Option<PinterestClient>,
     email_service: Option<EmailService>,
 }
 
@@ -49,6 +51,7 @@ pub struct AppStateParams {
     pub amazon: Option<AmazonSpClient>,
     pub meta: Option<MetaCommerceClient>,
     pub tiktok: Option<TikTokShopClient>,
+    pub pinterest: Option<PinterestClient>,
     pub email_service: Option<EmailService>,
 }
 
@@ -69,6 +72,7 @@ impl AppState {
                 amazon: params.amazon,
                 meta: params.meta,
                 tiktok: params.tiktok,
+                pinterest: params.pinterest,
                 email_service: params.email_service,
             }),
         }
@@ -132,6 +136,12 @@ impl AppState {
     #[must_use]
     pub fn tiktok(&self) -> Option<&TikTokShopClient> {
         self.inner.tiktok.as_ref()
+    }
+
+    /// Get a reference to the Pinterest client (if configured).
+    #[must_use]
+    pub fn pinterest(&self) -> Option<&PinterestClient> {
+        self.inner.pinterest.as_ref()
     }
 
     /// Get a reference to the SMTP email service (if configured).

@@ -75,6 +75,9 @@ pub mod meta_settings;
 pub mod newsletter;
 pub mod orders;
 pub mod payouts;
+pub mod pinterest_analytics;
+pub mod pinterest_catalog;
+pub mod pinterest_settings;
 pub mod products;
 pub mod promotions;
 pub mod proposal;
@@ -395,6 +398,10 @@ fn analytics_routes() -> Router<AppState> {
         )
         .route("/analytics/meta", get(meta_analytics::meta_sales))
         .route("/analytics/tiktok", get(tiktok_analytics::tiktok_sales))
+        .route(
+            "/analytics/pinterest",
+            get(pinterest_analytics::pinterest_analytics),
+        )
 }
 
 /// Build payout routes.
@@ -510,6 +517,10 @@ pub fn routes() -> Router<AppState> {
         .merge(tiktok_returns::router())
         // TikTok shop performance (super_admin only)
         .merge(tiktok_performance::router())
+        // Pinterest settings (super_admin only)
+        .merge(pinterest_settings::router())
+        // Pinterest catalog search & product mappings (super_admin only)
+        .merge(pinterest_catalog::router())
         // Warehouse (ShipHero visibility)
         .merge(warehouse::router())
         // Well-known endpoints (WebAuthn ROR, security.txt)

@@ -35,6 +35,7 @@ secrecy = { workspace = true }
 hmac = { workspace = true }
 sha2 = { workspace = true }
 hex = "0.4"
+base64 = { workspace = true }
 
 # AWS (Amazon SP-API request signing)
 aws-sigv4 = "1"

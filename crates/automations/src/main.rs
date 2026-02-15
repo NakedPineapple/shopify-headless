@@ -38,6 +38,7 @@ mod error;
 mod logging;
 mod meta;
 mod outbound;
+mod pinterest;
 mod scheduler;
 mod shopify;
 mod slack;
@@ -148,7 +149,8 @@ async fn main() {
         }
     });
 
-    let (amazon_client, meta_client, tiktok_client) = load_channel_clients(&pool).await;
+    let (amazon_client, meta_client, tiktok_client, pinterest_client) =
+        load_channel_clients(&pool).await;
 
     let support_pool = create_support_pool(&config).await;
     let health_port = config.health_port;
@@ -165,6 +167,7 @@ async fn main() {
         amazon: amazon_client,
         meta: meta_client,
         tiktok: tiktok_client,
+        pinterest: pinterest_client,
         email_service,
     });
 
@@ -177,13 +180,14 @@ async fn main() {
     await_graceful_shutdown(shutdown_tx, scheduler_handle).await;
 }
 
-/// Load all channel-specific API clients (Amazon, Meta, TikTok).
+/// Load all channel-specific API clients (Amazon, Meta, TikTok, Pinterest).
 async fn load_channel_clients(
     pool: &sqlx::PgPool,
 ) -> (
     Option<naked_pineapple_services::amazon_sp::AmazonSpClient>,
     Option<naked_pineapple_services::meta_commerce::MetaCommerceClient>,
     Option<naked_pineapple_services::tiktok_shop::TikTokShopClient>,
+    Option<naked_pineapple_services::pinterest::PinterestClient>,
 ) {
     let amazon = load_amazon_client(pool).await;
     log_client_status("Amazon SP-API", amazon.is_some());
@@ -194,7 +198,10 @@ async fn load_channel_clients(
     let tiktok = load_tiktok_client(pool).await;
     log_client_status("TikTok Shop", tiktok.is_some());
 
-    (amazon, meta, tiktok)
+    let pinterest = load_pinterest_client(pool).await;
+    log_client_status("Pinterest", pinterest.is_some());
+
+    (amazon, meta, tiktok, pinterest)
 }
 
 /// Log whether a channel client loaded successfully.
@@ -445,6 +452,38 @@ async fn load_tiktok_client(
         Ok(None) => None,
         Err(e) => {
             tracing::error!(error = %e, "failed to load TikTok Shop credentials");
+            None
+        }
+    }
+}
+
+/// Load Pinterest client from stored credentials in the admin database.
+async fn load_pinterest_client(
+    pool: &sqlx::PgPool,
+) -> Option<naked_pineapple_services::pinterest::PinterestClient> {
+    use naked_pineapple_services::pinterest::{PinterestClient, PinterestCredentials};
+
+    let row = sqlx::query!(
+        r"
+        SELECT app_id, app_secret, access_token, refresh_token, ad_account_id
+        FROM admin.pinterest_credentials
+        WHERE account_name = 'default'
+        "
+    )
+    .fetch_optional(pool)
+    .await;
+
+    match row {
+        Ok(Some(creds)) => Some(PinterestClient::new(PinterestCredentials {
+            app_id: creds.app_id,
+            app_secret: creds.app_secret.into(),
+            access_token: creds.access_token.into(),
+            refresh_token: creds.refresh_token.into(),
+            ad_account_id: creds.ad_account_id,
+        })),
+        Ok(None) => None,
+        Err(e) => {
+            tracing::error!(error = %e, "failed to load Pinterest credentials");
             None
         }
     }

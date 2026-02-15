@@ -1,0 +1,44 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT app_id, app_secret, access_token, refresh_token, ad_account_id\n        FROM admin.pinterest_credentials\n        WHERE account_name = 'default'\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "app_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "app_secret",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "access_token",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "refresh_token",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "ad_account_id",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "b0e8f471cac2d5b2656e5d8f5ba8164db7e703a437f40e68482a68302bc6696c"
+}
