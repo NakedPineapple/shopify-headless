@@ -106,7 +106,7 @@ pub fn router() -> Router<AppState> {
         .route("/gallery/move", post(move_image))
         .route("/gallery/rename", post(rename_image))
         .route("/gallery/image/{*path}", get(image_detail))
-        .route("/gallery/image/{*path}/metadata", post(update_metadata))
+        .route("/gallery/image-metadata/{*path}", post(update_metadata))
         .route("/gallery/serve/thumb/{*path}", get(serve_thumbnail))
         .route("/gallery/serve/original/{*path}", get(serve_original))
 }

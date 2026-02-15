@@ -24,7 +24,7 @@
         </div>
 
         <!-- Metadata form -->
-        <form hx-post="/gallery/image/{{ image.key }}/metadata"
+        <form hx-post="/gallery/image-metadata/{{ image.key }}"
               hx-target="#gallery-metadata-save-status"
               hx-swap="innerHTML"
               class="space-y-4">
