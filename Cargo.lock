@@ -3455,7 +3455,7 @@ checksum = "2195bf6aa996a481483b29d62a7663eed3fe39600c460e323f8ff41e90bdd89b"
 
 [[package]]
 name = "naked-pineapple-admin"
-version = "0.10.0"
+version = "0.10.1"
 dependencies = [
  "askama",
  "askama_web",
@@ -3513,7 +3513,7 @@ dependencies = [
 
 [[package]]
 name = "naked-pineapple-automations"
-version = "0.10.0"
+version = "0.10.1"
 dependencies = [
  "askama",
  "axum",
@@ -3543,7 +3543,7 @@ dependencies = [
 
 [[package]]
 name = "naked-pineapple-cli"
-version = "0.10.0"
+version = "0.10.1"
 dependencies = [
  "clap",
  "dotenvy",
@@ -3563,7 +3563,7 @@ dependencies = [
 
 [[package]]
 name = "naked-pineapple-core"
-version = "0.10.0"
+version = "0.10.1"
 dependencies = [
  "chrono",
  "rust_decimal",
@@ -3576,7 +3576,7 @@ dependencies = [
 
 [[package]]
 name = "naked-pineapple-crypto"
-version = "0.10.0"
+version = "0.10.1"
 dependencies = [
  "argon2",
  "secrecy",
@@ -3585,7 +3585,7 @@ dependencies = [
 
 [[package]]
 name = "naked-pineapple-integration-tests"
-version = "0.10.0"
+version = "0.10.1"
 dependencies = [
  "naked-pineapple-admin",
  "naked-pineapple-core",
@@ -3601,7 +3601,7 @@ dependencies = [
 
 [[package]]
 name = "naked-pineapple-services"
-version = "0.10.0"
+version = "0.10.1"
 dependencies = [
  "async-stream",
  "aws-credential-types",
@@ -3627,7 +3627,7 @@ dependencies = [
 
 [[package]]
 name = "naked-pineapple-storefront"
-version = "0.10.0"
+version = "0.10.1"
 dependencies = [
  "ammonia",
  "askama",
@@ -3677,7 +3677,7 @@ dependencies = [
 
 [[package]]
 name = "naked-pineapple-support"
-version = "0.10.0"
+version = "0.10.1"
 dependencies = [
  "async-stream",
  "chrono",
