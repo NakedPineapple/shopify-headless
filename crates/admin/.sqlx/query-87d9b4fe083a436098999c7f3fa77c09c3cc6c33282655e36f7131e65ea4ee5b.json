@@ -1,0 +1,41 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                COUNT(*) as \"total_orders!\",\n                COALESCE(SUM(CAST(order_total AS DECIMAL)), 0) as \"total_revenue!: Decimal\",\n                COALESCE(SUM(CAST(faire_commission AS DECIMAL)), 0) as \"total_commission!: Decimal\",\n                COALESCE(SUM(CAST(net_payout AS DECIMAL)), 0) as \"net_payout!: Decimal\"\n            FROM admin.faire_orders\n            WHERE order_state != 'CANCELED'\n              AND created_at_faire >= $1::date\n              AND created_at_faire < ($2::date + INTERVAL '1 day')\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "total_orders!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "total_revenue!: Decimal",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 2,
+        "name": "total_commission!: Decimal",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 3,
+        "name": "net_payout!: Decimal",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Date",
+        "Date"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "87d9b4fe083a436098999c7f3fa77c09c3cc6c33282655e36f7131e65ea4ee5b"
+}

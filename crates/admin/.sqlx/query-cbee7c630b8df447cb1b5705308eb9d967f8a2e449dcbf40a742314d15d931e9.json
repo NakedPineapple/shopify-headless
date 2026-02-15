@@ -1,0 +1,174 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                id, faire_order_token, shopify_order_id,\n                order_state,\n                created_at_faire as \"created_at_faire: DateTime<Utc>\",\n                retailer_id, retailer_name, retailer_email, retailer_phone,\n                ship_name, ship_street1, ship_street2,\n                ship_city, ship_state, ship_postal_code, ship_country,\n                order_total, currency, shipping_cost,\n                faire_commission, net_payout,\n                is_first_order, payment_terms,\n                raw_json,\n                created_at as \"created_at: DateTime<Utc>\",\n                updated_at as \"updated_at: DateTime<Utc>\"\n            FROM admin.faire_orders\n            WHERE ($1::text IS NULL OR order_state = $1)\n            ORDER BY created_at_faire DESC NULLS LAST\n            LIMIT $2 OFFSET $3\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "faire_order_token",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "shopify_order_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "order_state",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at_faire: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "retailer_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "retailer_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "retailer_email",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "retailer_phone",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "ship_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "ship_street1",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 11,
+        "name": "ship_street2",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 12,
+        "name": "ship_city",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 13,
+        "name": "ship_state",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 14,
+        "name": "ship_postal_code",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 15,
+        "name": "ship_country",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 16,
+        "name": "order_total",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 17,
+        "name": "currency",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 18,
+        "name": "shipping_cost",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 19,
+        "name": "faire_commission",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 20,
+        "name": "net_payout",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 21,
+        "name": "is_first_order",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 22,
+        "name": "payment_terms",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 23,
+        "name": "raw_json",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 24,
+        "name": "created_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 25,
+        "name": "updated_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "cbee7c630b8df447cb1b5705308eb9d967f8a2e449dcbf40a742314d15d931e9"
+}

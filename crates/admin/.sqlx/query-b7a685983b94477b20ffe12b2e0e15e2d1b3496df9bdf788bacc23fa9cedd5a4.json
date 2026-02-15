@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO admin.faire_payout_line_items (\n                faire_payout_token, faire_order_token,\n                order_amount, refund_amount, commission_amount,\n                shipping_fee, net_amount\n            )\n            VALUES ($1, $2, $3, $4, $5, $6, $7)\n            ON CONFLICT (faire_payout_token, faire_order_token) DO UPDATE SET\n                order_amount = EXCLUDED.order_amount,\n                refund_amount = EXCLUDED.refund_amount,\n                commission_amount = EXCLUDED.commission_amount,\n                shipping_fee = EXCLUDED.shipping_fee,\n                net_amount = EXCLUDED.net_amount\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b7a685983b94477b20ffe12b2e0e15e2d1b3496df9bdf788bacc23fa9cedd5a4"
+}

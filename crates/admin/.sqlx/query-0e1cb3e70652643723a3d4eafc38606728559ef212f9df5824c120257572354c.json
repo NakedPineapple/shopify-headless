@@ -1,0 +1,64 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                id, faire_payout_token, faire_order_token,\n                order_amount, refund_amount, commission_amount,\n                shipping_fee, net_amount\n            FROM admin.faire_payout_line_items\n            WHERE faire_payout_token = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "faire_payout_token",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "faire_order_token",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "order_amount",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "refund_amount",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "commission_amount",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "shipping_fee",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "net_amount",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "0e1cb3e70652643723a3d4eafc38606728559ef212f9df5824c120257572354c"
+}

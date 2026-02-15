@@ -1,0 +1,44 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO admin.faire_orders (\n                faire_order_token, shopify_order_id, order_state,\n                created_at_faire,\n                retailer_id, retailer_name, retailer_email, retailer_phone,\n                ship_name, ship_street1, ship_street2,\n                ship_city, ship_state, ship_postal_code, ship_country,\n                order_total, currency, shipping_cost,\n                faire_commission, net_payout,\n                is_first_order, payment_terms,\n                raw_json\n            )\n            VALUES (\n                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,\n                $11, $12, $13, $14, $15, $16, $17, $18,\n                $19, $20, $21, $22, $23\n            )\n            ON CONFLICT (faire_order_token) DO UPDATE SET\n                order_state = EXCLUDED.order_state,\n                faire_commission = EXCLUDED.faire_commission,\n                net_payout = EXCLUDED.net_payout,\n                payment_terms = EXCLUDED.payment_terms,\n                raw_json = EXCLUDED.raw_json,\n                updated_at = (CURRENT_TIMESTAMP AT TIME ZONE 'utc')\n            RETURNING id as \"id!\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Timestamptz",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Bool",
+        "Text",
+        "Jsonb"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "bb617328cf4edd529b07a9fd331f5d9ed7931a58614f5fa9393abce7cdde3883"
+}

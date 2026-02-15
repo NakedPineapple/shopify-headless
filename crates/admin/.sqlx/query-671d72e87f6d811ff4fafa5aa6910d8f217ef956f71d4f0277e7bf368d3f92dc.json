@@ -1,0 +1,35 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                created_at_faire::date as \"date!: NaiveDate\",\n                COUNT(*) as \"order_count!\",\n                COALESCE(SUM(CAST(order_total AS DECIMAL)), 0) as \"total_revenue!: Decimal\"\n            FROM admin.faire_orders\n            WHERE order_state != 'CANCELED'\n              AND created_at_faire >= $1::date\n              AND created_at_faire < ($2::date + INTERVAL '1 day')\n            GROUP BY created_at_faire::date\n            ORDER BY created_at_faire::date\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "date!: NaiveDate",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 1,
+        "name": "order_count!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "total_revenue!: Decimal",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Date",
+        "Date"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "671d72e87f6d811ff4fafa5aa6910d8f217ef956f71d4f0277e7bf368d3f92dc"
+}

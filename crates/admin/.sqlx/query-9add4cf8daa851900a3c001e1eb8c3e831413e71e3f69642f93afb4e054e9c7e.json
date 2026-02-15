@@ -1,0 +1,108 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                id, faire_payout_token,\n                payout_period_start as \"payout_period_start: DateTime<Utc>\",\n                payout_period_end as \"payout_period_end: DateTime<Utc>\",\n                total_revenue, total_refunds,\n                total_commission, total_shipping_fees,\n                net_payout, currency,\n                payout_status,\n                payout_date as \"payout_date: DateTime<Utc>\",\n                raw_json,\n                created_at as \"created_at: DateTime<Utc>\",\n                updated_at as \"updated_at: DateTime<Utc>\"\n            FROM admin.faire_payouts\n            WHERE ($3::text IS NULL OR payout_status = $3)\n            ORDER BY payout_period_end DESC NULLS LAST\n            LIMIT $1 OFFSET $2\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "faire_payout_token",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "payout_period_start: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 3,
+        "name": "payout_period_end: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 4,
+        "name": "total_revenue",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "total_refunds",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "total_commission",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "total_shipping_fees",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "net_payout",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "currency",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "payout_status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 11,
+        "name": "payout_date: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 12,
+        "name": "raw_json",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 13,
+        "name": "created_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 14,
+        "name": "updated_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "9add4cf8daa851900a3c001e1eb8c3e831413e71e3f69642f93afb4e054e9c7e"
+}

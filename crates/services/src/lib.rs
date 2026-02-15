@@ -18,6 +18,8 @@ pub mod amazon_sp;
 pub mod claude;
 pub mod config;
 pub mod email;
+pub mod faire;
+pub mod google_merchant;
 pub mod judgeme;
 pub mod klaviyo;
 pub mod meta_commerce;

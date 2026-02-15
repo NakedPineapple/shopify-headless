@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO admin.faire_credentials (\n                account_name,\n                brand_id,\n                api_token,\n                connected_by,\n                connected_at\n            )\n            VALUES ($1, $2, $3, $4, (CURRENT_TIMESTAMP AT TIME ZONE 'utc'))\n            ON CONFLICT(account_name) DO UPDATE SET\n                brand_id = EXCLUDED.brand_id,\n                api_token = EXCLUDED.api_token,\n                connected_by = EXCLUDED.connected_by,\n                connected_at = EXCLUDED.connected_at,\n                updated_at = (CURRENT_TIMESTAMP AT TIME ZONE 'utc')\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a42f4fd6b890b42635cdb446860dc027324e4485f165d5f8ba6418a04368d627"
+}

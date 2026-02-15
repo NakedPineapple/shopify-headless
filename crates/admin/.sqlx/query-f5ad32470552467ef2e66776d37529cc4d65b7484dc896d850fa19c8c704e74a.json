@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO admin.faire_order_items (\n                faire_order_token, product_token, product_option_token,\n                product_name, quantity, unit_price, total_price, sku\n            )\n            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)\n            ON CONFLICT (faire_order_token, product_token) DO UPDATE SET\n                product_option_token = EXCLUDED.product_option_token,\n                product_name = EXCLUDED.product_name,\n                quantity = EXCLUDED.quantity,\n                unit_price = EXCLUDED.unit_price,\n                total_price = EXCLUDED.total_price,\n                sku = EXCLUDED.sku\n            RETURNING id as \"id!\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Int4",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "f5ad32470552467ef2e66776d37529cc4d65b7484dc896d850fa19c8c704e74a"
+}

@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT COUNT(DISTINCT retailer_id) as \"count!\"\n            FROM admin.faire_orders\n            WHERE retailer_id IS NOT NULL\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "4fbc15d5bf008250557f7aaac5b6354dd72c9f5854c6578f2c5d06bee7a645ac"
+}

@@ -28,7 +28,14 @@ pub mod amazon_products;
 pub mod chat;
 pub mod documents;
 pub mod expense;
+pub mod faire_commerce;
+pub mod faire_orders;
+pub mod faire_payouts;
+pub mod faire_products;
+pub mod faire_returns;
 pub mod gallery;
+pub mod google_commerce;
+pub mod google_products;
 pub mod inbound_email;
 pub mod inventory_lot;
 pub mod manufacturing;
@@ -69,6 +76,20 @@ pub use amazon_products::{
 };
 pub use chat::ChatRepository;
 pub use expense::ExpenseRepository;
+pub use faire_commerce::{FaireCredentials, FaireCredentialsRepository, SaveFaireParams};
+pub use faire_orders::{
+    CachedFaireOrder, CachedFaireOrderItem, FaireDailyRevenue, FaireOrderRepository,
+    FaireRevenueSummary, RetailerBreakdown,
+};
+pub use faire_payouts::{CachedFairePayout, CachedFairePayoutLineItem, FairePayoutRepository};
+pub use faire_products::{
+    CreateFaireMappingParams, FaireProductMapping, FaireProductMappingRepository,
+};
+pub use faire_returns::{CachedFaireReturn, FaireReturnRepository};
+pub use google_commerce::{GoogleCredentials, GoogleCredentialsRepository, SaveGoogleParams};
+pub use google_products::{
+    CreateGoogleMappingParams, GoogleProductMapping, GoogleProductMappingRepository,
+};
 pub use inventory_lot::InventoryLotRepository;
 pub use manufacturing::ManufacturingRepository;
 pub use meta_commerce::{

@@ -1,0 +1,132 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Google Catalog Health{% endblock %}
+
+{% block page_title %}
+<div>
+    <h1 class="text-2xl font-semibold text-foreground">Google Catalog Health</h1>
+    <p class="text-sm text-muted-foreground mt-1">Product coverage and catalog status on Google Shopping &amp; YouTube Shopping</p>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Sub-navigation -->
+<div class="mb-6 border-b border-border">
+    <nav class="flex gap-6">
+        <a href="/analytics" class="text-muted-foreground py-3 hover:text-foreground transition-colors">
+            Overview
+        </a>
+        <a href="/analytics/attribution" class="text-muted-foreground py-3 hover:text-foreground transition-colors">
+            Attribution
+        </a>
+        <a href="/analytics/channels" class="text-muted-foreground py-3 hover:text-foreground transition-colors">
+            Channels
+        </a>
+        <a href="/analytics/amazon" class="text-muted-foreground py-3 hover:text-foreground transition-colors">
+            Amazon
+        </a>
+        <a href="/analytics/meta" class="text-muted-foreground py-3 hover:text-foreground transition-colors">
+            Meta
+        </a>
+        <a href="/analytics/tiktok" class="text-muted-foreground py-3 hover:text-foreground transition-colors">
+            TikTok
+        </a>
+        <a href="/analytics/pinterest" class="text-muted-foreground py-3 hover:text-foreground transition-colors">
+            Pinterest
+        </a>
+        <a href="/analytics/google" class="text-foreground py-3 border-b-2 border-coral">
+            Google
+        </a>
+        <a href="/analytics/faire" class="text-muted-foreground py-3 hover:text-foreground transition-colors">
+            Faire
+        </a>
+    </nav>
+</div>
+
+{% if !connected %}
+<!-- Not Connected State -->
+<div class="bg-card rounded-xl border border-border p-12 text-center">
+    <div class="w-16 h-16 rounded-full bg-[#4285F4]/10 flex items-center justify-center mx-auto mb-4">
+        <i class="ph ph-google-logo text-3xl text-[#4285F4]"></i>
+    </div>
+    <h3 class="text-lg font-semibold text-foreground mb-2">Google Merchant Center Not Connected</h3>
+    <p class="text-muted-foreground max-w-md mx-auto mb-4">
+        Connect your Google Merchant Center credentials in Settings to start tracking catalog health metrics.
+    </p>
+    <a href="/settings/google" class="inline-flex items-center gap-2 px-4 py-2 bg-[#4285F4] text-white rounded-lg hover:bg-[#3367D6] transition-colors">
+        <i class="ph ph-plug"></i>
+        Connect Google
+    </a>
+</div>
+{% else %}
+<!-- Summary Cards -->
+<div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
+    <div class="bg-card rounded-xl p-5 border border-border">
+        <div class="flex items-center gap-3 mb-2">
+            <div class="w-8 h-8 rounded-lg bg-[#4285F4]/10 flex items-center justify-center">
+                <i class="ph ph-plugs-connected text-lg text-[#4285F4]"></i>
+            </div>
+            <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</p>
+        </div>
+        <p class="text-lg font-semibold text-green-600 dark:text-green-400">Connected</p>
+    </div>
+    <div class="bg-card rounded-xl p-5 border border-border">
+        <div class="flex items-center gap-3 mb-2">
+            <div class="w-8 h-8 rounded-lg bg-coral/10 flex items-center justify-center">
+                <i class="ph ph-link text-lg text-coral"></i>
+            </div>
+            <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider">Product Mappings</p>
+        </div>
+        <p class="text-xl font-semibold text-foreground tabular-nums">{{ mapping_count }}</p>
+    </div>
+    <div class="bg-card rounded-xl p-5 border border-border">
+        <div class="flex items-center gap-3 mb-2">
+            <div class="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                <i class="ph ph-info text-lg text-blue-500"></i>
+            </div>
+            <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider">Platform</p>
+        </div>
+        <p class="text-sm text-muted-foreground">Discovery &amp; catalog sync only — purchases happen on your storefront</p>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="bg-card rounded-xl border border-border overflow-hidden">
+    <div class="px-6 py-4 border-b border-border">
+        <h3 class="font-semibold text-foreground">Quick Actions</h3>
+    </div>
+    <div class="p-6 grid sm:grid-cols-3 gap-4">
+        <a href="/google/catalog"
+           class="flex items-center gap-3 p-4 rounded-xl border border-border hover:border-coral/30 hover:bg-muted/30 transition-colors">
+            <div class="w-10 h-10 rounded-lg bg-coral/10 flex items-center justify-center">
+                <i class="ph ph-magnifying-glass text-xl text-coral"></i>
+            </div>
+            <div>
+                <p class="text-sm font-medium text-foreground">Search Catalog</p>
+                <p class="text-xs text-muted-foreground">Browse Google products</p>
+            </div>
+        </a>
+        <a href="/google/mappings"
+           class="flex items-center gap-3 p-4 rounded-xl border border-border hover:border-coral/30 hover:bg-muted/30 transition-colors">
+            <div class="w-10 h-10 rounded-lg bg-coral/10 flex items-center justify-center">
+                <i class="ph ph-link text-xl text-coral"></i>
+            </div>
+            <div>
+                <p class="text-sm font-medium text-foreground">Product Mappings</p>
+                <p class="text-xs text-muted-foreground">{{ mapping_count }} mapped</p>
+            </div>
+        </a>
+        <a href="/settings/google"
+           class="flex items-center gap-3 p-4 rounded-xl border border-border hover:border-coral/30 hover:bg-muted/30 transition-colors">
+            <div class="w-10 h-10 rounded-lg bg-coral/10 flex items-center justify-center">
+                <i class="ph ph-gear text-xl text-coral"></i>
+            </div>
+            <div>
+                <p class="text-sm font-medium text-foreground">Settings</p>
+                <p class="text-xs text-muted-foreground">Manage credentials</p>
+            </div>
+        </a>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

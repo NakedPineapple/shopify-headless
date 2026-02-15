@@ -64,9 +64,18 @@ pub mod discounts;
 pub mod documents;
 pub mod emails;
 pub mod expenses;
+pub mod faire_analytics;
+pub mod faire_catalog;
+pub mod faire_orders;
+pub mod faire_payouts;
+pub mod faire_returns;
+pub mod faire_settings;
 pub mod financials;
 pub mod gallery;
 pub mod gift_cards;
+pub mod google_analytics;
+pub mod google_catalog;
+pub mod google_settings;
 pub mod inventory;
 pub mod meta_analytics;
 pub mod meta_catalog;
@@ -402,6 +411,8 @@ fn analytics_routes() -> Router<AppState> {
             "/analytics/pinterest",
             get(pinterest_analytics::pinterest_analytics),
         )
+        .route("/analytics/google", get(google_analytics::google_analytics))
+        .route("/analytics/faire", get(faire_analytics::faire_analytics))
 }
 
 /// Build payout routes.
@@ -521,6 +532,20 @@ pub fn routes() -> Router<AppState> {
         .merge(pinterest_settings::router())
         // Pinterest catalog search & product mappings (super_admin only)
         .merge(pinterest_catalog::router())
+        // Google Merchant Center settings (super_admin only)
+        .merge(google_settings::router())
+        // Google catalog search & product mappings (super_admin only)
+        .merge(google_catalog::router())
+        // Faire settings (super_admin only)
+        .merge(faire_settings::router())
+        // Faire catalog search & product mappings (super_admin only)
+        .merge(faire_catalog::router())
+        // Faire wholesale orders (super_admin only)
+        .merge(faire_orders::router())
+        // Faire wholesale returns (super_admin only)
+        .merge(faire_returns::router())
+        // Faire payouts/settlements (super_admin only)
+        .merge(faire_payouts::router())
         // Warehouse (ShipHero visibility)
         .merge(warehouse::router())
         // Well-known endpoints (WebAuthn ROR, security.txt)

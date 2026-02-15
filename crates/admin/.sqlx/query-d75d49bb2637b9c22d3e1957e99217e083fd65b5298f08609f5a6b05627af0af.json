@@ -1,0 +1,70 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                id, faire_order_token, product_token,\n                product_option_token, product_name,\n                quantity, unit_price, total_price, sku\n            FROM admin.faire_order_items\n            WHERE faire_order_token = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "faire_order_token",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "product_token",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "product_option_token",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "product_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "quantity",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "unit_price",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "total_price",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "sku",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "d75d49bb2637b9c22d3e1957e99217e083fd65b5298f08609f5a6b05627af0af"
+}

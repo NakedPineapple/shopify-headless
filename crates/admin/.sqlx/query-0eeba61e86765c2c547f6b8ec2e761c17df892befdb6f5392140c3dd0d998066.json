@@ -1,0 +1,73 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO admin.faire_product_mapping (\n                shopify_product_id,\n                shopify_variant_id,\n                faire_product_token,\n                match_type\n            )\n            VALUES ($1, $2, $3, $4)\n            ON CONFLICT (faire_product_token) DO UPDATE SET\n                shopify_product_id = EXCLUDED.shopify_product_id,\n                shopify_variant_id = EXCLUDED.shopify_variant_id,\n                match_type = EXCLUDED.match_type,\n                updated_at = (CURRENT_TIMESTAMP AT TIME ZONE 'utc')\n            RETURNING\n                id,\n                shopify_product_id,\n                shopify_variant_id,\n                faire_product_token,\n                match_type,\n                status,\n                last_sync_at as \"last_sync_at: DateTime<Utc>\",\n                created_at as \"created_at: DateTime<Utc>\",\n                updated_at as \"updated_at: DateTime<Utc>\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "shopify_product_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "shopify_variant_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "faire_product_token",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "match_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "last_sync_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 7,
+        "name": "created_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "updated_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "0eeba61e86765c2c547f6b8ec2e761c17df892befdb6f5392140c3dd0d998066"
+}

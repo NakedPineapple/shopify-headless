@@ -1,0 +1,33 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO admin.faire_payouts (\n                faire_payout_token, payout_period_start, payout_period_end,\n                total_revenue, total_refunds,\n                total_commission, total_shipping_fees,\n                net_payout, currency,\n                payout_status, payout_date, raw_json\n            )\n            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)\n            ON CONFLICT (faire_payout_token) DO UPDATE SET\n                payout_status = EXCLUDED.payout_status,\n                total_revenue = EXCLUDED.total_revenue,\n                total_refunds = EXCLUDED.total_refunds,\n                total_commission = EXCLUDED.total_commission,\n                total_shipping_fees = EXCLUDED.total_shipping_fees,\n                net_payout = EXCLUDED.net_payout,\n                payout_date = EXCLUDED.payout_date,\n                raw_json = EXCLUDED.raw_json,\n                updated_at = (CURRENT_TIMESTAMP AT TIME ZONE 'utc')\n            RETURNING id as \"id!\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Timestamptz",
+        "Timestamptz",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Timestamptz",
+        "Jsonb"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "d69b3e1e617c9be3df3d7cf888b1e872632d0277d347361957a31ba8d508695b"
+}

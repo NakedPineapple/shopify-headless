@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE admin.faire_returns\n            SET\n                return_status = $2,\n                updated_at = (CURRENT_TIMESTAMP AT TIME ZONE 'utc')\n            WHERE faire_return_token = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "3bf073661471d6707f0791231d15c09b3ecd4b4a67375401ebb175dad861f1b5"
+}

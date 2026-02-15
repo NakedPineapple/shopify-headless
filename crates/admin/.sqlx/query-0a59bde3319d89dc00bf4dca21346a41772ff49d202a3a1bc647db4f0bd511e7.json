@@ -1,0 +1,30 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO admin.faire_returns (\n                faire_return_token, faire_order_token, return_status,\n                return_reason, retailer_note,\n                refund_amount, currency,\n                decision_deadline, raw_json\n            )\n            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)\n            ON CONFLICT (faire_return_token) DO UPDATE SET\n                return_status = EXCLUDED.return_status,\n                return_reason = EXCLUDED.return_reason,\n                retailer_note = EXCLUDED.retailer_note,\n                refund_amount = EXCLUDED.refund_amount,\n                decision_deadline = EXCLUDED.decision_deadline,\n                raw_json = EXCLUDED.raw_json,\n                updated_at = (CURRENT_TIMESTAMP AT TIME ZONE 'utc')\n            RETURNING id as \"id!\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Timestamptz",
+        "Jsonb"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "0a59bde3319d89dc00bf4dca21346a41772ff49d202a3a1bc647db4f0bd511e7"
+}

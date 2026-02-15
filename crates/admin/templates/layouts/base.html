@@ -113,6 +113,16 @@
                         <i class="ph ph-pinterest-logo text-xl"></i>
                         <span class="sidebar-text">Pinterest</span>
                     </a>
+                    <a href="/google/catalog"
+                       class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors {% if current_path.starts_with("/google") %}bg-coral text-white{% else %}text-sidebar-foreground hover:bg-sidebar-accent hover:text-white{% endif %}">
+                        <i class="ph ph-google-logo text-xl"></i>
+                        <span class="sidebar-text">Google</span>
+                    </a>
+                    <a href="/faire/catalog"
+                       class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors {% if current_path.starts_with("/faire") %}bg-coral text-white{% else %}text-sidebar-foreground hover:bg-sidebar-accent hover:text-white{% endif %}">
+                        <i class="ph ph-storefront text-xl"></i>
+                        <span class="sidebar-text">Faire</span>
+                    </a>
                     <a href="/discounts"
                        class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors {% if current_path.starts_with("/discounts") %}bg-coral text-white{% else %}text-sidebar-foreground hover:bg-sidebar-accent hover:text-white{% endif %}">
                         <i class="ph ph-tag text-xl"></i>
@@ -255,6 +265,16 @@
                            class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors {% if current_path.starts_with("/settings/pinterest") %}bg-coral text-white{% else %}text-sidebar-foreground hover:bg-sidebar-accent hover:text-white{% endif %}">
                             <i class="ph ph-pinterest-logo text-xl"></i>
                             <span class="sidebar-text">Pinterest</span>
+                        </a>
+                        <a href="/settings/google"
+                           class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors {% if current_path.starts_with("/settings/google") %}bg-coral text-white{% else %}text-sidebar-foreground hover:bg-sidebar-accent hover:text-white{% endif %}">
+                            <i class="ph ph-google-logo text-xl"></i>
+                            <span class="sidebar-text">Google Merchant</span>
+                        </a>
+                        <a href="/settings/faire"
+                           class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors {% if current_path.starts_with("/settings/faire") %}bg-coral text-white{% else %}text-sidebar-foreground hover:bg-sidebar-accent hover:text-white{% endif %}">
+                            <i class="ph ph-storefront text-xl"></i>
+                            <span class="sidebar-text">Faire</span>
                         </a>
                     </div>
                 </div>

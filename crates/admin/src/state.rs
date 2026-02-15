@@ -10,6 +10,8 @@ use url::Url;
 use webauthn_rs::prelude::*;
 
 use naked_pineapple_services::amazon_sp::{AmazonSpClient, InventorySummary, PricingResult};
+use naked_pineapple_services::faire::FaireClient;
+use naked_pineapple_services::google_merchant::GoogleMerchantClient;
 use naked_pineapple_services::judgeme::JudgemeClient;
 use naked_pineapple_services::meta_commerce::MetaCommerceClient;
 use naked_pineapple_services::microsoft_graph::M365Client;
@@ -64,6 +66,8 @@ struct AppStateInner {
     meta: Option<MetaCommerceClient>,
     tiktok: Option<TikTokShopClient>,
     pinterest: Option<PinterestClient>,
+    google: Option<GoogleMerchantClient>,
+    faire: Option<FaireClient>,
     fba_cache: Cache<String, Vec<InventorySummary>>,
     pricing_cache: Cache<String, Vec<PricingResult>>,
     slack: Option<SlackClient>,
@@ -84,6 +88,8 @@ struct Integrations {
     meta: Option<MetaCommerceClient>,
     tiktok: Option<TikTokShopClient>,
     pinterest: Option<PinterestClient>,
+    google: Option<GoogleMerchantClient>,
+    faire: Option<FaireClient>,
     slack: Option<SlackClient>,
     m365: Option<M365Client>,
     r2: Option<R2Client>,
@@ -189,6 +195,8 @@ impl AppState {
                 meta: integrations.meta,
                 tiktok: integrations.tiktok,
                 pinterest: integrations.pinterest,
+                google: integrations.google,
+                faire: integrations.faire,
                 fba_cache,
                 pricing_cache,
                 slack: integrations.slack,
@@ -316,6 +324,18 @@ impl AppState {
         self.inner.pinterest.as_ref()
     }
 
+    /// Get a reference to the Google Merchant Center client (if configured).
+    #[must_use]
+    pub fn google(&self) -> Option<&GoogleMerchantClient> {
+        self.inner.google.as_ref()
+    }
+
+    /// Get a reference to the Faire client (if configured).
+    #[must_use]
+    pub fn faire(&self) -> Option<&FaireClient> {
+        self.inner.faire.as_ref()
+    }
+
     /// Get a reference to the FBA inventory cache (5-min TTL).
     #[must_use]
     pub fn fba_cache(&self) -> &Cache<String, Vec<InventorySummary>> {
@@ -340,6 +360,8 @@ impl AppState {
         let meta = Self::init_meta(pool).await;
         let tiktok = Self::init_tiktok(pool).await;
         let pinterest = Self::init_pinterest(pool).await;
+        let google = Self::init_google(pool).await;
+        let faire = Self::init_faire(pool).await;
 
         Integrations {
             support_pool,
@@ -349,6 +371,8 @@ impl AppState {
             meta,
             tiktok,
             pinterest,
+            google,
+            faire,
             slack,
             m365,
             r2,
@@ -627,6 +651,32 @@ impl AppState {
         }
     }
 
+    /// Initialize Google Merchant Center from stored credentials.
+    async fn init_google(pool: &PgPool) -> Option<GoogleMerchantClient> {
+        let google = Self::load_google_client(pool).await;
+        if google.is_some() {
+            tracing::info!("Google Merchant Center client initialized from stored credentials");
+        } else {
+            tracing::info!(
+                "Google Merchant Center not configured — Google features disabled until credentials added via /settings/google"
+            );
+        }
+        google
+    }
+
+    /// Initialize Faire from stored credentials.
+    async fn init_faire(pool: &PgPool) -> Option<FaireClient> {
+        let faire = Self::load_faire_client(pool).await;
+        if faire.is_some() {
+            tracing::info!("Faire client initialized from stored credentials");
+        } else {
+            tracing::info!(
+                "Faire not configured — Faire features disabled until credentials added via /settings/faire"
+            );
+        }
+        faire
+    }
+
     /// Load Pinterest client from stored credentials.
     async fn load_pinterest_client(pool: &PgPool) -> Option<PinterestClient> {
         use crate::db::PinterestCredentialsRepository;
@@ -645,6 +695,49 @@ impl AppState {
             Ok(None) => None,
             Err(e) => {
                 tracing::error!(error = %e, "Failed to load Pinterest credentials from database");
+                None
+            }
+        }
+    }
+
+    /// Load Google Merchant Center client from stored credentials.
+    async fn load_google_client(pool: &PgPool) -> Option<GoogleMerchantClient> {
+        use crate::db::GoogleCredentialsRepository;
+        use naked_pineapple_services::google_merchant::GoogleMerchantCredentials;
+
+        let repo = GoogleCredentialsRepository::new(pool);
+
+        match repo.get_default().await {
+            Ok(Some(creds)) => Some(GoogleMerchantClient::new(GoogleMerchantCredentials {
+                merchant_id: creds.merchant_id,
+                client_id: creds.client_id,
+                client_secret: creds.client_secret,
+                access_token: creds.access_token,
+                refresh_token: creds.refresh_token,
+            })),
+            Ok(None) => None,
+            Err(e) => {
+                tracing::error!(error = %e, "Failed to load Google Merchant Center credentials from database");
+                None
+            }
+        }
+    }
+
+    /// Load Faire client from stored credentials.
+    async fn load_faire_client(pool: &PgPool) -> Option<FaireClient> {
+        use crate::db::FaireCredentialsRepository;
+        use naked_pineapple_services::faire::FaireCredentials as ApiCredentials;
+
+        let repo = FaireCredentialsRepository::new(pool);
+
+        match repo.get_default().await {
+            Ok(Some(creds)) => Some(FaireClient::new(ApiCredentials {
+                brand_id: creds.brand_id,
+                api_token: creds.api_token,
+            })),
+            Ok(None) => None,
+            Err(e) => {
+                tracing::error!(error = %e, "Failed to load Faire credentials from database");
                 None
             }
         }

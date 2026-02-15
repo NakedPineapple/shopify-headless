@@ -1,0 +1,80 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                id,\n                account_name,\n                merchant_id,\n                client_id,\n                client_secret,\n                access_token,\n                refresh_token,\n                token_expires_at,\n                connected_by,\n                connected_at as \"connected_at: DateTime<Utc>\",\n                last_used_at as \"last_used_at: DateTime<Utc>\"\n            FROM admin.google_credentials\n            WHERE account_name = 'default'\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "account_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "merchant_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "client_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "client_secret",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "access_token",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "refresh_token",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "token_expires_at",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 8,
+        "name": "connected_by",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 9,
+        "name": "connected_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "last_used_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "be3b27743b3bfba8b97a7802e3049e7d5b124e82c096254c755e788e2202c332"
+}

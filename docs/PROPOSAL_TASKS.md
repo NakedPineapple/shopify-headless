@@ -46,6 +46,6 @@ Features described in `crates/admin/templates/proposal/` that are not yet implem
 - [X] **Facebook and Instagram** — Mentioned as a connected sales channel; no API client or sync logic implemented.
 - [X] **TikTok** — Mentioned as a connected sales channel; no API client or sync logic implemented.
 - [X] **Pinterest** — Mentioned as a connected sales channel; no API client or sync logic implemented.
-- [ ] **Google and Youtubet** — Mentioned as a connected sales channel; no API client or sync logic implemented.
-- [ ] **Faire wholesale marketplace** — Mentioned as a connected sales channel; no API client or sync logic implemented.
+- [X] **Google and Youtubet** — Mentioned as a connected sales channel; no API client or sync logic implemented.
+- [X] **Faire wholesale marketplace** — Mentioned as a connected sales channel; no API client or sync logic implemented.
 

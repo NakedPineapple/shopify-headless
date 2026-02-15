@@ -1,0 +1,90 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                id, faire_return_token, faire_order_token,\n                return_status, return_reason,\n                retailer_note,\n                refund_amount, currency,\n                decision_deadline as \"decision_deadline: DateTime<Utc>\",\n                raw_json,\n                created_at as \"created_at: DateTime<Utc>\",\n                updated_at as \"updated_at: DateTime<Utc>\"\n            FROM admin.faire_returns\n            WHERE ($3::text IS NULL OR return_status = $3)\n            ORDER BY created_at DESC\n            LIMIT $1 OFFSET $2\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "faire_return_token",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "faire_order_token",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "return_status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "return_reason",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "retailer_note",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "refund_amount",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "currency",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "decision_deadline: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "raw_json",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 10,
+        "name": "created_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 11,
+        "name": "updated_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "0cedca02740580820f7221189de2a4b13c3dfbe57df27cd2d8c928ba63123457"
+}
