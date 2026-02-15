@@ -22,6 +22,7 @@ use crate::amazon;
 use crate::meta;
 use crate::outbound;
 use crate::state::AppState;
+use crate::tiktok;
 use crate::triage;
 use crate::workflows;
 
@@ -95,12 +96,26 @@ impl Scheduler {
             interval(Duration::from_secs(config.amazon_order_poll_interval_secs));
         let mut meta_order_poll =
             interval(Duration::from_secs(config.meta_order_poll_interval_secs));
+        let mut tiktok_order_poll =
+            interval(Duration::from_secs(config.tiktok_order_poll_interval_secs));
+        let mut tiktok_settlement_poll = interval(Duration::from_secs(
+            config.tiktok_settlement_poll_interval_secs,
+        ));
+        let mut tiktok_return_poll =
+            interval(Duration::from_secs(config.tiktok_return_poll_interval_secs));
+        let mut tiktok_performance_poll = interval(Duration::from_secs(
+            config.tiktok_performance_poll_interval_secs,
+        ));
 
         tracing::info!(
             email_poll_secs = config.email_poll_interval_secs,
             order_poll_secs = config.order_poll_interval_secs,
             amazon_order_poll_secs = config.amazon_order_poll_interval_secs,
             meta_order_poll_secs = config.meta_order_poll_interval_secs,
+            tiktok_order_poll_secs = config.tiktok_order_poll_interval_secs,
+            tiktok_settlement_poll_secs = config.tiktok_settlement_poll_interval_secs,
+            tiktok_return_poll_secs = config.tiktok_return_poll_interval_secs,
+            tiktok_performance_poll_secs = config.tiktok_performance_poll_interval_secs,
             cart_check_secs = config.cart_check_interval_secs,
             stock_check_secs = config.stock_check_interval_secs,
             segment_sync_secs = config.segment_sync_interval_secs,
@@ -125,6 +140,10 @@ impl Scheduler {
                 _ = webhook_events.tick() => { guarded!(self, "webhook_events", process_webhook_events); },
                 _ = amazon_order_poll.tick() => { guarded!(self, "amazon_order_poll", poll_amazon_orders); },
                 _ = meta_order_poll.tick() => { guarded!(self, "meta_order_poll", poll_meta_orders); },
+                _ = tiktok_order_poll.tick() => { guarded!(self, "tiktok_order_poll", poll_tiktok_orders); },
+                _ = tiktok_settlement_poll.tick() => { guarded!(self, "tiktok_settlement_poll", poll_tiktok_settlements); },
+                _ = tiktok_return_poll.tick() => { guarded!(self, "tiktok_return_poll", poll_tiktok_returns); },
+                _ = tiktok_performance_poll.tick() => { guarded!(self, "tiktok_performance_poll", poll_tiktok_performance); },
                 _ = summary_check.tick() => { guarded!(self, "summary_check", check_summaries); },
             }
         }
@@ -395,6 +414,38 @@ impl Scheduler {
         };
 
         meta::order_sync::poll_meta_orders(self.state.pool(), client).await
+    }
+
+    /// Poll TikTok Shop API for new orders and cache locally.
+    async fn poll_tiktok_orders(&self) -> bool {
+        let Some(client) = self.state.tiktok() else {
+            return true;
+        };
+        tiktok::order_sync::poll_tiktok_orders(self.state.pool(), client).await
+    }
+
+    /// Poll TikTok Shop API for settlements and cache locally.
+    async fn poll_tiktok_settlements(&self) -> bool {
+        let Some(client) = self.state.tiktok() else {
+            return true;
+        };
+        tiktok::settlement_sync::poll_tiktok_settlements(self.state.pool(), client).await
+    }
+
+    /// Poll TikTok Shop API for returns and cache locally.
+    async fn poll_tiktok_returns(&self) -> bool {
+        let Some(client) = self.state.tiktok() else {
+            return true;
+        };
+        tiktok::return_sync::poll_tiktok_returns(self.state.pool(), client).await
+    }
+
+    /// Poll TikTok Shop API for performance metrics.
+    async fn poll_tiktok_performance(&self) -> bool {
+        let Some(client) = self.state.tiktok() else {
+            return true;
+        };
+        tiktok::performance_sync::poll_tiktok_performance(self.state.pool(), client).await
     }
 
     /// Poll Amazon SP-API for new orders and cache locally.

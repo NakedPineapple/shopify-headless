@@ -1,0 +1,86 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                id,\n                account_name,\n                app_key,\n                app_secret,\n                access_token,\n                refresh_token,\n                shop_id,\n                shop_cipher,\n                token_expires_at,\n                connected_by,\n                connected_at as \"connected_at: DateTime<Utc>\",\n                last_used_at as \"last_used_at: DateTime<Utc>\"\n            FROM admin.tiktok_shop_credentials\n            WHERE account_name = 'default'\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "account_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "app_key",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "app_secret",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "access_token",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "refresh_token",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "shop_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "shop_cipher",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "token_expires_at",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 9,
+        "name": "connected_by",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 10,
+        "name": "connected_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 11,
+        "name": "last_used_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "1ac7e729d9fa3ca0878278dc7e41d392a7495ad47e412b495af497618d8b0e53"
+}

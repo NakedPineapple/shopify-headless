@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO admin.tiktok_shop_credentials (\n                account_name,\n                app_key,\n                app_secret,\n                access_token,\n                refresh_token,\n                shop_id,\n                shop_cipher,\n                connected_by,\n                connected_at\n            )\n            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, (CURRENT_TIMESTAMP AT TIME ZONE 'utc'))\n            ON CONFLICT(account_name) DO UPDATE SET\n                app_key = EXCLUDED.app_key,\n                app_secret = EXCLUDED.app_secret,\n                access_token = EXCLUDED.access_token,\n                refresh_token = EXCLUDED.refresh_token,\n                shop_id = EXCLUDED.shop_id,\n                shop_cipher = EXCLUDED.shop_cipher,\n                connected_by = EXCLUDED.connected_by,\n                connected_at = EXCLUDED.connected_at,\n                updated_at = (CURRENT_TIMESTAMP AT TIME ZONE 'utc')\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "66a8cc9cf473e9b990e8eb304ebd12aea24d3a6ef0778bb0b99162a2052a0800"
+}

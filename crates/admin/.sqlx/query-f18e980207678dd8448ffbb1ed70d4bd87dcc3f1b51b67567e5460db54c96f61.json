@@ -1,0 +1,42 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                COALESCE(creator_username, 'unknown') as \"creator_username!\",\n                COUNT(*) as \"order_count!\",\n                COALESCE(SUM(CAST(payment_amount AS DECIMAL)), 0) as \"revenue!: Decimal\",\n                COALESCE(SUM(CAST(commission_amount AS DECIMAL)), 0) as \"commission!: Decimal\"\n            FROM admin.tiktok_orders\n            WHERE is_affiliate_order = true\n              AND creator_username IS NOT NULL\n              AND created_time >= $1::date\n              AND created_time < ($2::date + INTERVAL '1 day')\n            GROUP BY creator_username\n            ORDER BY \"revenue!: Decimal\" DESC\n            LIMIT $3\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "creator_username!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "order_count!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "revenue!: Decimal",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 3,
+        "name": "commission!: Decimal",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Date",
+        "Date",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "f18e980207678dd8448ffbb1ed70d4bd87dcc3f1b51b67567e5460db54c96f61"
+}

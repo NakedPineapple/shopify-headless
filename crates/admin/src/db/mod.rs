@@ -40,6 +40,12 @@ pub mod request_board;
 pub mod settings;
 pub mod shiphero;
 pub mod shopify;
+pub mod tiktok_commerce;
+pub mod tiktok_orders;
+pub mod tiktok_performance;
+pub mod tiktok_products;
+pub mod tiktok_returns;
+pub mod tiktok_settlements;
 pub mod tool_examples;
 
 use std::time::Duration;
@@ -76,6 +82,21 @@ pub use meta_products::{
 pub use request_board::RequestBoardRepository;
 pub use shiphero::{SaveCredentialsParams, ShipHeroCredentials, ShipHeroCredentialsRepository};
 pub use shopify::ShopifyTokenRepository;
+pub use tiktok_commerce::{
+    SaveTikTokShopParams, TikTokShopCredentials, TikTokShopCredentialsRepository,
+};
+pub use tiktok_orders::{
+    AffiliateSummary, CachedTikTokOrder, CachedTikTokOrderItem, CreatorBreakdown, SourceBreakdown,
+    TikTokDailyRevenue, TikTokOrderRepository, TikTokRevenueSummary, TikTokStatusBreakdown,
+};
+pub use tiktok_performance::{TikTokPerformanceRepository, TikTokPerformanceSnapshot};
+pub use tiktok_products::{
+    CreateTikTokMappingParams, TikTokProductMapping, TikTokProductMappingRepository,
+};
+pub use tiktok_returns::{CachedTikTokReturn, TikTokReturnRepository};
+pub use tiktok_settlements::{
+    CachedTikTokSettlement, CachedTikTokSettlementLineItem, TikTokSettlementRepository,
+};
 
 /// Errors that can occur during repository operations.
 #[derive(Debug, Error)]

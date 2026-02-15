@@ -1,0 +1,82 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                id, tiktok_order_id, product_id, sku_id,\n                product_name, quantity, sale_price, original_price,\n                currency, seller_discount, platform_discount\n            FROM admin.tiktok_order_items\n            WHERE tiktok_order_id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "tiktok_order_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "product_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "sku_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "product_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "quantity",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "sale_price",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "original_price",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "currency",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "seller_discount",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "platform_discount",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "453355dfd6f1ad6497d40094d14c61a3d3836b3c6bf09010a315e2aa70ef09e8"
+}

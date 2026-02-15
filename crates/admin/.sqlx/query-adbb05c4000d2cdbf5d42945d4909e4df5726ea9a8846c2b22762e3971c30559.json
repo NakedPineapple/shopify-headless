@@ -1,0 +1,27 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO admin.tiktok_shop_performance (\n                snapshot_date,\n                on_time_delivery_rate,\n                late_dispatch_rate,\n                seller_fault_cancel_rate,\n                customer_satisfaction_rate,\n                overall_health\n            )\n            VALUES (\n                $1,\n                $2::text::numeric,\n                $3::text::numeric,\n                $4::text::numeric,\n                $5::text::numeric,\n                $6\n            )\n            ON CONFLICT (snapshot_date) DO UPDATE SET\n                on_time_delivery_rate = EXCLUDED.on_time_delivery_rate,\n                late_dispatch_rate = EXCLUDED.late_dispatch_rate,\n                seller_fault_cancel_rate = EXCLUDED.seller_fault_cancel_rate,\n                customer_satisfaction_rate = EXCLUDED.customer_satisfaction_rate,\n                overall_health = EXCLUDED.overall_health,\n                updated_at = (CURRENT_TIMESTAMP AT TIME ZONE 'utc')\n            RETURNING id as \"id!\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Date",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "adbb05c4000d2cdbf5d42945d4909e4df5726ea9a8846c2b22762e3971c30559"
+}

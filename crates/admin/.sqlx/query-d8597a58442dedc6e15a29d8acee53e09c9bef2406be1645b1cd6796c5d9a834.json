@@ -1,0 +1,100 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                id, settlement_id,\n                settlement_period_start as \"settlement_period_start: DateTime<Utc>\",\n                settlement_period_end as \"settlement_period_end: DateTime<Utc>\",\n                status,\n                total_revenue, total_refunds,\n                total_platform_fees, total_affiliate_commission,\n                net_payout, currency,\n                payout_date as \"payout_date: DateTime<Utc>\",\n                created_at as \"created_at: DateTime<Utc>\",\n                updated_at as \"updated_at: DateTime<Utc>\"\n            FROM admin.tiktok_settlements\n            WHERE id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "settlement_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "settlement_period_start: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 3,
+        "name": "settlement_period_end: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 4,
+        "name": "status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "total_revenue",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "total_refunds",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "total_platform_fees",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "total_affiliate_commission",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "net_payout",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "currency",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 11,
+        "name": "payout_date: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 12,
+        "name": "created_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 13,
+        "name": "updated_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "d8597a58442dedc6e15a29d8acee53e09c9bef2406be1645b1cd6796c5d9a834"
+}

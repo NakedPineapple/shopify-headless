@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT last_sync_at as \"last_sync_at: DateTime<Utc>\"\n        FROM admin.tiktok_sync_state\n        WHERE sync_type = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "last_sync_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "92c4eb1506ad5b7b3c4270f7448bd1a4e656fac6fccf1bee12c96bc3744d6b99"
+}

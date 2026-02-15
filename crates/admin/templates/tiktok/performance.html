@@ -1,0 +1,223 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}TikTok Shop Performance{% endblock %}
+
+{% block page_title %}Shop Performance{% endblock %}
+
+{% block page_subtitle %}
+<p class="text-sm text-muted-foreground mt-1">TikTok Shop seller performance metrics and health</p>
+{% endblock %}
+
+{% block content %}
+{% if !connected %}
+<div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4 mb-6">
+    <div class="flex items-center gap-3">
+        <i class="ph ph-warning text-amber-500 text-xl"></i>
+        <div>
+            <p class="text-sm font-medium text-foreground">TikTok Shop not connected</p>
+            <p class="text-sm text-muted-foreground">
+                <a href="/settings/tiktok" class="text-coral hover:underline">Connect your credentials</a> to view performance metrics.
+            </p>
+        </div>
+    </div>
+</div>
+{% else %}
+
+{% if sync_error.is_some() %}
+<div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 mb-6">
+    <div class="flex items-center gap-3">
+        <i class="ph ph-warning-circle text-red-500 text-xl"></i>
+        <p class="text-sm text-foreground">{{ sync_error.as_deref().unwrap_or("") }}</p>
+    </div>
+</div>
+{% endif %}
+
+<!-- Actions -->
+<div class="flex items-center justify-end mb-6">
+    <a href="/tiktok/performance/sync"
+       class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-coral rounded-lg hover:bg-coral/90 transition-colors">
+        <i class="ph ph-arrows-clockwise"></i>
+        Sync Now
+    </a>
+</div>
+
+{% if let Some(display) = latest_display %}
+<!-- Overall Health Badge -->
+<div class="bg-card rounded-xl border border-border p-6 mb-6">
+    <div class="flex items-center justify-between">
+        <div class="flex items-center gap-4">
+            <div class="w-14 h-14 rounded-xl flex items-center justify-center
+                {% if display.health == "healthy" %}bg-green-100 dark:bg-green-900/30
+                {% else if display.health == "at_risk" %}bg-amber-100 dark:bg-amber-900/30
+                {% else %}bg-red-100 dark:bg-red-900/30{% endif %}">
+                {% if display.health == "healthy" %}
+                <i class="ph ph-heart text-2xl text-green-600 dark:text-green-400"></i>
+                {% else if display.health == "at_risk" %}
+                <i class="ph ph-warning text-2xl text-amber-600 dark:text-amber-400"></i>
+                {% else %}
+                <i class="ph ph-heart-break text-2xl text-red-600 dark:text-red-400"></i>
+                {% endif %}
+            </div>
+            <div>
+                <h2 class="text-lg font-semibold text-foreground">Overall Shop Health</h2>
+                <div class="flex items-center gap-2 mt-1">
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium
+                        {% if display.health == "healthy" %}bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400
+                        {% else if display.health == "at_risk" %}bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400
+                        {% else %}bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400{% endif %}">
+                        <span class="w-2 h-2 rounded-full
+                            {% if display.health == "healthy" %}bg-green-500
+                            {% else if display.health == "at_risk" %}bg-amber-500
+                            {% else %}bg-red-500{% endif %}"></span>
+                        {% if display.health == "healthy" %}Healthy
+                        {% else if display.health == "at_risk" %}At Risk
+                        {% else %}Unhealthy{% endif %}
+                    </span>
+                </div>
+            </div>
+        </div>
+        <div class="text-right">
+            <p class="text-xs text-muted-foreground">Snapshot Date</p>
+            <p class="text-sm font-medium text-foreground">{{ display.snapshot_date }}</p>
+        </div>
+    </div>
+</div>
+
+<!-- Metric Cards -->
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+    <div class="bg-card rounded-xl p-5 border border-border">
+        <div class="flex items-center gap-2 mb-2">
+            <i class="ph ph-truck text-lg text-muted-foreground"></i>
+            <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider">On-Time Delivery</p>
+        </div>
+        {% if let Some(rate) = display.otd_rate %}
+        <p class="text-2xl font-semibold tabular-nums {{ display.otd_color }}">{{ rate }}%</p>
+        {% else %}
+        <p class="text-2xl font-semibold text-muted-foreground">&mdash;</p>
+        {% endif %}
+    </div>
+    <div class="bg-card rounded-xl p-5 border border-border">
+        <div class="flex items-center gap-2 mb-2">
+            <i class="ph ph-clock-countdown text-lg text-muted-foreground"></i>
+            <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider">Late Dispatch</p>
+        </div>
+        {% if let Some(rate) = display.ld_rate %}
+        <p class="text-2xl font-semibold tabular-nums {{ display.ld_color }}">{{ rate }}%</p>
+        {% else %}
+        <p class="text-2xl font-semibold text-muted-foreground">&mdash;</p>
+        {% endif %}
+    </div>
+    <div class="bg-card rounded-xl p-5 border border-border">
+        <div class="flex items-center gap-2 mb-2">
+            <i class="ph ph-x-circle text-lg text-muted-foreground"></i>
+            <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider">Seller Cancellation</p>
+        </div>
+        {% if let Some(rate) = display.sfc_rate %}
+        <p class="text-2xl font-semibold tabular-nums {{ display.sfc_color }}">{{ rate }}%</p>
+        {% else %}
+        <p class="text-2xl font-semibold text-muted-foreground">&mdash;</p>
+        {% endif %}
+    </div>
+    <div class="bg-card rounded-xl p-5 border border-border">
+        <div class="flex items-center gap-2 mb-2">
+            <i class="ph ph-smiley text-lg text-muted-foreground"></i>
+            <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider">Satisfaction</p>
+        </div>
+        {% if let Some(rate) = display.cs_rate %}
+        <p class="text-2xl font-semibold tabular-nums {{ display.cs_color }}">{{ rate }}%</p>
+        {% else %}
+        <p class="text-2xl font-semibold text-muted-foreground">&mdash;</p>
+        {% endif %}
+    </div>
+</div>
+{% else %}
+<!-- No Data State -->
+<div class="bg-card rounded-xl border border-border p-12 text-center mb-8">
+    <div class="w-16 h-16 rounded-full bg-coral/10 flex items-center justify-center mx-auto mb-4">
+        <i class="ph ph-chart-line-up text-3xl text-coral"></i>
+    </div>
+    <h3 class="text-lg font-semibold text-foreground mb-2">No Performance Data</h3>
+    <p class="text-muted-foreground max-w-md mx-auto mb-4">
+        Sync performance data to view your TikTok Shop health metrics and trends.
+    </p>
+    <a href="/tiktok/performance/sync" class="inline-flex items-center gap-2 px-4 py-2 bg-coral text-white rounded-lg hover:bg-coral/90 transition-colors">
+        <i class="ph ph-arrows-clockwise"></i>
+        Sync Performance Data
+    </a>
+</div>
+{% endif %}
+
+<!-- History Table -->
+{% if !history.is_empty() %}
+<div class="bg-card rounded-xl border border-border overflow-hidden">
+    <div class="px-4 py-3 border-b border-border bg-muted/50">
+        <h3 class="text-sm font-semibold text-foreground">Performance History</h3>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full">
+            <thead>
+                <tr class="border-b border-border">
+                    <th class="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-3">Date</th>
+                    <th class="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-3">Health</th>
+                    <th class="text-right text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-3">On-Time Delivery</th>
+                    <th class="text-right text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-3">Late Dispatch</th>
+                    <th class="text-right text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-3">Cancellation</th>
+                    <th class="text-right text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-3">Satisfaction</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-border">
+                {% for snap in history %}
+                <tr class="hover:bg-muted/30 transition-colors">
+                    <td class="px-4 py-3">
+                        <span class="text-sm text-foreground">{{ snap.snapshot_date }}</span>
+                    </td>
+                    <td class="px-4 py-3">
+                        <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium
+                            {% if snap.overall_health == "healthy" %}bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400
+                            {% else if snap.overall_health == "at_risk" %}bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400
+                            {% else %}bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400{% endif %}">
+                            <span class="w-1.5 h-1.5 rounded-full
+                                {% if snap.overall_health == "healthy" %}bg-green-500
+                                {% else if snap.overall_health == "at_risk" %}bg-amber-500
+                                {% else %}bg-red-500{% endif %}"></span>
+                            {{ snap.overall_health }}
+                        </span>
+                    </td>
+                    <td class="text-right px-4 py-3">
+                        {% if let Some(rate) = snap.on_time_delivery_rate %}
+                        <span class="text-sm tabular-nums text-foreground">{{ rate }}%</span>
+                        {% else %}
+                        <span class="text-sm text-muted-foreground">&mdash;</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-right px-4 py-3">
+                        {% if let Some(rate) = snap.late_dispatch_rate %}
+                        <span class="text-sm tabular-nums text-foreground">{{ rate }}%</span>
+                        {% else %}
+                        <span class="text-sm text-muted-foreground">&mdash;</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-right px-4 py-3">
+                        {% if let Some(rate) = snap.seller_fault_cancel_rate %}
+                        <span class="text-sm tabular-nums text-foreground">{{ rate }}%</span>
+                        {% else %}
+                        <span class="text-sm text-muted-foreground">&mdash;</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-right px-4 py-3">
+                        {% if let Some(rate) = snap.customer_satisfaction_rate %}
+                        <span class="text-sm tabular-nums text-foreground">{{ rate }}%</span>
+                        {% else %}
+                        <span class="text-sm text-muted-foreground">&mdash;</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+{% endif %}
+{% endblock %}

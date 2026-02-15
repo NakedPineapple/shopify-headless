@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO admin.tiktok_orders (\n                tiktok_order_id, created_time, last_updated_time,\n                order_status,\n                buyer_name, buyer_email, buyer_phone,\n                ship_name, ship_street1, ship_street2,\n                ship_city, ship_state, ship_postal_code, ship_country,\n                payment_amount, payment_currency,\n                shipping_amount, platform_discount,\n                source_type, creator_username, creator_id,\n                is_affiliate_order,\n                commission_rate, commission_amount, commission_status,\n                is_fbt, fbt_warehouse_id,\n                shipping_provider_id, tracking_number, shipping_status,\n                raw_json\n            )\n            VALUES (\n                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,\n                $11, $12, $13, $14, $15, $16, $17, $18,\n                $19, $20, $21, $22,\n                $23::text::numeric, $24, $25,\n                $26, $27, $28, $29, $30, $31\n            )\n            ON CONFLICT (tiktok_order_id) DO UPDATE SET\n                last_updated_time = EXCLUDED.last_updated_time,\n                order_status = EXCLUDED.order_status,\n                commission_rate = EXCLUDED.commission_rate,\n                commission_amount = EXCLUDED.commission_amount,\n                commission_status = EXCLUDED.commission_status,\n                shipping_provider_id = EXCLUDED.shipping_provider_id,\n                tracking_number = EXCLUDED.tracking_number,\n                shipping_status = EXCLUDED.shipping_status,\n                raw_json = EXCLUDED.raw_json,\n                updated_at = (CURRENT_TIMESTAMP AT TIME ZONE 'utc')\n            RETURNING id as \"id!\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Timestamptz",
+        "Timestamptz",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Bool",
+        "Text",
+        "Text",
+        "Text",
+        "Bool",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Jsonb"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "d5ee54fb7b4b3438452a7d137df45a0caee6c806f1e76f69cef69518ceb36b90"
+}

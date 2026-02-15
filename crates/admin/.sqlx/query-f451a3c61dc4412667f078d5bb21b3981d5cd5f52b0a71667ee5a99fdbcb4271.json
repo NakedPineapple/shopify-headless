@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE admin.tiktok_returns\n            SET\n                return_status = $2,\n                updated_at = (CURRENT_TIMESTAMP AT TIME ZONE 'utc')\n            WHERE return_id = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f451a3c61dc4412667f078d5bb21b3981d5cd5f52b0a71667ee5a99fdbcb4271"
+}

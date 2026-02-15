@@ -1,0 +1,35 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                created_time::date as \"date!: NaiveDate\",\n                COALESCE(SUM(CAST(payment_amount AS DECIMAL)), 0) as \"revenue!: Decimal\",\n                COUNT(*) as \"orders!\"\n            FROM admin.tiktok_orders\n            WHERE order_status != 'CANCELLED'\n              AND created_time >= $1::date\n              AND created_time < ($2::date + INTERVAL '1 day')\n            GROUP BY created_time::date\n            ORDER BY created_time::date\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "date!: NaiveDate",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 1,
+        "name": "revenue!: Decimal",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 2,
+        "name": "orders!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Date",
+        "Date"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "99424027e0f91677c7ac7a58e8d78343a47d3d85f68a65aa39a405123708ec63"
+}

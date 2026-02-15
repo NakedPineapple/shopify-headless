@@ -1,0 +1,80 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO admin.tiktok_product_mapping (\n                shopify_product_id,\n                shopify_variant_id,\n                tiktok_product_id,\n                tiktok_sku_id,\n                match_type\n            )\n            VALUES ($1, $2, $3, $4, $5)\n            ON CONFLICT (tiktok_product_id) DO UPDATE SET\n                shopify_product_id = EXCLUDED.shopify_product_id,\n                shopify_variant_id = EXCLUDED.shopify_variant_id,\n                tiktok_sku_id = EXCLUDED.tiktok_sku_id,\n                match_type = EXCLUDED.match_type,\n                updated_at = (CURRENT_TIMESTAMP AT TIME ZONE 'utc')\n            RETURNING\n                id,\n                shopify_product_id,\n                shopify_variant_id,\n                tiktok_product_id,\n                tiktok_sku_id,\n                match_type,\n                status,\n                last_sync_at as \"last_sync_at: DateTime<Utc>\",\n                created_at as \"created_at: DateTime<Utc>\",\n                updated_at as \"updated_at: DateTime<Utc>\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "shopify_product_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "shopify_variant_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "tiktok_product_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "tiktok_sku_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "match_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "last_sync_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "created_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "updated_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      true,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "6700146a24483a36800e073c4c4f05f33d4d7a5576b4764718b139bb5def0c7d"
+}

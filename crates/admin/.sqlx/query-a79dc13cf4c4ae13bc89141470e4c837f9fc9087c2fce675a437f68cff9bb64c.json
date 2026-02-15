@@ -1,0 +1,32 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO admin.tiktok_settlements (\n                settlement_id, settlement_period_start, settlement_period_end,\n                status, total_revenue, total_refunds,\n                total_platform_fees, total_affiliate_commission,\n                net_payout, currency, payout_date\n            )\n            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)\n            ON CONFLICT (settlement_id) DO UPDATE SET\n                status = EXCLUDED.status,\n                total_revenue = EXCLUDED.total_revenue,\n                total_refunds = EXCLUDED.total_refunds,\n                total_platform_fees = EXCLUDED.total_platform_fees,\n                total_affiliate_commission = EXCLUDED.total_affiliate_commission,\n                net_payout = EXCLUDED.net_payout,\n                payout_date = EXCLUDED.payout_date,\n                updated_at = (CURRENT_TIMESTAMP AT TIME ZONE 'utc')\n            RETURNING id as \"id!\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Timestamptz",
+        "Timestamptz",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "a79dc13cf4c4ae13bc89141470e4c837f9fc9087c2fce675a437f68cff9bb64c"
+}

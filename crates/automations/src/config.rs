@@ -114,6 +114,14 @@ pub struct SchedulerConfig {
     pub amazon_order_poll_interval_secs: u64,
     /// Meta Commerce order poll interval in seconds.
     pub meta_order_poll_interval_secs: u64,
+    /// TikTok Shop order poll interval in seconds.
+    pub tiktok_order_poll_interval_secs: u64,
+    /// TikTok Shop settlement sync interval in seconds.
+    pub tiktok_settlement_poll_interval_secs: u64,
+    /// TikTok Shop return sync interval in seconds.
+    pub tiktok_return_poll_interval_secs: u64,
+    /// TikTok Shop performance metrics poll interval in seconds.
+    pub tiktok_performance_poll_interval_secs: u64,
     /// Subscription lifecycle check interval in seconds.
     pub subscription_check_interval_secs: u64,
     /// Minutes of inactivity before a checkout is considered abandoned.
@@ -165,6 +173,22 @@ impl SchedulerConfig {
             meta_order_poll_interval_secs: parse_env_u64(
                 "AUTOMATION_META_ORDER_POLL_INTERVAL_SECS",
                 3600,
+            ),
+            tiktok_order_poll_interval_secs: parse_env_u64(
+                "AUTOMATION_TIKTOK_ORDER_POLL_INTERVAL_SECS",
+                3600,
+            ),
+            tiktok_settlement_poll_interval_secs: parse_env_u64(
+                "AUTOMATION_TIKTOK_SETTLEMENT_POLL_INTERVAL_SECS",
+                86400,
+            ),
+            tiktok_return_poll_interval_secs: parse_env_u64(
+                "AUTOMATION_TIKTOK_RETURN_POLL_INTERVAL_SECS",
+                3600,
+            ),
+            tiktok_performance_poll_interval_secs: parse_env_u64(
+                "AUTOMATION_TIKTOK_PERFORMANCE_POLL_INTERVAL_SECS",
+                86400,
             ),
             subscription_check_interval_secs: parse_env_u64(
                 "AUTOMATION_SUBSCRIPTION_CHECK_INTERVAL_SECS",

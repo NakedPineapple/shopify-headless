@@ -190,6 +190,19 @@ pub fn datetime_short(dt: &DateTime<Utc>, _env: &dyn askama::Values) -> askama::
     Ok(dt.format("%b %d, %l:%M %p").to_string())
 }
 
+/// Format datetime as a short date (e.g., "Jan 15, 2025") without time.
+///
+/// Usage in templates: `{{ dt|date_short }}`
+///
+/// # Errors
+///
+/// This filter is infallible, however Askama requires filters return `askama::Result`.
+#[allow(clippy::unnecessary_wraps)]
+#[askama::filter_fn]
+pub fn date_short(dt: &DateTime<Utc>, _env: &dyn askama::Values) -> askama::Result<String> {
+    Ok(dt.format("%b %d, %Y").to_string())
+}
+
 /// Extract a string from a JSON Value, or return empty string.
 ///
 /// Usage in templates: `{{ value|as_str_or_empty }}`

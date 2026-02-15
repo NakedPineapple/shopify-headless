@@ -1,0 +1,70 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                id, settlement_id, tiktok_order_id,\n                order_amount, refund_amount, referral_fee,\n                affiliate_commission, shipping_fee_subsidy, net_amount\n            FROM admin.tiktok_settlement_line_items\n            WHERE settlement_id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "settlement_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "tiktok_order_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "order_amount",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "refund_amount",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "referral_fee",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "affiliate_commission",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "shipping_fee_subsidy",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "net_amount",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "87a1fe6c985e126dcbdb7f39fa2ca8af2acaab4c948a19108d6daa03cfb28dae"
+}

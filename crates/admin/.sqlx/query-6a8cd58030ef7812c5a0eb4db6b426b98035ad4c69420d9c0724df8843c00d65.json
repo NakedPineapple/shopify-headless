@@ -1,0 +1,224 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                id, tiktok_order_id, shopify_order_id,\n                created_time as \"created_time: DateTime<Utc>\",\n                last_updated_time as \"last_updated_time: DateTime<Utc>\",\n                order_status,\n                buyer_name, buyer_email, buyer_phone,\n                ship_name, ship_street1, ship_street2,\n                ship_city, ship_state, ship_postal_code, ship_country,\n                payment_amount, payment_currency,\n                shipping_amount, platform_discount,\n                source_type, creator_username, creator_id,\n                is_affiliate_order,\n                commission_rate as \"commission_rate: Decimal\",\n                commission_amount, commission_status,\n                is_fbt, fbt_warehouse_id,\n                shipping_provider_id, tracking_number, shipping_status,\n                created_at as \"created_at: DateTime<Utc>\",\n                updated_at as \"updated_at: DateTime<Utc>\"\n            FROM admin.tiktok_orders\n            WHERE ($3::text IS NULL OR order_status = $3)\n              AND ($4::text IS NULL OR source_type = $4)\n              AND ($5::bool IS NULL OR is_affiliate_order = $5)\n            ORDER BY created_time DESC NULLS LAST\n            LIMIT $1 OFFSET $2\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "tiktok_order_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "shopify_order_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "created_time: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 4,
+        "name": "last_updated_time: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "order_status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "buyer_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "buyer_email",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "buyer_phone",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "ship_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "ship_street1",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 11,
+        "name": "ship_street2",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 12,
+        "name": "ship_city",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 13,
+        "name": "ship_state",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 14,
+        "name": "ship_postal_code",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 15,
+        "name": "ship_country",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 16,
+        "name": "payment_amount",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 17,
+        "name": "payment_currency",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 18,
+        "name": "shipping_amount",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 19,
+        "name": "platform_discount",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 20,
+        "name": "source_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 21,
+        "name": "creator_username",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 22,
+        "name": "creator_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 23,
+        "name": "is_affiliate_order",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 24,
+        "name": "commission_rate: Decimal",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 25,
+        "name": "commission_amount",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 26,
+        "name": "commission_status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 27,
+        "name": "is_fbt",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 28,
+        "name": "fbt_warehouse_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 29,
+        "name": "shipping_provider_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 30,
+        "name": "tracking_number",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 31,
+        "name": "shipping_status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 32,
+        "name": "created_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 33,
+        "name": "updated_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8",
+        "Text",
+        "Text",
+        "Bool"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "6a8cd58030ef7812c5a0eb4db6b426b98035ad4c69420d9c0724df8843c00d65"
+}

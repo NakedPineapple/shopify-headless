@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                INSERT INTO admin.tiktok_order_items (\n                    tiktok_order_id, product_id, sku_id,\n                    product_name, quantity, sale_price, original_price,\n                    currency, seller_discount, platform_discount\n                )\n                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)\n                ON CONFLICT (tiktok_order_id, product_id) DO UPDATE SET\n                    sku_id = EXCLUDED.sku_id,\n                    product_name = EXCLUDED.product_name,\n                    quantity = EXCLUDED.quantity,\n                    sale_price = EXCLUDED.sale_price,\n                    original_price = EXCLUDED.original_price,\n                    currency = EXCLUDED.currency,\n                    seller_discount = EXCLUDED.seller_discount,\n                    platform_discount = EXCLUDED.platform_discount\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Int4",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "afffcaa91f5650e931599b465040f4761b05261a6b3e589c2e8a02d3836e54cd"
+}

@@ -8,6 +8,7 @@ use naked_pineapple_services::email::EmailService;
 use naked_pineapple_services::klaviyo::KlaviyoClient;
 use naked_pineapple_services::meta_commerce::MetaCommerceClient;
 use naked_pineapple_services::slack::SlackClient;
+use naked_pineapple_services::tiktok_shop::TikTokShopClient;
 use sqlx::PgPool;
 
 use crate::config::AutomationConfig;
@@ -31,6 +32,7 @@ struct AppStateInner {
     shopify: Option<ShopifyClient>,
     amazon: Option<AmazonSpClient>,
     meta: Option<MetaCommerceClient>,
+    tiktok: Option<TikTokShopClient>,
     email_service: Option<EmailService>,
 }
 
@@ -46,6 +48,7 @@ pub struct AppStateParams {
     pub shopify: Option<ShopifyClient>,
     pub amazon: Option<AmazonSpClient>,
     pub meta: Option<MetaCommerceClient>,
+    pub tiktok: Option<TikTokShopClient>,
     pub email_service: Option<EmailService>,
 }
 
@@ -65,6 +68,7 @@ impl AppState {
                 shopify: params.shopify,
                 amazon: params.amazon,
                 meta: params.meta,
+                tiktok: params.tiktok,
                 email_service: params.email_service,
             }),
         }
@@ -122,6 +126,12 @@ impl AppState {
     #[must_use]
     pub fn meta(&self) -> Option<&MetaCommerceClient> {
         self.inner.meta.as_ref()
+    }
+
+    /// Get a reference to the TikTok Shop client (if configured).
+    #[must_use]
+    pub fn tiktok(&self) -> Option<&TikTokShopClient> {
+        self.inner.tiktok.as_ref()
     }
 
     /// Get a reference to the SMTP email service (if configured).

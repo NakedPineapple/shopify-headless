@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO admin.tiktok_returns (\n            return_id, tiktok_order_id, return_status,\n            return_type, reason, buyer_note,\n            refund_amount, currency,\n            decision_deadline, return_tracking_number\n        )\n        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)\n        ON CONFLICT (return_id) DO UPDATE SET\n            return_status = EXCLUDED.return_status,\n            reason = EXCLUDED.reason,\n            buyer_note = EXCLUDED.buyer_note,\n            refund_amount = EXCLUDED.refund_amount,\n            decision_deadline = EXCLUDED.decision_deadline,\n            return_tracking_number = EXCLUDED.return_tracking_number,\n            updated_at = (CURRENT_TIMESTAMP AT TIME ZONE 'utc')\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Timestamptz",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e54d6c8c7b59d73569447160f332ccec6bbbf0fe78dc31045850ef3ae8c1c822"
+}

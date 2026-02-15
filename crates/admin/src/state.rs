@@ -14,6 +14,7 @@ use naked_pineapple_services::judgeme::JudgemeClient;
 use naked_pineapple_services::meta_commerce::MetaCommerceClient;
 use naked_pineapple_services::microsoft_graph::M365Client;
 use naked_pineapple_services::openai::EmbeddingClient;
+use naked_pineapple_services::tiktok_shop::TikTokShopClient;
 
 use crate::config::AdminConfig;
 use crate::db::{
@@ -60,6 +61,7 @@ struct AppStateInner {
     shiphero: Option<ShipHeroClient>,
     amazon: Option<AmazonSpClient>,
     meta: Option<MetaCommerceClient>,
+    tiktok: Option<TikTokShopClient>,
     fba_cache: Cache<String, Vec<InventorySummary>>,
     pricing_cache: Cache<String, Vec<PricingResult>>,
     slack: Option<SlackClient>,
@@ -78,6 +80,7 @@ struct Integrations {
     shiphero: Option<ShipHeroClient>,
     amazon: Option<AmazonSpClient>,
     meta: Option<MetaCommerceClient>,
+    tiktok: Option<TikTokShopClient>,
     slack: Option<SlackClient>,
     m365: Option<M365Client>,
     r2: Option<R2Client>,
@@ -181,6 +184,7 @@ impl AppState {
                 shiphero: integrations.shiphero,
                 amazon: integrations.amazon,
                 meta: integrations.meta,
+                tiktok: integrations.tiktok,
                 fba_cache,
                 pricing_cache,
                 slack: integrations.slack,
@@ -296,6 +300,12 @@ impl AppState {
         self.inner.meta.as_ref()
     }
 
+    /// Get a reference to the TikTok Shop client (if configured).
+    #[must_use]
+    pub fn tiktok(&self) -> Option<&TikTokShopClient> {
+        self.inner.tiktok.as_ref()
+    }
+
     /// Get a reference to the FBA inventory cache (5-min TTL).
     #[must_use]
     pub fn fba_cache(&self) -> &Cache<String, Vec<InventorySummary>> {
@@ -310,6 +320,33 @@ impl AppState {
 
     /// Initialize optional integrations (Slack, `ShipHero`, M365, R2, support pool, embeddings).
     async fn init_integrations(config: &AdminConfig, pool: &PgPool) -> Integrations {
+        let slack = Self::init_slack(config);
+        let shiphero = Self::init_shiphero(pool).await;
+        let m365 = Self::init_m365(config);
+        let (support_pool, embedding) = Self::init_support(config).await;
+        let (r2, r2_gallery) = Self::init_r2(config);
+        let judgeme = Self::init_judgeme(config);
+        let amazon = Self::init_amazon(pool).await;
+        let meta = Self::init_meta(pool).await;
+        let tiktok = Self::init_tiktok(pool).await;
+
+        Integrations {
+            support_pool,
+            embedding,
+            shiphero,
+            amazon,
+            meta,
+            tiktok,
+            slack,
+            m365,
+            r2,
+            r2_gallery,
+            judgeme,
+        }
+    }
+
+    /// Initialize Slack integration from config.
+    fn init_slack(config: &AdminConfig) -> Option<SlackClient> {
         let slack = config.slack.as_ref().map(|slack_config| {
             tracing::info!("Slack integration initialized");
             SlackClient::new(
@@ -323,7 +360,11 @@ impl AppState {
                 "Slack not configured - write operations will execute without confirmation"
             );
         }
+        slack
+    }
 
+    /// Initialize `ShipHero` integration from stored credentials.
+    async fn init_shiphero(pool: &PgPool) -> Option<ShipHeroClient> {
         let shiphero = Self::load_shiphero_client(pool).await;
         if shiphero.is_some() {
             tracing::info!("ShipHero client initialized from stored credentials");
@@ -332,7 +373,11 @@ impl AppState {
                 "ShipHero not configured - warehouse features disabled until credentials added via /settings/shiphero"
             );
         }
+        shiphero
+    }
 
+    /// Initialize M365 integration from config.
+    fn init_m365(config: &AdminConfig) -> Option<M365Client> {
         let m365 = config.m365.as_ref().map(|m365_config| {
             tracing::info!("M365 email integration initialized");
             M365Client::new(m365_config)
@@ -340,9 +385,11 @@ impl AppState {
         if m365.is_none() {
             tracing::info!("M365 not configured — email inbox sending disabled");
         }
+        m365
+    }
 
-        let (support_pool, embedding) = Self::init_support(config).await;
-
+    /// Initialize R2 document and gallery storage from config.
+    fn init_r2(config: &AdminConfig) -> (Option<R2Client>, Option<R2Client>) {
         let r2 = config.r2.as_ref().map(|r2_config| {
             tracing::info!("R2 document storage initialized");
             R2Client::new(
@@ -371,6 +418,11 @@ impl AppState {
             tracing::info!("R2 gallery not configured — image gallery disabled");
         }
 
+        (r2, r2_gallery)
+    }
+
+    /// Initialize Judge.me review integration from config.
+    fn init_judgeme(config: &AdminConfig) -> Option<JudgemeClient> {
         let judgeme = config.judgeme.as_ref().map(|c| {
             tracing::info!("Judge.me review integration initialized");
             JudgemeClient::new(c)
@@ -378,7 +430,11 @@ impl AppState {
         if judgeme.is_none() {
             tracing::info!("Judge.me not configured — review moderation disabled");
         }
+        judgeme
+    }
 
+    /// Initialize Amazon SP-API from stored credentials.
+    async fn init_amazon(pool: &PgPool) -> Option<AmazonSpClient> {
         let amazon = Self::load_amazon_client(pool).await;
         if amazon.is_some() {
             tracing::info!("Amazon SP-API client initialized from stored credentials");
@@ -387,7 +443,11 @@ impl AppState {
                 "Amazon SP-API not configured — Amazon features disabled until credentials added via /settings/amazon"
             );
         }
+        amazon
+    }
 
+    /// Initialize Meta Commerce from stored credentials.
+    async fn init_meta(pool: &PgPool) -> Option<MetaCommerceClient> {
         let meta = Self::load_meta_client(pool).await;
         if meta.is_some() {
             tracing::info!("Meta Commerce client initialized from stored credentials");
@@ -396,19 +456,20 @@ impl AppState {
                 "Meta Commerce not configured — Meta features disabled until credentials added via /settings/meta"
             );
         }
+        meta
+    }
 
-        Integrations {
-            support_pool,
-            embedding,
-            shiphero,
-            amazon,
-            meta,
-            slack,
-            m365,
-            r2,
-            r2_gallery,
-            judgeme,
+    /// Initialize TikTok Shop from stored credentials.
+    async fn init_tiktok(pool: &PgPool) -> Option<TikTokShopClient> {
+        let tiktok = Self::load_tiktok_client(pool).await;
+        if tiktok.is_some() {
+            tracing::info!("TikTok Shop client initialized from stored credentials");
+        } else {
+            tracing::info!(
+                "TikTok Shop not configured — TikTok features disabled until credentials added via /settings/tiktok"
+            );
         }
+        tiktok
     }
 
     /// Initialize the support pool and embedding client.
@@ -512,6 +573,30 @@ impl AppState {
             Ok(None) => None,
             Err(e) => {
                 tracing::error!(error = %e, "Failed to load Meta Commerce credentials from database");
+                None
+            }
+        }
+    }
+
+    /// Load TikTok Shop client from stored credentials.
+    async fn load_tiktok_client(pool: &PgPool) -> Option<TikTokShopClient> {
+        use crate::db::TikTokShopCredentialsRepository;
+        use naked_pineapple_services::tiktok_shop::TikTokShopCredentials as ApiCredentials;
+
+        let repo = TikTokShopCredentialsRepository::new(pool);
+
+        match repo.get_default().await {
+            Ok(Some(creds)) => Some(TikTokShopClient::new(ApiCredentials {
+                app_key: creds.app_key,
+                app_secret: creds.app_secret,
+                access_token: creds.access_token,
+                refresh_token: creds.refresh_token,
+                shop_id: creds.shop_id,
+                shop_cipher: creds.shop_cipher,
+            })),
+            Ok(None) => None,
+            Err(e) => {
+                tracing::error!(error = %e, "Failed to load TikTok Shop credentials from database");
                 None
             }
         }

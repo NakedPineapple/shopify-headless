@@ -87,6 +87,13 @@ pub mod shiphero_settings;
 pub mod shopify;
 pub mod slack;
 pub mod support;
+pub mod tiktok_analytics;
+pub mod tiktok_catalog;
+pub mod tiktok_finance;
+pub mod tiktok_orders;
+pub mod tiktok_performance;
+pub mod tiktok_returns;
+pub mod tiktok_settings;
 pub mod warehouse;
 pub mod well_known;
 
@@ -387,6 +394,7 @@ fn analytics_routes() -> Router<AppState> {
             get(amazon_analytics::amazon_pricing),
         )
         .route("/analytics/meta", get(meta_analytics::meta_sales))
+        .route("/analytics/tiktok", get(tiktok_analytics::tiktok_sales))
 }
 
 /// Build payout routes.
@@ -490,6 +498,18 @@ pub fn routes() -> Router<AppState> {
         .merge(meta_catalog::router())
         // Meta orders (super_admin only)
         .merge(meta_orders::router())
+        // TikTok Shop settings (super_admin only)
+        .merge(tiktok_settings::router())
+        // TikTok catalog search & product mappings (super_admin only)
+        .merge(tiktok_catalog::router())
+        // TikTok orders (super_admin only)
+        .merge(tiktok_orders::router())
+        // TikTok finance/settlements (super_admin only)
+        .merge(tiktok_finance::router())
+        // TikTok returns (super_admin only)
+        .merge(tiktok_returns::router())
+        // TikTok shop performance (super_admin only)
+        .merge(tiktok_performance::router())
         // Warehouse (ShipHero visibility)
         .merge(warehouse::router())
         // Well-known endpoints (WebAuthn ROR, security.txt)

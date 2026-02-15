@@ -42,6 +42,7 @@ mod scheduler;
 mod shopify;
 mod slack;
 mod state;
+mod tiktok;
 mod triage;
 mod webhooks;
 mod workflows;
@@ -147,19 +148,7 @@ async fn main() {
         }
     });
 
-    let amazon_client = load_amazon_client(&pool).await;
-    if amazon_client.is_some() {
-        tracing::info!("Amazon SP-API client initialized for order sync");
-    } else {
-        tracing::info!("Amazon SP-API not configured, order sync disabled");
-    }
-
-    let meta_client = load_meta_client(&pool).await;
-    if meta_client.is_some() {
-        tracing::info!("Meta Commerce client initialized for order sync");
-    } else {
-        tracing::info!("Meta Commerce not configured, order sync disabled");
-    }
+    let (amazon_client, meta_client, tiktok_client) = load_channel_clients(&pool).await;
 
     let support_pool = create_support_pool(&config).await;
     let health_port = config.health_port;
@@ -175,6 +164,7 @@ async fn main() {
         shopify: shopify_client,
         amazon: amazon_client,
         meta: meta_client,
+        tiktok: tiktok_client,
         email_service,
     });
 
@@ -185,6 +175,35 @@ async fn main() {
     let scheduler = Scheduler::new(state);
     let scheduler_handle = tokio::spawn(scheduler.run(shutdown_rx));
     await_graceful_shutdown(shutdown_tx, scheduler_handle).await;
+}
+
+/// Load all channel-specific API clients (Amazon, Meta, TikTok).
+async fn load_channel_clients(
+    pool: &sqlx::PgPool,
+) -> (
+    Option<naked_pineapple_services::amazon_sp::AmazonSpClient>,
+    Option<naked_pineapple_services::meta_commerce::MetaCommerceClient>,
+    Option<naked_pineapple_services::tiktok_shop::TikTokShopClient>,
+) {
+    let amazon = load_amazon_client(pool).await;
+    log_client_status("Amazon SP-API", amazon.is_some());
+
+    let meta = load_meta_client(pool).await;
+    log_client_status("Meta Commerce", meta.is_some());
+
+    let tiktok = load_tiktok_client(pool).await;
+    log_client_status("TikTok Shop", tiktok.is_some());
+
+    (amazon, meta, tiktok)
+}
+
+/// Log whether a channel client loaded successfully.
+fn log_client_status(name: &str, loaded: bool) {
+    if loaded {
+        tracing::info!("{name} client initialized");
+    } else {
+        tracing::info!("{name} not configured, sync disabled");
+    }
 }
 
 /// Liveness health check.
@@ -390,6 +409,42 @@ async fn load_meta_client(
         Ok(None) => None,
         Err(e) => {
             tracing::error!(error = %e, "failed to load Meta Commerce credentials");
+            None
+        }
+    }
+}
+
+/// Load TikTok Shop client from stored credentials in the admin database.
+///
+/// Follows the same credential loading pattern as the Meta Commerce client.
+async fn load_tiktok_client(
+    pool: &sqlx::PgPool,
+) -> Option<naked_pineapple_services::tiktok_shop::TikTokShopClient> {
+    use naked_pineapple_services::tiktok_shop::{TikTokShopClient, TikTokShopCredentials};
+
+    let row = sqlx::query!(
+        r"
+        SELECT app_key, app_secret, access_token, refresh_token,
+               shop_id, shop_cipher
+        FROM admin.tiktok_shop_credentials
+        WHERE account_name = 'default'
+        "
+    )
+    .fetch_optional(pool)
+    .await;
+
+    match row {
+        Ok(Some(creds)) => Some(TikTokShopClient::new(TikTokShopCredentials {
+            app_key: creds.app_key,
+            app_secret: creds.app_secret.into(),
+            access_token: creds.access_token.into(),
+            refresh_token: creds.refresh_token.into(),
+            shop_id: creds.shop_id,
+            shop_cipher: creds.shop_cipher,
+        })),
+        Ok(None) => None,
+        Err(e) => {
+            tracing::error!(error = %e, "failed to load TikTok Shop credentials");
             None
         }
     }

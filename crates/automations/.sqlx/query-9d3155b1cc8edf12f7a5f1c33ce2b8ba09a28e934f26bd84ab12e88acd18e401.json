@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO admin.tiktok_settlement_line_items (\n                settlement_id, tiktok_order_id,\n                order_amount, refund_amount, referral_fee,\n                affiliate_commission, shipping_fee_subsidy, net_amount\n            )\n            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)\n            ON CONFLICT (settlement_id, tiktok_order_id) DO UPDATE SET\n                order_amount = EXCLUDED.order_amount,\n                refund_amount = EXCLUDED.refund_amount,\n                referral_fee = EXCLUDED.referral_fee,\n                affiliate_commission = EXCLUDED.affiliate_commission,\n                shipping_fee_subsidy = EXCLUDED.shipping_fee_subsidy,\n                net_amount = EXCLUDED.net_amount\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9d3155b1cc8edf12f7a5f1c33ce2b8ba09a28e934f26bd84ab12e88acd18e401"
+}

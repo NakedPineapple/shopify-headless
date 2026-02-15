@@ -1,0 +1,96 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                id, return_id, tiktok_order_id,\n                return_status, return_type,\n                reason, buyer_note,\n                refund_amount, currency,\n                decision_deadline as \"decision_deadline: DateTime<Utc>\",\n                return_tracking_number,\n                created_at as \"created_at: DateTime<Utc>\",\n                updated_at as \"updated_at: DateTime<Utc>\"\n            FROM admin.tiktok_returns\n            WHERE ($3::text IS NULL OR return_status = $3)\n            ORDER BY created_at DESC\n            LIMIT $1 OFFSET $2\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "return_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "tiktok_order_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "return_status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "return_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "reason",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "buyer_note",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "refund_amount",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "currency",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "decision_deadline: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "return_tracking_number",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 11,
+        "name": "created_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 12,
+        "name": "updated_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "ce4ccdc7b82a047af4d56fbb9700d70a6ffc1ad9f2312b7248f5ecf729469ee2"
+}

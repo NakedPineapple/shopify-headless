@@ -1,0 +1,180 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Return {{ return_item.return_id }}{% endblock %}
+
+{% block page_title %}Return {{ return_item.return_id }}{% endblock %}
+
+{% block page_subtitle %}
+<p class="text-sm text-muted-foreground mt-1">
+    <a href="/tiktok/returns" class="text-coral hover:underline">TikTok Returns</a>
+    <span class="mx-1">/</span>
+    {{ return_item.return_id }}
+</p>
+{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Main Content -->
+    <div class="lg:col-span-2 space-y-6">
+        <!-- Return Header -->
+        <div class="bg-card rounded-xl border border-border p-6">
+            <div class="flex items-start justify-between">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center">
+                        <i class="ph ph-arrow-u-up-left text-xl text-amber-500"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-semibold text-foreground font-mono">{{ return_item.return_id }}</h2>
+                        <div class="flex items-center gap-3 mt-1">
+                            {% let status = return_item.return_status.as_str() %}
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium
+                                {% if status == "COMPLETED" || status == "APPROVED" %}bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400
+                                {% else if status == "PENDING" %}bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400
+                                {% else if status == "REJECTED" || status == "CANCELLED" %}bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400
+                                {% else %}bg-muted text-muted-foreground{% endif %}">
+                                <span class="w-1.5 h-1.5 rounded-full
+                                    {% if status == "COMPLETED" || status == "APPROVED" %}bg-green-500
+                                    {% else if status == "PENDING" %}bg-amber-500
+                                    {% else if status == "REJECTED" || status == "CANCELLED" %}bg-red-500
+                                    {% else %}bg-muted-foreground{% endif %}"></span>
+                                {{ status }}
+                            </span>
+                            {% if let Some(rtype) = return_item.return_type %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
+                                {% if rtype == "REFUND_ONLY" %}bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300
+                                {% else if rtype == "RETURN_AND_REFUND" %}bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300
+                                {% else %}bg-muted text-muted-foreground{% endif %}">
+                                {{ rtype }}
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Decision Deadline -->
+        {% if let Some(deadline) = return_item.decision_deadline %}
+        <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
+            <div class="flex items-center gap-3">
+                <i class="ph ph-clock-countdown text-xl text-amber-500"></i>
+                <div>
+                    <p class="text-sm font-medium text-foreground">Decision Deadline</p>
+                    <p class="text-sm text-muted-foreground">Response required by {{ deadline|datetime_short }}</p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Return Details -->
+        <div class="bg-card rounded-xl border border-border overflow-hidden">
+            <div class="px-4 py-3 border-b border-border bg-muted/50">
+                <h3 class="text-sm font-semibold text-foreground">Return Details</h3>
+            </div>
+            <div class="p-4 space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <span class="text-xs text-muted-foreground">Order ID</span>
+                        <p class="text-sm font-medium text-foreground mt-0.5 font-mono">
+                            {% if let Some(order_id) = return_item.tiktok_order_id %}
+                            <a href="/tiktok/orders?q={{ order_id }}" class="text-coral hover:underline">{{ order_id }}</a>
+                            {% else %}
+                            <span class="text-muted-foreground">&mdash;</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    {% if let Some(reason) = return_item.reason %}
+                    <div>
+                        <span class="text-xs text-muted-foreground">Reason</span>
+                        <p class="text-sm text-foreground mt-0.5">{{ reason }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+                {% if let Some(note) = return_item.buyer_note %}
+                <div>
+                    <span class="text-xs text-muted-foreground">Buyer Note</span>
+                    <p class="text-sm text-foreground mt-0.5 p-3 bg-muted rounded-lg">{{ note }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        {% if return_item.return_status == "PENDING" %}
+        <div class="flex items-center gap-3">
+            <form action="/tiktok/returns/{{ return_item.id }}/approve" method="POST" class="inline"
+                  onsubmit="return confirm('Approve this return request?')">
+                <button type="submit"
+                        class="inline-flex items-center gap-2 px-6 py-2.5 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors">
+                    <i class="ph ph-check-circle text-lg"></i>
+                    Approve Return
+                </button>
+            </form>
+            <form action="/tiktok/returns/{{ return_item.id }}/reject" method="POST" class="inline"
+                  onsubmit="return confirm('Reject this return request?')">
+                <button type="submit"
+                        class="inline-flex items-center gap-2 px-6 py-2.5 text-sm font-medium text-destructive bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors">
+                    <i class="ph ph-x-circle text-lg"></i>
+                    Reject Return
+                </button>
+            </form>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Sidebar -->
+    <div class="space-y-6">
+        <!-- Refund Info -->
+        <div class="bg-card rounded-xl border border-border p-5 space-y-4">
+            <h3 class="text-sm font-semibold text-foreground">Refund Info</h3>
+            <div class="space-y-3">
+                {% if let Some(amount) = return_item.refund_amount %}
+                <div class="flex justify-between">
+                    <span class="text-sm text-muted-foreground">Amount</span>
+                    <span class="text-sm font-semibold text-foreground">${{ amount }} {{ return_item.currency.as_deref().unwrap_or("") }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Tracking -->
+        {% if return_item.return_tracking_number.is_some() %}
+        <div class="bg-card rounded-xl border border-border p-5 space-y-4">
+            <h3 class="text-sm font-semibold text-foreground">Return Tracking</h3>
+            <div class="space-y-3">
+                {% if let Some(tracking) = return_item.return_tracking_number %}
+                <div class="flex justify-between">
+                    <span class="text-sm text-muted-foreground">Tracking Number</span>
+                    <span class="text-sm font-mono text-foreground">{{ tracking }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Timestamps -->
+        <div class="bg-card rounded-xl border border-border p-5 space-y-4">
+            <h3 class="text-sm font-semibold text-foreground">Timestamps</h3>
+            <div class="space-y-3">
+                <div class="flex justify-between">
+                    <span class="text-sm text-muted-foreground">Created</span>
+                    <span class="text-sm text-foreground">{{ return_item.created_at|datetime_short }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-sm text-muted-foreground">Updated</span>
+                    <span class="text-sm text-foreground">{{ return_item.updated_at|datetime_short }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Navigation -->
+<div class="mt-8">
+    <a href="/tiktok/returns"
+       class="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+        <i class="ph ph-arrow-left text-lg"></i>
+        Back to Returns
+    </a>
+</div>
+{% endblock %}

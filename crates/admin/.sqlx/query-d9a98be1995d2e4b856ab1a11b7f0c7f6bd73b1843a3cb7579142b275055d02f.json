@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                order_status as \"status!\",\n                COUNT(*) as \"count!\"\n            FROM admin.tiktok_orders\n            WHERE created_time >= $1::date\n              AND created_time < ($2::date + INTERVAL '1 day')\n            GROUP BY order_status\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "status!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Date",
+        "Date"
+      ]
+    },
+    "nullable": [
+      false,
+      null
+    ]
+  },
+  "hash": "d9a98be1995d2e4b856ab1a11b7f0c7f6bd73b1843a3cb7579142b275055d02f"
+}
