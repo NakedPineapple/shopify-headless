@@ -11,10 +11,18 @@ kill_timeout = 30
   SHOPIFY_STORE = "nakedpineapple.myshopify.com"
   SHOPIFY_API_VERSION = "2026-01"
   SMTP_HOST = "outbound.mailhop.org"
+  SMTP_PORT = "587"
   SMTP_USERNAME = "Qm49khKp"
   SMTP_FROM = "noreply@pineappleskinco.com"
+  KLAVIYO_LIST_ID = "UHyqYT"
+  M365_TENANT_ID = "0e9438fb-e563-4b63-9252-a290bb10bc6d"
+  M365_CLIENT_ID = "8eae8572-7a2e-4cbe-802d-ec16dea920e6"
+  M365_SHARED_MAILBOXES = "info@pineappleskinco.com,support@pineappleskinco.com"
+  AUTOMATION_EMAIL_SYNC_UNTIL = "2024-10-01T00:00:00Z"
   AUTOMATION_HEALTH_PORT = "9092"
   WEBHOOK_PORT = "8080"
+  WEBHOOK_BASE_URL = "https://nakedpineapple-automations-staging.fly.dev"
+  STOREFRONT_INTERNAL_URL = "http://nakedpineapple-storefront-staging.internal:9091"
   SENTRY_ENVIRONMENT = "staging"
 
 [http_service]

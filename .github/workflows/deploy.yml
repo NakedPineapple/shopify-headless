@@ -10,7 +10,7 @@ on:
         required: true
         default: 'all'
         type: choice
-        options: [all, storefront, admin]
+        options: [all, storefront, admin, automations]
       promote_to_production:
         description: 'Promote current staging to production'
         required: false
@@ -138,46 +138,27 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
   # ============================================================================
-  # Stage 3: Build Docker images (after version bump, skipped if promoting)
+  # Stage 3: Build + deploy each app independently (runs in parallel)
+  #
+  # Each app builds its Docker image and deploys to staging in a single job.
+  # If one app's build fails, the others continue unaffected.
   # ============================================================================
-  build:
-    name: Build ${{ matrix.app }}
+  storefront:
+    name: Storefront
     needs: [lint, test, version-bump]
     runs-on: ubuntu-latest
+    environment: staging
     if: >-
       !inputs.promote_to_production &&
-      !cancelled() &&
-      !failure()
-    strategy:
-      matrix:
-        app: [storefront, admin]
-        include:
-          - app: storefront
-            dockerfile: docker/Dockerfile.storefront
-            image: nakedpineapple-storefront-staging
-            cache: nakedpineapple-storefront-cache
-          - app: admin
-            dockerfile: docker/Dockerfile.admin
-            image: nakedpineapple-admin-staging
-            cache: nakedpineapple-admin-cache
+      !cancelled() && !failure() &&
+      (inputs.target == 'all' || inputs.target == 'storefront' || inputs.target == '')
     steps:
-      - name: Check if should build
-        id: check
-        run: |
-          if [[ "${{ inputs.target }}" == "all" || "${{ inputs.target }}" == "${{ matrix.app }}" || -z "${{ inputs.target }}" ]]; then
-            echo "skip=false" >> $GITHUB_OUTPUT
-          else
-            echo "skip=true" >> $GITHUB_OUTPUT
-          fi
-
       - uses: actions/checkout@v6
-        if: steps.check.outputs.skip != 'true'
         with:
           ref: ${{ needs.version-bump.result == 'success' && 'main' || github.sha }}
 
       - name: Determine version
         id: version
-        if: steps.check.outputs.skip != 'true'
         run: |
           VERSION="${{ needs.version-bump.outputs.version }}"
           if [ -z "$VERSION" ]; then
@@ -186,11 +167,9 @@ jobs:
           echo "tag=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Set up Docker Buildx
-        if: steps.check.outputs.skip != 'true'
         uses: docker/setup-buildx-action@v3
 
       - name: Log in to Fly Registry
-        if: steps.check.outputs.skip != 'true'
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -198,50 +177,149 @@ jobs:
           password: ${{ secrets.FLY_API_TOKEN }}
 
       - name: Build and push
-        if: steps.check.outputs.skip != 'true'
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ${{ matrix.dockerfile }}
+          file: docker/Dockerfile.storefront
           push: true
           tags: |
-            ${{ env.REGISTRY }}/${{ matrix.image }}:${{ github.sha }}
-            ${{ env.REGISTRY }}/${{ matrix.image }}:${{ steps.version.outputs.tag }}
-            ${{ env.REGISTRY }}/${{ matrix.image }}:latest
+            ${{ env.REGISTRY }}/nakedpineapple-storefront-staging:${{ github.sha }}
+            ${{ env.REGISTRY }}/nakedpineapple-storefront-staging:${{ steps.version.outputs.tag }}
+            ${{ env.REGISTRY }}/nakedpineapple-storefront-staging:latest
           build-args: |
             IMAGE_BASE_URL=${{ vars.IMAGE_BASE_URL }}
             VERSION=${{ steps.version.outputs.tag }}
             COMMIT_SHA=${{ github.sha }}
             BUILD_DATE=${{ github.event.head_commit.timestamp }}
-          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ matrix.cache }}:latest
-          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ matrix.cache }}:latest,mode=max
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/nakedpineapple-storefront-cache:latest
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/nakedpineapple-storefront-cache:latest,mode=max
 
-  # ============================================================================
-  # Stage 4: Deploy to staging (after builds complete)
-  # ============================================================================
-  deploy-staging:
-    name: Deploy to Staging
-    needs: [build]
-    runs-on: ubuntu-latest
-    environment: staging
-    steps:
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
-      - name: Deploy storefront to staging
-        if: inputs.target != 'admin'
+      - name: Deploy to staging
         run: flyctl deploy --image ${{ env.REGISTRY }}/nakedpineapple-storefront-staging:${{ github.sha }} -a nakedpineapple-storefront-staging
 
-      - name: Deploy admin to staging
-        if: inputs.target != 'storefront'
+  admin:
+    name: Admin
+    needs: [lint, test, version-bump]
+    runs-on: ubuntu-latest
+    environment: staging
+    if: >-
+      !inputs.promote_to_production &&
+      !cancelled() && !failure() &&
+      (inputs.target == 'all' || inputs.target == 'admin' || inputs.target == '')
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.version-bump.result == 'success' && 'main' || github.sha }}
+
+      - name: Determine version
+        id: version
+        run: |
+          VERSION="${{ needs.version-bump.outputs.version }}"
+          if [ -z "$VERSION" ]; then
+            VERSION=$(grep -m1 'version = "' Cargo.toml | sed 's/.*version = "\(.*\)"/\1/')
+          fi
+          echo "tag=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Fly Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: x
+          password: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.admin
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/nakedpineapple-admin-staging:${{ github.sha }}
+            ${{ env.REGISTRY }}/nakedpineapple-admin-staging:${{ steps.version.outputs.tag }}
+            ${{ env.REGISTRY }}/nakedpineapple-admin-staging:latest
+          build-args: |
+            VERSION=${{ steps.version.outputs.tag }}
+            COMMIT_SHA=${{ github.sha }}
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/nakedpineapple-admin-cache:latest
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/nakedpineapple-admin-cache:latest,mode=max
+
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy to staging
         run: flyctl deploy --image ${{ env.REGISTRY }}/nakedpineapple-admin-staging:${{ github.sha }} -a nakedpineapple-admin-staging
 
-  # ============================================================================
-  # Stage 5: Promote to production (manual trigger only)
-  # ============================================================================
-  promote-to-production:
-    name: Promote to Production
+  automations:
+    name: Automations
+    needs: [lint, test, version-bump]
     runs-on: ubuntu-latest
-    if: ${{ inputs.promote_to_production }}
+    environment: staging
+    if: >-
+      !inputs.promote_to_production &&
+      !cancelled() && !failure() &&
+      (inputs.target == 'all' || inputs.target == 'automations' || inputs.target == '')
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.version-bump.result == 'success' && 'main' || github.sha }}
+
+      - name: Determine version
+        id: version
+        run: |
+          VERSION="${{ needs.version-bump.outputs.version }}"
+          if [ -z "$VERSION" ]; then
+            VERSION=$(grep -m1 'version = "' Cargo.toml | sed 's/.*version = "\(.*\)"/\1/')
+          fi
+          echo "tag=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Fly Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: x
+          password: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.automations
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/nakedpineapple-automations-staging:${{ github.sha }}
+            ${{ env.REGISTRY }}/nakedpineapple-automations-staging:${{ steps.version.outputs.tag }}
+            ${{ env.REGISTRY }}/nakedpineapple-automations-staging:latest
+          build-args: |
+            VERSION=${{ steps.version.outputs.tag }}
+            COMMIT_SHA=${{ github.sha }}
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/nakedpineapple-automations-cache:latest
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/nakedpineapple-automations-cache:latest,mode=max
+
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy to staging
+        run: flyctl deploy --image ${{ env.REGISTRY }}/nakedpineapple-automations-staging:${{ github.sha }} -a nakedpineapple-automations-staging
+
+  # ============================================================================
+  # Promote to production (manual trigger only, per-app)
+  #
+  # Each app promotes independently so one failure doesn't block the others.
+  # ============================================================================
+  promote-storefront:
+    name: Promote Storefront
+    runs-on: ubuntu-latest
+    if: >-
+      inputs.promote_to_production &&
+      (inputs.target == 'all' || inputs.target == 'storefront')
     environment: production
     steps:
       - uses: actions/checkout@v6
@@ -263,50 +341,119 @@ jobs:
           VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "0.1.0")
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Get staging storefront image
-        id: staging-storefront
-        if: inputs.target != 'admin'
+      - name: Get staging image
+        id: staging
         run: |
           IMAGE=$(flyctl status -a nakedpineapple-storefront-staging --json | jq -r '.Machines[0].config.image')
           echo "image=$IMAGE" >> $GITHUB_OUTPUT
           echo "Promoting storefront image: $IMAGE"
 
-      - name: Copy storefront image to production registry
-        if: inputs.target != 'admin'
+      - name: Copy image to production registry
         run: |
-          docker pull ${{ steps.staging-storefront.outputs.image }}
+          docker pull ${{ steps.staging.outputs.image }}
           VERSION_TAG=${{ env.REGISTRY }}/nakedpineapple-storefront:${{ steps.version.outputs.version }}
           LATEST_TAG=${{ env.REGISTRY }}/nakedpineapple-storefront:latest
-          docker tag ${{ steps.staging-storefront.outputs.image }} $VERSION_TAG
-          docker tag ${{ steps.staging-storefront.outputs.image }} $LATEST_TAG
+          docker tag ${{ steps.staging.outputs.image }} $VERSION_TAG
+          docker tag ${{ steps.staging.outputs.image }} $LATEST_TAG
           docker push $VERSION_TAG
           docker push $LATEST_TAG
-          echo "STOREFRONT_PROD_IMAGE=$VERSION_TAG" >> $GITHUB_ENV
+          echo "PROD_IMAGE=$VERSION_TAG" >> $GITHUB_ENV
 
-      - name: Get staging admin image
-        id: staging-admin
-        if: inputs.target != 'storefront'
+      - name: Deploy to production
+        run: flyctl deploy --image ${{ env.PROD_IMAGE }} -a nakedpineapple-storefront
+
+  promote-admin:
+    name: Promote Admin
+    runs-on: ubuntu-latest
+    if: >-
+      inputs.promote_to_production &&
+      (inputs.target == 'all' || inputs.target == 'admin')
+    environment: production
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Log in to Fly Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: x
+          password: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Get current version
+        id: version
+        run: |
+          VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "0.1.0")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Get staging image
+        id: staging
         run: |
           IMAGE=$(flyctl status -a nakedpineapple-admin-staging --json | jq -r '.Machines[0].config.image')
           echo "image=$IMAGE" >> $GITHUB_OUTPUT
           echo "Promoting admin image: $IMAGE"
 
-      - name: Copy admin image to production registry
-        if: inputs.target != 'storefront'
+      - name: Copy image to production registry
         run: |
-          docker pull ${{ steps.staging-admin.outputs.image }}
+          docker pull ${{ steps.staging.outputs.image }}
           VERSION_TAG=${{ env.REGISTRY }}/nakedpineapple-admin:${{ steps.version.outputs.version }}
           LATEST_TAG=${{ env.REGISTRY }}/nakedpineapple-admin:latest
-          docker tag ${{ steps.staging-admin.outputs.image }} $VERSION_TAG
-          docker tag ${{ steps.staging-admin.outputs.image }} $LATEST_TAG
+          docker tag ${{ steps.staging.outputs.image }} $VERSION_TAG
+          docker tag ${{ steps.staging.outputs.image }} $LATEST_TAG
           docker push $VERSION_TAG
           docker push $LATEST_TAG
-          echo "ADMIN_PROD_IMAGE=$VERSION_TAG" >> $GITHUB_ENV
+          echo "PROD_IMAGE=$VERSION_TAG" >> $GITHUB_ENV
 
-      - name: Deploy storefront to production
-        if: inputs.target != 'admin'
-        run: flyctl deploy --image ${{ env.STOREFRONT_PROD_IMAGE }} -a nakedpineapple-storefront
+      - name: Deploy to production
+        run: flyctl deploy --image ${{ env.PROD_IMAGE }} -a nakedpineapple-admin
 
-      - name: Deploy admin to production
-        if: inputs.target != 'storefront'
-        run: flyctl deploy --image ${{ env.ADMIN_PROD_IMAGE }} -a nakedpineapple-admin
+  promote-automations:
+    name: Promote Automations
+    runs-on: ubuntu-latest
+    if: >-
+      inputs.promote_to_production &&
+      (inputs.target == 'all' || inputs.target == 'automations')
+    environment: production
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Log in to Fly Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: x
+          password: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Get current version
+        id: version
+        run: |
+          VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "0.1.0")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Get staging image
+        id: staging
+        run: |
+          IMAGE=$(flyctl status -a nakedpineapple-automations-staging --json | jq -r '.Machines[0].config.image')
+          echo "image=$IMAGE" >> $GITHUB_OUTPUT
+          echo "Promoting automations image: $IMAGE"
+
+      - name: Copy image to production registry
+        run: |
+          docker pull ${{ steps.staging.outputs.image }}
+          VERSION_TAG=${{ env.REGISTRY }}/nakedpineapple-automations:${{ steps.version.outputs.version }}
+          LATEST_TAG=${{ env.REGISTRY }}/nakedpineapple-automations:latest
+          docker tag ${{ steps.staging.outputs.image }} $VERSION_TAG
+          docker tag ${{ steps.staging.outputs.image }} $LATEST_TAG
+          docker push $VERSION_TAG
+          docker push $LATEST_TAG
+          echo "PROD_IMAGE=$VERSION_TAG" >> $GITHUB_ENV
+
+      - name: Deploy to production
+        run: flyctl deploy --image ${{ env.PROD_IMAGE }} -a nakedpineapple-automations
