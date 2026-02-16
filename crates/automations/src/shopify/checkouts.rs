@@ -38,12 +38,12 @@ pub struct CheckoutLineItem {
 
 const ABANDONED_CHECKOUTS_QUERY: &str = r"
 query AbandonedCheckouts($query: String!) {
-    abandonedCheckouts(first: 50, query: $query, sortKey: UPDATED_AT, reverse: true) {
+    abandonedCheckouts(first: 50, query: $query, sortKey: CREATED_AT, reverse: true) {
         nodes {
             id
             createdAt
             updatedAt
-            email
+            customer { email }
             abandonedCheckoutUrl
             totalPriceSet { shopMoney { amount currencyCode } }
             lineItems(first: 20) {
@@ -132,7 +132,8 @@ fn parse_abandoned_checkouts(data: &serde_json::Value) -> Vec<AbandonedCheckout>
 fn parse_single_checkout(node: &serde_json::Value) -> Option<AbandonedCheckout> {
     let id = node.get("id")?.as_str()?.to_string();
     let email = node
-        .get("email")
+        .get("customer")
+        .and_then(|c| c.get("email"))
         .and_then(|v| v.as_str())
         .filter(|e| !e.is_empty())
         .map(String::from);
