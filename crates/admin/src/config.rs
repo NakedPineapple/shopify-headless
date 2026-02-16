@@ -336,6 +336,52 @@ impl AdminConfig {
     }
 }
 
+/// Log which optional environment variables are not set.
+///
+/// Called at startup after tracing is initialized so operators can see
+/// which optional features and integrations are disabled.
+pub fn log_unset_env_vars() {
+    const OPTIONAL_VARS: &[&str] = &[
+        "ADMIN_TLS_CERT",
+        "ADMIN_TLS_KEY",
+        "JUDGEME_API_TOKEN",
+        "KLAVIYO_API_KEY",
+        "KLAVIYO_LIST_ID",
+        "M365_CLIENT_ID",
+        "M365_CLIENT_SECRET",
+        "M365_SHARED_MAILBOXES",
+        "M365_TENANT_ID",
+        "OPENAI_API_KEY",
+        "R2_ACCESS_KEY_ID",
+        "R2_ACCOUNT_ID",
+        "R2_BUCKET_NAME",
+        "R2_BUCKET_ORIGINAL_IMAGES",
+        "R2_SECRET_ACCESS_KEY",
+        "SENTRY_DSN",
+        "SENTRY_ENVIRONMENT",
+        "SLACK_BOT_TOKEN",
+        "SLACK_CHANNEL_ID",
+        "SLACK_SIGNING_SECRET",
+        "STOREFRONT_DATABASE_URL",
+    ];
+
+    let unset: Vec<&str> = OPTIONAL_VARS
+        .iter()
+        .copied()
+        .filter(|var| std::env::var(var).is_err())
+        .collect();
+
+    if unset.is_empty() {
+        tracing::info!("all optional environment variables are set");
+    } else {
+        tracing::info!(
+            count = unset.len(),
+            variables = ?unset,
+            "optional environment variables not set"
+        );
+    }
+}
+
 impl ShopifyAdminConfig {
     fn from_env() -> Result<Self, ConfigError> {
         Ok(Self {

@@ -397,6 +397,52 @@ impl AutomationConfig {
     }
 }
 
+/// Log which optional environment variables are not set.
+///
+/// Called at startup after tracing is initialized so operators can see
+/// which optional features and integrations are disabled.
+pub fn log_unset_env_vars() {
+    const OPTIONAL_VARS: &[&str] = &[
+        "BETTERSTACK_WEBHOOK_SECRET",
+        "FLY_WEBHOOK_TOKEN",
+        "GITHUB_WEBHOOK_SECRET",
+        "KLAVIYO_API_KEY",
+        "KLAVIYO_LIST_ID",
+        "SENTRY_DSN",
+        "SENTRY_ENVIRONMENT",
+        "SENTRY_WEBHOOK_SECRET",
+        "SHOPIFY_STORE",
+        "SHOPIFY_WEBHOOK_SECRET",
+        "SLACK_BOT_TOKEN",
+        "SLACK_CHANNEL_ID",
+        "SLACK_SIGNING_SECRET",
+        "SMTP_FROM",
+        "SMTP_HOST",
+        "SMTP_PASSWORD",
+        "SMTP_USERNAME",
+        "STOREFRONT_DATABASE_URL",
+        "STOREFRONT_INTERNAL_URL",
+        "WEBHOOK_BASE_URL",
+        "WEBHOOK_DATABASE_URL",
+    ];
+
+    let unset: Vec<&str> = OPTIONAL_VARS
+        .iter()
+        .copied()
+        .filter(|var| std::env::var(var).is_err())
+        .collect();
+
+    if unset.is_empty() {
+        tracing::info!("all optional environment variables are set");
+    } else {
+        tracing::info!(
+            count = unset.len(),
+            variables = ?unset,
+            "optional environment variables not set"
+        );
+    }
+}
+
 #[cfg(test)]
 #[allow(clippy::unwrap_used)]
 mod tests {

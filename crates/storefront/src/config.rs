@@ -377,6 +377,54 @@ impl AnalyticsConfig {
     }
 }
 
+/// Log which optional environment variables are not set.
+///
+/// Called at startup after tracing is initialized so operators can see
+/// which optional features and integrations are disabled.
+pub fn log_unset_env_vars() {
+    const OPTIONAL_VARS: &[&str] = &[
+        "CF_BEACON_TOKENS",
+        "CLAUDE_API_KEY",
+        "CRAZY_EGG_ACCOUNT_ID",
+        "GA4_MEASUREMENT_ID",
+        "GOOGLE_ADS_CONVERSION_LABEL",
+        "GOOGLE_ADS_ID",
+        "JUDGEME_API_TOKEN",
+        "KLAVIYO_API_KEY",
+        "KLAVIYO_LIST_ID",
+        "META_PIXEL_ID",
+        "MICROSOFT_UET_ID",
+        "MIXPANEL_PROJECT_TOKEN",
+        "OPENAI_API_KEY",
+        "PINTEREST_TAG_ID",
+        "SENTRY_DSN",
+        "SENTRY_DSN_PUBLIC",
+        "SENTRY_ENVIRONMENT",
+        "SHOPIFY_WEBHOOK_SECRET",
+        "SNAPCHAT_PIXEL_ID",
+        "TIKTOK_PIXEL_ID",
+        "TURNSTILE_SECRET_KEY",
+        "TURNSTILE_SITE_KEY",
+        "TWITTER_PIXEL_ID",
+    ];
+
+    let unset: Vec<&str> = OPTIONAL_VARS
+        .iter()
+        .copied()
+        .filter(|var| std::env::var(var).is_err())
+        .collect();
+
+    if unset.is_empty() {
+        tracing::info!("all optional environment variables are set");
+    } else {
+        tracing::info!(
+            count = unset.len(),
+            variables = ?unset,
+            "optional environment variables not set"
+        );
+    }
+}
+
 // =============================================================================
 // Helper Functions
 // =============================================================================

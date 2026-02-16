@@ -84,6 +84,8 @@ async fn main() {
     let service_metadata = logging::ServiceMetadata::from_env("automations");
     logging::init_tracing(&service_metadata);
 
+    config::log_unset_env_vars();
+
     tracing::info!("starting automations service");
 
     let pool = db::create_pool(&config.database_url)

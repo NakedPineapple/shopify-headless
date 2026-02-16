@@ -125,6 +125,8 @@ async fn main() {
     let service_metadata = logging::ServiceMetadata::from_env("admin");
     logging::init_tracing(&service_metadata);
 
+    config::log_unset_env_vars();
+
     // Initialize database connection pool
     let pool = db::create_pool(&config.database_url)
         .await
