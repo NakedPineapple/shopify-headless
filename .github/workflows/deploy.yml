@@ -197,7 +197,7 @@ jobs:
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
       - name: Deploy to staging
-        run: flyctl deploy --image ${{ env.REGISTRY }}/nakedpineapple-storefront-staging:${{ github.sha }} -a nakedpineapple-storefront-staging
+        run: flyctl deploy --config fly/fly.storefront.staging.toml --image ${{ env.REGISTRY }}/nakedpineapple-storefront-staging:${{ github.sha }} -a nakedpineapple-storefront-staging
 
   admin:
     name: Admin
@@ -252,7 +252,7 @@ jobs:
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
       - name: Deploy to staging
-        run: flyctl deploy --image ${{ env.REGISTRY }}/nakedpineapple-admin-staging:${{ github.sha }} -a nakedpineapple-admin-staging
+        run: flyctl deploy --config fly/fly.admin.staging.toml --image ${{ env.REGISTRY }}/nakedpineapple-admin-staging:${{ github.sha }} -a nakedpineapple-admin-staging
 
   automations:
     name: Automations
@@ -307,7 +307,7 @@ jobs:
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
       - name: Deploy to staging
-        run: flyctl deploy --image ${{ env.REGISTRY }}/nakedpineapple-automations-staging:${{ github.sha }} -a nakedpineapple-automations-staging
+        run: flyctl deploy --config fly/fly.automations.staging.toml --image ${{ env.REGISTRY }}/nakedpineapple-automations-staging:${{ github.sha }} -a nakedpineapple-automations-staging
 
   # ============================================================================
   # Promote to production (manual trigger only, per-app)
@@ -360,7 +360,7 @@ jobs:
           echo "PROD_IMAGE=$VERSION_TAG" >> $GITHUB_ENV
 
       - name: Deploy to production
-        run: flyctl deploy --image ${{ env.PROD_IMAGE }} -a nakedpineapple-storefront
+        run: flyctl deploy --config fly/fly.storefront.toml --image ${{ env.PROD_IMAGE }} -a nakedpineapple-storefront
 
   promote-admin:
     name: Promote Admin
@@ -408,7 +408,7 @@ jobs:
           echo "PROD_IMAGE=$VERSION_TAG" >> $GITHUB_ENV
 
       - name: Deploy to production
-        run: flyctl deploy --image ${{ env.PROD_IMAGE }} -a nakedpineapple-admin
+        run: flyctl deploy --config fly/fly.admin.toml --image ${{ env.PROD_IMAGE }} -a nakedpineapple-admin
 
   promote-automations:
     name: Promote Automations
@@ -456,4 +456,4 @@ jobs:
           echo "PROD_IMAGE=$VERSION_TAG" >> $GITHUB_ENV
 
       - name: Deploy to production
-        run: flyctl deploy --image ${{ env.PROD_IMAGE }} -a nakedpineapple-automations
+        run: flyctl deploy --config fly/fly.automations.toml --image ${{ env.PROD_IMAGE }} -a nakedpineapple-automations
