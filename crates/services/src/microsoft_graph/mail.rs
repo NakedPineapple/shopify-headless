@@ -83,6 +83,8 @@ impl M365Client {
              &$select={MESSAGE_SELECT}"
         );
 
+        tracing::debug!(mailbox = %mailbox, %initial_url, "graph messages request");
+
         let mut all_messages = Vec::new();
         let mut url = Some(initial_url);
         let mut pages = 0u32;

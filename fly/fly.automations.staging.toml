@@ -7,7 +7,7 @@ kill_timeout = 30
   dockerfile = "../docker/Dockerfile.automations"
 
 [env]
-  RUST_LOG = "info,naked_pineapple_automations=debug,tower_http=info,sqlx::query=warn,rustls=warn,h2=warn,hyper_util=warn"
+  RUST_LOG = "info,naked_pineapple_automations=debug,naked_pineapple_services=debug,tower_http=info,sqlx::query=warn,rustls=warn,h2=warn,hyper_util=warn"
   SHOPIFY_STORE = "nakedpineapple.myshopify.com"
   SHOPIFY_API_VERSION = "2026-01"
   SMTP_HOST = "outbound.mailhop.org"
@@ -18,7 +18,7 @@ kill_timeout = 30
   M365_TENANT_ID = "0e9438fb-e563-4b63-9252-a290bb10bc6d"
   M365_CLIENT_ID = "8eae8572-7a2e-4cbe-802d-ec16dea920e6"
   M365_SHARED_MAILBOXES = "info@pineappleskinco.com,support@pineappleskinco.com"
-  AUTOMATION_EMAIL_SYNC_UNTIL = "2024-10-01T00:00:00Z"
+  AUTOMATION_EMAIL_SYNC_UNTIL = "2024-11-01T00:00:00Z"
   AUTOMATION_HEALTH_PORT = "9092"
   WEBHOOK_PORT = "8080"
   WEBHOOK_BASE_URL = "https://nakedpineapple-automations-staging.fly.dev"

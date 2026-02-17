@@ -67,8 +67,8 @@ RUN apk add --no-cache \
 RUN addgroup -g 1001 appuser && adduser -u 1001 -G appuser -D appuser
 
 # Copy Tailscale binaries from pinned official image
-COPY --from=docker.io/tailscale/tailscale:v1.94.1@sha256:21df0b5a84efa35c0a507f4dd2340e1b1295683634a28968707354d5bd991d9c /usr/local/bin/tailscaled /app/tailscaled
-COPY --from=docker.io/tailscale/tailscale:v1.94.1@sha256:21df0b5a84efa35c0a507f4dd2340e1b1295683634a28968707354d5bd991d9c /usr/local/bin/tailscale /app/tailscale
+COPY --from=docker.io/tailscale/tailscale:v1.94.2@sha256:95e528798bebe75f39b10e74e7051cf51188ee615934f232ba7ad06a3390ffa1 /usr/local/bin/tailscaled /app/tailscaled
+COPY --from=docker.io/tailscale/tailscale:v1.94.2@sha256:95e528798bebe75f39b10e74e7051cf51188ee615934f232ba7ad06a3390ffa1 /usr/local/bin/tailscale /app/tailscale
 
 RUN mkdir -p /var/run/tailscale /var/cache/tailscale /var/lib/tailscale
 
