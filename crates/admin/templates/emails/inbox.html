@@ -11,7 +11,7 @@
 {% block content %}
 <div class="flex gap-6 h-[calc(100vh-12rem)]">
     <!-- Left Panel: Email List -->
-    <div class="w-full lg:w-[380px] shrink-0 bg-card rounded-lg border border-border flex flex-col overflow-hidden">
+    <div id="email-list-panel" class="w-full lg:w-[380px] shrink-0 bg-card rounded-lg border border-border flex flex-col overflow-hidden">
         <!-- Filter Tabs -->
         <div class="border-b border-border">
             <nav class="flex" id="inbox-tabs">
@@ -111,6 +111,19 @@ function selectEmail(id, el) {
     var detail = document.getElementById('email-detail');
     detail.classList.remove('hidden');
     detail.classList.add('flex');
+
+    // On small screens, hide the list panel to make room for detail
+    if (window.innerWidth < 1024) {
+        document.getElementById('email-list-panel').classList.add('hidden');
+    }
+}
+
+function backToList() {
+    var listPanel = document.getElementById('email-list-panel');
+    var detail = document.getElementById('email-detail');
+    listPanel.classList.remove('hidden');
+    detail.classList.add('hidden');
+    detail.classList.remove('flex');
 }
 </script>
 {% endblock %}

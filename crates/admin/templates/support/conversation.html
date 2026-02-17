@@ -1,5 +1,12 @@
 <!-- Conversation Detail Fragment (loaded via HTMX into #conversation-detail) -->
 
+<!-- Back button (small screens only) -->
+<button onclick="backToList()"
+        class="lg:hidden flex items-center gap-1.5 px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground border-b border-border w-full shrink-0">
+    <i class="ph ph-arrow-left"></i>
+    Back to list
+</button>
+
 <!-- Header -->
 <div class="px-6 py-4 border-b border-border flex items-center justify-between">
     <div class="flex items-center gap-3 min-w-0">
