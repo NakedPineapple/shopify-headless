@@ -72,7 +72,9 @@ tasks:
       - cargo watch -x 'run -p naked-pineapple-automations'
 
   check:
-    desc: "Run all checks (fmt, lint, audit, deny)"
+    desc: "Run all checks (css, fmt, lint, audit, deny)"
+    deps:
+      - css:build
     cmds:
       - task: fmt:check
       - task: lint
