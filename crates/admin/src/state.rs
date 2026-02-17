@@ -426,14 +426,16 @@ impl AppState {
 
     /// Initialize R2 document and gallery storage from config.
     fn init_r2(config: &AdminConfig) -> (Option<R2Client>, Option<R2Client>) {
-        let r2 = config.r2.as_ref().map(|r2_config| {
-            tracing::info!("R2 document storage initialized");
-            R2Client::new(
-                &r2_config.account_id,
-                &r2_config.access_key_id,
-                &r2_config.secret_access_key,
-                r2_config.bucket_name.clone(),
-            )
+        let r2 = config.r2.as_ref().and_then(|r2_config| {
+            r2_config.documents_bucket_name.as_ref().map(|bucket| {
+                tracing::info!("R2 document storage initialized");
+                R2Client::new(
+                    &r2_config.account_id,
+                    &r2_config.access_key_id,
+                    &r2_config.secret_access_key,
+                    bucket.clone(),
+                )
+            })
         });
         if r2.is_none() {
             tracing::info!("R2 not configured — document upload disabled");

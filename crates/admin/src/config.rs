@@ -174,8 +174,8 @@ pub struct R2Config {
     pub access_key_id: String,
     /// R2 secret access key.
     pub secret_access_key: SecretString,
-    /// R2 bucket name (documents).
-    pub bucket_name: String,
+    /// R2 bucket name for documents (optional).
+    pub documents_bucket_name: Option<String>,
     /// R2 bucket name for original images gallery (optional).
     pub gallery_bucket_name: Option<String>,
 }
@@ -186,7 +186,7 @@ impl std::fmt::Debug for R2Config {
             .field("account_id", &self.account_id)
             .field("access_key_id", &self.access_key_id)
             .field("secret_access_key", &"[REDACTED]")
-            .field("bucket_name", &self.bucket_name)
+            .field("documents_bucket_name", &self.documents_bucket_name)
             .field("gallery_bucket_name", &self.gallery_bucket_name)
             .finish()
     }
@@ -200,14 +200,14 @@ impl R2Config {
         let account_id = get_optional_env("R2_ACCOUNT_ID")?;
         let access_key_id = get_optional_env("R2_ACCESS_KEY_ID")?;
         let secret_access_key = SecretString::from(get_optional_env("R2_SECRET_ACCESS_KEY")?);
-        let bucket_name = get_optional_env("R2_BUCKET_NAME")?;
+        let documents_bucket_name = get_optional_env("R2_BUCKET_DOCUMENTS");
         let gallery_bucket_name = get_optional_env("R2_BUCKET_ORIGINAL_IMAGES");
 
         Some(Self {
             account_id,
             access_key_id,
             secret_access_key,
-            bucket_name,
+            documents_bucket_name,
             gallery_bucket_name,
         })
     }
@@ -354,7 +354,7 @@ pub fn log_unset_env_vars() {
         "OPENAI_API_KEY",
         "R2_ACCESS_KEY_ID",
         "R2_ACCOUNT_ID",
-        "R2_BUCKET_NAME",
+        "R2_BUCKET_DOCUMENTS",
         "R2_BUCKET_ORIGINAL_IMAGES",
         "R2_SECRET_ACCESS_KEY",
         "SENTRY_DSN",

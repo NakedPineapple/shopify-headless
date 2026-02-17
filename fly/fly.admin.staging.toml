@@ -22,6 +22,10 @@ kill_timeout = 30
   SMTP_USERNAME = "Qm49khKp"
   SMTP_FROM = "noreply@pineappleskinco.com"
   KLAVIYO_LIST_ID="UHyqYT"
+  R2_ACCOUNT_ID = "f2f9531d0bc1561d8f72ce73476e47fc"
+  R2_ACCESS_KEY_ID = "e26cf6adbd2435dbfecd0b6298a10192"
+  R2_BUCKET_DOCUMENTS = "nakedpineapple-documents"
+  R2_BUCKET_ORIGINAL_IMAGES = "nakedpineapple-originals"
   ADMIN_HEALTH_PORT = "9091"
 
 # No http_service - traffic comes via Tailscale, not Fly proxy
