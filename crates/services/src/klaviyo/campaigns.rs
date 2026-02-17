@@ -35,16 +35,14 @@ impl KlaviyoClient {
                 CampaignStatus::Sent => "sent",
                 CampaignStatus::Cancelled => "cancelled",
             };
-            filters.push(format!("equals(messages.channel,\"{status_str}\")"));
+            filters.push(format!("equals(status,\"{status_str}\")"));
         }
 
-        if let Some(channel) = channel {
-            filters.push(format!("equals(messages.channel,\"{}\")", channel.as_str()));
-        }
+        // Klaviyo requires a channel filter; default to email
+        let ch = channel.unwrap_or(CampaignChannel::Email);
+        filters.push(format!("equals(messages.channel,\"{}\")", ch.as_str()));
 
-        if !filters.is_empty() {
-            let _ = write!(path, "&filter={}", filters.join(","));
-        }
+        let _ = write!(path, "&filter={}", filters.join(","));
 
         let response: ApiListResponse<Campaign> = self.get(&path).await?;
         Ok(response.data)
