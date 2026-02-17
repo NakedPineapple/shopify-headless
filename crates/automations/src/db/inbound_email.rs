@@ -285,24 +285,29 @@ pub async fn get_thread_context(
     Ok(rows)
 }
 
-/// Get the M365 message ID and mailbox for an email (for sending replies).
-pub struct EmailReplyInfo {
+/// Info for Slack review actions (approve/reject).
+pub struct EmailReviewInfo {
     pub m365_message_id: String,
     pub mailbox: String,
     pub from_address: String,
+    pub from_name: Option<String>,
+    pub subject: String,
+    pub classification: Option<String>,
+    pub reasoning: Option<String>,
     pub response_draft: Option<String>,
 }
 
-/// Fetch reply info for an email by ID.
+/// Fetch review info for an email by ID (used by Slack webhook handlers).
 #[instrument(skip(pool), fields(%email_id))]
-pub async fn get_reply_info(
+pub async fn get_review_info(
     pool: &PgPool,
     email_id: i32,
-) -> Result<EmailReplyInfo, RepositoryError> {
+) -> Result<EmailReviewInfo, RepositoryError> {
     let row = sqlx::query_as!(
-        EmailReplyInfo,
+        EmailReviewInfo,
         r#"
-        SELECT m365_message_id, mailbox, from_address, response_draft
+        SELECT m365_message_id, mailbox, from_address, from_name,
+               subject, classification, reasoning, response_draft
         FROM admin.inbound_email
         WHERE id = $1
         "#,
@@ -313,4 +318,31 @@ pub async fn get_reply_info(
     .ok_or(RepositoryError::NotFound)?;
 
     Ok(row)
+}
+
+/// Mark a review as approved by a human (without sending a reply).
+#[instrument(skip(pool), fields(%email_id))]
+pub async fn mark_review_approved(
+    pool: &PgPool,
+    email_id: i32,
+    reviewer: &str,
+) -> Result<(), RepositoryError> {
+    sqlx::query!(
+        r#"
+        UPDATE admin.inbound_email
+        SET response_approved = TRUE,
+            reviewed_by = $1,
+            reviewed_at = NOW(),
+            status = $2,
+            updated_at = NOW()
+        WHERE id = $3
+        "#,
+        reviewer,
+        EmailStatus::Routed.as_str(),
+        email_id,
+    )
+    .execute(pool)
+    .await?;
+
+    Ok(())
 }

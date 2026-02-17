@@ -135,6 +135,97 @@ pub fn build_email_rejected_message(
     ]
 }
 
+/// Build a helpdesk review message with approve/dismiss buttons.
+#[must_use]
+pub fn build_helpdesk_review_message(
+    email_id: i32,
+    from_address: &str,
+    subject: &str,
+    classification: EmailClassification,
+    reasoning: &str,
+) -> Vec<Block> {
+    vec![
+        Block::Header {
+            text: PlainText::new("Helpdesk Routing Review"),
+        },
+        Block::Section {
+            text: Text::mrkdwn(format!(
+                "*From:* {from_address}\n*Subject:* {subject}\n*Classification:* {}",
+                classification.label()
+            )),
+            accessory: None,
+        },
+        Block::Context {
+            elements: vec![ContextElement::Mrkdwn {
+                text: format!("AI reasoning: {reasoning}"),
+            }],
+        },
+        Block::Divider,
+        Block::Actions {
+            elements: vec![
+                ActionElement::Button {
+                    text: PlainText::new("Route to Helpdesk"),
+                    action_id: format!("helpdesk_approve_{email_id}"),
+                    value: Some(email_id.to_string()),
+                    style: Some(ButtonStyle::Primary),
+                },
+                ActionElement::Button {
+                    text: PlainText::new("Dismiss"),
+                    action_id: format!("helpdesk_reject_{email_id}"),
+                    value: Some(email_id.to_string()),
+                    style: Some(ButtonStyle::Danger),
+                },
+            ],
+        },
+    ]
+}
+
+/// Build a helpdesk approved confirmation message (replaces the review message).
+#[must_use]
+pub fn build_helpdesk_approved_message(
+    from_address: &str,
+    subject: &str,
+    approved_by: &str,
+) -> Vec<Block> {
+    vec![
+        Block::Header {
+            text: PlainText::new("Routed to Helpdesk"),
+        },
+        Block::Section {
+            text: Text::mrkdwn(format!("*From:* {from_address}\n*Subject:* {subject}")),
+            accessory: None,
+        },
+        Block::Context {
+            elements: vec![ContextElement::Mrkdwn {
+                text: format!("Approved by *{approved_by}*"),
+            }],
+        },
+    ]
+}
+
+/// Build a helpdesk dismissed confirmation message (replaces the review message).
+#[must_use]
+pub fn build_helpdesk_dismissed_message(
+    from_address: &str,
+    subject: &str,
+    dismissed_by: &str,
+) -> Vec<Block> {
+    vec![
+        Block::Header {
+            text: PlainText::new("Helpdesk Routing Dismissed"),
+        },
+        Block::Section {
+            text: Text::mrkdwn(format!("*From:* {from_address}\n*Subject:* {subject}")),
+            accessory: None,
+        },
+        Block::Context {
+            elements: vec![ContextElement::Mrkdwn {
+                text: format!("Dismissed by *{dismissed_by}*"),
+            }],
+        },
+    ]
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -179,6 +270,37 @@ mod tests {
         // Should not contain Actions block
         for block in &blocks {
             assert!(!matches!(block, Block::Actions { .. }));
+        }
+    }
+
+    #[test]
+    fn test_helpdesk_review_message_has_buttons() {
+        let blocks = build_helpdesk_review_message(
+            7,
+            "angry@example.com",
+            "This is unacceptable",
+            EmailClassification::Complaint,
+            "Customer expressing dissatisfaction with product quality",
+        );
+
+        let last = blocks.last().expect("blocks");
+        match last {
+            Block::Actions { elements } => {
+                assert_eq!(elements.len(), 2);
+                let first = elements.first().expect("first element");
+                match first {
+                    ActionElement::Button { action_id, .. } => {
+                        assert!(action_id.starts_with("helpdesk_approve_"));
+                    }
+                }
+                let second = elements.get(1).expect("second element");
+                match second {
+                    ActionElement::Button { action_id, .. } => {
+                        assert!(action_id.starts_with("helpdesk_reject_"));
+                    }
+                }
+            }
+            _ => panic!("expected Actions block"),
         }
     }
 

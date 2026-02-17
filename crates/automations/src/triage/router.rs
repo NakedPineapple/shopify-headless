@@ -7,10 +7,7 @@
 //! - Send Slack notifications for business/vendor emails
 
 use naked_pineapple_services::claude::{ClaudeClient, ClaudeError};
-use naked_pineapple_services::klaviyo::{KlaviyoClient, KlaviyoError};
 use naked_pineapple_services::slack::SlackClient;
-use naked_pineapple_support::db::conversation::ConversationRepository;
-use naked_pineapple_support::models::CreateConversationParams;
 use sqlx::PgPool;
 use tracing::{debug, error, info, instrument};
 
@@ -41,8 +38,6 @@ pub struct RouteParams<'a> {
     pub classification: &'a ClassificationResult,
     /// Conversation ID for threading checks.
     pub conversation_id: &'a str,
-    /// Storefront support pool (optional — for creating support conversations from email).
-    pub support_pool: Option<&'a PgPool>,
 }
 
 /// Route a classified email to the appropriate destination.
@@ -62,7 +57,6 @@ pub async fn route_email(
     m365: &M365Client,
     claude: &ClaudeClient,
     slack: Option<&SlackClient>,
-    klaviyo: Option<&KlaviyoClient>,
     shopify: Option<&ShopifyClient>,
     route_params: &RouteParams<'_>,
 ) -> Result<(), TriageError> {
@@ -89,7 +83,7 @@ pub async fn route_email(
     }
 
     if classification.classification.routes_to_helpdesk() {
-        return route_to_helpdesk(pool, slack, klaviyo, route_params).await;
+        return route_to_helpdesk(pool, slack, route_params).await;
     }
 
     // BusinessVendor: Slack notification only
@@ -161,11 +155,6 @@ async fn route_draft_response(
         send_review_message(slack, params, &draft).await;
     }
 
-    // Create support conversation in storefront DB for unified admin inbox
-    if let Some(sp) = params.support_pool {
-        create_support_conversation(sp, params).await;
-    }
-
     info!(
         email_id = params.email_id,
         "draft response queued for Slack review"
@@ -174,48 +163,34 @@ async fn route_draft_response(
     Ok(())
 }
 
-/// Route to Klaviyo Helpdesk and send Slack notification.
+/// Queue helpdesk routing for Slack review (Klaviyo ticket created on approval).
 async fn route_to_helpdesk(
     pool: &PgPool,
     slack: Option<&SlackClient>,
-    klaviyo: Option<&KlaviyoClient>,
     params: &RouteParams<'_>,
 ) -> Result<(), TriageError> {
-    debug!(email_id = params.email_id, "routing to helpdesk");
-
-    // Track event in Klaviyo for helpdesk ticket creation
-    if let Some(klaviyo) = klaviyo {
-        let helpdesk_params = naked_pineapple_services::klaviyo::HelpdeskEventParams {
-            email: params.from_address,
-            customer_name: params
-                .classification
-                .extracted_entities
-                .customer_name
-                .as_deref(),
-            subject: params.subject,
-            classification: params.classification.classification.label(),
-            reasoning: &params.classification.reasoning,
-            email_id: params.email_id,
-        };
-        if let Err(e) = klaviyo.track_helpdesk_event(&helpdesk_params).await {
-            error!(error = %e, "failed to track helpdesk event in Klaviyo");
-        }
-    }
+    debug!(
+        email_id = params.email_id,
+        "queuing helpdesk routing for review"
+    );
 
     inbound_email::update_status(
         pool,
         params.email_id,
-        EmailStatus::Routed,
+        EmailStatus::PendingReview,
         Some("klaviyo_helpdesk"),
     )
     .await?;
 
-    // Send Slack notification
+    // Send Slack review message with approve/dismiss buttons
     if let Some(slack) = slack {
-        send_notification_message(slack, params).await;
+        send_helpdesk_review_message(slack, params).await;
     }
 
-    info!(email_id = params.email_id, "email routed to helpdesk");
+    info!(
+        email_id = params.email_id,
+        "helpdesk routing queued for Slack review"
+    );
 
     Ok(())
 }
@@ -256,6 +231,27 @@ async fn send_review_message(slack: &SlackClient, params: &RouteParams<'_>, draf
 
     if let Err(e) = slack.post_message(channel, blocks, Some(&fallback)).await {
         error!(error = %e, "failed to send Slack review message");
+    }
+}
+
+/// Send a Slack helpdesk review message with approve/dismiss buttons.
+async fn send_helpdesk_review_message(slack: &SlackClient, params: &RouteParams<'_>) {
+    let blocks = slack_messages::build_helpdesk_review_message(
+        params.email_id,
+        params.from_address,
+        params.subject,
+        params.classification.classification,
+        &params.classification.reasoning,
+    );
+
+    let channel = slack.default_channel();
+    let fallback = format!(
+        "Helpdesk review: {} from {} - {}",
+        params.subject, params.from_address, params.classification.classification
+    );
+
+    if let Err(e) = slack.post_message(channel, blocks, Some(&fallback)).await {
+        error!(error = %e, "failed to send Slack helpdesk review message");
     }
 }
 
@@ -350,36 +346,6 @@ async fn fetch_shopify_context(
     }
 }
 
-/// Create a support conversation in the storefront DB so the email appears in the admin inbox.
-async fn create_support_conversation(support_pool: &PgPool, params: &RouteParams<'_>) {
-    let repo = ConversationRepository::new(support_pool);
-    let conv_params = CreateConversationParams {
-        session_token: format!("email-{}", params.email_id),
-        shopify_customer_id: None,
-        customer_email: Some(params.from_address.to_string()),
-        customer_name: params.from_name.map(String::from),
-        is_authenticated: false,
-        source: Some("email".to_string()),
-    };
-
-    match repo.create(&conv_params).await {
-        Ok(conv) => {
-            info!(
-                email_id = params.email_id,
-                conversation_id = conv.id.as_i32(),
-                "support conversation created from email"
-            );
-        }
-        Err(e) => {
-            error!(
-                email_id = params.email_id,
-                error = %e,
-                "failed to create support conversation from email"
-            );
-        }
-    }
-}
-
 /// Errors that can occur during email routing.
 #[derive(Debug, thiserror::Error)]
 pub enum TriageError {
@@ -394,8 +360,4 @@ pub enum TriageError {
     /// Microsoft Graph API error.
     #[error("M365 error: {0}")]
     M365(#[from] naked_pineapple_services::microsoft_graph::M365Error),
-
-    /// Klaviyo API error.
-    #[error("Klaviyo error: {0}")]
-    Klaviyo(#[from] KlaviyoError),
 }

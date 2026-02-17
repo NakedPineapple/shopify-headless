@@ -293,9 +293,7 @@ impl Scheduler {
             m365: self.state.m365(),
             claude: self.state.claude(),
             slack: self.state.slack(),
-            klaviyo: self.state.klaviyo(),
             shopify: self.state.shopify(),
-            support_pool: self.state.support_pool(),
         };
 
         triage::process_messages(&clients, mailbox, messages, &folder_map).await;

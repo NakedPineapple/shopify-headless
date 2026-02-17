@@ -14,7 +14,6 @@ pub mod types;
 use std::collections::HashMap;
 
 use naked_pineapple_services::claude::ClaudeClient;
-use naked_pineapple_services::klaviyo::KlaviyoClient;
 use naked_pineapple_services::slack::SlackClient;
 use sqlx::PgPool;
 use tracing::{error, info, instrument, warn};
@@ -31,9 +30,7 @@ pub struct TriageClients<'a> {
     pub m365: &'a M365Client,
     pub claude: &'a ClaudeClient,
     pub slack: Option<&'a SlackClient>,
-    pub klaviyo: Option<&'a KlaviyoClient>,
     pub shopify: Option<&'a ShopifyClient>,
-    pub support_pool: Option<&'a PgPool>,
 }
 
 /// Process a batch of messages from a single mailbox.
@@ -162,7 +159,6 @@ async fn process_single_message(
         body: &body_text,
         classification: &classification,
         conversation_id,
-        support_pool: clients.support_pool,
     };
 
     router::route_email(
@@ -170,7 +166,6 @@ async fn process_single_message(
         clients.m365,
         clients.claude,
         clients.slack,
-        clients.klaviyo,
         clients.shopify,
         &route_params,
     )
