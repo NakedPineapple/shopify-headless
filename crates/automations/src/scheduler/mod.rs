@@ -230,10 +230,16 @@ impl Scheduler {
 
         // 1. Get watermark (default: 30 days ago)
         let watermark = match email_sync_state::get_high_water_mark(pool, mailbox).await {
-            Ok(Some(ts)) => ts,
+            Ok(Some(ts)) => {
+                tracing::debug!(mailbox = %mailbox, %ts, "found watermark");
+                ts
+            }
             Ok(None) => {
-                let default = chrono::Utc::now() - chrono::Duration::days(30);
-                tracing::info!(mailbox = %mailbox, "no watermark found, defaulting to 30 days ago");
+                let default = match until {
+                    Some(cap) if *cap < chrono::Utc::now() => *cap - chrono::Duration::days(30),
+                    _ => chrono::Utc::now() - chrono::Duration::days(30),
+                };
+                tracing::info!(mailbox = %mailbox, %default, "no watermark found, using default");
                 default
             }
             Err(e) => {
@@ -252,6 +258,7 @@ impl Scheduler {
         };
 
         // 3. Fetch all messages since watermark
+        tracing::debug!(mailbox = %mailbox, %watermark, ?until, "fetching messages");
         let messages = match self
             .state
             .m365()
@@ -266,6 +273,7 @@ impl Scheduler {
         };
 
         if messages.is_empty() {
+            tracing::debug!(mailbox = %mailbox, %watermark, ?until, "no messages found");
             return true;
         }
 
