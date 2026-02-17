@@ -118,7 +118,7 @@ impl R2Client {
             .content_type(content_type)
             .send()
             .await
-            .map_err(|e| R2Error::Upload(e.to_string()))?;
+            .map_err(|e| R2Error::Upload(format!("{e:?}")))?;
 
         debug!("Uploaded to R2");
         Ok(())
@@ -138,7 +138,7 @@ impl R2Client {
             .key(key)
             .send()
             .await
-            .map_err(|e| R2Error::Download(e.to_string()))?;
+            .map_err(|e| R2Error::Download(format!("{e:?}")))?;
 
         let bytes = output
             .body
@@ -164,7 +164,7 @@ impl R2Client {
             .key(key)
             .send()
             .await
-            .map_err(|e| R2Error::Delete(e.to_string()))?;
+            .map_err(|e| R2Error::Delete(format!("{e:?}")))?;
 
         debug!("Deleted from R2");
         Ok(())
@@ -200,7 +200,10 @@ impl R2Client {
                 req = req.continuation_token(token);
             }
 
-            let output = req.send().await.map_err(|e| R2Error::List(e.to_string()))?;
+            let output = req
+                .send()
+                .await
+                .map_err(|e| R2Error::List(format!("{e:?}")))?;
 
             if let Some(contents) = output.contents {
                 for obj in contents {
@@ -275,7 +278,7 @@ impl R2Client {
             .key(key)
             .send()
             .await
-            .map_err(|e| R2Error::Head(e.to_string()))?;
+            .map_err(|e| R2Error::Head(format!("{e:?}")))?;
 
         let content_type = output
             .content_type
@@ -316,7 +319,7 @@ impl R2Client {
             let delete = Delete::builder()
                 .set_objects(Some(objects))
                 .build()
-                .map_err(|e| R2Error::Delete(e.to_string()))?;
+                .map_err(|e| R2Error::Delete(format!("{e:?}")))?;
 
             self.client
                 .delete_objects()
@@ -324,7 +327,7 @@ impl R2Client {
                 .delete(delete)
                 .send()
                 .await
-                .map_err(|e| R2Error::Delete(e.to_string()))?;
+                .map_err(|e| R2Error::Delete(format!("{e:?}")))?;
         }
 
         debug!("Bulk deleted from R2");
@@ -347,7 +350,7 @@ impl R2Client {
             .key(dest_key)
             .send()
             .await
-            .map_err(|e| R2Error::Copy(e.to_string()))?;
+            .map_err(|e| R2Error::Copy(format!("{e:?}")))?;
 
         debug!("Copied object in R2");
         Ok(())
