@@ -42,19 +42,19 @@
                     <!-- Status badge -->
                     {% match email.status.as_str() %}
                         {% when "pending" %}
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">Pending</span>
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground cursor-help" title="Saved to the database, waiting for AI classification">Pending</span>
                         {% when "classified" %}
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">Classified</span>
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 cursor-help" title="AI classification complete, the system has not yet taken action">Classified</span>
                         {% when "pending_review" %}
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400">Needs Review</span>
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 cursor-help" title="{% match email.routed_to.as_deref() %}{% when Some("klaviyo_helpdesk") %}A Slack message was posted asking an admin to approve creating a Klaviyo helpdesk ticket{% when _ %}An AI-drafted reply was posted to Slack for an admin to approve or reject{% endmatch %}">Needs Review</span>
                         {% when "responded" %}
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">Responded</span>
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 cursor-help" title="{% match email.routed_to.as_deref() %}{% when Some("klaviyo_helpdesk") %}An admin approved in Slack and a Klaviyo helpdesk ticket was created{% when _ %}An admin approved the AI-drafted reply and it was sent to the sender via Microsoft 365{% endmatch %}">Responded</span>
                         {% when "routed" %}
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400">Routed</span>
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 cursor-help" title="{% match email.routed_to.as_deref() %}{% when Some("notified") %}A Slack notification was posted — no automated reply was drafted{% when Some("klaviyo_helpdesk") %}An admin dismissed the proposed Klaviyo helpdesk ticket in Slack{% when Some("slack_review") %}An admin rejected the AI-drafted reply in Slack{% when _ %}A Slack notification was posted — no automated reply was drafted{% endmatch %}">Routed</span>
                         {% when "archived" %}
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">Archived</span>
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground cursor-help" title="{% match email.routed_to.as_deref() %}{% when Some("archive") %}AI classified as spam or marketing and moved to the Archive folder in Microsoft 365{% when _ %}Manually archived by an admin in the admin panel{% endmatch %}">Archived</span>
                         {% when "failed" %}
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">Failed</span>
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 cursor-help" title="AI classification failed — check the error details below">Failed</span>
                         {% when _ %}
                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">{{ email.status }}</span>
                     {% endmatch %}
@@ -88,7 +88,7 @@
 
             <div class="flex items-center gap-3 mb-3">
                 <!-- Classification badge (large) -->
-                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium cursor-help
                     {% match cls.as_str() %}
                         {% when "spam" %}bg-muted text-muted-foreground
                         {% when "marketing_newsletter" %}bg-muted text-muted-foreground
@@ -101,7 +101,8 @@
                         {% when "complaint" %}bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400
                         {% when "praise" %}bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400
                         {% when _ %}bg-muted text-muted-foreground
-                    {% endmatch %}">
+                    {% endmatch %}"
+                    title="{% match cls.as_str() %}{% when "spam" %}Unsolicited message — automatically moved to the Archive folder in Microsoft 365{% when "marketing_newsletter" %}Marketing or promotional newsletter — automatically moved to the Archive folder in Microsoft 365{% when "order_inquiry" %}Customer asking about an order — an AI-drafted reply was posted to Slack for admin review{% when "product_question" %}Customer asking about a product — an AI-drafted reply was posted to Slack for admin review{% when "return_request" %}Customer requesting a return or exchange — an AI-drafted reply was posted to Slack for admin review{% when "shipping_issue" %}Customer reporting a shipping or delivery problem — an AI-drafted reply was posted to Slack for admin review{% when "subscription_inquiry" %}Customer asking about subscriptions — an AI-drafted reply was posted to Slack for admin review{% when "business_vendor" %}Business or vendor inquiry (wholesale, partnership, etc.) — a Slack notification was posted, no reply was drafted{% when "complaint" %}Customer complaint — posted to Slack for admin to approve creating a Klaviyo helpdesk ticket{% when "praise" %}Customer praise or positive feedback — posted to Slack for admin to approve creating a Klaviyo helpdesk ticket{% when _ %}Could not be confidently classified — posted to Slack for admin to approve creating a Klaviyo helpdesk ticket{% endmatch %}">
                     {% match cls.as_str() %}
                         {% when "spam" %}<i class="ph ph-prohibit"></i>
                         {% when "marketing_newsletter" %}<i class="ph ph-megaphone"></i>
@@ -119,7 +120,7 @@
                 </span>
 
                 {% if let Some(sub) = email.sub_category %}
-                <span class="text-xs text-muted-foreground">{{ sub }}</span>
+                <span class="text-xs text-muted-foreground cursor-help" title="More specific sub-category assigned by the AI classifier">{{ sub }}</span>
                 {% endif %}
             </div>
 
@@ -154,7 +155,7 @@
             {% if !email.extracted_entities().is_empty() %}
             <div class="flex flex-wrap gap-2 mt-3 pt-3 border-t border-border">
                 {% for entity in email.extracted_entities() %}
-                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-muted text-sm text-foreground">
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-muted text-sm text-foreground cursor-help" title="{{ entity.tooltip }}">
                     <i class="ph {{ entity.icon }} text-muted-foreground"></i>
                     <span class="text-xs text-muted-foreground">{{ entity.label }}</span>
                     {{ entity.value }}

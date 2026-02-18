@@ -120,6 +120,8 @@ pub struct ExtractedEntity {
     pub label: &'static str,
     /// The extracted value.
     pub value: String,
+    /// Hover tooltip explaining where this entity came from.
+    pub tooltip: &'static str,
 }
 
 impl InboundEmailDetail {
@@ -168,8 +170,9 @@ impl InboundEmailDetail {
         if let Some(name) = &self.from_name {
             entities.push(ExtractedEntity {
                 icon: "ph-user",
-                label: "Customer",
+                label: "Sender",
                 value: name.clone(),
+                tooltip: "Display name from the email's From header",
             });
         }
 
@@ -206,6 +209,7 @@ fn extract_order_numbers(text: &str, entities: &mut Vec<ExtractedEntity>) {
                     icon: "ph-hash",
                     label: "Order",
                     value,
+                    tooltip: "Order number extracted from the email body by pattern matching",
                 });
             }
         }
@@ -228,6 +232,7 @@ fn extract_tracking_numbers(text: &str, entities: &mut Vec<ExtractedEntity>) {
                     icon: "ph-package",
                     label: "Tracking",
                     value,
+                    tooltip: "Tracking number extracted from the email body by pattern matching",
                 });
             }
         }
