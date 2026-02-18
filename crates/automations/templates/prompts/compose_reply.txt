@@ -1,0 +1,24 @@
+Compose a reply to the following customer email.
+
+Classification: {{ classification }} (confidence: {{ confidence }}%)
+{%- if !order_numbers.is_empty() %}
+Referenced orders: {{ order_numbers.join(", ") }}
+{%- endif %}
+{%- if !product_names.is_empty() %}
+Referenced products: {{ product_names.join(", ") }}
+{%- endif %}
+
+From: {{ from_address }}
+{%- if let Some(name) = from_name %} ({{ name }}){% endif %}
+Subject: {{ subject }}
+
+Body:
+{{ body }}
+{%- if let Some(shopify) = shopify_context %}
+
+--- Real-time Shopify Data ---
+{{ shopify }}
+Use the Shopify data above to provide accurate, specific answers. Reference real order statuses, tracking numbers, and product details.
+{%- endif %}
+
+Draft a professional, helpful reply. Sign off as 'The Naked Pineapple Team'.

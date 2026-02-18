@@ -168,9 +168,14 @@ impl InboundEmailDetail {
         let mut entities = Vec::new();
 
         if let Some(name) = &self.from_name {
+            let sender_label = match self.classification.as_deref() {
+                Some("business_vendor") => "Business Contact",
+                Some("spam" | "marketing_newsletter" | "unknown") => "Sender",
+                _ => "Customer",
+            };
             entities.push(ExtractedEntity {
                 icon: "ph-user",
-                label: "Sender",
+                label: sender_label,
                 value: name.clone(),
                 tooltip: "Display name from the email's From header",
             });
@@ -644,6 +649,59 @@ pub async fn archive_email(pool: &PgPool, id: i32, reviewer: &str) -> Result<(),
         "#,
         id,
         reviewer,
+    )
+    .execute(pool)
+    .await?;
+
+    if result.rows_affected() == 0 {
+        return Err(RepositoryError::NotFound);
+    }
+
+    Ok(())
+}
+
+/// Reset analysis results so the email can be re-processed by the triage pipeline.
+///
+/// Retracts this email's contributions from the global contact graph (removing
+/// orphaned contacts and relationships), clears all classification and response
+/// fields, and sets status back to "pending". The automations scheduler will
+/// re-process it on its next run.
+///
+/// # Errors
+///
+/// Returns `RepositoryError` if the database operation fails.
+pub async fn reset_analysis(pool: &PgPool, id: i32) -> Result<(), RepositoryError> {
+    // Retract graph contributions (deletes orphaned contacts/relationships)
+    naked_pineapple_automations::db::contact_graph::retract_contributions(pool, id)
+        .await
+        .map_err(|e| match e {
+            naked_pineapple_automations::db::RepositoryError::Database(sqlx_err) => {
+                RepositoryError::Database(sqlx_err)
+            }
+            naked_pineapple_automations::db::RepositoryError::NotFound => RepositoryError::NotFound,
+        })?;
+
+    // Reset all analysis fields and set status back to pending
+    let result = sqlx::query!(
+        r#"
+        UPDATE admin.inbound_email
+        SET classification = NULL,
+            sub_category = NULL,
+            confidence = NULL,
+            reasoning = NULL,
+            response_draft = NULL,
+            response_approved = FALSE,
+            response_sent_at = NULL,
+            reviewed_by = NULL,
+            reviewed_at = NULL,
+            routed_to = NULL,
+            error = NULL,
+            embedding = NULL,
+            status = 'pending',
+            updated_at = (CURRENT_TIMESTAMP AT TIME ZONE 'utc')
+        WHERE id = $1
+        "#,
+        id,
     )
     .execute(pool)
     .await?;

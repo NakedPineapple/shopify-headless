@@ -10,6 +10,10 @@ use tracing::instrument;
 use super::RepositoryError;
 
 /// Start a new automation run. Returns the log entry ID.
+///
+/// # Errors
+///
+/// Returns `RepositoryError` if the database operation fails.
 #[instrument(skip(pool))]
 pub async fn start_run(pool: &PgPool, workflow: &str) -> Result<i64, RepositoryError> {
     let id = sqlx::query_scalar!(
@@ -27,6 +31,10 @@ pub async fn start_run(pool: &PgPool, workflow: &str) -> Result<i64, RepositoryE
 }
 
 /// Mark a run as completed successfully.
+///
+/// # Errors
+///
+/// Returns `RepositoryError` if the database operation fails.
 #[instrument(skip(pool), fields(%log_id))]
 pub async fn complete_run(
     pool: &PgPool,
@@ -60,6 +68,10 @@ pub async fn complete_run(
 }
 
 /// Mark a run as failed.
+///
+/// # Errors
+///
+/// Returns `RepositoryError` if the database operation fails.
 #[instrument(skip(pool, error_msg), fields(%log_id))]
 pub async fn fail_run(
     pool: &PgPool,
@@ -89,6 +101,10 @@ pub async fn fail_run(
 /// Check if a low stock alert was already sent for a product within the
 /// given number of hours. Uses the `metadata` JSONB column to match
 /// on `product_id`.
+///
+/// # Errors
+///
+/// Returns `RepositoryError` if the database operation fails.
 #[instrument(skip(pool))]
 pub async fn has_recent_alert(
     pool: &PgPool,

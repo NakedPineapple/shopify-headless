@@ -8,6 +8,10 @@ use tracing::instrument;
 use super::RepositoryError;
 
 /// Check whether an email with the given type and reference already exists in the queue.
+///
+/// # Errors
+///
+/// Returns `RepositoryError` if the database operation fails.
 #[instrument(skip(pool))]
 pub async fn exists(
     pool: &PgPool,
@@ -33,6 +37,10 @@ pub async fn exists(
 /// Record that a Klaviyo event was fired, for deduplication.
 ///
 /// Inserts a minimal row so [`exists`] prevents duplicate events on subsequent polls.
+///
+/// # Errors
+///
+/// Returns `RepositoryError` if the database operation fails.
 #[instrument(skip(pool))]
 pub async fn record_tracked(
     pool: &PgPool,

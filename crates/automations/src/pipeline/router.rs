@@ -11,10 +11,10 @@ use naked_pineapple_services::slack::SlackClient;
 use sqlx::PgPool;
 use tracing::{debug, error, info, instrument};
 
+use super::responder::{self, DraftResponse, ResponseContext};
 use crate::db::inbound_email;
 use crate::shopify::ShopifyClient;
 use crate::slack::messages as slack_messages;
-use crate::triage::responder::{self, DraftResponse, ResponseContext};
 use crate::triage::types::{ClassificationResult, EmailClassification, EmailStatus};
 use naked_pineapple_services::microsoft_graph::M365Client;
 

@@ -7,6 +7,7 @@ use naked_pineapple_services::claude::ClaudeClient;
 use naked_pineapple_services::email::EmailService;
 use naked_pineapple_services::klaviyo::KlaviyoClient;
 use naked_pineapple_services::meta_commerce::MetaCommerceClient;
+use naked_pineapple_services::openai::EmbeddingClient;
 use naked_pineapple_services::pinterest::PinterestClient;
 use naked_pineapple_services::slack::SlackClient;
 use naked_pineapple_services::tiktok_shop::TikTokShopClient;
@@ -28,6 +29,7 @@ struct AppStateInner {
     support_pool: Option<PgPool>,
     m365: M365Client,
     claude: ClaudeClient,
+    embedding: Option<EmbeddingClient>,
     slack: Option<SlackClient>,
     klaviyo: Option<KlaviyoClient>,
     shopify: Option<ShopifyClient>,
@@ -45,6 +47,7 @@ pub struct AppStateParams {
     pub support_pool: Option<PgPool>,
     pub m365: M365Client,
     pub claude: ClaudeClient,
+    pub embedding: Option<EmbeddingClient>,
     pub slack: Option<SlackClient>,
     pub klaviyo: Option<KlaviyoClient>,
     pub shopify: Option<ShopifyClient>,
@@ -66,6 +69,7 @@ impl AppState {
                 support_pool: params.support_pool,
                 m365: params.m365,
                 claude: params.claude,
+                embedding: params.embedding,
                 slack: params.slack,
                 klaviyo: params.klaviyo,
                 shopify: params.shopify,
@@ -100,6 +104,12 @@ impl AppState {
     #[must_use]
     pub fn claude(&self) -> &ClaudeClient {
         &self.inner.claude
+    }
+
+    /// Get a reference to the embedding client (if configured).
+    #[must_use]
+    pub fn embedding(&self) -> Option<&EmbeddingClient> {
+        self.inner.embedding.as_ref()
     }
 
     /// Get a reference to the Slack client (if configured).

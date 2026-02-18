@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        DELETE FROM admin.contact_relationships\n        WHERE id = ANY($1)\n          AND NOT EXISTS (\n              SELECT 1 FROM admin.email_relationship_contributions\n              WHERE relationship_id = admin.contact_relationships.id\n          )\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4Array"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "fc1e3bbe6758e75f743c951f4be28d2e4aae81e0ad00b77b7cec859f15cdd785"
+}

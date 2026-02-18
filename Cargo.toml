@@ -46,6 +46,7 @@ multiple-crate-versions = "allow" # handled by Cargo-deny
 # Internal crates
 naked-pineapple-core = { path = "crates/core" }
 naked-pineapple-crypto = { path = "crates/crypto" }
+naked-pineapple-automations = { path = "crates/automations", default-features = false }
 naked-pineapple-services = { path = "crates/services" }
 naked-pineapple-support = { path = "crates/support" }
 
@@ -104,6 +105,9 @@ sha2 = "0.10"
 
 # HTML sanitization
 ammonia = "4"
+
+# HTML to plain text conversion
+html2text = "0.16"
 
 # Security
 secrecy = "0.10"

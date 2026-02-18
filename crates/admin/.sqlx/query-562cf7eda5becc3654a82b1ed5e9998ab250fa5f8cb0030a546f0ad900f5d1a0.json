@@ -1,0 +1,44 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, shopify_checkout_id,\n               customer_email,\n               cart_total,\n               line_items\n        FROM admin.abandoned_cart\n        WHERE recovery_status = 'detected'\n        ORDER BY abandoned_at ASC\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "shopify_checkout_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "customer_email",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "cart_total",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 4,
+        "name": "line_items",
+        "type_info": "Jsonb"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "562cf7eda5becc3654a82b1ed5e9998ab250fa5f8cb0030a546f0ad900f5d1a0"
+}

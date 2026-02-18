@@ -8,9 +8,21 @@ repository.workspace = true
 description = "Background automation service for Naked Pineapple (inbound triage, outbound workflows, inventory monitoring, customer segmentation)"
 publish = false
 
+[lib]
+name = "naked_pineapple_automations"
+path = "src/lib.rs"
+
 [[bin]]
 name = "naked-pineapple-automations"
 path = "src/main.rs"
+required-features = ["routing"]
+
+[features]
+default = ["routing"]
+# The routing feature gates binary-only code that depends on modules not
+# exposed by the library (shopify, slack). Library consumers (e.g. admin)
+# should not enable this feature.
+routing = []
 
 [lints]
 workspace = true
@@ -66,6 +78,9 @@ secrecy = { workspace = true }
 hmac = { workspace = true }
 sha2 = { workspace = true }
 base64 = { workspace = true }
+
+# HTML to plain text conversion
+html2text = { workspace = true }
 
 # Utilities (Slack webhook URL encoding)
 urlencoding = { workspace = true }

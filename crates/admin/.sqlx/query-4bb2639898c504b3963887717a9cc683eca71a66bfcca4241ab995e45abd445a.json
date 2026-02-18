@@ -1,0 +1,25 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO admin.contact_relationships\n            (from_contact_id, to_contact_id, relationship_type, properties)\n        VALUES ($1, $2, $3, $4)\n        ON CONFLICT (from_contact_id, to_contact_id, relationship_type) DO UPDATE\n            SET properties = admin.contact_relationships.properties || EXCLUDED.properties\n                || jsonb_build_object(\n                    'last_contact_date', to_char(NOW(), 'YYYY-MM-DD'),\n                    'email_count', COALESCE(\n                        (admin.contact_relationships.properties->>'email_count')::int, 0\n                    ) + 1\n                ),\n                updated_at = NOW()\n        RETURNING id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Int4",
+        "Text",
+        "Jsonb"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "4bb2639898c504b3963887717a9cc683eca71a66bfcca4241ab995e45abd445a"
+}

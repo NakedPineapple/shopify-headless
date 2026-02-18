@@ -291,6 +291,20 @@ tasks:
       - cargo build -p naked-pineapple-cli
       - cargo run -p naked-pineapple-cli -- migrate admin
 
+  db:migrate:down:admin:
+    desc: "Rollback admin migrations (default 1, use -- --count N for more)"
+    cmds:
+      - cargo clean -p naked-pineapple-cli
+      - cargo build -p naked-pineapple-cli
+      - cargo run -p naked-pineapple-cli -- migrate rollback admin {{.CLI_ARGS}}
+
+  db:migrate:down:storefront:
+    desc: "Rollback storefront migrations (default 1, use -- --count N for more)"
+    cmds:
+      - cargo clean -p naked-pineapple-cli
+      - cargo build -p naked-pineapple-cli
+      - cargo run -p naked-pineapple-cli -- migrate rollback storefront {{.CLI_ARGS}}
+
   db:reset:
     desc: "Reset database (drop and recreate)"
     dir: docker/docker-compose

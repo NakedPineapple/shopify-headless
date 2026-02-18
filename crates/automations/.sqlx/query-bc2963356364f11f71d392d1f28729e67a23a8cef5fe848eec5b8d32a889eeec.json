@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE admin.inbound_email\n        SET embedding = $1::text::vector,\n            updated_at = NOW()\n        WHERE id = $2\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "bc2963356364f11f71d392d1f28729e67a23a8cef5fe848eec5b8d32a889eeec"
+}

@@ -19,6 +19,7 @@ path = "src/main.rs"
 workspace = true
 
 [dependencies]
+naked-pineapple-automations = { workspace = true }
 naked-pineapple-core = { workspace = true, features = ["postgres"] }
 naked-pineapple-crypto = { workspace = true }
 naked-pineapple-services = { workspace = true }

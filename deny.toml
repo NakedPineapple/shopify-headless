@@ -78,6 +78,12 @@ skip = [
     { crate = "phf_shared@0.12", reason = "transitive from phf 0.12" },
     { crate = "hashbrown@0.15", reason = "sqlx uses older hashbrown via hashlink" },
     { crate = "hashbrown@0.14", reason = "lettre and governor depend on older hashbrown" },
+    { crate = "html5ever@0.35", reason = "ammonia uses html5ever 0.35 while html2text uses 0.38" },
+    { crate = "markup5ever@0.35", reason = "transitive from html5ever 0.35 (ammonia)" },
+    { crate = "string_cache@0.8", reason = "transitive from html5ever 0.35 (ammonia)" },
+    { crate = "string_cache_codegen@0.5", reason = "transitive from html5ever 0.35 (ammonia)" },
+    { crate = "tendril@0.4", reason = "transitive from html5ever 0.35 (ammonia)" },
+    { crate = "web_atoms@0.1", reason = "transitive from html5ever 0.35 (ammonia)" },
 ]
 
 skip-tree = [

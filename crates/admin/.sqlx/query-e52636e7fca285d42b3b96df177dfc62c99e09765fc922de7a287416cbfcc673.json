@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM admin.email_contact_contributions WHERE email_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e52636e7fca285d42b3b96df177dfc62c99e09765fc922de7a287416cbfcc673"
+}

@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            c.expense_type::TEXT as \"expense_type!\",\n            COALESCE(SUM(e.amount), 0) as \"total_amount!: Decimal\"\n        FROM admin.expense e\n        INNER JOIN admin.expense_category c ON c.id = e.category_id\n        WHERE\n            e.expense_date >= $1\n            AND e.expense_date <= $2\n        GROUP BY c.expense_type\n        ORDER BY SUM(e.amount) DESC\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "expense_type!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "total_amount!: Decimal",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Date",
+        "Date"
+      ]
+    },
+    "nullable": [
+      null,
+      null
+    ]
+  },
+  "hash": "7e86f5aaf88166af6f7d0842b924bfd7f2eb7c60783bf29b39dd5cb14c9822d0"
+}

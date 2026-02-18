@@ -1,0 +1,75 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            r.relationship_type,\n            r.properties,\n            c.id as \"connected_id!\",\n            c.contact_type as \"connected_type!\",\n            c.name as \"connected_name!\",\n            c.email as connected_email,\n            c.domain as connected_domain,\n            c.metadata as \"connected_metadata!\"\n        FROM admin.contact_relationships r\n        JOIN admin.contacts c\n            ON c.id = CASE WHEN r.from_contact_id = $1 THEN r.to_contact_id\n                           ELSE r.from_contact_id END\n        WHERE (r.from_contact_id = $1 OR r.to_contact_id = $1)\n          AND c.id = ANY($2)\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "relationship_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "properties",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 2,
+        "name": "connected_id!",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "connected_type!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "connected_name!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "connected_email",
+        "type_info": {
+          "Custom": {
+            "name": "citext",
+            "kind": "Simple"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "connected_domain",
+        "type_info": {
+          "Custom": {
+            "name": "citext",
+            "kind": "Simple"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "connected_metadata!",
+        "type_info": "Jsonb"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Int4Array"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "ddc530c969bfb998ab36fcf26171ef42499f4d3693f539d2938da34df6f26818"
+}

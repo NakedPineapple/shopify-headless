@@ -101,6 +101,7 @@
       "Bash(python3:*)",
       "Bash(rm:*)",
       "Bash(sqlite3:*)",
+      "Bash(task db:reset:*)",
       "Bash(task test:*)",
       "Bash(task test:integration:*)"
     ],

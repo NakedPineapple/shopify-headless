@@ -34,7 +34,7 @@
 use secrecy::SecretString;
 
 pub use naked_pineapple_services::config::{
-    ClaudeConfig, ConfigError, EmailConfig, KlaviyoConfig, M365Config, SlackConfig,
+    ClaudeConfig, ConfigError, EmailConfig, KlaviyoConfig, M365Config, OpenAIConfig, SlackConfig,
     get_database_url, get_env_or_default, get_optional_env,
 };
 
@@ -53,6 +53,8 @@ pub struct AutomationConfig {
     pub klaviyo: Option<KlaviyoConfig>,
     /// Shopify Admin API configuration (optional, enables order/product lookups).
     pub shopify: Option<ShopifyConfig>,
+    /// `OpenAI` API configuration (optional — for email embeddings).
+    pub openai: Option<OpenAIConfig>,
     /// SMTP email configuration (optional — for internal alerts).
     pub email: Option<EmailConfig>,
     /// Scheduler timing configuration.
@@ -354,6 +356,7 @@ impl AutomationConfig {
         let slack = SlackConfig::from_env();
         let klaviyo = KlaviyoConfig::from_env()?;
         let shopify = ShopifyConfig::from_env();
+        let openai = OpenAIConfig::from_env();
         let email = EmailConfig::from_env().ok();
         let scheduler = SchedulerConfig::from_env();
 
@@ -384,6 +387,7 @@ impl AutomationConfig {
             slack,
             klaviyo,
             shopify,
+            openai,
             email,
             scheduler,
             webhook,
@@ -408,6 +412,7 @@ pub fn log_unset_env_vars() {
         "GITHUB_WEBHOOK_SECRET",
         "KLAVIYO_API_KEY",
         "KLAVIYO_LIST_ID",
+        "OPENAI_API_KEY",
         "SENTRY_DSN",
         "SENTRY_ENVIRONMENT",
         "SENTRY_WEBHOOK_SECRET",

@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        DELETE FROM admin.contacts\n        WHERE id = ANY($1)\n          AND NOT EXISTS (\n              SELECT 1 FROM admin.email_contact_contributions\n              WHERE contact_id = admin.contacts.id\n          )\n          AND NOT EXISTS (\n              SELECT 1 FROM admin.contact_relationships\n              WHERE from_contact_id = admin.contacts.id\n                 OR to_contact_id = admin.contacts.id\n          )\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4Array"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2fc3ba0bdebe7478bd8561d01a60d792597f5c581aef20f64cf749903ad4a88c"
+}

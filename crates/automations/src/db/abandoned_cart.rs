@@ -49,6 +49,10 @@ pub struct PendingRecoveryRow {
 }
 
 /// Check if an abandoned cart with this Shopify checkout ID already exists.
+///
+/// # Errors
+///
+/// Returns `RepositoryError` if the database operation fails.
 #[instrument(skip(pool))]
 pub async fn exists_by_checkout_id(
     pool: &PgPool,
@@ -70,6 +74,10 @@ pub async fn exists_by_checkout_id(
 }
 
 /// Insert a new abandoned cart record. Returns the new row's ID.
+///
+/// # Errors
+///
+/// Returns `RepositoryError` if the database operation fails.
 #[instrument(skip(pool, params), fields(checkout_id = %params.shopify_checkout_id))]
 pub async fn insert(pool: &PgPool, params: &InsertParams<'_>) -> Result<i32, RepositoryError> {
     let id = sqlx::query_scalar!(
@@ -94,6 +102,10 @@ pub async fn insert(pool: &PgPool, params: &InsertParams<'_>) -> Result<i32, Rep
 }
 
 /// Fetch abandoned carts in `detected` status, ready for recovery trigger.
+///
+/// # Errors
+///
+/// Returns `RepositoryError` if the database operation fails.
 #[instrument(skip(pool))]
 pub async fn fetch_detected(pool: &PgPool) -> Result<Vec<DetectedCartRow>, RepositoryError> {
     let rows = sqlx::query_as!(
@@ -116,6 +128,10 @@ pub async fn fetch_detected(pool: &PgPool) -> Result<Vec<DetectedCartRow>, Repos
 
 /// Update an abandoned cart's status to `first_email_sent` after triggering
 /// the Klaviyo recovery flow.
+///
+/// # Errors
+///
+/// Returns `RepositoryError` if the database operation fails.
 #[instrument(skip(pool), fields(%cart_id))]
 pub async fn mark_recovery_triggered(pool: &PgPool, cart_id: i32) -> Result<(), RepositoryError> {
     sqlx::query!(
@@ -137,6 +153,10 @@ pub async fn mark_recovery_triggered(pool: &PgPool, cart_id: i32) -> Result<(), 
 ///
 /// Returns the customer email and abandoned timestamp as a string so we can
 /// query Shopify for orders placed after the cart was abandoned.
+///
+/// # Errors
+///
+/// Returns `RepositoryError` if the database operation fails.
 #[instrument(skip(pool))]
 pub async fn fetch_pending_recovery(
     pool: &PgPool,
@@ -159,6 +179,10 @@ pub async fn fetch_pending_recovery(
 }
 
 /// Mark an abandoned cart as recovered when the customer completes a purchase.
+///
+/// # Errors
+///
+/// Returns `RepositoryError` if the database operation fails.
 #[instrument(skip(pool), fields(%cart_id))]
 pub async fn mark_recovered(
     pool: &PgPool,

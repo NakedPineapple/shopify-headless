@@ -33,20 +33,23 @@ use naked_pineapple_services::slack::SlackClient;
 
 mod amazon;
 mod config;
-mod db;
 mod error;
 mod logging;
 mod meta;
 mod outbound;
 mod pinterest;
+mod pipeline;
 mod scheduler;
 mod shopify;
 mod slack;
 mod state;
 mod tiktok;
-mod triage;
 mod webhooks;
 mod workflows;
+
+// Re-export library modules at the crate root so binary-only modules can
+// continue using `crate::db` and `crate::triage` paths unchanged.
+pub use naked_pineapple_automations::{db, triage};
 
 use config::AutomationConfig;
 use naked_pineapple_services::microsoft_graph::M365Client;
@@ -101,6 +104,12 @@ async fn main() {
 
     let claude = ClaudeClient::new(&config.claude);
     tracing::info!("Claude AI client initialized");
+
+    let embedding = config.openai.as_ref().map(|c| {
+        let client = naked_pineapple_services::openai::EmbeddingClient::new(&c.api_key);
+        tracing::info!("OpenAI embedding client initialized");
+        client
+    });
 
     let slack_client = config.slack.as_ref().map(|slack_config| {
         let client = SlackClient::new(
@@ -163,6 +172,7 @@ async fn main() {
         support_pool,
         m365,
         claude,
+        embedding,
         slack: slack_client,
         klaviyo: klaviyo_client,
         shopify: shopify_client,

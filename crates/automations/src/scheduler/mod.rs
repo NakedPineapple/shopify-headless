@@ -22,9 +22,9 @@ use crate::amazon;
 use crate::meta;
 use crate::outbound;
 use crate::pinterest;
+use crate::pipeline;
 use crate::state::AppState;
 use crate::tiktok;
-use crate::triage;
 use crate::workflows;
 
 use circuit_breaker::CircuitBreaker;
@@ -288,15 +288,16 @@ impl Scheduler {
         let max_received = messages.iter().filter_map(|m| m.received_date_time).max();
 
         // 5. Process through triage pipeline
-        let clients = triage::TriageClients {
+        let clients = pipeline::TriageClients {
             pool,
             m365: self.state.m365(),
             claude: self.state.claude(),
+            embedding: self.state.embedding(),
             slack: self.state.slack(),
             shopify: self.state.shopify(),
         };
 
-        triage::process_messages(&clients, mailbox, messages, &folder_map).await;
+        pipeline::process_messages(&clients, mailbox, messages, &folder_map).await;
 
         // 6. Update watermark after successful processing
         if let Some(max_ts) = max_received

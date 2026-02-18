@@ -1,0 +1,69 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        WITH RECURSIVE graph AS (\n            SELECT c.id, c.name, c.contact_type, c.email, c.domain, c.metadata,\n                   0 as depth, ARRAY[c.id] as path\n            FROM admin.contacts c WHERE c.id = $1\n            UNION ALL\n            SELECT c2.id, c2.name, c2.contact_type, c2.email, c2.domain, c2.metadata,\n                   g.depth + 1, g.path || c2.id\n            FROM graph g\n            JOIN admin.contact_relationships r\n                ON g.id = r.from_contact_id OR g.id = r.to_contact_id\n            JOIN admin.contacts c2\n                ON c2.id = CASE WHEN g.id = r.from_contact_id THEN r.to_contact_id\n                                ELSE r.from_contact_id END\n            WHERE g.depth < $2 AND NOT c2.id = ANY(g.path)\n        )\n        SELECT DISTINCT ON (g.id)\n            g.id as \"contact_id!\",\n            g.name as \"contact_name!\",\n            g.contact_type as \"contact_type!\",\n            g.email,\n            g.domain,\n            g.metadata as \"contact_metadata!\",\n            g.depth as \"depth!\"\n        FROM graph g\n        ORDER BY g.id, g.depth\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "contact_id!",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "contact_name!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "contact_type!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "email",
+        "type_info": {
+          "Custom": {
+            "name": "citext",
+            "kind": "Simple"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "domain",
+        "type_info": {
+          "Custom": {
+            "name": "citext",
+            "kind": "Simple"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "contact_metadata!",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 6,
+        "name": "depth!",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "5d11b36d7be4ebb80464bd9ce3142943f92e06de02b6b7bc667882ec0bd2f1c4"
+}

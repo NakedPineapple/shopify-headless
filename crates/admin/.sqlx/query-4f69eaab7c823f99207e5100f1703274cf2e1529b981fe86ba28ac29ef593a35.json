@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO admin.email_sync_state (mailbox, high_water_mark)\n        VALUES ($1, $2)\n        ON CONFLICT (mailbox)\n        DO UPDATE SET high_water_mark = $2\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "4f69eaab7c823f99207e5100f1703274cf2e1529b981fe86ba28ac29ef593a35"
+}

@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE admin.inbound_email\n        SET classification = NULL,\n            sub_category = NULL,\n            confidence = NULL,\n            reasoning = NULL,\n            response_draft = NULL,\n            response_approved = FALSE,\n            response_sent_at = NULL,\n            reviewed_by = NULL,\n            reviewed_at = NULL,\n            routed_to = NULL,\n            error = NULL,\n            embedding = NULL,\n            status = 'pending',\n            updated_at = (CURRENT_TIMESTAMP AT TIME ZONE 'utc')\n        WHERE id = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "bddd2d48d24e30fc2f72af1a0f8083c5d97489bdfbe57e3206857af9345c6105"
+}

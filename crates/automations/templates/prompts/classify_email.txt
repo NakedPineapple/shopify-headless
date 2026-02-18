@@ -1,0 +1,29 @@
+Classify the following inbound email:
+
+From: {{ from_address }}
+{%- if let Some(name) = from_name %} ({{ name }}){% endif %}
+Subject: {{ subject }}
+
+Body:
+{{ body }}
+{%- if !thread_messages.is_empty() %}
+
+--- Previous messages in this thread ---
+{% for msg in thread_messages %}
+From: {{ msg.from }}
+{{ msg.preview }}
+---
+{% endfor %}
+{%- endif %}
+{%- if let Some(ctx) = sender_context %}
+
+--- Known Sender Information ---
+{{ ctx }}
+{%- endif %}
+{%- if let Some(ctx) = rag_context %}
+
+--- Similar Past Emails ---
+The following are similar emails previously received and classified:
+{{ ctx }}
+Use these for context on recurring senders and topics.
+{%- endif %}

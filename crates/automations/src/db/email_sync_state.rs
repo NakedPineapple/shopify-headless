@@ -11,6 +11,10 @@ use super::{RepositoryError, to_time_offset};
 /// Get the high water mark for a mailbox.
 ///
 /// Returns `None` if no sync state exists yet (first sync).
+///
+/// # Errors
+///
+/// Returns `RepositoryError` if the database operation fails.
 #[instrument(skip(pool))]
 pub async fn get_high_water_mark(
     pool: &PgPool,
@@ -33,6 +37,10 @@ pub async fn get_high_water_mark(
 /// Upsert the high water mark for a mailbox.
 ///
 /// Creates the row on first call, updates on subsequent calls.
+///
+/// # Errors
+///
+/// Returns `RepositoryError` if the database operation fails.
 #[instrument(skip(pool))]
 pub async fn upsert_high_water_mark(
     pool: &PgPool,

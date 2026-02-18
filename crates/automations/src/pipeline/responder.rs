@@ -4,13 +4,16 @@
 //! product questions, etc.), this module uses Claude to compose a draft
 //! reply that is queued for Slack review before sending.
 
+use askama::Template;
 use naked_pineapple_services::claude::{
-    ClaudeClient, ClaudeError, ContentBlock, Message, MessageContent, StopReason,
+    ClaudeClient, ClaudeError, ContentBlock, Message, MessageContent,
 };
-use tracing::{debug, instrument, warn};
+use tracing::{debug, instrument};
 
-use super::tools::{compose_reply_tool, response_system_prompt};
-use super::types::ClassificationResult;
+use crate::triage::extract_json;
+use crate::triage::tools::response_system_prompt;
+use crate::triage::truncate_with_ellipsis;
+use crate::triage::types::ClassificationResult;
 
 /// A draft response composed by Claude for Slack review.
 #[derive(Debug, Clone)]
@@ -58,32 +61,28 @@ pub async fn compose_draft_response(
         content: MessageContent::Text(user_message),
     }];
 
-    let tools = vec![compose_reply_tool()];
     let system = Some(response_system_prompt());
 
     debug!("sending response composition request to Claude");
-    let response = claude.chat(messages, system, Some(tools)).await?;
+    let response = claude.chat(messages, system, None).await?;
 
-    // Look for the compose_reply tool call
-    let tool_input = response
+    // Extract text content from response
+    let text: String = response
         .content
         .iter()
-        .find_map(|block| match block {
-            ContentBlock::ToolUse { name, input, .. } if name == "compose_reply" => Some(input),
+        .filter_map(|block| match block {
+            ContentBlock::Text { text } => Some(text.as_str()),
             _ => None,
         })
-        .ok_or_else(|| ClaudeError::Parse("Claude did not call compose_reply tool".to_string()))?;
+        .collect::<Vec<_>>()
+        .join("");
 
-    if response.stop_reason != Some(StopReason::ToolUse) {
-        warn!(
-            stop_reason = ?response.stop_reason,
-            "unexpected stop reason for response composition"
-        );
-    }
+    let json = extract_json(&text)?;
 
-    let body_text = tool_input["body_text"]
-        .as_str()
-        .ok_or_else(|| ClaudeError::Parse("missing body_text in compose_reply".to_string()))?
+    let body_text = json
+        .get("body_text")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| ClaudeError::Parse("missing body_text in response".to_string()))?
         .to_string();
 
     debug!("draft response composed");
@@ -91,78 +90,36 @@ pub async fn compose_draft_response(
     Ok(DraftResponse { body_text })
 }
 
+/// Askama template for the response composition user prompt.
+#[derive(Template)]
+#[template(path = "prompts/compose_reply.txt")]
+struct ComposeReplyPrompt<'a> {
+    classification: String,
+    confidence: String,
+    order_numbers: &'a [String],
+    product_names: &'a [String],
+    from_address: &'a str,
+    from_name: Option<&'a str>,
+    subject: &'a str,
+    body: String,
+    shopify_context: Option<&'a str>,
+}
+
 /// Build the user prompt for response composition.
 fn build_response_prompt(context: &ResponseContext) -> String {
-    use std::fmt::Write;
-
-    let mut prompt = String::with_capacity(4000);
-
-    prompt.push_str("Compose a reply to the following customer email.\n\n");
-    let _ = writeln!(
-        prompt,
-        "Classification: {} (confidence: {:.0}%)",
-        context.classification.classification,
-        context.classification.confidence * 100.0
-    );
-
-    if !context
-        .classification
-        .extracted_entities
-        .order_numbers
-        .is_empty()
-    {
-        let _ = writeln!(
-            prompt,
-            "Referenced orders: {}",
-            context
-                .classification
-                .extracted_entities
-                .order_numbers
-                .join(", ")
-        );
-    }
-
-    if !context
-        .classification
-        .extracted_entities
-        .product_names
-        .is_empty()
-    {
-        let _ = writeln!(
-            prompt,
-            "Referenced products: {}",
-            context
-                .classification
-                .extracted_entities
-                .product_names
-                .join(", ")
-        );
-    }
-
-    let _ = write!(prompt, "\nFrom: {} ", context.from_address);
-    if let Some(name) = &context.from_name {
-        let _ = write!(prompt, "({name})");
-    }
-    prompt.push('\n');
-    let _ = writeln!(prompt, "Subject: {}\n", context.subject);
-
-    let body = if context.body.len() > 2000 {
-        format!("{}...(truncated)", &context.body[..2000])
-    } else {
-        context.body.clone()
+    let template = ComposeReplyPrompt {
+        classification: context.classification.classification.to_string(),
+        confidence: format!("{:.0}", context.classification.confidence * 100.0),
+        order_numbers: &context.classification.extracted_entities.order_numbers,
+        product_names: &context.classification.extracted_entities.product_names,
+        from_address: &context.from_address,
+        from_name: context.from_name.as_deref(),
+        subject: &context.subject,
+        body: truncate_with_ellipsis(&context.body, 2000),
+        shopify_context: context.shopify_context.as_deref(),
     };
-    let _ = writeln!(prompt, "Body:\n{body}");
 
-    if let Some(shopify) = &context.shopify_context {
-        let _ = write!(prompt, "\n--- Real-time Shopify Data ---\n{shopify}\n");
-        prompt.push_str("Use the Shopify data above to provide accurate, specific answers. ");
-        prompt.push_str("Reference real order statuses, tracking numbers, and product details.\n");
-    }
-
-    prompt
-        .push_str("\nDraft a professional, helpful reply. Sign off as 'The Naked Pineapple Team'.");
-
-    prompt
+    template.render().expect("compose reply prompt template")
 }
 
 #[cfg(test)]

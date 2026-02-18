@@ -1,0 +1,9 @@
+Analyze this email and extract contacts and relationships for the contact graph.
+
+Classification: {{ classification }} (confidence: {{ confidence }}%)
+From: {{ from_address }}
+{%- if let Some(name) = from_name %} ({{ name }}){% endif %}
+Subject: {{ subject }}
+
+Body:
+{{ body }}

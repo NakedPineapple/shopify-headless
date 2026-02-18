@@ -3,8 +3,7 @@
 //! The classifier takes a user query and returns 1-3 relevant domains.
 //! This is the first stage of tool selection, designed to be fast and cheap.
 
-use std::fmt::Write;
-
+use askama::Template;
 use reqwest::header::{CONTENT_TYPE, HeaderMap, HeaderValue};
 use secrecy::ExposeSecret;
 use serde::{Deserialize, Serialize};
@@ -129,26 +128,22 @@ impl DomainClassifier {
     }
 }
 
+/// Askama template for the domain classification system prompt.
+#[derive(Template)]
+#[template(path = "prompts/domain_classifier.txt")]
+struct DomainClassifierPrompt<'a> {
+    domains: &'a [(&'static str, &'static str)],
+}
+
 /// Build the system prompt for domain classification.
 fn build_system_prompt() -> String {
-    let mut prompt = String::from(
-        "You are a classifier that categorizes e-commerce admin queries into domains.\n\n\
-         Available domains:\n",
-    );
+    let template = DomainClassifierPrompt {
+        domains: DOMAIN_DESCRIPTIONS,
+    };
 
-    for (domain, description) in DOMAIN_DESCRIPTIONS {
-        let _ = writeln!(prompt, "- {domain}: {description}");
-    }
-
-    prompt.push_str(
-        "\nRules:\n\
-         1. Return 1-3 most relevant domains\n\
-         2. Return ONLY domain names, comma-separated (e.g., \"orders, customers\")\n\
-         3. Most queries need only 1-2 domains\n\
-         4. Choose based on what data/actions the query requires",
-    );
-
-    prompt
+    template
+        .render()
+        .expect("domain classifier prompt template")
 }
 
 /// Parse comma-separated domain names from classifier response.

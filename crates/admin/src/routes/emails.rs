@@ -13,6 +13,7 @@
 //! POST /emails/{id}/reject       -- Reject draft
 //! POST /emails/{id}/archive      -- Archive email
 //! POST /emails/{id}/update-draft -- Save edited draft
+//! POST /emails/{id}/reanalyze    -- Reset + re-run AI analysis
 //! GET  /emails/pending-count     -- HTMX fragment: sidebar badge count
 //! ```
 
@@ -91,6 +92,7 @@ pub fn router() -> Router<AppState> {
         .route("/emails/{id}/reject", post(reject))
         .route("/emails/{id}/archive", post(archive))
         .route("/emails/{id}/update-draft", post(update_draft))
+        .route("/emails/{id}/reanalyze", post(reanalyze))
 }
 
 // =============================================================================
@@ -281,6 +283,35 @@ async fn update_draft(
     if let Err(e) = inbound_email::update_draft(pool, id, &draft_text).await {
         error!(email_id = id, error = %e, "failed to update draft");
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+    }
+
+    render_detail(&state, id, &extract_detail_target(&headers)).await
+}
+
+async fn reanalyze(
+    State(state): State<AppState>,
+    RequireAdminAuth(admin): RequireAdminAuth,
+    headers: HeaderMap,
+    Path(id): Path<i32>,
+) -> Response {
+    let pool = state.pool();
+
+    info!(email_id = id, reviewer = %admin.name, "re-analyzing email");
+
+    // Reset previous analysis (clears classification, graph mutations, embedding)
+    if let Err(e) = inbound_email::reset_analysis(pool, id).await {
+        error!(email_id = id, error = %e, "failed to reset analysis");
+        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+    }
+
+    // Run the analysis pipeline synchronously
+    let claude = crate::claude::ClaudeClient::new(state.config().claude());
+    let embedding = state.embedding();
+
+    if let Err(e) = naked_pineapple_automations::reanalyze_email(pool, &claude, embedding, id).await
+    {
+        error!(email_id = id, error = %e, "re-analysis failed");
+        // Still render the detail — the email is now in "pending" state after reset
     }
 
     render_detail(&state, id, &extract_detail_target(&headers)).await

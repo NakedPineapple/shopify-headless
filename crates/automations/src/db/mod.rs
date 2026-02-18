@@ -7,6 +7,7 @@
 pub mod abandoned_cart;
 pub mod automation_log;
 pub mod cogs;
+pub mod contact_graph;
 pub mod email_sync_state;
 pub mod expense;
 pub mod inbound_email;
@@ -27,6 +28,11 @@ use thiserror::Error;
 /// workspace feature unification from `tower-sessions-sqlx-store`), the offline
 /// macro expansion resolves `TIMESTAMPTZ` to `time::OffsetDateTime`. This mirrors
 /// the `to_time_date` pattern in `crates/admin/src/db/manufacturing.rs` for `DATE`.
+///
+/// # Panics
+///
+/// Panics if the chrono date/time components are out of range for the `time` crate.
+#[must_use]
 pub fn to_time_offset(dt: DateTime<Utc>) -> time::OffsetDateTime {
     let date = time::Date::from_calendar_date(
         dt.year(),
