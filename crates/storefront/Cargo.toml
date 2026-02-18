@@ -82,7 +82,7 @@ tower_governor = "0.8"
 
 # Security
 secrecy = { workspace = true }
-ammonia = "4"
+ammonia = { workspace = true }
 hmac = { workspace = true }
 sha2 = { workspace = true }
 

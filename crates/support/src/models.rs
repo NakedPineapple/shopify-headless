@@ -41,6 +41,21 @@ pub struct SupportMessage {
     pub created_at: DateTime<Utc>,
 }
 
+impl SupportMessage {
+    /// Extract the display text from the JSON content.
+    ///
+    /// Messages are stored as `{"text": "..."}`. This returns the inner text,
+    /// falling back to the raw JSON string if the structure is unexpected.
+    #[must_use]
+    pub fn content_text(&self) -> &str {
+        self.content
+            .get("text")
+            .and_then(serde_json::Value::as_str)
+            .or_else(|| self.content.as_str())
+            .unwrap_or("")
+    }
+}
+
 /// A support ticket linked to a conversation.
 #[derive(Debug, Clone, Serialize)]
 pub struct SupportTicket {

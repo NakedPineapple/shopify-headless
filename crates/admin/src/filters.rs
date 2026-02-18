@@ -322,6 +322,72 @@ pub fn decode_base64(value: &str, _env: &dyn askama::Values) -> askama::Result<S
         .unwrap_or_else(|| value.to_string()))
 }
 
+/// Sanitize HTML for safe inline rendering.
+///
+/// Strips scripts, event handlers, and other dangerous content while preserving
+/// basic formatting (paragraphs, bold, links, lists, tables, etc.).
+///
+/// Usage in templates: `{{ body|sanitize_html|safe }}`
+///
+/// # Errors
+///
+/// This filter is infallible, however Askama requires filters return `askama::Result`.
+#[allow(clippy::unnecessary_wraps)]
+#[askama::filter_fn]
+pub fn sanitize_html(html: impl Display, _env: &dyn askama::Values) -> askama::Result<String> {
+    use std::collections::HashSet;
+
+    let allowed_tags: HashSet<&str> = [
+        "p",
+        "br",
+        "strong",
+        "em",
+        "b",
+        "i",
+        "u",
+        "s",
+        "mark",
+        "small",
+        "sub",
+        "sup",
+        "ul",
+        "ol",
+        "li",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6",
+        "a",
+        "img",
+        "span",
+        "div",
+        "blockquote",
+        "pre",
+        "code",
+        "hr",
+        "table",
+        "thead",
+        "tbody",
+        "tfoot",
+        "tr",
+        "th",
+        "td",
+        "caption",
+    ]
+    .into_iter()
+    .collect();
+
+    let sanitized = ammonia::Builder::default()
+        .tags(allowed_tags)
+        .link_rel(Some("noopener noreferrer"))
+        .clean(&html.to_string())
+        .to_string();
+
+    Ok(sanitized)
+}
+
 /// Format a datetime string (ISO format) in AOE (Anywhere on Earth) timezone.
 ///
 /// AOE is UTC-12, the last timezone to reach any given date. This is useful for

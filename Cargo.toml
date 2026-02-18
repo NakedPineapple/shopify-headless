@@ -102,6 +102,9 @@ urlencoding = "2.1"
 hmac = "0.12"
 sha2 = "0.10"
 
+# HTML sanitization
+ammonia = "4"
+
 # Security
 secrecy = "0.10"
 

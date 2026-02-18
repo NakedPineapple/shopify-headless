@@ -92,6 +92,9 @@ hex = "0.4"
 aws-config = "1.8"
 aws-sdk-s3 = "1.123"
 
+# HTML sanitization (email body rendering)
+ammonia = { workspace = true }
+
 # Document processing
 pdf-extract = "0.10"
 

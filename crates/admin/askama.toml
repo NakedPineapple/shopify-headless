@@ -17,3 +17,6 @@ path = "crate::filters::humanize_datetime"
 
 [[filter]]
 path = "crate::filters::extract_id"
+
+[[filter]]
+path = "crate::filters::sanitize_html"

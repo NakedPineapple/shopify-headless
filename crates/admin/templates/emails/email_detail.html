@@ -199,15 +199,17 @@
                 <i class="ph ph-envelope text-lg text-muted-foreground"></i>
                 <h4 class="text-sm font-semibold text-foreground">Email Body</h4>
             </div>
-            <div class="text-sm text-foreground leading-relaxed whitespace-pre-wrap max-h-96 overflow-y-auto">
-                {%- if let Some(body) = email.body_text -%}
-                    {{ body }}
-                {%- elif let Some(preview) = email.body_preview -%}
-                    {{ preview }}
-                {%- else -%}
-                    <span class="text-muted-foreground italic">No body content available</span>
-                {%- endif -%}
+            {%- if let Some(body) = email.body_text -%}
+            <div class="text-sm text-foreground leading-relaxed max-h-96 overflow-y-auto">
+                {{ body|sanitize_html|safe }}
             </div>
+            {%- elif let Some(preview) = email.body_preview -%}
+            <div class="text-sm text-foreground leading-relaxed whitespace-pre-wrap max-h-96 overflow-y-auto">
+                {{ preview }}
+            </div>
+            {%- else -%}
+            <div class="text-sm text-muted-foreground italic">No body content available</div>
+            {%- endif -%}
         </div>
 
         <!-- Draft Response -->

@@ -81,7 +81,7 @@
     <!-- System Message -->
     <div class="flex justify-center">
         <p class="text-xs text-muted-foreground italic px-4 py-1.5 bg-muted/50 rounded-full">
-            {{ message.content }}
+            {{ message.content_text() }}
             <span class="ml-2 opacity-70">{{ message.created_at.format("%H:%M") }}</span>
         </p>
     </div>
@@ -124,7 +124,7 @@
                 {% elif message.role == "assistant" %}bg-card border border-border text-foreground
                 {% elif message.role == "agent" %}bg-green-50 dark:bg-green-900/20 text-foreground
                 {% endif %}">
-                {{ message.content }}
+                {{ message.content_text() }}
             </div>
         </div>
     </div>
