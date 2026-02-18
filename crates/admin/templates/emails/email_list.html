@@ -102,7 +102,10 @@
                 {% endif %}
 
                 <!-- Mailbox / folder label -->
-                <span class="text-[10px] text-muted-foreground ml-auto">{{ email.mailbox }}{% if let Some(folder) = email.folder %} / {{ folder }}{% endif %}</span>
+                <span class="text-[10px] text-muted-foreground ml-auto cursor-help" title="Microsoft 365 shared mailbox this email was delivered to">{{ email.mailbox }}</span>
+                {% if let Some(folder) = email.folder %}
+                <span class="text-[10px] text-muted-foreground cursor-help" title="Folder this email was in when fetched from Microsoft 365 — it may no longer be in this folder">/ {{ folder }}</span>
+                {% endif %}
             </div>
         </div>
     </div>

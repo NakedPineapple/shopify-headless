@@ -29,12 +29,12 @@
                 </div>
                 <div class="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
                     <span>{{ email.received_at|humanize_datetime }}</span>
-                    <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                    <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-muted text-muted-foreground cursor-help" title="Microsoft 365 shared mailbox this email was delivered to">
                         <i class="ph ph-at text-[10px]"></i>
                         {{ email.mailbox }}
                     </span>
                     {% if let Some(folder) = email.folder %}
-                    <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                    <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-muted text-muted-foreground cursor-help" title="Folder this email was in when fetched from Microsoft 365 — it may no longer be in this folder">
                         <i class="ph ph-folder text-[10px]"></i>
                         {{ folder }}
                     </span>
@@ -298,7 +298,7 @@
             </p>
             {% endif %}
             {% if let Some(routed) = email.routed_to %}
-            <p>
+            <p class="cursor-help" title="{% match routed.as_str() %}{% when "archive" %}Classified as spam or marketing and moved to the Microsoft 365 Archive folder{% when "slack_review" %}An AI-drafted response was sent to Slack for review before sending{% when "klaviyo_helpdesk" %}Queued for routing to Klaviyo Helpdesk for customer support handling{% when "notified" %}A notification was sent to Slack — no automated response was generated{% when _ %}Routed by the AI triage pipeline after classification{% endmatch %}">
                 <i class="ph ph-arrow-right mr-1"></i>
                 Routed to {{ routed }}
             </p>
