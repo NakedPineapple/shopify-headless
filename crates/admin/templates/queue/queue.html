@@ -84,6 +84,11 @@ function setQueueTab(btn) {
     });
     btn.classList.remove('border-transparent', 'text-muted-foreground');
     btn.classList.add('border-coral', 'text-foreground');
+
+    // Sync the polling URL so the 15s refresh doesn't revert to the default tab
+    var list = document.getElementById('queue-list');
+    list.setAttribute('hx-get', btn.getAttribute('hx-get'));
+    htmx.process(list);
 }
 
 function selectQueueItem(el) {

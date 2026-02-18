@@ -59,7 +59,7 @@
 
         <!-- Conversation List -->
         <div id="conversation-list" class="flex-1 overflow-y-auto divide-y divide-border"
-             hx-get="/support/conversations?status=all"
+             hx-get="/support/conversations?status={{ active_filter }}"
              hx-trigger="load, every 10s"
              hx-swap="innerHTML">
             <!-- Loaded via HTMX -->
@@ -91,6 +91,11 @@ function setActiveTab(btn) {
     });
     btn.classList.remove('border-transparent', 'text-muted-foreground');
     btn.classList.add('border-coral', 'text-foreground');
+
+    // Sync the polling URL so the 10s refresh doesn't revert to the default tab
+    var list = document.getElementById('conversation-list');
+    list.setAttribute('hx-get', btn.getAttribute('hx-get'));
+    htmx.process(list);
 }
 
 function selectConversation(id, el) {
