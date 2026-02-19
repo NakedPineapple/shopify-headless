@@ -1,0 +1,101 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            id,\n            from_address,\n            from_name,\n            subject,\n            mailbox,\n            folder,\n            is_read as \"is_read!\",\n            classification,\n            confidence,\n            status,\n            received_at as \"received_at: DateTime<Utc>\",\n            (response_draft IS NOT NULL) as \"has_draft!: bool\",\n            reviewed_by,\n            error\n        FROM admin.inbound_email\n        WHERE status IN ('responded', 'archived')\n        ORDER BY received_at DESC\n        LIMIT $1 OFFSET $2\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "from_address",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "from_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "subject",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "mailbox",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "folder",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "is_read!",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 7,
+        "name": "classification",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "confidence",
+        "type_info": "Float4"
+      },
+      {
+        "ordinal": 9,
+        "name": "status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "received_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 11,
+        "name": "has_draft!: bool",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 12,
+        "name": "reviewed_by",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 13,
+        "name": "error",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+      false,
+      true,
+      true,
+      false,
+      false,
+      null,
+      true,
+      true
+    ]
+  },
+  "hash": "845518664a7117352339db139847789e3ba839e327a2a2867e2015335cc5b09f"
+}

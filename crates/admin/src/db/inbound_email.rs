@@ -528,6 +528,93 @@ pub async fn count_open(pool: &PgPool) -> Result<i64, RepositoryError> {
     Ok(count)
 }
 
+/// List emails that are "open" (not yet responded or archived).
+///
+/// Matches the same filter as [`count_open`] so badge counts and list results
+/// stay in sync.
+///
+/// # Errors
+///
+/// Returns `RepositoryError::Database` if the query fails.
+pub async fn list_open(
+    pool: &PgPool,
+    limit: i64,
+    offset: i64,
+) -> Result<Vec<InboundEmailSummary>, RepositoryError> {
+    let rows = sqlx::query_as!(
+        SummaryRow,
+        r#"
+        SELECT
+            id,
+            from_address,
+            from_name,
+            subject,
+            mailbox,
+            folder,
+            is_read as "is_read!",
+            classification,
+            confidence,
+            status,
+            received_at as "received_at: DateTime<Utc>",
+            (response_draft IS NOT NULL) as "has_draft!: bool",
+            reviewed_by,
+            error
+        FROM admin.inbound_email
+        WHERE status NOT IN ('responded', 'archived')
+        ORDER BY received_at DESC
+        LIMIT $1 OFFSET $2
+        "#,
+        limit,
+        offset,
+    )
+    .fetch_all(pool)
+    .await?;
+
+    Ok(rows.into_iter().map(Into::into).collect())
+}
+
+/// List emails that are "resolved" (responded or archived).
+///
+/// # Errors
+///
+/// Returns `RepositoryError::Database` if the query fails.
+pub async fn list_resolved(
+    pool: &PgPool,
+    limit: i64,
+    offset: i64,
+) -> Result<Vec<InboundEmailSummary>, RepositoryError> {
+    let rows = sqlx::query_as!(
+        SummaryRow,
+        r#"
+        SELECT
+            id,
+            from_address,
+            from_name,
+            subject,
+            mailbox,
+            folder,
+            is_read as "is_read!",
+            classification,
+            confidence,
+            status,
+            received_at as "received_at: DateTime<Utc>",
+            (response_draft IS NOT NULL) as "has_draft!: bool",
+            reviewed_by,
+            error
+        FROM admin.inbound_email
+        WHERE status IN ('responded', 'archived')
+        ORDER BY received_at DESC
+        LIMIT $1 OFFSET $2
+        "#,
+        limit,
+        offset,
+    )
+    .fetch_all(pool)
+    .await?;
+
+    Ok(rows.into_iter().map(Into::into).collect())
+}
+
 /// Approve a draft response: mark as approved, set reviewer, update status.
 ///
 /// # Errors

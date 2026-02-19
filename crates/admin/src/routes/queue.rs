@@ -130,23 +130,23 @@ async fn queue_list(
     let active_filter = filter.status.as_deref().unwrap_or("open");
     let source_filter = filter.source.as_deref();
 
+    let queue_status = match active_filter {
+        "all" => None,
+        "waiting" => Some(QueueStatus::Waiting),
+        "resolved" => Some(QueueStatus::Resolved),
+        _ => Some(QueueStatus::Open),
+    };
+
     let (email_items, chat_items) = tokio::join!(
-        fetch_email_items(&state, source_filter),
+        fetch_email_items(&state, source_filter, queue_status),
         fetch_chat_items(&state, source_filter),
     );
 
     let mut items: Vec<QueueItem> = email_items.into_iter().chain(chat_items).collect();
 
-    // Filter by status
-    if active_filter != "all" {
-        let target_status = match active_filter {
-            "waiting" => Some(QueueStatus::Waiting),
-            "resolved" => Some(QueueStatus::Resolved),
-            _ => Some(QueueStatus::Open),
-        };
-        if let Some(status) = target_status {
-            items.retain(|item| item.queue_status == status);
-        }
+    // Chat items are still filtered in-memory (they come from a separate DB).
+    if let Some(status) = queue_status {
+        items.retain(|item| item.source == QueueSource::Email || item.queue_status == status);
     }
 
     // Sort by timestamp descending, truncate
@@ -211,14 +211,26 @@ async fn queue_open_count(
 // =============================================================================
 
 /// Fetch email items from the admin database and convert to queue items.
-async fn fetch_email_items(state: &AppState, source_filter: Option<&str>) -> Vec<QueueItem> {
+///
+/// Uses status-specific queries so the DB returns only the rows the caller
+/// needs, keeping the list in sync with the badge count from [`count_open`].
+async fn fetch_email_items(
+    state: &AppState,
+    source_filter: Option<&str>,
+    queue_status: Option<QueueStatus>,
+) -> Vec<QueueItem> {
     if source_filter == Some("chat") {
         return Vec::new();
     }
 
-    let emails = inbound_email::list(state.pool(), None, None, 50, 0)
-        .await
-        .unwrap_or_default();
+    let emails = match queue_status {
+        Some(QueueStatus::Open | QueueStatus::Waiting) => {
+            inbound_email::list_open(state.pool(), 50, 0).await
+        }
+        Some(QueueStatus::Resolved) => inbound_email::list_resolved(state.pool(), 50, 0).await,
+        None => inbound_email::list(state.pool(), None, None, 50, 0).await,
+    }
+    .unwrap_or_default();
 
     emails
         .into_iter()
