@@ -58,6 +58,7 @@ pub mod api;
 pub mod auth;
 pub mod chat;
 pub mod collections;
+pub mod contacts;
 pub mod customers;
 pub mod dashboard;
 pub mod discounts;
@@ -490,6 +491,8 @@ pub fn routes() -> Router<AppState> {
         .merge(queue::router())
         // Email inbox (inbound email triage)
         .merge(emails::router())
+        // Contact graph (visualization + editing)
+        .merge(contacts::router())
         // Support inbox (storefront DB)
         .merge(support::router())
         // Slack webhooks

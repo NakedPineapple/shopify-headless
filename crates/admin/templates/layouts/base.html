@@ -183,6 +183,11 @@
                                   hx-trigger="load, every 30s"
                                   hx-swap="innerHTML"></span>
                         </a>
+                        <a href="/contacts"
+                           class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors {% if current_path.starts_with("/contacts") %}bg-coral text-white{% else %}text-sidebar-foreground hover:bg-sidebar-accent hover:text-white{% endif %}">
+                            <i class="ph ph-graph text-xl"></i>
+                            <span class="sidebar-text">Contacts</span>
+                        </a>
                         <a href="/support"
                            class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors {% if current_path.starts_with("/support") %}bg-coral text-white{% else %}text-sidebar-foreground hover:bg-sidebar-accent hover:text-white{% endif %}">
                             <i class="ph ph-headset text-xl"></i>

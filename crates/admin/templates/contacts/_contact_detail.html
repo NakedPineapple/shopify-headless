@@ -1,0 +1,105 @@
+<div class="flex flex-col h-full">
+    <!-- Header -->
+    <div class="flex items-center gap-3 px-4 py-3 border-b border-border">
+        <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2">
+                <i class="ph {% if contact.contact_type == "person" %}ph-user{% else %}ph-buildings{% endif %} text-lg text-coral"></i>
+                <h3 class="text-base font-medium text-foreground truncate">{{ contact.name }}</h3>
+            </div>
+            <div class="flex items-center gap-2 mt-1">
+                <span class="badge {% if contact.contact_type == "person" %}badge-primary{% else %}badge-info{% endif %}">
+                    {{ contact.contact_type }}
+                </span>
+                {% if contact.email_contribution_count > 0 %}
+                <span class="text-xs text-muted-foreground">
+                    {{ contact.email_contribution_count }} email{% if contact.email_contribution_count != 1 %}s{% endif %}
+                </span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Form -->
+    <form class="flex-1 flex flex-col"
+          hx-post="/contacts/{{ contact.id }}"
+          hx-target="#contact-detail-panel"
+          hx-swap="innerHTML">
+        <div class="p-4 space-y-4 flex-1">
+            <!-- Type -->
+            <div>
+                <label class="text-xs font-medium text-muted-foreground uppercase tracking-wider">Type</label>
+                <div class="flex gap-3 mt-1.5">
+                    <label class="flex items-center gap-2 text-sm text-foreground cursor-pointer">
+                        <input type="radio" name="contact_type" value="person"
+                               {% if contact.contact_type == "person" %}checked{% endif %}
+                               class="accent-coral">
+                        Person
+                    </label>
+                    <label class="flex items-center gap-2 text-sm text-foreground cursor-pointer">
+                        <input type="radio" name="contact_type" value="organization"
+                               {% if contact.contact_type == "organization" %}checked{% endif %}
+                               class="accent-coral">
+                        Organization
+                    </label>
+                </div>
+            </div>
+
+            <!-- Name -->
+            <div>
+                <label class="text-xs font-medium text-muted-foreground uppercase tracking-wider" for="edit-name">Name</label>
+                <input type="text" id="edit-name" name="name" value="{{ contact.name }}"
+                       class="input input-sm mt-1 w-full" required>
+            </div>
+
+            <!-- Email -->
+            <div>
+                <label class="text-xs font-medium text-muted-foreground uppercase tracking-wider" for="edit-email">Email</label>
+                <input type="email" id="edit-email" name="email" value="{{ contact.email }}"
+                       class="input input-sm mt-1 w-full" placeholder="Optional">
+            </div>
+
+            <!-- Domain -->
+            <div>
+                <label class="text-xs font-medium text-muted-foreground uppercase tracking-wider" for="edit-domain">Domain</label>
+                <input type="text" id="edit-domain" name="domain" value="{{ contact.domain }}"
+                       class="input input-sm mt-1 w-full" placeholder="Optional">
+            </div>
+
+            <!-- Relationships -->
+            {% if !relationships.is_empty() %}
+            <div>
+                <label class="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Relationships ({{ relationships.len() }})
+                </label>
+                <div class="mt-1.5 space-y-1">
+                    {% for rel in relationships %}
+                    <div class="flex items-center gap-2 text-sm px-2 py-1.5 rounded bg-muted/50 cursor-pointer hover:bg-muted transition-colors"
+                         hx-get="/contacts/relationships/{{ rel.id }}"
+                         hx-target="#contact-detail-panel"
+                         hx-swap="innerHTML">
+                        <i class="ph ph-arrow-{% if rel.direction == "outgoing" %}right{% else %}left{% endif %} text-xs text-muted-foreground"></i>
+                        <span class="text-muted-foreground">{{ rel.relationship_type }}</span>
+                        <span class="text-foreground truncate">{{ rel.other_name }}</span>
+                        <span class="badge badge-neutral text-[10px] ml-auto">{{ rel.other_type }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Actions -->
+        <div class="flex items-center gap-2 px-4 py-3 border-t border-border">
+            <button type="submit" class="btn btn-sm btn-primary flex-1">
+                <i class="ph ph-floppy-disk mr-1"></i> Save
+            </button>
+            <button type="button" class="btn btn-sm btn-destructive"
+                    hx-post="/contacts/{{ contact.id }}/delete"
+                    hx-target="#contact-detail-panel"
+                    hx-swap="innerHTML"
+                    hx-confirm="Delete this contact and all its relationships?">
+                <i class="ph ph-trash"></i>
+            </button>
+        </div>
+    </form>
+</div>

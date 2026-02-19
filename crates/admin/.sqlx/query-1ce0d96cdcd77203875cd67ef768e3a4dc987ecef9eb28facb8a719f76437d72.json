@@ -1,0 +1,47 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE admin.contact_relationships\n        SET relationship_type = $2,\n            updated_at = (CURRENT_TIMESTAMP AT TIME ZONE 'utc')\n        WHERE id = $1\n        RETURNING id, from_contact_id, to_contact_id, relationship_type, properties\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "from_contact_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "to_contact_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "relationship_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "properties",
+        "type_info": "Jsonb"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "1ce0d96cdcd77203875cd67ef768e3a4dc987ecef9eb28facb8a719f76437d72"
+}

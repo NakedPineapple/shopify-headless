@@ -75,36 +75,6 @@
       "mcp__sentry__search_events",
       "mcp__sentry__search_issues"
     ],
-    "deny": [
-      "Bash(cargo build:*)",
-      "Bash(cargo check:*)",
-      "Bash(cargo clippy:*)",
-      "Bash(cargo fmt:*)",
-      "Bash(cargo test:*)",
-      "Bash(psql:*)",
-      "Bash(task build:*)",
-      "Bash(task rust:build:*)",
-      "Bash(task rust:check:*)",
-      "Bash(task rust:clippy:*)",
-      "Read(.env)"
-    ],
-    "ask": [
-      "Bash(/bin/rm:*)",
-      "Bash(cp:*)",
-      "Bash(curl:*)",
-      "Bash(git am:*)",
-      "Bash(git commit:*)",
-      "Bash(git filter-branch:*)",
-      "Bash(git stash:*)",
-      "Bash(git worktree remove:*)",
-      "Bash(mv:*)",
-      "Bash(python3:*)",
-      "Bash(rm:*)",
-      "Bash(sqlite3:*)",
-      "Bash(task db:reset:*)",
-      "Bash(task test:*)",
-      "Bash(task test:integration:*)"
-    ],
     "additionalDirectories": [
       "../NakedPineapple-worktree1",
       "../NakedPineapple-worktree2"

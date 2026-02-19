@@ -26,6 +26,7 @@ pub mod amazon;
 pub mod amazon_orders;
 pub mod amazon_products;
 pub mod chat;
+pub mod contact_graph;
 pub mod documents;
 pub mod expense;
 pub mod faire_commerce;

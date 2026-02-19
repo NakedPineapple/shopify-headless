@@ -1,0 +1,99 @@
+<div class="flex flex-col h-full">
+    <!-- Header -->
+    <div class="flex items-center gap-3 px-4 py-3 border-b border-border">
+        <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2">
+                <i class="ph ph-link text-lg text-coral"></i>
+                <h3 class="text-base font-medium text-foreground truncate">Relationship</h3>
+            </div>
+            <p class="text-xs text-muted-foreground mt-1">
+                {{ relationship.from_contact_name }}
+                <i class="ph ph-arrow-right text-[10px] mx-0.5"></i>
+                {{ relationship.to_contact_name }}
+            </p>
+        </div>
+        <button type="button" class="btn btn-sm btn-ghost"
+                hx-get="/contacts/{{ relationship.from_contact_id }}"
+                hx-target="#contact-detail-panel"
+                hx-swap="innerHTML"
+                title="Back to contact">
+            <i class="ph ph-arrow-left"></i>
+        </button>
+    </div>
+
+    <!-- Edit Form -->
+    <form class="flex-1 flex flex-col"
+          hx-post="/contacts/relationships/{{ relationship.id }}"
+          hx-target="#contact-detail-panel"
+          hx-swap="innerHTML">
+        <!-- Hidden fields to satisfy RelationshipForm -->
+        <input type="hidden" name="from_contact_id" value="{{ relationship.from_contact_id }}">
+        <input type="hidden" name="to_contact_id" value="{{ relationship.to_contact_id }}">
+
+        <div class="p-4 space-y-4 flex-1">
+            <!-- From -->
+            <div>
+                <label class="text-xs font-medium text-muted-foreground uppercase tracking-wider">From</label>
+                <div class="flex items-center gap-2 mt-1.5 text-sm text-foreground px-2 py-1.5 rounded bg-muted/50 cursor-pointer"
+                     hx-get="/contacts/{{ relationship.from_contact_id }}"
+                     hx-target="#contact-detail-panel"
+                     hx-swap="innerHTML">
+                    <i class="ph ph-user text-muted-foreground"></i>
+                    {{ relationship.from_contact_name }}
+                </div>
+            </div>
+
+            <!-- To -->
+            <div>
+                <label class="text-xs font-medium text-muted-foreground uppercase tracking-wider">To</label>
+                <div class="flex items-center gap-2 mt-1.5 text-sm text-foreground px-2 py-1.5 rounded bg-muted/50 cursor-pointer"
+                     hx-get="/contacts/{{ relationship.to_contact_id }}"
+                     hx-target="#contact-detail-panel"
+                     hx-swap="innerHTML">
+                    <i class="ph ph-user text-muted-foreground"></i>
+                    {{ relationship.to_contact_name }}
+                </div>
+            </div>
+
+            <!-- Type -->
+            <div>
+                <label class="text-xs font-medium text-muted-foreground uppercase tracking-wider" for="rel-type">Type</label>
+                <select id="rel-type" name="relationship_type" class="input input-sm mt-1 w-full">
+                    {% for rt in relationship_types %}
+                    <option value="{{ rt.value }}" {% if rt.selected %}selected{% endif %}>
+                        {{ rt.value }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Properties (read-only display) -->
+            <div>
+                <label class="text-xs font-medium text-muted-foreground uppercase tracking-wider">Properties</label>
+                <pre class="mt-1.5 text-xs text-foreground bg-muted/50 rounded p-2 overflow-x-auto">{{ relationship.properties }}</pre>
+            </div>
+
+            <!-- Contribution count -->
+            {% if relationship.email_contribution_count > 0 %}
+            <div class="text-xs text-muted-foreground">
+                <i class="ph ph-envelope mr-1"></i>
+                Derived from {{ relationship.email_contribution_count }} email{% if relationship.email_contribution_count != 1 %}s{% endif %}
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Actions -->
+        <div class="flex items-center gap-2 px-4 py-3 border-t border-border">
+            <button type="submit" class="btn btn-sm btn-primary flex-1">
+                <i class="ph ph-floppy-disk mr-1"></i> Save
+            </button>
+            <button type="button" class="btn btn-sm btn-destructive"
+                    hx-post="/contacts/relationships/{{ relationship.id }}/delete"
+                    hx-target="#contact-detail-panel"
+                    hx-swap="innerHTML"
+                    hx-confirm="Delete this relationship?">
+                <i class="ph ph-trash"></i>
+            </button>
+        </div>
+    </form>
+</div>
