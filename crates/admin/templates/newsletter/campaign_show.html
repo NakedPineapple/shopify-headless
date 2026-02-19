@@ -122,6 +122,8 @@
                     <p class="text-sm text-muted-foreground">Campaign has been sent.</p>
                     {% when CampaignStatus::Cancelled %}
                     <p class="text-sm text-muted-foreground">Campaign was cancelled.</p>
+                    {% when CampaignStatus::Unknown %}
+                    <p class="text-sm text-muted-foreground">Campaign status is unknown.</p>
                     {% endmatch %}
                 </div>
             </div>

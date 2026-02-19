@@ -34,6 +34,7 @@ impl KlaviyoClient {
                 CampaignStatus::Sending => "sending",
                 CampaignStatus::Sent => "sent",
                 CampaignStatus::Cancelled => "cancelled",
+                CampaignStatus::Unknown => "unknown",
             };
             filters.push(format!("equals(status,\"{status_str}\")"));
         }

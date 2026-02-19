@@ -64,6 +64,9 @@ pub enum CampaignStatus {
     Sending,
     Sent,
     Cancelled,
+    /// Catch-all for statuses added by Klaviyo that we don't yet handle.
+    #[serde(other)]
+    Unknown,
 }
 
 /// Campaign channel (email or SMS).
@@ -103,6 +106,7 @@ impl CampaignStatus {
             Self::Sending => "Sending",
             Self::Sent => "Sent",
             Self::Cancelled => "Cancelled",
+            Self::Unknown => "Unknown",
         }
     }
 
@@ -114,13 +118,13 @@ impl CampaignStatus {
             Self::Scheduled => "bg-honey/20 text-honey",
             Self::Sending => "bg-coral/20 text-coral",
             Self::Sent => "bg-leaf/20 text-leaf",
-            Self::Cancelled => "bg-lagoon-600/20 text-lagoon-400",
+            Self::Cancelled | Self::Unknown => "bg-lagoon-600/20 text-lagoon-400",
         }
     }
 }
 
 /// Campaign audiences configuration.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct CampaignAudiences {
     #[serde(default)]
     pub included: Vec<String>,

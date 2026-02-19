@@ -179,10 +179,24 @@ impl KlaviyoClient {
         let status = response.status();
 
         if status.is_success() {
-            return response
-                .json()
+            let body = response
+                .text()
                 .await
-                .map_err(|e| KlaviyoError::Parse(format!("Failed to parse response: {e}")));
+                .map_err(|e| KlaviyoError::Parse(format!("Failed to read response body: {e}")))?;
+
+            return serde_json::from_str(&body).map_err(|e| {
+                let preview = if body.len() > 500 {
+                    &body[..500]
+                } else {
+                    &body
+                };
+                tracing::error!(
+                    error = %e,
+                    body_preview = %preview,
+                    "Failed to parse Klaviyo API response"
+                );
+                KlaviyoError::Parse(format!("Failed to parse response: {e}"))
+            });
         }
 
         Err(self.parse_error(response).await)
