@@ -1,7 +1,7 @@
 # =============================================================================
 # Stage 1: Chef base image with cargo-chef installed
 # =============================================================================
-FROM rust:1.93.1-trixie@sha256:80302520b7199f0504975bca59a914015e9fee088f759875dbbc238ca9509ee1 AS chef
+FROM rust:1.93.1-trixie@sha256:51c04d7a2b38418ba23ecbfb373c40d3bd493dec1ddfae00ab5669527320195e AS chef
 RUN cargo install cargo-chef --locked
 WORKDIR /app
 
