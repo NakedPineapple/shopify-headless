@@ -91,7 +91,7 @@ hex = "0.4"
 
 # Object storage (Cloudflare R2)
 aws-config = "1.8"
-aws-sdk-s3 = "1.123"
+aws-sdk-s3 = "1.125"
 
 # HTML sanitization (email body rendering)
 ammonia = { workspace = true }

@@ -122,4 +122,4 @@ futures = "0.3"
 axum-prometheus = "0.10"
 
 # JSON Schema validation
-jsonschema = "0.42"
+jsonschema = "0.44"
