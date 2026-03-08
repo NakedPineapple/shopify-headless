@@ -27,6 +27,8 @@ kill_timeout = 30
   R2_BUCKET_DOCUMENTS = "nakedpineapple-documents"
   R2_BUCKET_ORIGINAL_IMAGES = "nakedpineapple-original-images"
   ADMIN_HEALTH_PORT = "9091"
+  TAILSCALE_TAGS = "tag:server"
+  TAILSCALE_CLIENT_ID = "kTwQk5gSr311CNTRL"
 
 # No http_service - traffic comes via Tailscale, not Fly proxy
 
