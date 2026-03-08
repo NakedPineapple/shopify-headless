@@ -8,8 +8,8 @@ RUN apt-get update && \
         postgresql-server-dev-17 && \
     rm -rf /var/lib/apt/lists/*
 
-# pgvector version - 0.8.1 is the latest stable as of Jan 2026
-ARG PGVECTOR_VERSION=0.8.1
+# pgvector version - 0.8.2 is the latest stable as of Mar 2026
+ARG PGVECTOR_VERSION=0.8.2
 
 # Download, build, and install pgvector
 RUN curl -L -o pgvector.tar.gz \
