@@ -1,30 +1,45 @@
 #!/bin/sh
+set -e
 
-# Use FLY_APP_NAME as Tailscale hostname (e.g., nakedpineapple-admin or nakedpineapple-admin-staging)
 TAILSCALE_HOSTNAME="${FLY_APP_NAME:-nakedpineapple-admin}"
 
-# Start Tailscale daemon in background with reduced verbosity
+# Start Tailscale daemon in background
 /app/tailscaled \
   --state=/var/lib/tailscale/tailscaled.state \
   --socket=/var/run/tailscale/tailscaled.sock \
-  --verbose=0 \
-  2>&1 | grep -v "^\[RATELIMIT\]\|^logpolicy\|^monitor:\|^2026/\|^#" &
+  --verbose=1 &
 
-# Wait for daemon socket to be ready
-for i in 1 2 3 4 5; do
+# Wait for daemon socket to be ready (up to 30 seconds)
+echo "Waiting for tailscaled socket..."
+for i in $(seq 1 30); do
   [ -S /var/run/tailscale/tailscaled.sock ] && break
+  if [ "$i" -eq 30 ]; then
+    echo "FATAL: tailscaled socket not ready after 30 seconds"
+    exit 1
+  fi
   sleep 1
 done
 
 # Authenticate and connect to tailnet
-/app/tailscale --socket=/var/run/tailscale/tailscaled.sock up \
-  --auth-key="${TAILSCALE_AUTHKEY}" \
+echo "Connecting to tailnet as ${TAILSCALE_HOSTNAME}..."
+if ! /app/tailscale --socket=/var/run/tailscale/tailscaled.sock up \
+  --auth-key="${TAILSCALE_AUTHKEY}?ephemeral=false&preauthorized=true" \
   --hostname="${TAILSCALE_HOSTNAME}" \
+  --advertise-tags="${TAILSCALE_TAGS}" \
   --accept-routes=false \
-  2>&1 | grep -v "^#"
+  --reset; then
+  echo "FATAL: tailscale up failed"
+  exit 1
+fi
+
+# Verify Tailscale is connected
+if ! /app/tailscale --socket=/var/run/tailscale/tailscaled.sock status; then
+  echo "FATAL: Tailscale not connected after authentication"
+  exit 1
+fi
 
 # Disable any previous tailscale serve config (app serves HTTPS directly now)
 /app/tailscale --socket=/var/run/tailscale/tailscaled.sock serve --https=443 off 2>/dev/null || true
 
-# Start the application as non-root user (serves HTTPS directly with TLS certificates)
+echo "Tailscale connected. Starting application..."
 exec su -s /bin/sh appuser -c "/app/server"
