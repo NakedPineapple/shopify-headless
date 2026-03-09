@@ -1,4 +1,4 @@
-//! Shared customer support library for Naked Pineapple.
+//! Shared customer support library for Pineapple Skin Co.
 //!
 //! Used by both storefront (customer-facing chat) and admin (inbox & ticketing).
 //! All data lives in `np_storefront.storefront.support_*` tables.

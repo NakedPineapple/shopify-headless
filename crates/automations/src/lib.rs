@@ -1,4 +1,4 @@
-//! Naked Pineapple Automations — shared library for the automations service.
+//! Pineapple Skin Co. Automations — shared library for the automations service.
 //!
 //! Exposes [`reanalyze_email`] so the admin panel can synchronously re-run
 //! the AI classification pipeline on an email that was previously analyzed.

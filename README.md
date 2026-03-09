@@ -1,6 +1,6 @@
-# Naked Pineapple
+# Pineapple Skin Co.
 
-A headless e-commerce platform for [Naked Pineapple](https://nakedpineapple.co) skincare, built with Rust and integrated with Shopify's GraphQL APIs.
+A headless e-commerce platform for [Pineapple Skin Co.](https://nakedpineapple.co) skincare, built with Rust and integrated with Shopify's GraphQL APIs.
 
 ## Architecture
 

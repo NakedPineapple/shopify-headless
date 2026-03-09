@@ -1,6 +1,6 @@
-# Naked Pineapple Storefront
+# Pineapple Skin Co. Storefront
 
-Public-facing e-commerce storefront for Naked Pineapple.
+Public-facing e-commerce storefront for Pineapple Skin Co.
 
 ## Overview
 

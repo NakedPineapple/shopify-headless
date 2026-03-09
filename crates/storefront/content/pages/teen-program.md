@@ -1,6 +1,6 @@
 ---
 title: Teen Program
-description: The Naked Pineapple Teen Program empowers young individuals through self-care workshops, 30-day challenges, and community modeling opportunities.
+description: The Pineapple Skin Co. Teen Program empowers young individuals through self-care workshops, 30-day challenges, and community modeling opportunities.
 updated_at: 2025-01-26
 ---
 
@@ -8,7 +8,7 @@ updated_at: 2025-01-26
 
 #### **Discover Your Inner Strength**
 
-The Naked Pineapple Teen Program is designed to empower young individuals by teaching them the importance of self-care and inner confidence. Through our specialized workshops and engaging video content, they will learn valuable life skills and self-care practices that foster a strong sense of self-worth.
+The Pineapple Skin Co. Teen Program is designed to empower young individuals by teaching them the importance of self-care and inner confidence. Through our specialized workshops and engaging video content, they will learn valuable life skills and self-care practices that foster a strong sense of self-worth.
 
 - **Features Include:**
   - Workshops on various aspects of self-care.
@@ -30,9 +30,9 @@ Dive into our 30-day challenges designed to cultivate healthy skin care habits a
 
 #### **Showcase Your Journey and Inspire Others**
 
-The Teen Program isn't just about learning; it's about leading. Participants have opportunities to model for Naked Pineapple, sharing their before and after skincare stories and inspiring peers with their transformational journeys.
+The Teen Program isn't just about learning; it's about leading. Participants have opportunities to model for Pineapple Skin Co., sharing their before and after skincare stories and inspiring peers with their transformational journeys.
 
 - **Opportunities Include:**
-  - Be featured in Naked Pineapple's promotional campaigns as part of the modeling experience.
+  - Be featured in Pineapple Skin Co.'s promotional campaigns as part of the modeling experience.
   - Share your personal skincare journey and results with the community.
   - Engage with peers and build connections within a supportive environment.

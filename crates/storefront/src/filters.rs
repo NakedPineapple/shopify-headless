@@ -22,15 +22,15 @@ static IMAGE_BASE_URL: LazyLock<String> = LazyLock::new(|| {
 
 /// Constructs an absolute URL for the site logo (for JSON-LD structured data).
 ///
-/// Uses the `branding/Logo_Horizontal` SVG with its content hash.
+/// Uses the `branding/Pineapple_Skin_Co_Logo_Horizontal` SVG with its content hash.
 /// If `IMAGE_BASE_URL` is a CDN (starts with http), uses it directly.
 /// Otherwise, prepends the site `base_url` to make it absolute.
 #[must_use]
 pub fn get_logo_url(base_url: &str) -> String {
     let img_base = &*IMAGE_BASE_URL;
-    let hash = image_manifest::get_image_hash("branding/Logo_Horizontal");
+    let hash = image_manifest::get_image_hash("branding/Pineapple_Skin_Co_Logo_Horizontal");
 
-    let logo_path = format!("branding/Logo_Horizontal.{hash}.svg");
+    let logo_path = format!("branding/Pineapple_Skin_Co_Logo_Horizontal.{hash}.svg");
 
     if img_base.starts_with("http") {
         // CDN URL - already absolute

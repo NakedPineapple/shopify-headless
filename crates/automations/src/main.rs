@@ -1,4 +1,4 @@
-//! Naked Pineapple Automations — background service for automated workflows.
+//! Pineapple Skin Co. Automations — background service for automated workflows.
 //!
 //! This binary polls Microsoft 365 shared mailboxes for inbound emails,
 //! classifies them with Claude AI, routes them for human review via Slack,

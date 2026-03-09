@@ -45,8 +45,8 @@ FROM alpine:3.23@sha256:25109184c71bdad752c8312a8623239686a9a2071e8825f20acb8f21
 ARG VERSION=0.1.0
 ARG COMMIT_SHA
 ARG BUILD_DATE
-LABEL org.opencontainers.image.title="Naked Pineapple Admin" \
-      org.opencontainers.image.description="Internal admin panel for Naked Pineapple" \
+LABEL org.opencontainers.image.title="Pineapple Skin Co. Admin" \
+      org.opencontainers.image.description="Internal admin panel for Pineapple Skin Co." \
       org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.authors="Adam Walz <adam@pineappleskinco.com>" \
       org.opencontainers.image.licenses="MIT OR Apache-2.0" \

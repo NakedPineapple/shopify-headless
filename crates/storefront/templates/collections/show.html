@@ -6,14 +6,14 @@
 
 {% block body_data %}{{ analytics_macro::body_attrs(analytics=analytics, user_info=analytics_user_info) }}{% endblock %}
 
-{% block title %}{{ collection.title }} | Naked Pineapple{% endblock %}
+{% block title %}{{ collection.title }} | Pineapple Skin Co.{% endblock %}
 
 {% block canonical %}<link rel="canonical" href="{{ site.base_url }}/collections/{{ collection.handle }}">{% endblock %}
 
 {% block description %}{% if let Some(desc) = collection.description %}{{ desc }}{% else %}Shop our {{ collection.title }} collection.{% endif %}{% endblock %}
 
 {% block og_title %}{{ collection.title }}{% endblock %}
-{% block og_description %}{% if let Some(desc) = collection.description %}{{ desc }}{% else %}Shop our {{ collection.title }} collection at Naked Pineapple.{% endif %}{% endblock %}
+{% block og_description %}{% if let Some(desc) = collection.description %}{{ desc }}{% else %}Shop our {{ collection.title }} collection at Pineapple Skin Co.{% endif %}{% endblock %}
 {% block og_image %}{% if let Some(image) = collection.image %}{{ image.url|shopify_cdn_url(1200) }}{% endif %}{% endblock %}
 {% block og_url %}{{ site.base_url }}/collections/{{ collection.handle }}{% endblock %}
 
@@ -87,7 +87,7 @@
 
                     <!-- Main image -->
                     <div class="relative rounded-xl overflow-hidden shadow-2xl bg-card">
-                        {{ img::picture(path="/static/images/original/products/naked-pineapple-vip-bundle/2_823de94f-5cbe-4a3d-a86d-a9867389eb1c.png", alt="Naked Pineapple VIP Bundle - Complete skincare collection", sizes="(max-width: 768px) 100vw, 40vw", class="w-full h-auto relative z-10") }}
+                        {{ img::picture(path="/static/images/original/products/naked-pineapple-vip-bundle/2_823de94f-5cbe-4a3d-a86d-a9867389eb1c.png", alt="Pineapple Skin Co. VIP Bundle - Complete skincare collection", sizes="(max-width: 768px) 100vw, 40vw", class="w-full h-auto relative z-10") }}
                     </div>
 
                     <!-- "VIP" badge -->

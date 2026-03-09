@@ -1,6 +1,6 @@
 ---
 title: Directions
-description: Directions and warnings for using Naked Pineapple skincare products.
+description: Directions and warnings for using Pineapple Skin Co. skincare products.
 updated_at: 2025-01-26
 ---
 

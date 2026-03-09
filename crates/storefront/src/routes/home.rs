@@ -178,7 +178,7 @@ fn spring_hero_slide() -> HeroSlide {
         button_url: Some("/collections/frontpage".to_string()),
         image_path: "/static/images/original/05AD82BA-9D57-4519-8ACD-8E6F20C7A0A1_4_5005_c.jpeg"
             .to_string(),
-        image_alt: "Spring Reset Sale \u{2014} 30% off Naked Pineapple skincare".to_string(),
+        image_alt: "Spring Reset Sale \u{2014} 30% off Pineapple Skin Co. skincare".to_string(),
         button_position: ButtonPosition::Center,
         zoom_from: Some("1.15".to_string()),
         zoom_to: Some("1.0".to_string()),
@@ -270,7 +270,7 @@ fn get_featured_reviews() -> Vec<ReviewView> {
         ReviewView {
             reviewer_name: "Tyler".to_string(),
             rating: 5,
-            content: "I love all the Naked Pineapple products! My skin breaks out easily but it has been so much better since using only Naked Pineapple products. So happy I can feel confident in my glowing skin!".to_string(),
+            content: "I love all the Pineapple Skin Co. products! My skin breaks out easily but it has been so much better since using only Pineapple Skin Co. products. So happy I can feel confident in my glowing skin!".to_string(),
             product_title: "Facial Repair Tropical Oil".to_string(),
             product_handle: "pineapple-facial-oil".to_string(),
             product_image_path: Some("/static/images/original/products/pineapple-facial-oil/NP_TropicalOil_SET.png".to_string()),

@@ -1,6 +1,6 @@
 ---
 title: Subscriptions
-description: How to manage, modify, and get the most from your Naked Pineapple subscription.
+description: How to manage, modify, and get the most from your Pineapple Skin Co. subscription.
 icon: ph-repeat
 ---
 

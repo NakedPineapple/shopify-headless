@@ -2,7 +2,7 @@
 
 ## Our Community
 
-Naked Pineapple was built on the belief that everyone deserves to feel confident in their own skin. That same spirit extends to our contributor community. Whether you're fixing a bug, suggesting a feature, or joining a discussion, you're part of the tribe — and we lift each other up.
+Pineapple Skin Co. was built on the belief that everyone deserves to feel confident in their own skin. That same spirit extends to our contributor community. Whether you're fixing a bug, suggesting a feature, or joining a discussion, you're part of the tribe — and we lift each other up.
 
 We welcome contributors of all genders, ages, races, body types, backgrounds, and experience levels. A first-time contributor asking a question deserves the same warmth and respect as a long-time maintainer.
 

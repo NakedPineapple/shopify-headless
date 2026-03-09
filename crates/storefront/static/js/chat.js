@@ -1,5 +1,5 @@
 /**
- * Naked Pineapple Support Chat Widget
+ * Pineapple Skin Co. Support Chat Widget
  *
  * Handles: open/close, Turnstile verification, conversation lifecycle,
  * SSE streaming with progressive text rendering, and history loading.

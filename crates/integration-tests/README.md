@@ -1,6 +1,6 @@
-# Naked Pineapple Integration Tests
+# Pineapple Skin Co. Integration Tests
 
-Integration tests for the Naked Pineapple e-commerce platform.
+Integration tests for the Pineapple Skin Co. e-commerce platform.
 
 ## Running Tests
 

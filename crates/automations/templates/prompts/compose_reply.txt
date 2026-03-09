@@ -21,4 +21,4 @@ Body:
 Use the Shopify data above to provide accurate, specific answers. Reference real order statuses, tracking numbers, and product details.
 {%- endif %}
 
-Draft a professional, helpful reply. Sign off as 'The Naked Pineapple Team'.
+Draft a professional, helpful reply. Sign off as 'The Pineapple Skin Co. Team'.

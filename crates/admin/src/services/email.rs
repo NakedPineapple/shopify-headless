@@ -79,7 +79,7 @@ impl AdminEmailExt for EmailService {
 
         self.send_multipart_email(
             to,
-            "Your Naked Pineapple Admin Verification Code",
+            "Your Pineapple Skin Co. Admin Verification Code",
             &text,
             &html,
         )
@@ -96,7 +96,7 @@ impl AdminEmailExt for EmailService {
 
         debug!("Templates rendered, sending welcome email");
 
-        self.send_multipart_email(to, "Welcome to Naked Pineapple Admin", &text, &html)
+        self.send_multipart_email(to, "Welcome to Pineapple Skin Co. Admin", &text, &html)
             .await?;
         Ok(())
     }

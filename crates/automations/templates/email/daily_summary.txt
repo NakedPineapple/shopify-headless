@@ -31,4 +31,4 @@ LOW STOCK ALERTS
 {% endif %}
 
 --
-Automated daily summary from Naked Pineapple
+Automated daily summary from Pineapple Skin Co.

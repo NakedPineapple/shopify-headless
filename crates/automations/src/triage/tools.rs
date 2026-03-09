@@ -19,7 +19,7 @@ pub fn lookup_contact_tool() -> Tool {
         description: "Look up a person, company, or email domain in the contact graph. \
             Use this when you encounter a sender, organization, or domain you want to \
             identify. Returns contact details and their business relationships to \
-            Naked Pineapple."
+            Pineapple Skin Co."
             .to_string(),
         input_schema: json!({
             "type": "object",
@@ -108,7 +108,7 @@ mod tests {
     #[test]
     fn test_classification_system_prompt_renders() {
         let prompt = classification_system_prompt();
-        assert!(prompt.contains("Naked Pineapple"));
+        assert!(prompt.contains("Pineapple Skin Co."));
         assert!(prompt.contains("business_vendor"));
         assert!(prompt.contains("lookup_contact"));
         assert!(prompt.contains("\"classification\""));
@@ -117,14 +117,14 @@ mod tests {
     #[test]
     fn test_response_system_prompt_renders() {
         let prompt = response_system_prompt();
-        assert!(prompt.contains("Naked Pineapple"));
+        assert!(prompt.contains("Pineapple Skin Co."));
         assert!(prompt.contains("\"body_text\""));
     }
 
     #[test]
     fn test_graph_update_system_prompt_renders() {
         let prompt = graph_update_system_prompt();
-        assert!(prompt.contains("Naked Pineapple"));
+        assert!(prompt.contains("Pineapple Skin Co."));
         assert!(prompt.contains("\"contacts\""));
         assert!(prompt.contains("no_update_reason"));
     }

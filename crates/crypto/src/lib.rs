@@ -1,4 +1,4 @@
-//! Cryptographic utilities for Naked Pineapple.
+//! Cryptographic utilities for Pineapple Skin Co.
 //!
 //! Provides Argon2id password hashing and verification, shared by the admin
 //! authentication service and the CLI password management command.

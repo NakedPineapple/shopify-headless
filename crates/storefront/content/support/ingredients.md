@@ -1,6 +1,6 @@
 ---
 title: Ingredients & Safety
-description: Learn about the natural ingredients in Naked Pineapple products, including our signature pineapple enzyme formulas.
+description: Learn about the natural ingredients in Pineapple Skin Co. products, including our signature pineapple enzyme formulas.
 icon: ph-leaf
 ---
 

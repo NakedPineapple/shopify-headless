@@ -1,6 +1,6 @@
-# Naked Pineapple CLI
+# Pineapple Skin Co. CLI
 
-Command-line tools for Naked Pineapple database migrations and management.
+Command-line tools for Pineapple Skin Co. database migrations and management.
 
 ## Overview
 

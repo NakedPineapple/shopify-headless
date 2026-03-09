@@ -1,12 +1,12 @@
 ---
 title: Returns & Exchanges
-description: Our hassle-free return policy and how to start a return or exchange for your Naked Pineapple products.
+description: Our hassle-free return policy and how to start a return or exchange for your Pineapple Skin Co. products.
 icon: ph-arrows-counter-clockwise
 ---
 
 ## What is your return policy?
 
-We want you to love your Naked Pineapple products! If you're not completely satisfied, you can return unused, unopened products within 30 days of delivery for a full refund.
+We want you to love your Pineapple Skin Co. products! If you're not completely satisfied, you can return unused, unopened products within 30 days of delivery for a full refund.
 
 ## How do I start a return?
 

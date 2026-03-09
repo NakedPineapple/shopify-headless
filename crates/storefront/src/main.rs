@@ -1,4 +1,4 @@
-//! Naked Pineapple Storefront - Public e-commerce site.
+//! Pineapple Skin Co. Storefront - Public e-commerce site.
 //!
 //! This binary serves the public-facing storefront on port 3000.
 //!

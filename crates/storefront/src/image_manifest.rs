@@ -29,12 +29,19 @@ pub static IMAGE_INFO: LazyLock<HashMap<&'static str, ImageInfo>> = LazyLock::ne
             ("6b21366c", 360),
         ),
         (
+            "8DE4162B-72C5-4179-9B96-B740B3B9FB7F_4_5005_c",
+            ("d2818196", 359),
+        ),
+        (
             "about/DSC_5841_7937b270-76ec-46ca-94be-0d898b03767f",
             ("ae33eb2d", 2400),
         ),
         ("about/Team_Photos_Naked_Pineapple45", ("a6e5da90", 1067)),
-        ("branding/Logo_Horizontal", ("71cba526", 0)),
         ("branding/Logo_MarkOnly", ("8264e21e", 0)),
+        (
+            "branding/Pineapple_Skin_Co_Logo_Horizontal",
+            ("00a3fe4d", 0),
+        ),
         ("branding/Pistachio_MarkOnly", ("a8e348cf", 0)),
         (
             "C26132D9-F4BC-42A8-A36C-D0CAF5073338_4_5005_c",

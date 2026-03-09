@@ -1,4 +1,4 @@
-//! Naked Pineapple Admin - Internal administration panel.
+//! Pineapple Skin Co. Admin - Internal administration panel.
 //!
 //! This binary serves the admin panel on port 3001.
 //!

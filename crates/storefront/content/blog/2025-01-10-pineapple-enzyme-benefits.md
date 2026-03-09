@@ -1,7 +1,7 @@
 ---
 title: "The Magic of Pineapple Enzymes: Why Your Skin Loves Bromelain"
 description: "Discover why pineapple enzymes are the secret weapon for radiant, glowing skin. Learn how bromelain gently exfoliates and transforms your complexion."
-author: "Naked Pineapple Team"
+author: "Pineapple Skin Co. Team"
 published_at: 2025-01-10
 featured_image: "/static/images/original/lifestyle/NP_-_Photoshoot_186.jpg"
 tags:
@@ -11,7 +11,7 @@ tags:
 draft: false
 ---
 
-If you've ever wondered what makes Naked Pineapple products so effective at revealing brighter, smoother skin, the answer lies in nature's most powerful fruit enzyme: **bromelain**.
+If you've ever wondered what makes Pineapple Skin Co. products so effective at revealing brighter, smoother skin, the answer lies in nature's most powerful fruit enzyme: **bromelain**.
 
 ## What is Bromelain?
 
@@ -36,7 +36,7 @@ One of the most beloved benefits of bromelain is its ability to fade dark spots 
 
 {{image "products/pineapple-enzyme-cleanser/NP_-_Photoshoot_210.jpg" alt="Pineapple Enzyme Cleanser in action" sizes="(max-width: 768px) 100vw, 640px" class="rounded-xl"}}
 
-> "After just two weeks of using the Pineapple Enzyme Cleanser, I noticed my skin looked more alive than it had in years." — Sarah, Naked Pineapple Customer
+> "After just two weeks of using the Pineapple Enzyme Cleanser, I noticed my skin looked more alive than it had in years." — Sarah, Pineapple Skin Co. Customer
 
 ### 3. Anti-Inflammatory Benefits
 
@@ -59,9 +59,9 @@ The beauty of enzyme-based skincare is its versatility. Here's how we recommend 
 2. Use the Pineapple Exfoliating Gel Cleanser 2-3 times per week
 3. Apply our Exotic Nourishing Cream for overnight repair
 
-## The Naked Pineapple Difference
+## The Pineapple Skin Co. Difference
 
-Not all pineapple enzyme products are created equal. At Naked Pineapple, we source our bromelain from fresh, organic pineapples and formulate at concentrations that actually deliver results.
+Not all pineapple enzyme products are created equal. At Pineapple Skin Co., we source our bromelain from fresh, organic pineapples and formulate at concentrations that actually deliver results.
 
 We believe skincare should be:
 - **Clean** — No harsh chemicals or fillers

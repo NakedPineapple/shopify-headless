@@ -1,4 +1,4 @@
-# Contributing to Naked Pineapple
+# Contributing to Pineapple Skin Co.
 
 Thank you for your interest in contributing. This guide covers everything you need to get started.
 

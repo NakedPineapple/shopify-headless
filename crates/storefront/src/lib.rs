@@ -1,4 +1,4 @@
-//! Naked Pineapple Storefront library.
+//! Pineapple Skin Co. Storefront library.
 //!
 //! This crate provides the storefront functionality as a library,
 //! allowing it to be tested and reused.

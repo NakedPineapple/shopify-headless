@@ -1,4 +1,4 @@
-//! Core types for Naked Pineapple.
+//! Core types for Pineapple Skin Co.
 //!
 //! This module provides type-safe wrappers for common domain concepts.
 

@@ -277,7 +277,7 @@ fn format_low_stock_text(product: &inventory::ProductInventory, threshold: i32) 
         body.push('\n');
     }
 
-    body.push_str("\n-- \nAutomated alert from Naked Pineapple automations service\n");
+    body.push_str("\n-- \nAutomated alert from Pineapple Skin Co. automations service\n");
     body
 }
 

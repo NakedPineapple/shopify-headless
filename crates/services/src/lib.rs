@@ -1,4 +1,4 @@
-//! Shared service clients for Naked Pineapple.
+//! Shared service clients for Pineapple Skin Co.
 //!
 //! This library provides API clients and configuration types used by both
 //! the admin panel and the automations binary:

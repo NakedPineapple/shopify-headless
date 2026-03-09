@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Naked Pineapple is a Rust e-commerce platform integrated with Shopify. It consists of a public storefront and an internal admin panel, both built with Axum and server-side rendered with Askama templates.
+Pineapple Skin Co. is a Rust e-commerce platform integrated with Shopify. It consists of a public storefront and an internal admin panel, both built with Axum and server-side rendered with Askama templates.
 
 ## Development Setup
 

@@ -1,4 +1,4 @@
-//! Naked Pineapple CLI - Database migrations and management tools.
+//! Pineapple Skin Co. CLI - Database migrations and management tools.
 //!
 //! # Usage
 //!
@@ -52,7 +52,7 @@ mod commands;
 
 #[derive(Parser)]
 #[command(name = "np-cli")]
-#[command(author, version, about = "Naked Pineapple CLI tools")]
+#[command(author, version, about = "Pineapple Skin Co. CLI tools")]
 struct Cli {
     #[command(subcommand)]
     command: Commands,

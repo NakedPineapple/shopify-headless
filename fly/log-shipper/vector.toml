@@ -1,4 +1,4 @@
-# Custom Vector configuration for Naked Pineapple log shipping
+# Custom Vector configuration for Pineapple Skin Co. log shipping
 # Parses JSON from application logs and merges with Fly.io metadata
 #
 # The base flyio/log-shipper image auto-generates sink configs in /etc/vector/sinks/

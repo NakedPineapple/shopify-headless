@@ -54,4 +54,4 @@ LOW STOCK ALERTS
 {% endif %}
 
 --
-Automated weekly report from Naked Pineapple
+Automated weekly report from Pineapple Skin Co.

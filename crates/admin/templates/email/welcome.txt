@@ -23,5 +23,5 @@ Orders:    {{ admin_url }}/orders
 Customers: {{ admin_url }}/customers
 
 ---
-Naked Pineapple — Natural Skincare
+Pineapple Skin Co. — Natural Skincare
 Questions? Reach out to the team.

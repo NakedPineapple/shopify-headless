@@ -1,6 +1,6 @@
-# Naked Pineapple Admin
+# Pineapple Skin Co. Admin
 
-Internal administration panel for Naked Pineapple.
+Internal administration panel for Pineapple Skin Co.
 
 ## Overview
 

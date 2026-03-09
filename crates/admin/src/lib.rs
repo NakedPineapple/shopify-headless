@@ -1,4 +1,4 @@
-//! Naked Pineapple Admin library.
+//! Pineapple Skin Co. Admin library.
 //!
 //! This crate provides the admin functionality as a library,
 //! allowing it to be tested and reused.

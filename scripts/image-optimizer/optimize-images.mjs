@@ -554,7 +554,7 @@ async function derivedFilesExist(imagePath, hash) {
  * Main optimization function
  */
 async function optimize() {
-  console.log("🍍 Naked Pineapple Image Optimizer (with content hashing)\n");
+  console.log("🍍 Pineapple Skin Co. Image Optimizer (with content hashing)\n");
 
   // Step 1: Load existing manifest for cache checking
   console.log("📋 Loading existing manifest...");
@@ -673,7 +673,7 @@ async function optimize() {
  * Optimize a single image and update the manifest
  */
 async function optimizeSingle(imagePath) {
-  console.log("🍍 Naked Pineapple Image Optimizer (single image mode)\n");
+  console.log("🍍 Pineapple Skin Co. Image Optimizer (single image mode)\n");
 
   const inputPath = join(ORIGINAL_DIR, imagePath);
   const ext = extname(imagePath).toLowerCase();

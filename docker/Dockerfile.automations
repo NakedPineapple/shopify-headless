@@ -53,8 +53,8 @@ FROM gcr.io/distroless/cc-debian13@sha256:8c1a496b055d36c222e95ebd5c53bdd1fee447
 ARG VERSION=0.1.0
 ARG COMMIT_SHA
 ARG BUILD_DATE
-LABEL org.opencontainers.image.title="Naked Pineapple Automations" \
-      org.opencontainers.image.description="Background automation service for Naked Pineapple" \
+LABEL org.opencontainers.image.title="Pineapple Skin Co. Automations" \
+      org.opencontainers.image.description="Background automation service for Pineapple Skin Co." \
       org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.authors="Adam Walz <adam@pineappleskinco.com>" \
       org.opencontainers.image.licenses="MIT OR Apache-2.0" \

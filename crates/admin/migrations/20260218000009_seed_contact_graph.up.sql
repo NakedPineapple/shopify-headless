@@ -4,7 +4,7 @@ SET search_path TO admin, public;
 
 -- Organizations
 INSERT INTO admin.contacts (contact_type, name, domain, metadata)
-VALUES ('organization', 'Naked Pineapple', 'pineappleskinco.com', '{"internal": true}');
+VALUES ('organization', 'Pineapple Skin Co.', 'pineappleskinco.com', '{"internal": true}');
 
 INSERT INTO admin.contacts (contact_type, name, domain, metadata)
 VALUES ('organization', 'Intermountain Nutrition', 'intermountainnutrition.com', '{}');
@@ -17,17 +17,17 @@ INSERT INTO admin.contacts (contact_type, name, email, domain, metadata)
 VALUES ('person', 'Dustin Rykert', 'drykert@intermountainnutrition.com', 'intermountainnutrition.com', '{}');
 
 -- Relationships
--- Ry Fry → CEO_OF → Naked Pineapple
+-- Ry Fry → CEO_OF → Pineapple Skin Co.
 INSERT INTO admin.contact_relationships (from_contact_id, to_contact_id, relationship_type, properties)
 SELECT p.id, o.id, 'ceo_of', '{}'::jsonb
 FROM admin.contacts p, admin.contacts o
-WHERE p.email = 'ryanfry2012@gmail.com' AND o.name = 'Naked Pineapple';
+WHERE p.email = 'ryanfry2012@gmail.com' AND o.name = 'Pineapple Skin Co.';
 
--- Intermountain Nutrition → SUPPLIES → Naked Pineapple
+-- Intermountain Nutrition → SUPPLIES → Pineapple Skin Co.
 INSERT INTO admin.contact_relationships (from_contact_id, to_contact_id, relationship_type, properties)
 SELECT s.id, np.id, 'supplies', '{"context": "pea protein isolate, rice protein"}'::jsonb
 FROM admin.contacts s, admin.contacts np
-WHERE s.name = 'Intermountain Nutrition' AND np.name = 'Naked Pineapple';
+WHERE s.name = 'Intermountain Nutrition' AND np.name = 'Pineapple Skin Co.';
 
 -- Dustin Rykert → WORKS_AT → Intermountain Nutrition
 INSERT INTO admin.contact_relationships (from_contact_id, to_contact_id, relationship_type, properties)

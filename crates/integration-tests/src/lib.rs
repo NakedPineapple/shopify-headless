@@ -1,4 +1,4 @@
-//! Integration tests for Naked Pineapple.
+//! Integration tests for Pineapple Skin Co.
 //!
 //! # Running Tests
 //!

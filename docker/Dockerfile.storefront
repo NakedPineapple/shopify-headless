@@ -64,8 +64,8 @@ FROM gcr.io/distroless/cc-debian13@sha256:8c1a496b055d36c222e95ebd5c53bdd1fee447
 ARG VERSION=0.1.0
 ARG COMMIT_SHA
 ARG BUILD_DATE
-LABEL org.opencontainers.image.title="Naked Pineapple Storefront" \
-      org.opencontainers.image.description="Public e-commerce storefront for Naked Pineapple skincare" \
+LABEL org.opencontainers.image.title="Pineapple Skin Co. Storefront" \
+      org.opencontainers.image.description="Public e-commerce storefront for Pineapple Skin Co. skincare" \
       org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.authors="Adam Walz <adam@pineappleskinco.com>" \
       org.opencontainers.image.licenses="MIT OR Apache-2.0" \

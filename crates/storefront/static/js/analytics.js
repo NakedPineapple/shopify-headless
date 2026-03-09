@@ -1,5 +1,5 @@
 /**
- * Multi-platform analytics tracking for Naked Pineapple
+ * Multi-platform analytics tracking for Pineapple Skin Co.
  *
  * Supports:
  * - Google Analytics 4 (GA4)

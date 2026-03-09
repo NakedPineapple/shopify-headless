@@ -1,6 +1,6 @@
 ---
 title: Shipping & Delivery
-description: Everything you need to know about shipping times, costs, and tracking your Naked Pineapple order.
+description: Everything you need to know about shipping times, costs, and tracking your Pineapple Skin Co. order.
 icon: ph-package
 ---
 

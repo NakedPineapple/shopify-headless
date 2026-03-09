@@ -5,7 +5,7 @@ edition.workspace = true
 license.workspace = true
 authors.workspace = true
 repository.workspace = true
-description = "Shared service clients for Naked Pineapple (Claude, Klaviyo, Slack, Email)"
+description = "Shared service clients for Pineapple Skin Co. (Claude, Klaviyo, Slack, Email)"
 publish = false
 
 [lints]

@@ -1,10 +1,10 @@
 ---
 title: Accessibility
-description: Learn about Naked Pineapple's commitment to making our website accessible to everyone.
+description: Learn about Pineapple Skin Co.'s commitment to making our website accessible to everyone.
 updated_at: 2026-02-06
 ---
 
-At Naked Pineapple, we believe beautiful skin is for everyone—and so is our website. We are committed to ensuring that our online store is accessible to all visitors, including those with disabilities.
+At Pineapple Skin Co., we believe beautiful skin is for everyone—and so is our website. We are committed to ensuring that our online store is accessible to all visitors, including those with disabilities.
 
 ## Our Commitment
 

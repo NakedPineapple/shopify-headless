@@ -5,7 +5,7 @@ edition.workspace = true
 license.workspace = true
 authors.workspace = true
 repository.workspace = true
-description = "Background automation service for Naked Pineapple (inbound triage, outbound workflows, inventory monitoring, customer segmentation)"
+description = "Background automation service for Pineapple Skin Co. (inbound triage, outbound workflows, inventory monitoring, customer segmentation)"
 publish = false
 
 [lib]

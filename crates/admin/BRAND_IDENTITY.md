@@ -1,6 +1,6 @@
 # Admin Panel Design System
 
-Design guidelines for the Naked Pineapple admin panel. Focused on clarity, efficiency, and professional aesthetics.
+Design guidelines for the Pineapple Skin Co. admin panel. Focused on clarity, efficiency, and professional aesthetics.
 
 ---
 
@@ -18,7 +18,7 @@ This is the same tropical paradise, just after dark. The energy has shifted from
 
 - **Clarity** — Like moonlight on water, information surfaces with gentle contrast
 - **Calm Focus** — The quiet hours when the real work gets done
-- **Tropical Continuity** — Still part of the Naked Pineapple world, just the night shift
+- **Tropical Continuity** — Still part of the Pineapple Skin Co. world, just the night shift
 - **Warm Darkness** — Not cold or sterile; deep blues with warmth underneath
 - **Easy on the Eyes** — Dark backgrounds for those late-night sessions
 

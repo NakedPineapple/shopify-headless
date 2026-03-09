@@ -1,6 +1,6 @@
-//! Naked Pineapple Core - Shared types library.
+//! Pineapple Skin Co. Core - Shared types library.
 //!
-//! This crate provides common types used across all Naked Pineapple components:
+//! This crate provides common types used across all Pineapple Skin Co. components:
 //! - `storefront` - Public-facing e-commerce site
 //! - `admin` - Internal administration panel (Tailscale-only)
 //! - `cli` - Command-line tools for migrations and management

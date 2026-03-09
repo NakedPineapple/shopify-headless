@@ -1,6 +1,6 @@
 ---
 title: Frequently Asked Questions
-description: Find answers to common questions about Naked Pineapple products, orders, shipping, and more.
+description: Find answers to common questions about Pineapple Skin Co. products, orders, shipping, and more.
 updated_at: 2025-01-14
 ---
 
@@ -44,7 +44,7 @@ Once your order ships, you'll receive an email with tracking information. You ca
 ## Returns & Exchanges
 
 ### What is your return policy?
-We want you to love your Naked Pineapple products! If you're not completely satisfied, you can return unused, unopened products within 30 days of delivery for a full refund.
+We want you to love your Pineapple Skin Co. products! If you're not completely satisfied, you can return unused, unopened products within 30 days of delivery for a full refund.
 
 ### How do I start a return?
 Contact us at support@pineappleskinco.com with your order number and reason for return. We'll provide you with return instructions and a prepaid shipping label.
@@ -59,7 +59,7 @@ Yes! Contact us to arrange an exchange. We'll help you find the right product fo
 
 ## Products
 
-{{image "about/Team_Photos_Naked_Pineapple45.jpg" alt="The Naked Pineapple team" sizes="100vw" class="rounded-2xl my-8"}}
+{{image "about/Team_Photos_Naked_Pineapple45.jpg" alt="The Pineapple Skin Co. team" sizes="100vw" class="rounded-2xl my-8"}}
 
 ### Are your products cruelty-free?
 Yes! We are proudly cruelty-free and never test on animals. We believe in beauty without harm.

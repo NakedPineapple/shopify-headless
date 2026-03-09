@@ -1,6 +1,6 @@
 ---
 title: Sizing & Product Selection
-description: Help choosing the right Naked Pineapple products for your skin type and needs.
+description: Help choosing the right Pineapple Skin Co. products for your skin type and needs.
 icon: ph-ruler
 ---
 

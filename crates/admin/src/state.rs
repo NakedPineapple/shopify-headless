@@ -146,7 +146,7 @@ impl AppState {
         let rp_id = &config.primary_host;
 
         let mut builder = WebauthnBuilder::new(rp_id, &primary_url)?
-            .rp_name("Naked Pineapple Admin")
+            .rp_name("Pineapple Skin Co. Admin")
             .allow_subdomains(false);
 
         for host in &config.hosts {

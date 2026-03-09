@@ -38,7 +38,7 @@ If you used an AI tool to help identify a potential issue, you are still expecte
 
 ## Scope
 
-This policy covers the Naked Pineapple storefront and admin applications, including:
+This policy covers the Pineapple Skin Co. storefront and admin applications, including:
 
 - Server-side Rust code (Axum routes, database queries, Shopify API integrations)
 - Client-side JavaScript in templates

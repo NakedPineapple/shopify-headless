@@ -9,7 +9,7 @@
 
 {% block canonical %}<link rel="canonical" href="{{ site.base_url }}/blog/{{ post.slug }}">{% endblock %}
 
-{% block description %}{% if let Some(desc) = post.description.as_ref() %}{{ desc }}{% else %}{{ post.title }} - Read more on the Naked Pineapple blog.{% endif %}{% endblock %}
+{% block description %}{% if let Some(desc) = post.description.as_ref() %}{{ desc }}{% else %}{{ post.title }} - Read more on the Pineapple Skin Co. blog.{% endif %}{% endblock %}
 
 {% block og_title %}{{ post.title }}{% endblock %}
 {% block og_description %}{% if let Some(desc) = post.description.as_ref() %}{{ desc }}{% else %}{{ post.title }}{% endif %}{% endblock %}

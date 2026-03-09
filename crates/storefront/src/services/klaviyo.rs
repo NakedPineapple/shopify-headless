@@ -128,7 +128,7 @@ impl KlaviyoClient {
             "data": {
                 "type": "profile-subscription-bulk-create-job",
                 "attributes": {
-                    "custom_source": "Naked Pineapple Website",
+                    "custom_source": "Pineapple Skin Co. Website",
                     "profiles": {
                         "data": [{
                             "type": "profile",

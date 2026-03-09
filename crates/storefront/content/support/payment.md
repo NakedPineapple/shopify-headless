@@ -1,6 +1,6 @@
 ---
 title: Orders & Payment
-description: Information about placing orders, accepted payment methods, and order modifications at Naked Pineapple.
+description: Information about placing orders, accepted payment methods, and order modifications at Pineapple Skin Co.
 icon: ph-credit-card
 ---
 

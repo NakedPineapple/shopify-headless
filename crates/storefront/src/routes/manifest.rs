@@ -30,7 +30,7 @@ pub async fn webmanifest() -> Response {
     );
 
     let manifest = serde_json::json!({
-        "name": "Naked Pineapple",
+        "name": "Pineapple Skin Co.",
         "short_name": "NP",
         "icons": [
             {

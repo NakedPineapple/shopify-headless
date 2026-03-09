@@ -11,11 +11,11 @@ tags:
 draft: false
 ---
 
-Hey Naked Pineapple Tribe!
+Hey Pineapple Skin Co. Tribe!
 
 As I make my way through this beautiful journey of life, I can't help but embrace the thrill of trying new things. Every twist and turn leads to exciting discoveries, and it's these adventures that shape who we are and what we love.
 
-Whether it's trying exotic foods at a local market or diving into a new self-care routine, each experience teaches us something valuable. At Naked Pineapple, we encourage you to step out of your comfort zone—both in life and in your self-care! Maybe that means trying a new yoga class, going on a hike—mix and match adventures and routines to find what suits your beautiful self. Who knows? You might discover something new about yourself that makes you glow from the inside out!
+Whether it's trying exotic foods at a local market or diving into a new self-care routine, each experience teaches us something valuable. At Pineapple Skin Co., we encourage you to step out of your comfort zone—both in life and in your self-care! Maybe that means trying a new yoga class, going on a hike—mix and match adventures and routines to find what suits your beautiful self. Who knows? You might discover something new about yourself that makes you glow from the inside out!
 
 But remember, part of the adventure is about being part of a tribe that celebrates each other's unique and beautiful lives. Surround yourself with like-minded souls who lift you up and inspire you to keep exploring. Together, we can create a community where self-love and positive vibes thrive.
 

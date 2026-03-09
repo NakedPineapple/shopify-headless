@@ -1,12 +1,12 @@
-# Naked Pineapple Brand Identity Guide
+# Pineapple Skin Co. Brand Identity Guide
 
-A comprehensive guide to the Naked Pineapple brand aesthetic, design system, and implementation details.
+A comprehensive guide to the Pineapple Skin Co. brand aesthetic, design system, and implementation details.
 
 ---
 
 ## Brand Overview
 
-**Brand Name:** Naked Pineapple
+**Brand Name:** Pineapple Skin Co.
 **Founder:** Kristi Fry — Licensed master aesthetician with 20+ years experience
 **Contact:** info@pineappleskinco.com
 
@@ -18,7 +18,7 @@ A comprehensive guide to the Naked Pineapple brand aesthetic, design system, and
 
 ## Origin Story
 
-Naked Pineapple was born in Hawaii, a place filled with incredible energy and magic. "Pineapple" became Kristi and her husband Ryan's code word—a loving reminder to reconnect when life felt overwhelming. In a serendipitous twist, Kristi discovered that pineapple itself—a symbol of hospitality and warmth—holds amazing skincare benefits.
+Pineapple Skin Co. was born in Hawaii, a place filled with incredible energy and magic. "Pineapple" became Kristi and her husband Ryan's code word—a loving reminder to reconnect when life felt overwhelming. In a serendipitous twist, Kristi discovered that pineapple itself—a symbol of hospitality and warmth—holds amazing skincare benefits.
 
 The name "Naked" comes from the concept of "naked truths"—celebrating confidence in bare, natural skin, our most honest selves. The logo was originally drawn on a napkin, and each product has been meticulously formulated with ingredients designed to bring radiance and care.
 
@@ -53,7 +53,7 @@ The name "Naked" comes from the concept of "naked truths"—celebrating confiden
 - **Authenticity** — Celebrating "naked truths" and natural beauty
 - **Adventure** — Radiant skin for adventurous spirits; embrace trying new things
 - **Inclusivity** — Open to all genders, ages, races, body types, and backgrounds
-- **Community** — The "Naked Pineapple Tribe" / "Family" that supports and inspires
+- **Community** — The "Pineapple Skin Co. Tribe" / "Family" that supports and inspires
 
 ---
 
@@ -68,8 +68,8 @@ The name "Naked" comes from the concept of "naked truths"—celebrating confiden
 
 ### Signature Greetings
 - "Hey Sugarplum!"
-- "Hey Naked Pineapple Tribe!"
-- "Dear Naked Pineapple Family"
+- "Hey Pineapple Skin Co. Tribe!"
+- "Dear Pineapple Skin Co. Family"
 - Sign-offs: "With love and good vibes," "With love and gratitude," "With love and excitement"
 
 ### Language Patterns
@@ -86,7 +86,7 @@ The name "Naked" comes from the concept of "naked truths"—celebrating confiden
 ## Testimonials & Results Messaging
 
 **Before & After Pattern (e.g., Maddie):**
-"Meet [Name]! After using the Naked Pineapple Skincare System for just 30 days, her results speak for themselves. Once struggling with [problem], [Name]'s skin is now visibly clearer, more radiant, and deeply nourished. Her journey with our products highlights how our gentle, effective formulas can help restore balance and bring out your skin's natural glow. [Name]'s vibrant transformation is proof that self-love starts with taking care of your skin."
+"Meet [Name]! After using the Pineapple Skin Co. Skincare System for just 30 days, her results speak for themselves. Once struggling with [problem], [Name]'s skin is now visibly clearer, more radiant, and deeply nourished. Her journey with our products highlights how our gentle, effective formulas can help restore balance and bring out your skin's natural glow. [Name]'s vibrant transformation is proof that self-love starts with taking care of your skin."
 
 **Key Result Language:**
 - "Visibly clearer"
@@ -541,7 +541,7 @@ Theme is detected via `prefers-color-scheme` media query and can be overridden b
 ### Social Links
 - Instagram: `@_nakedpineapple_`
 - TikTok: `@_nakedpineapple_`
-- Facebook: Naked Pineapple page
+- Facebook: Pineapple Skin Co. page
 - YouTube: Playlist
 
 ---
@@ -596,7 +596,7 @@ Self-hosted Google Fonts via `/static/fonts/fonts.css`:
 "Just like a pineapple takes time to grow, your glow is a journey. Our formulas are infused with powerful enzymes and nourishing ingredients to help you shed the past and step confidently into the future. Radiate with confidence, stand tall, and always wear your crown."
 
 ### Self-Care as Ritual
-"Each time I indulge in our Naked Pineapple products, it's not just about pampering my skin; it's a sacred moment of self-affirmation and love... This daily ritual creates a beautiful connection between self-care and self-love."
+"Each time I indulge in our Pineapple Skin Co. products, it's not just about pampering my skin; it's a sacred moment of self-affirmation and love... This daily ritual creates a beautiful connection between self-care and self-love."
 
 ---
 
@@ -611,8 +611,8 @@ Self-hosted Google Fonts via `/static/fonts/fonts.css`:
 3. **Pineapple Ambassadors** — Top tier with sponsored travel, paid engagements
 
 **Key Messages:**
-- "At Naked Pineapple, we don't just feature models; we celebrate them."
-- "Being a part of the Naked Pineapple Model Program is about engaging in a community that champions self-love and empowerment."
+- "At Pineapple Skin Co., we don't just feature models; we celebrate them."
+- "Being a part of the Pineapple Skin Co. Model Program is about engaging in a community that champions self-love and empowerment."
 - "We invest in our models' growth because when they shine, we all glow brighter."
 
 ### Affiliate Program
