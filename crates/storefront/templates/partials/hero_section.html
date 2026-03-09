@@ -22,8 +22,8 @@
                              class="w-full h-full object-cover will-change-transform{% if slide.pan_from.is_some() || slide.pan_to.is_some() %} custom-pan{% endif %}"
                              {% if loop.first %}loading="eager"{% else %}loading="lazy"{% endif %}>
                     </div>
-                    {# Warm gradient overlay #}
-                    <div class="absolute inset-0 bg-gradient-to-b from-text/40 via-text/20 to-text/60"></div>
+                    {# Warm gradient overlay — fixed dark tones so text stays legible in both themes #}
+                    <div class="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-black/60"></div>
                     <div class="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-honey/10 mix-blend-overlay"></div>
                 </div>
 
@@ -35,13 +35,13 @@
                     <div class="page-width py-16 md:py-20 w-full">
                         <div class="text-left">
                             {% if let Some(eyebrow) = slide.eyebrow %}
-                            <p class="text-xs uppercase tracking-[0.25em] text-warm-white/80 font-medium mb-4">{{ eyebrow }}</p>
+                            <p class="text-xs uppercase tracking-[0.25em] text-cream/80 font-medium mb-4">{{ eyebrow }}</p>
                             {% endif %}
                             {% if let Some(title) = slide.title %}
-                            <h2 class="font-display text-3xl md:text-4xl lg:text-5xl font-medium leading-[1.1] tracking-tight text-warm-white mb-4">{{ title }}</h2>
+                            <h2 class="font-display text-3xl md:text-4xl lg:text-5xl font-medium leading-[1.1] tracking-tight text-cream mb-4">{{ title }}</h2>
                             {% endif %}
                             {% if let Some(subtitle) = slide.subtitle %}
-                            <p class="text-base md:text-lg text-warm-white/90 leading-relaxed mb-6 max-w-md">{{ subtitle }}</p>
+                            <p class="text-base md:text-lg text-cream/90 leading-relaxed mb-6 max-w-md">{{ subtitle }}</p>
                             {% endif %}
                             {% if let Some(text) = slide.button_text %}
                             {% if let Some(url) = slide.button_url %}
@@ -62,13 +62,13 @@
                     <div class="page-width py-16 md:py-20 w-full">
                         <div class="text-right ml-auto">
                             {% if let Some(eyebrow) = slide.eyebrow %}
-                            <p class="text-xs uppercase tracking-[0.25em] text-warm-white/80 font-medium mb-4">{{ eyebrow }}</p>
+                            <p class="text-xs uppercase tracking-[0.25em] text-cream/80 font-medium mb-4">{{ eyebrow }}</p>
                             {% endif %}
                             {% if let Some(title) = slide.title %}
-                            <h2 class="font-display text-3xl md:text-4xl lg:text-5xl font-medium leading-[1.1] tracking-tight text-warm-white mb-4">{{ title }}</h2>
+                            <h2 class="font-display text-3xl md:text-4xl lg:text-5xl font-medium leading-[1.1] tracking-tight text-cream mb-4">{{ title }}</h2>
                             {% endif %}
                             {% if let Some(subtitle) = slide.subtitle %}
-                            <p class="text-base md:text-lg text-warm-white/90 leading-relaxed mb-6 max-w-md ml-auto">{{ subtitle }}</p>
+                            <p class="text-base md:text-lg text-cream/90 leading-relaxed mb-6 max-w-md ml-auto">{{ subtitle }}</p>
                             {% endif %}
                             {% if let Some(text) = slide.button_text %}
                             {% if let Some(url) = slide.button_url %}
@@ -89,13 +89,13 @@
                     <div class="page-width py-24 md:py-32">
                         <div class="max-w-3xl mx-auto text-center">
                             {% if let Some(eyebrow) = slide.eyebrow %}
-                            <p class="text-xs uppercase tracking-[0.25em] text-warm-white/80 font-medium mb-6">{{ eyebrow }}</p>
+                            <p class="text-xs uppercase tracking-[0.25em] text-cream/80 font-medium mb-6">{{ eyebrow }}</p>
                             {% endif %}
                             {% if let Some(title) = slide.title %}
-                            <h2 class="font-display text-4xl md:text-5xl lg:text-6xl font-medium leading-[1.1] tracking-tight text-warm-white mb-6">{{ title }}</h2>
+                            <h2 class="font-display text-4xl md:text-5xl lg:text-6xl font-medium leading-[1.1] tracking-tight text-cream mb-6">{{ title }}</h2>
                             {% endif %}
                             {% if let Some(subtitle) = slide.subtitle %}
-                            <p class="text-lg md:text-xl text-warm-white/90 leading-relaxed mb-10 max-w-xl mx-auto">{{ subtitle }}</p>
+                            <p class="text-lg md:text-xl text-cream/90 leading-relaxed mb-10 max-w-xl mx-auto">{{ subtitle }}</p>
                             {% endif %}
                             {% if let Some(text) = slide.button_text %}
                             {% if let Some(url) = slide.button_url %}
@@ -118,13 +118,13 @@
                     <div class="page-width py-16 md:py-20 w-full">
                         <div class="text-center max-w-2xl mx-auto">
                             {% if let Some(eyebrow) = slide.eyebrow %}
-                            <p class="text-xs uppercase tracking-[0.25em] text-warm-white/80 font-medium mb-4">{{ eyebrow }}</p>
+                            <p class="text-xs uppercase tracking-[0.25em] text-cream/80 font-medium mb-4">{{ eyebrow }}</p>
                             {% endif %}
                             {% if let Some(title) = slide.title %}
-                            <h2 class="font-display text-3xl md:text-4xl lg:text-5xl font-medium leading-[1.1] tracking-tight text-warm-white mb-4">{{ title }}</h2>
+                            <h2 class="font-display text-3xl md:text-4xl lg:text-5xl font-medium leading-[1.1] tracking-tight text-cream mb-4">{{ title }}</h2>
                             {% endif %}
                             {% if let Some(subtitle) = slide.subtitle %}
-                            <p class="text-base md:text-lg text-warm-white/90 leading-relaxed mb-6 max-w-xl mx-auto">{{ subtitle }}</p>
+                            <p class="text-base md:text-lg text-cream/90 leading-relaxed mb-6 max-w-xl mx-auto">{{ subtitle }}</p>
                             {% endif %}
                             {% if let Some(text) = slide.button_text %}
                             {% if let Some(url) = slide.button_url %}
@@ -158,7 +158,7 @@
    SINGLE SLIDE LAYOUTS
    ═══════════════════════════════════════════════════════════════════════════ #}
 {% if let Some(slide) = hero.slides.first() %}
-<section class="relative min-h-[100svh] flex items-center overflow-hidden bg-cream">
+<section class="relative min-h-[100svh] flex items-center overflow-hidden bg-background">
 
     {% if hero.layout == crate::routes::home::HeroLayout::SplitLeft || hero.layout == crate::routes::home::HeroLayout::SplitRight %}
     {# ─────────────────────────────────────────────────────────────────────────
@@ -185,7 +185,7 @@
         {# Content Panel #}
         <div class="relative flex items-center {% if hero.layout == crate::routes::home::HeroLayout::SplitRight %}lg:order-1{% endif %}">
             {# Background texture #}
-            <div class="absolute inset-0 bg-cream"></div>
+            <div class="absolute inset-0 bg-background"></div>
 
             <div class="relative z-10 w-full px-6 py-16 md:px-12 lg:px-16 xl:px-24">
                 <div class="max-w-xl {% if hero.layout == crate::routes::home::HeroLayout::SplitRight %}ml-auto{% endif %}">
@@ -237,8 +237,8 @@
              alt="{{ slide.image_alt }}"
              class="w-full h-full object-cover"
              loading="eager">
-        {# Warm gradient overlay #}
-        <div class="absolute inset-0 bg-gradient-to-b from-text/40 via-text/30 to-text/60"></div>
+        {# Warm gradient overlay — fixed dark tones so text stays legible in both themes #}
+        <div class="absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-black/60"></div>
         <div class="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-honey/10 mix-blend-overlay"></div>
     </div>
 
@@ -246,21 +246,21 @@
         <div class="max-w-3xl mx-auto text-center">
             {# Eyebrow #}
             {% if let Some(eyebrow) = slide.eyebrow %}
-            <p class="text-xs uppercase tracking-[0.25em] text-warm-white/80 font-medium mb-6 animate-fade-in" style="animation-delay: 100ms; opacity: 0;">
+            <p class="text-xs uppercase tracking-[0.25em] text-cream/80 font-medium mb-6 animate-fade-in" style="animation-delay: 100ms; opacity: 0;">
                 {{ eyebrow }}
             </p>
             {% endif %}
 
             {# Headline #}
             {% if let Some(title) = slide.title %}
-            <h1 class="font-display text-4xl md:text-6xl lg:text-7xl font-medium leading-[1.1] tracking-tight text-warm-white mb-6 animate-slide-up" style="animation-delay: 200ms; opacity: 0;">
+            <h1 class="font-display text-4xl md:text-6xl lg:text-7xl font-medium leading-[1.1] tracking-tight text-cream mb-6 animate-slide-up" style="animation-delay: 200ms; opacity: 0;">
                 {{ title }}
             </h1>
             {% endif %}
 
             {# Subtitle #}
             {% if let Some(subtitle) = slide.subtitle %}
-            <p class="text-lg md:text-xl text-warm-white/90 leading-relaxed mb-10 max-w-xl mx-auto animate-slide-up" style="animation-delay: 400ms; opacity: 0;">
+            <p class="text-lg md:text-xl text-cream/90 leading-relaxed mb-10 max-w-xl mx-auto animate-slide-up" style="animation-delay: 400ms; opacity: 0;">
                 {{ subtitle }}
             </p>
             {% endif %}
@@ -282,7 +282,7 @@
     </div>
 
     {# Scroll indicator #}
-    <div class="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce text-warm-white/60">
+    <div class="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce text-cream/60">
         <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none">
             <path d="M12 5v14M5 12l7 7 7-7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
@@ -297,9 +297,9 @@
              alt="{{ slide.image_alt }}"
              class="w-full h-full object-cover"
              loading="eager">
-        {# Dramatic warm overlay #}
-        <div class="absolute inset-0 bg-gradient-to-r from-text/70 via-text/40 to-transparent"></div>
-        <div class="absolute inset-0 bg-gradient-to-t from-text/50 via-transparent to-text/20"></div>
+        {# Dramatic warm overlay — fixed dark tones so text stays legible in both themes #}
+        <div class="absolute inset-0 bg-gradient-to-r from-black/70 via-black/40 to-transparent"></div>
+        <div class="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/20"></div>
     </div>
 
     <div class="relative z-10 page-width py-24 md:py-32 lg:py-40">
@@ -313,7 +313,7 @@
 
             {# Headline #}
             {% if let Some(title) = slide.title %}
-            <h1 class="font-display text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-medium leading-[1.05] tracking-tight text-warm-white mb-8 animate-slide-up" style="animation-delay: 200ms; opacity: 0;">
+            <h1 class="font-display text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-medium leading-[1.05] tracking-tight text-cream mb-8 animate-slide-up" style="animation-delay: 200ms; opacity: 0;">
                 {{ title }}
             </h1>
             {% endif %}
@@ -323,7 +323,7 @@
 
             {# Subtitle #}
             {% if let Some(subtitle) = slide.subtitle %}
-            <p class="text-lg md:text-xl text-warm-white/85 leading-relaxed mb-10 max-w-lg animate-slide-up" style="animation-delay: 400ms; opacity: 0;">
+            <p class="text-lg md:text-xl text-cream/85 leading-relaxed mb-10 max-w-lg animate-slide-up" style="animation-delay: 400ms; opacity: 0;">
                 {{ subtitle }}
             </p>
             {% endif %}

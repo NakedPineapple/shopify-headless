@@ -1,0 +1,143 @@
+{# Spring Promotion Section — Editorial magazine spread
+   Displayed between the hero carousel and product grid when the spring promo is active.
+   Expects `spring_promo_images: Vec<SpringPromoImage>` from HomeTemplate.
+#}
+{% import "macros/picture.html" as img %}
+
+<section class="py-20 md:py-28 bg-background overflow-hidden relative">
+    {# Subtle paper texture background — matches polaroid gallery section #}
+    <div class="absolute inset-0 opacity-50 pointer-events-none"
+         style="background-image: url('data:image/svg+xml,%3Csvg viewBox=%270 0 200 200%27 xmlns=%27http://www.w3.org/2000/svg%27%3E%3Cfilter id=%27noise%27%3E%3CfeTurbulence type=%27fractalNoise%27 baseFrequency=%270.85%27 numOctaves=%274%27 stitchTiles=%27stitch%27/%3E%3CfeColorMatrix type=%27saturate%27 values=%270%27/%3E%3C/filter%3E%3Crect width=%27100%25%27 height=%27100%25%27 filter=%27url(%23noise)%27 opacity=%270.08%27/%3E%3C/svg%3E');"></div>
+
+    {# Decorative blur blobs #}
+    <div class="absolute -top-20 -left-20 w-72 h-72 bg-gradient-to-br from-leaf/15 to-leaf/5 rounded-full blur-3xl pointer-events-none"></div>
+    <div class="absolute -bottom-16 -right-16 w-64 h-64 bg-gradient-to-tl from-honey/20 to-honey/5 rounded-full blur-3xl pointer-events-none"></div>
+
+    <div class="page-width relative">
+
+        {# ─── Top: Headline with editorial flair ─── #}
+        <div class="max-w-3xl mb-14 md:mb-20 animate-fade-in" style="opacity: 0; animation-delay: 100ms;">
+            <p class="text-xs uppercase tracking-[0.25em] text-primary dark:text-foreground font-medium mb-4">
+                <i class="ph ph-leaf"></i>&ensp;Limited Time
+            </p>
+            <h2 class="font-display text-4xl md:text-5xl lg:text-6xl font-medium text-foreground leading-[1.08] mb-5">
+                Spring Reset<br>
+                <span class="text-gradient">30% Off</span> Everything
+            </h2>
+            <p class="text-lg md:text-xl text-muted-foreground leading-relaxed max-w-xl">
+                A fresh season. A fresh mindset. A fresh start for your skin.
+            </p>
+        </div>
+
+        {# ─── Main: Asymmetric editorial layout (12-col grid) ─── #}
+        <div class="grid lg:grid-cols-12 gap-6 lg:gap-10 items-start">
+
+            {# Left column: Stacked portrait images with overlap #}
+            <div class="lg:col-span-7 relative">
+                {# Primary large image #}
+                {% if let Some(image) = spring_promo_images.first() %}
+                <div class="relative z-10 animate-slide-up" style="opacity: 0; animation-delay: 200ms;">
+                    <div class="aspect-[4/5] rounded-3xl overflow-hidden shadow-xl">
+                        {{ img::picture(path=image.image_path, alt=image.alt, sizes="(max-width: 1024px) 100vw, 55vw", class="w-full h-full object-cover transition-transform duration-700 hover:scale-105") }}
+                    </div>
+                    {# Floating discount badge #}
+                    <div class="absolute -bottom-5 -right-5 md:-bottom-6 md:-right-6 bg-primary text-primary-foreground px-6 py-4 md:px-8 md:py-5 rounded-2xl shadow-lg animate-fade-in" style="opacity: 0; animation-delay: 600ms;">
+                        <span class="block text-3xl md:text-4xl font-display font-bold leading-none">30%</span>
+                        <span class="text-xs uppercase tracking-widest opacity-90">Off</span>
+                    </div>
+                </div>
+                {% endif %}
+
+                {# Secondary images — offset & rotated like scattered photos #}
+                <div class="hidden md:flex gap-4 mt-6 pl-8 lg:pl-16">
+                    {% for image in spring_promo_images %}
+                    {% if loop.index == 2 || loop.index == 3 %}
+                    <div class="w-1/2 animate-slide-up" style="opacity: 0; animation-delay: {{ 300 + loop.index0 * 150 }}ms;">
+                        <div class="aspect-[3/4] rounded-2xl overflow-hidden shadow-md {% if loop.index == 2 %}-rotate-2{% else %}rotate-2{% endif %} hover:rotate-0 transition-transform duration-500">
+                            {{ img::picture(path=image.image_path, alt=image.alt, sizes="(max-width: 1024px) 40vw, 22vw", class="w-full h-full object-cover") }}
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+
+            {# Right column: Editorial copy + benefits #}
+            <div class="lg:col-span-5 lg:pt-12">
+
+                {# Pull quote — editorial accent #}
+                <div class="animate-slide-up" style="opacity: 0; animation-delay: 300ms;">
+                    <blockquote class="relative mb-10 pl-5 border-l-4 border-leaf/40">
+                        <p class="font-display text-xl md:text-2xl text-foreground leading-snug italic">
+                            &ldquo;Spring is your permission to begin again.&rdquo;
+                        </p>
+                    </blockquote>
+                </div>
+
+                {# Benefits — refined editorial cards #}
+                <div class="space-y-8 mb-10">
+                    <div class="animate-slide-up" style="opacity: 0; animation-delay: 400ms;">
+                        <div class="flex items-baseline gap-3 mb-2">
+                            <i class="ph-fill ph-leaf text-leaf text-lg"></i>
+                            <h3 class="font-display text-lg md:text-xl font-medium text-foreground">Bromelain Power</h3>
+                        </div>
+                        <p class="text-muted-foreground text-sm md:text-base leading-relaxed pl-8">
+                            Found in pineapples and in all our formulas&mdash;reduces inflammation and redness while stimulating fresh cellular renewal.
+                        </p>
+                    </div>
+
+                    <div class="animate-slide-up" style="opacity: 0; animation-delay: 500ms;">
+                        <div class="flex items-baseline gap-3 mb-2">
+                            <i class="ph-fill ph-drop text-honey text-lg"></i>
+                            <h3 class="font-display text-lg md:text-xl font-medium text-foreground">Serums + Peptides + Collagen</h3>
+                        </div>
+                        <p class="text-muted-foreground text-sm md:text-base leading-relaxed pl-8">
+                            Dramatically improve hydration and soften the appearance of fine lines&mdash;especially when paired with collagen-supporting ingredients.
+                        </p>
+                    </div>
+
+                    <div class="animate-slide-up" style="opacity: 0; animation-delay: 600ms;">
+                        <div class="flex items-baseline gap-3 mb-2">
+                            <i class="ph-fill ph-sparkle text-primary text-lg"></i>
+                            <h3 class="font-display text-lg md:text-xl font-medium text-foreground">The Result</h3>
+                        </div>
+                        <p class="text-muted-foreground text-sm md:text-base leading-relaxed pl-8">
+                            Smoother. Plumper. Brighter. More confident skin. Because confidence starts underneath it all.
+                        </p>
+                    </div>
+                </div>
+
+                {# CTA #}
+                <div class="animate-slide-up" style="opacity: 0; animation-delay: 700ms;">
+                    <a href="/collections/frontpage" class="btn btn-primary btn-large group">
+                        Shop 30% Off Now
+                        <svg class="w-5 h-5 transition-transform duration-300 group-hover:translate-x-1" viewBox="0 0 20 20" fill="none">
+                            <path d="M7.5 3.75L13.75 10L7.5 16.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </a>
+                </div>
+
+                {# Teaser — matches email "something new coming" #}
+                <div class="mt-8 animate-fade-in" style="opacity: 0; animation-delay: 900ms;">
+                    <p class="text-sm text-muted-foreground italic">
+                        Stay tuned&hellip; something new and exciting is coming to Naked Pineapple soon.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        {# ─── Mobile-only: remaining images as horizontal scroll ─── #}
+        <div class="flex gap-3 mt-8 -mx-4 px-4 overflow-x-auto snap-x snap-mandatory md:hidden pb-2">
+            {% for image in spring_promo_images %}
+            {% if loop.index > 1 %}
+            <div class="flex-shrink-0 w-48 snap-center">
+                <div class="aspect-[3/4] rounded-2xl overflow-hidden shadow-md">
+                    {{ img::picture(path=image.image_path, alt=image.alt, sizes="192px", class="w-full h-full object-cover") }}
+                </div>
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+
+    </div>
+</section>

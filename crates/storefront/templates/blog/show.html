@@ -154,7 +154,7 @@
                             {% if !post.tags.is_empty() %}
                             <div class="flex flex-wrap gap-2">
                                 {% for tag in post.tags.iter() %}
-                                <span class="px-3 py-1.5 bg-sand text-muted-foreground text-sm font-medium rounded-full">
+                                <span class="px-3 py-1.5 bg-muted text-muted-foreground text-sm font-medium rounded-full">
                                     {{ tag }}
                                 </span>
                                 {% endfor %}
@@ -167,19 +167,19 @@
                                 <a href="https://twitter.com/intent/tweet?text={{ post.title }}&url="
                                    target="_blank"
                                    rel="noopener"
-                                   class="w-9 h-9 flex items-center justify-center rounded-full bg-sand text-foreground hover:bg-primary hover:text-white transition-all"
+                                   class="w-9 h-9 flex items-center justify-center rounded-full bg-muted text-foreground hover:bg-primary hover:text-white transition-all"
                                    aria-label="Share on Twitter">
                                     <i class="ph ph-twitter-logo"></i>
                                 </a>
                                 <a href="https://www.facebook.com/sharer/sharer.php?u="
                                    target="_blank"
                                    rel="noopener"
-                                   class="w-9 h-9 flex items-center justify-center rounded-full bg-sand text-foreground hover:bg-primary hover:text-white transition-all"
+                                   class="w-9 h-9 flex items-center justify-center rounded-full bg-muted text-foreground hover:bg-primary hover:text-white transition-all"
                                    aria-label="Share on Facebook">
                                     <i class="ph ph-facebook-logo"></i>
                                 </a>
                                 <button data-action="copy-link"
-                                        class="w-9 h-9 flex items-center justify-center rounded-full bg-sand text-foreground hover:bg-primary hover:text-white transition-all"
+                                        class="w-9 h-9 flex items-center justify-center rounded-full bg-muted text-foreground hover:bg-primary hover:text-white transition-all"
                                         aria-label="Copy link">
                                     <i class="ph ph-link"></i>
                                 </button>
@@ -214,7 +214,7 @@
                                 {% for recent in recent_posts.iter() %}
                                 <a href="/blog/{{ recent.slug }}" class="group block">
                                     <article class="flex gap-4">
-                                        <div class="w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden bg-sand">
+                                        <div class="w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden bg-muted">
                                             {% if let Some(image) = recent.featured_image.as_ref() %}
                                             {{ img::picture(path=image, alt=recent.title, sizes="64px", class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300") }}
                                             {% else %}
@@ -264,7 +264,7 @@
 
 {# Related Posts (Mobile/Full Width) #}
 {% if !recent_posts.is_empty() %}
-<section class="py-12 md:py-16 bg-sand/30 lg:hidden">
+<section class="py-12 md:py-16 bg-muted/30 lg:hidden">
     <div class="page-width">
         <h2 class="font-display text-2xl text-foreground mb-8 text-center">More to Read</h2>
         <div class="grid sm:grid-cols-2 gap-6">

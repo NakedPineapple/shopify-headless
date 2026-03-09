@@ -1,11 +1,26 @@
 {# Announcement Bar - Scrolling marquee with promotions #}
 <div class="bg-primary text-primary-foreground py-2 overflow-hidden">
     <div class="flex animate-marquee whitespace-nowrap">
+        {% if site.spring_promo_active %}
+        <span class="mx-8 text-sm font-medium tracking-wide">Spring Reset &mdash; <strong>30% Off</strong> Everything</span>
+        <span class="mx-3 text-xs opacity-40"><i class="ph ph-leaf"></i></span>
+        <span class="mx-8 text-sm font-medium tracking-wide">Fresh season, fresh skin &mdash; Shop now</span>
+        <span class="mx-3 text-xs opacity-40"><i class="ph ph-leaf"></i></span>
+        <span class="mx-8 text-sm font-medium tracking-wide">Free shipping on orders over $50</span>
+        <span class="mx-3 text-xs opacity-40"><i class="ph ph-leaf"></i></span>
+        <span class="mx-8 text-sm font-medium tracking-wide">Spring Reset &mdash; <strong>30% Off</strong> Everything</span>
+        <span class="mx-3 text-xs opacity-40"><i class="ph ph-leaf"></i></span>
+        <span class="mx-8 text-sm font-medium tracking-wide">Fresh season, fresh skin &mdash; Shop now</span>
+        <span class="mx-3 text-xs opacity-40"><i class="ph ph-leaf"></i></span>
+        <span class="mx-8 text-sm font-medium tracking-wide">Free shipping on orders over $50</span>
+        <span class="mx-3 text-xs opacity-40"><i class="ph ph-leaf"></i></span>
+        {% else %}
         <span class="mx-8 text-sm font-medium">Free shipping on orders over $50</span>
         <span class="mx-8 text-sm font-medium">Subscribe & Save 20%</span>
         <span class="mx-8 text-sm font-medium">Clean, cruelty-free skincare</span>
         <span class="mx-8 text-sm font-medium">Free shipping on orders over $50</span>
         <span class="mx-8 text-sm font-medium">Subscribe & Save 20%</span>
         <span class="mx-8 text-sm font-medium">Clean, cruelty-free skincare</span>
+        {% endif %}
     </div>
 </div>

@@ -89,8 +89,6 @@
     --honey: oklch(0.76 0.12 72);
     --terracotta: oklch(0.60 0.10 42);
     --leaf: oklch(0.60 0.10 150);
-    --sand: oklch(0.38 0.03 55);
-    --cream: oklch(0.32 0.035 50);
   }
 }
 
@@ -118,8 +116,6 @@
     --honey: oklch(0.76 0.12 72);
     --terracotta: oklch(0.60 0.10 42);
     --leaf: oklch(0.60 0.10 150);
-    --sand: oklch(0.38 0.03 55);
-    --cream: oklch(0.32 0.035 50);
   }
 
   /* Manual override: force light mode regardless of OS setting */

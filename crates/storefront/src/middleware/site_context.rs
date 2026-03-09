@@ -4,6 +4,7 @@
 //! multi-domain deployments where a single storefront serves multiple hostnames.
 
 use axum::{extract::FromRequestParts, http::request::Parts};
+use chrono::{Datelike, Utc};
 
 use crate::state::AppState;
 
@@ -33,6 +34,8 @@ pub struct SiteContext {
     pub chat_enabled: bool,
     /// Cloudflare Turnstile public site key (empty if not configured).
     pub turnstile_site_key: String,
+    /// Whether the spring 2026 promotion is currently active (March 2026).
+    pub spring_promo_active: bool,
 }
 
 impl FromRequestParts<AppState> for SiteContext {
@@ -74,6 +77,9 @@ impl FromRequestParts<AppState> for SiteContext {
         let chat_enabled = state.is_chat_enabled();
         let turnstile_site_key = config.turnstile_site_key.clone().unwrap_or_default();
 
+        let now = Utc::now();
+        let spring_promo_active = now.year() == 2026 && now.month() == 3;
+
         Ok(Self {
             host: host.to_owned(),
             base_url,
@@ -81,6 +87,7 @@ impl FromRequestParts<AppState> for SiteContext {
             gpc,
             chat_enabled,
             turnstile_site_key,
+            spring_promo_active,
         })
     }
 }

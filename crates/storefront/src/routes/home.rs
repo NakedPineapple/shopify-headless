@@ -158,6 +158,66 @@ impl Default for HeroConfig {
 }
 
 // =============================================================================
+// Spring Promotion (time-limited)
+// =============================================================================
+
+/// A portrait image for the spring promotion section.
+#[derive(Clone)]
+pub struct SpringPromoImage {
+    pub image_path: String,
+    pub alt: String,
+}
+
+/// Build the spring hero slide (landscape image, prepended as first carousel slide).
+fn spring_hero_slide() -> HeroSlide {
+    HeroSlide {
+        eyebrow: Some("Limited Time".to_string()),
+        title: Some("Spring Reset \u{2014} 30% Off".to_string()),
+        subtitle: Some("A fresh season. A fresh start for your skin.".to_string()),
+        button_text: Some("Shop 30% Off".to_string()),
+        button_url: Some("/collections/frontpage".to_string()),
+        image_path: "/static/images/original/05AD82BA-9D57-4519-8ACD-8E6F20C7A0A1_4_5005_c.jpeg"
+            .to_string(),
+        image_alt: "Spring Reset Sale \u{2014} 30% off Naked Pineapple skincare".to_string(),
+        button_position: ButtonPosition::Center,
+        zoom_from: Some("1.15".to_string()),
+        zoom_to: Some("1.0".to_string()),
+        pan_from: None,
+        pan_to: None,
+    }
+}
+
+/// Portrait images for the spring promotion homepage section.
+fn spring_promo_images() -> Vec<SpringPromoImage> {
+    vec![
+        SpringPromoImage {
+            image_path:
+                "/static/images/original/32CC0EE8-2AD0-4557-BE8C-1062004BC258_4_5005_c.jpeg"
+                    .to_string(),
+            alt: "Spring skincare \u{2014} fresh start for your skin".to_string(),
+        },
+        SpringPromoImage {
+            image_path:
+                "/static/images/original/4FDBDD7B-A6B8-4D59-A2E0-6A16A68EED2E_4_5005_c.jpeg"
+                    .to_string(),
+            alt: "Natural glow \u{2014} spring renewal".to_string(),
+        },
+        SpringPromoImage {
+            image_path:
+                "/static/images/original/C26132D9-F4BC-42A8-A36C-D0CAF5073338_4_5005_c.jpeg"
+                    .to_string(),
+            alt: "Confident skin \u{2014} powered by bromelain".to_string(),
+        },
+        SpringPromoImage {
+            image_path:
+                "/static/images/original/8DE4162B-72C5-4179-9B96-B740B3B9FB7F_4_5005_c.jpeg"
+                    .to_string(),
+            alt: "Spring self-care ritual".to_string(),
+        },
+    ]
+}
+
+// =============================================================================
 // Review Data
 // =============================================================================
 
@@ -312,6 +372,8 @@ pub struct HomeTemplate {
     pub nonce: String,
     /// Logo URL for Organization schema.
     pub logo_url: String,
+    /// Portrait images for the spring promotion section (empty if inactive).
+    pub spring_promo_images: Vec<SpringPromoImage>,
 }
 
 /// Number of products to show per collection tab.
@@ -394,14 +456,24 @@ pub async fn home(
 
     let logo_url = crate::filters::get_logo_url(&site.base_url);
 
+    // Spring promotion: conditionally prepend hero slide and load images
+    let mut hero = HeroConfig::default();
+    let spring_images = if site.spring_promo_active {
+        hero.slides.insert(0, spring_hero_slide());
+        spring_promo_images()
+    } else {
+        Vec::new()
+    };
+
     info!(
         skincare_count = skincare_products.len(),
         merch_count = merch_products.len(),
+        spring_promo = site.spring_promo_active,
         "Home page rendered successfully"
     );
 
     HomeTemplate {
-        hero: HeroConfig::default(),
+        hero,
         skincare_products,
         merch_products,
         featured_reviews: get_featured_reviews(),
@@ -410,5 +482,6 @@ pub async fn home(
         site,
         nonce,
         logo_url,
+        spring_promo_images: spring_images,
     }
 }

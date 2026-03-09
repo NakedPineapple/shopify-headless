@@ -17,6 +17,18 @@ pub type ImageInfo = (&'static str, u32);
 pub static IMAGE_INFO: LazyLock<HashMap<&'static str, ImageInfo>> = LazyLock::new(|| {
     HashMap::from([
         (
+            "05AD82BA-9D57-4519-8ACD-8E6F20C7A0A1_4_5005_c",
+            ("6fd4074b", 540),
+        ),
+        (
+            "32CC0EE8-2AD0-4557-BE8C-1062004BC258_4_5005_c",
+            ("4804e5d8", 360),
+        ),
+        (
+            "4FDBDD7B-A6B8-4D59-A2E0-6A16A68EED2E_4_5005_c",
+            ("6b21366c", 360),
+        ),
+        (
             "about/DSC_5841_7937b270-76ec-46ca-94be-0d898b03767f",
             ("ae33eb2d", 2400),
         ),
@@ -24,6 +36,10 @@ pub static IMAGE_INFO: LazyLock<HashMap<&'static str, ImageInfo>> = LazyLock::ne
         ("branding/Logo_Horizontal", ("71cba526", 0)),
         ("branding/Logo_MarkOnly", ("8264e21e", 0)),
         ("branding/Pistachio_MarkOnly", ("a8e348cf", 0)),
+        (
+            "C26132D9-F4BC-42A8-A36C-D0CAF5073338_4_5005_c",
+            ("f9b011f5", 360),
+        ),
         (
             "events/launch-party/IMG_4106_d384f118-38d8-46a4-b92a-9174ba3d357f",
             ("f612a03c", 1536),
