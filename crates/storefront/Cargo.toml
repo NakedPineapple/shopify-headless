@@ -70,7 +70,7 @@ thiserror = { workspace = true }
 # Markdown & Content
 # NOTE: syntect feature disabled to avoid unmaintained bincode/yaml-rust deps
 # Re-enable when syntect updates dependencies or use alternative highlighting
-comrak = { version = "0.50", default-features = false }
+comrak = { version = "0.51", default-features = false }
 gray_matter = "0.3"
 
 # Caching
