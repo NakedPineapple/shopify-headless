@@ -87,8 +87,8 @@ tower-sessions = "0.14"
 tower-sessions-sqlx-store = { version = "0.15", features = ["postgres"] }
 
 # Error tracking
-sentry = { version = "0.46", default-features = false, features = ["backtrace", "contexts", "panic", "reqwest", "rustls", "tracing", "tower", "tower-http"] }
-sentry-tower = { version = "0.46", features = ["http"] }
+sentry = { version = "0.47", default-features = false, features = ["backtrace", "contexts", "panic", "reqwest", "rustls", "tracing", "tower", "tower-http"] }
+sentry-tower = { version = "0.47", features = ["http"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 
@@ -100,8 +100,8 @@ rand = "0.9"
 urlencoding = "2.1"
 
 # Cryptography
-hmac = "0.12"
-sha2 = "0.10"
+hmac = "0.13"
+sha2 = "0.11"
 
 # HTML sanitization
 ammonia = "4"
@@ -122,4 +122,4 @@ futures = "0.3"
 axum-prometheus = "0.10"
 
 # JSON Schema validation
-jsonschema = "0.44"
+jsonschema = "0.45"
