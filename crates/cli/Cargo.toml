@@ -24,7 +24,7 @@ naked-pineapple-crypto = { workspace = true }
 naked-pineapple-services = { workspace = true }
 
 # CLI
-clap = { version = "4.5", features = ["derive"] }
+clap = { version = "4.6", features = ["derive"] }
 rpassword = "7"
 
 # Database
