@@ -47,7 +47,7 @@ RUN cargo build --release --locked -p naked-pineapple-automations
 # =============================================================================
 # Stage 5: Runtime - distroless image for production
 # =============================================================================
-FROM gcr.io/distroless/cc-debian13@sha256:8c1a496b055d36c222e95ebd5c53bdd1fee447689a97ad889febca8380d578ec AS runtime
+FROM gcr.io/distroless/cc-debian13@sha256:56aaf20ab2523a346a67c8e8f8e8dabe447447d0788b82284d14ad79cd5f93cc AS runtime
 
 # OCI image metadata (values injected by CI via --build-arg or Docker --label)
 ARG VERSION=0.1.0
