@@ -41,5 +41,23 @@ fi
 # Disable any previous tailscale serve config (app serves HTTPS directly now)
 /app/tailscale --socket=/var/run/tailscale/tailscaled.sock serve --https=443 off 2>/dev/null || true
 
+# NAT keep-alive: Fly's stateful NAT drops unsolicited inbound WireGuard UDP,
+# so after a restart peers cannot re-handshake with us until we initiate
+# outbound traffic. Ping every tailnet peer in a loop to keep sessions warm
+# in both directions. Without this, admin becomes unreachable on every restart
+# (including the weekly TLS cert renewal) until someone manually pokes it.
+(
+  set +e
+  sleep 5
+  while :; do
+    /app/tailscale --socket=/var/run/tailscale/tailscaled.sock status --peers 2>/dev/null \
+      | awk '/^100\./ { print $1 }' \
+      | while read -r peer_ip; do
+          /app/tailscale --socket=/var/run/tailscale/tailscaled.sock ping -c 1 --timeout=3s "$peer_ip" >/dev/null 2>&1
+        done
+    sleep 60
+  done
+) &
+
 echo "Tailscale connected. Starting application..."
 exec su -s /bin/sh appuser -c "/app/server"
