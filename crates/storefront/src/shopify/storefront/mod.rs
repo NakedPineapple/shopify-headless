@@ -86,7 +86,7 @@ impl StorefrontClient {
     pub fn new(config: &ShopifyStorefrontConfig) -> Self {
         let cache = Cache::builder()
             .max_capacity(1000)
-            .time_to_live(Duration::from_secs(300)) // 5 minutes
+            .time_to_live(Duration::from_mins(5))
             .build();
 
         let endpoint = format!(

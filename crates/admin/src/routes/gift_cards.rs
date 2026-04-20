@@ -402,18 +402,15 @@ impl From<&GiftCardDetail> for GiftCardDetailView {
         // Check expiration status
         let is_expired = gc.expires_on.as_ref().is_some_and(|exp| {
             chrono::NaiveDate::parse_from_str(exp, "%Y-%m-%d")
-                .map(|date| date < chrono::Utc::now().date_naive())
-                .unwrap_or(false)
+                .is_ok_and(|date| date < chrono::Utc::now().date_naive())
         });
 
         let is_expiring_soon = gc.expires_on.as_ref().is_some_and(|exp| {
-            chrono::NaiveDate::parse_from_str(exp, "%Y-%m-%d")
-                .map(|date| {
-                    let today = chrono::Utc::now().date_naive();
-                    let thirty_days = today + chrono::Duration::days(30);
-                    date >= today && date <= thirty_days
-                })
-                .unwrap_or(false)
+            chrono::NaiveDate::parse_from_str(exp, "%Y-%m-%d").is_ok_and(|date| {
+                let today = chrono::Utc::now().date_naive();
+                let thirty_days = today + chrono::Duration::days(30);
+                date >= today && date <= thirty_days
+            })
         });
 
         let transactions: Vec<GiftCardTransactionView> = gc

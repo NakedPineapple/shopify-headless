@@ -487,7 +487,7 @@ pub async fn index(
             conv_repo
                 .list_by_customer(id, 50)
                 .await
-                .map(|convos| {
+                .map_or(0, |convos| {
                     convos
                         .iter()
                         .filter(|c| {
@@ -499,7 +499,6 @@ pub async fn index(
                         })
                         .count()
                 })
-                .unwrap_or(0)
         }
         None => 0,
     };

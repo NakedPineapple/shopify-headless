@@ -1,7 +1,7 @@
 # =============================================================================
 # Stage 1: Chef base image with cargo-chef installed
 # =============================================================================
-FROM rust:1.94.0-trixie@sha256:0e6da0c8f06f25e9591f21c0f741cd4ff1086e271c3330f29f6e4e95869c7843 AS chef
+FROM rust:1.95.0-trixie@sha256:4a7e3a0c309c9bab658e469f842711bd595fae484936bc5d605e08ca0c631bf4 AS chef
 RUN cargo install cargo-chef --locked
 WORKDIR /app
 
@@ -39,8 +39,8 @@ FROM deps-builder AS builder
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # Install Tailwind CSS CLI with checksum verification
-ARG TAILWIND_VERSION=4.2.1
-ARG TAILWIND_SHA256=39e8d4e24b3c83b0a6e69e100a972fbc75d5fef8dce47b3ddac3cf92dea81fe3
+ARG TAILWIND_VERSION=4.2.2
+ARG TAILWIND_SHA256=4ab84f2b496c402d3ec4fd25e0e5559fe1184d886dadae8fb4438344ec044c22
 RUN curl -sLO https://github.com/tailwindlabs/tailwindcss/releases/download/v${TAILWIND_VERSION}/tailwindcss-linux-x64 \
     && echo "${TAILWIND_SHA256}  tailwindcss-linux-x64" | sha256sum -c - \
     && chmod +x tailwindcss-linux-x64 && mv tailwindcss-linux-x64 /usr/local/bin/tailwindcss
@@ -58,7 +58,7 @@ RUN tailwindcss -i ./crates/storefront/static/css/input.css \
 # =============================================================================
 # Stage 5: Runtime - distroless image for production
 # =============================================================================
-FROM gcr.io/distroless/cc-debian13@sha256:8c1a496b055d36c222e95ebd5c53bdd1fee447689a97ad889febca8380d578ec AS runtime
+FROM gcr.io/distroless/cc-debian13@sha256:56aaf20ab2523a346a67c8e8f8e8dabe447447d0788b82284d14ad79cd5f93cc AS runtime
 
 # OCI image metadata (values injected by CI via --build-arg or Docker --label)
 ARG VERSION=0.1.0

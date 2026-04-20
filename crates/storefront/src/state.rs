@@ -80,12 +80,12 @@ impl AppState {
 
         let judgeme_product_id_cache = Cache::builder()
             .max_capacity(1000)
-            .time_to_live(std::time::Duration::from_secs(24 * 60 * 60))
+            .time_to_live(std::time::Duration::from_hours(24))
             .build();
 
         let judgeme_reviews_cache = Cache::builder()
             .max_capacity(500)
-            .time_to_live(std::time::Duration::from_secs(5 * 60))
+            .time_to_live(std::time::Duration::from_mins(5))
             .build();
 
         Ok(Self {

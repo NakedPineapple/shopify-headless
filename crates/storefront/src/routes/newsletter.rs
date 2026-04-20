@@ -474,8 +474,7 @@ fn generate_random_password() -> String {
 
     let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_nanos())
-        .unwrap_or(0);
+        .map_or(0, |d| d.as_nanos());
 
     // Generate a pseudo-random password that meets Shopify's requirements
     // (at least 5 characters)

@@ -16,6 +16,8 @@ ignore = [
     # We don't use IterMut on the LRU cache directly; tantivy uses it internally.
     # Monitor for tantivy to update their lru dependency.
     { id = "RUSTSEC-2026-0002", reason = "Transitive dep from tantivy - we don't use IterMut directly" },
+    { id = "RUSTSEC-2026-0098", reason = "rustls-webpki 0.101.7 via aws-smithy-http-client 1.1.12 (latest); AWS SDK still defaults to rustls 0.21. We only talk to R2, a single trusted endpoint, so webpki name-constraint handling is not relied upon." },
+    { id = "RUSTSEC-2026-0099", reason = "rustls-webpki 0.101.7 via aws-smithy-http-client 1.1.12 (latest); AWS SDK still defaults to rustls 0.21. We only talk to R2, a single trusted endpoint, so webpki name-constraint handling is not relied upon." },
 ]
 
 # License checks
@@ -31,13 +33,13 @@ allow = [
     "CDLA-Permissive-2.0",  # Community Data License Agreement - Linux Foundation
     "ISC",  # Functionally equivalent to MIT/BSD, used by OpenBSD
     "MPL-2.0",  # Mozilla Public License - OSI/FSF approved, weak copyleft
-    "OpenSSL",  # OpenSSL License - FSF Free/Libre
     "Unlicense",
     "Zlib",
     "0BSD",  # Zero-Clause BSD - OSI approved, public domain equivalent
     "MIT-0",  # MIT No Attribution - OSI approved, MIT without attribution requirement
     # Unicode licenses
     "Unicode-3.0",
+    "Unicode-DFS-2016",  # Unicode Data Files - OSI approved, used by finl_unicode via comrak
 ]
 confidence-threshold = 0.8
 exceptions = []

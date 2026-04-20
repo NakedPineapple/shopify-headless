@@ -955,7 +955,7 @@ fn convert_warehouse_products(
         })
         .collect();
     // Sort by on_hand descending so the warehouse with the most stock is first
-    products.sort_by(|a, b| b.on_hand.unwrap_or(0).cmp(&a.on_hand.unwrap_or(0)));
+    products.sort_by_key(|p| std::cmp::Reverse(p.on_hand.unwrap_or(0)));
     products
 }
 
@@ -986,7 +986,7 @@ fn convert_product_by_sku_warehouse_products(
         })
         .collect();
     // Sort by on_hand descending so the warehouse with the most stock is first
-    products.sort_by(|a, b| b.on_hand.unwrap_or(0).cmp(&a.on_hand.unwrap_or(0)));
+    products.sort_by_key(|p| std::cmp::Reverse(p.on_hand.unwrap_or(0)));
     products
 }
 

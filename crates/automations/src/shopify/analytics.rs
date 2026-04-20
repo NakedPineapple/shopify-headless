@@ -264,7 +264,7 @@ pub async fn get_top_products(
         .collect();
 
     // Sort by revenue descending and take top N
-    products.sort_by(|a, b| b.revenue.cmp(&a.revenue));
+    products.sort_by_key(|p| std::cmp::Reverse(p.revenue));
     products.truncate(limit);
 
     debug!(count = products.len(), "fetched top products");
@@ -324,7 +324,7 @@ pub async fn get_channel_breakdown(
         .collect();
 
     // Sort by revenue descending
-    channels.sort_by(|a, b| b.revenue.cmp(&a.revenue));
+    channels.sort_by_key(|c| std::cmp::Reverse(c.revenue));
 
     debug!(count = channels.len(), "fetched channel breakdown");
     Ok(channels)

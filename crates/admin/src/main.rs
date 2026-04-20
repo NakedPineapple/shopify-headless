@@ -156,7 +156,7 @@ async fn main() {
         let slack = state.slack().cloned();
         tokio::spawn(async move {
             loop {
-                tokio::time::sleep(Duration::from_secs(300)).await;
+                tokio::time::sleep(Duration::from_mins(5)).await;
                 let service = services::ActionQueueService::new(pool.clone(), slack.clone());
                 match service.expire_stale().await {
                     Ok(count) if count > 0 => {

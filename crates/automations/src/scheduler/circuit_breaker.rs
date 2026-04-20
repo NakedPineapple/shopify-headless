@@ -16,7 +16,7 @@ use std::time::{Duration, Instant};
 const DEFAULT_FAILURE_THRESHOLD: u32 = 5;
 
 /// Default cooldown period after tripping (10 minutes).
-const DEFAULT_COOLDOWN: Duration = Duration::from_secs(600);
+const DEFAULT_COOLDOWN: Duration = Duration::from_mins(10);
 
 /// Circuit breaker state for a single workflow.
 #[derive(Default)]

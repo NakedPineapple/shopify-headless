@@ -248,7 +248,7 @@ async fn dispatch_operational(
             text: PlainText::new(format!("{source_label} Webhook Event")),
         },
         Block::Section {
-            text: Text::mrkdwn(format!("*Event*: `{}`\n{summary}", event.event_type,)),
+            text: Text::mrkdwn(format!("*Event*: `{}`\n{summary}", event.event_type)),
             accessory: None,
         },
         Block::Context {

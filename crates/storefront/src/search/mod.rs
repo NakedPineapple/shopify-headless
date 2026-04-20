@@ -125,10 +125,7 @@ impl SearchIndex {
     /// Check if the index is ready.
     #[must_use]
     pub fn is_ready(&self) -> bool {
-        self.inner
-            .read()
-            .map(|guard| guard.is_some())
-            .unwrap_or(false)
+        self.inner.read().is_ok_and(|guard| guard.is_some())
     }
 
     /// Set the built index. Called by the background builder task.

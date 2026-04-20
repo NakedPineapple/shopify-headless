@@ -150,7 +150,7 @@ async fn queue_list(
     }
 
     // Sort by timestamp descending, truncate
-    items.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
+    items.sort_by_key(|item| std::cmp::Reverse(item.timestamp));
     items.truncate(50);
 
     let template = QueueListTemplate { items };

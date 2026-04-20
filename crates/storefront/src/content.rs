@@ -182,7 +182,7 @@ impl ContentStore {
         }
 
         // Sort posts by published date (newest first)
-        posts.sort_by(|a, b| b.meta.published_at.cmp(&a.meta.published_at));
+        posts.sort_by_key(|p| std::cmp::Reverse(p.meta.published_at));
 
         Ok(posts)
     }

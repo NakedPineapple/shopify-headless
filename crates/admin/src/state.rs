@@ -175,12 +175,12 @@ impl AppState {
 
         let fba_cache = Cache::builder()
             .max_capacity(10)
-            .time_to_live(Duration::from_secs(300))
+            .time_to_live(Duration::from_mins(5))
             .build();
 
         let pricing_cache = Cache::builder()
             .max_capacity(100)
-            .time_to_live(Duration::from_secs(300))
+            .time_to_live(Duration::from_mins(5))
             .build();
 
         Ok(Self {

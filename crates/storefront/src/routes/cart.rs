@@ -1118,7 +1118,7 @@ async fn fetch_cart_recommendations(state: &AppState, cart: &CartView) -> Vec<Pr
         score_recommendations(&cart_product_ids, &manual_product_ids, ml_results);
 
     let mut sorted: Vec<_> = recommendation_scores.into_iter().collect();
-    sorted.sort_by(|a, b| b.1.1.cmp(&a.1.1));
+    sorted.sort_by_key(|entry| std::cmp::Reverse(entry.1.1));
 
     // Get the single best recommendation
     let Some((product_id, _)) = sorted.into_iter().next() else {

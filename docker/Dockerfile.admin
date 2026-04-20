@@ -1,7 +1,7 @@
 # =============================================================================
 # Stage 1: Chef base image with cargo-chef installed
 # =============================================================================
-FROM rust:1.94.0-alpine3.21@sha256:40844f780f5f9b6b0ec9b82007284ca8b8dbc3ea6ac3b4a3dbc211245eb00f22 AS chef
+FROM rust:1.95.0-alpine3.21@sha256:77d036177a4caf204bf23c6c68e1aa013a0d919fd40058eb27943295080fe869 AS chef
 RUN cargo install cargo-chef --locked
 WORKDIR /app
 
@@ -39,7 +39,7 @@ RUN cargo build --release --locked -p naked-pineapple-admin -p naked-pineapple-c
 # =============================================================================
 # Stage 5: Runtime with Tailscale
 # =============================================================================
-FROM alpine:3.23@sha256:25109184c71bdad752c8312a8623239686a9a2071e8825f20acb8f2198c3f659 AS runtime
+FROM alpine:3.23@sha256:5b10f432ef3da1b8d4c7eb6c487f2f5a8f096bc91145e68878dd4a5019afde11 AS runtime
 
 # OCI image metadata (values injected by CI via --build-arg or Docker --label)
 ARG VERSION=0.1.0

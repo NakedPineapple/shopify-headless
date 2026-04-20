@@ -330,8 +330,7 @@ async fn fetch_expense_total(pool: &sqlx::PgPool, query: &AnalyticsQuery) -> f64
     let repo = ExpenseRepository::new(pool);
     repo.get_total_expenses(start, end)
         .await
-        .map(|d| d.to_string().parse::<f64>().unwrap_or(0.0))
-        .unwrap_or(0.0)
+        .map_or(0.0, |d| d.to_string().parse::<f64>().unwrap_or(0.0))
 }
 
 /// Process analytics result into summary view and raw total.

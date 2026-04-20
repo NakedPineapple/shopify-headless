@@ -377,8 +377,7 @@ fn format_price(amount: &str) -> String {
 fn parse_price_cents(amount: &str) -> u64 {
     amount
         .parse::<f64>()
-        .map(|n| (n * 100.0).round() as u64)
-        .unwrap_or(0)
+        .map_or(0, |n| (n * 100.0).round() as u64)
 }
 
 /// Build error wrapper.
