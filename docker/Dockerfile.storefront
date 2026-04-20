@@ -21,7 +21,7 @@ FROM chef AS deps-builder
 # Install build dependencies including mold linker for faster linking
 RUN apt-get update && apt-get install -y --no-install-recommends \
     pkg-config=1.8.1-4 \
-    libssl-dev=3.5.4-1~deb13u2 \
+    libssl-dev=3.5.5-1~deb13u2 \
     mold=2.37.1+dfsg-1 \
     && rm -rf /var/lib/apt/lists/*
 
