@@ -70,7 +70,7 @@ thiserror = { workspace = true }
 # Markdown & Content
 # NOTE: syntect feature disabled to avoid unmaintained bincode/yaml-rust deps
 # Re-enable when syntect updates dependencies or use alternative highlighting
-comrak = { version = "0.51", default-features = false }
+comrak = { version = "0.52", default-features = false }
 gray_matter = "0.3"
 
 # Caching
@@ -94,7 +94,7 @@ async-stream = "0.3"
 urlencoding = { workspace = true }
 
 # Search
-tantivy = "0.25"
+tantivy = "0.26"
 regex = "1.12"
 
 # JSON Schema validation
