@@ -1,4 +1,4 @@
-FROM flyio/postgres-flex:17.2
+FROM flyio/postgres-flex:18.1
 
 # Install build dependencies for pgvector
 RUN apt-get update && \
