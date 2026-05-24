@@ -58,7 +58,7 @@ RUN tailwindcss -i ./crates/storefront/static/css/input.css \
 # =============================================================================
 # Stage 5: Runtime - distroless image for production
 # =============================================================================
-FROM gcr.io/distroless/cc-debian13@sha256:56aaf20ab2523a346a67c8e8f8e8dabe447447d0788b82284d14ad79cd5f93cc AS runtime
+FROM gcr.io/distroless/cc-debian13@sha256:8b5d1db6d2253036a53cb8362d3e3fa82a7caf84c247772c46a023166c64e977 AS runtime
 
 # OCI image metadata (values injected by CI via --build-arg or Docker --label)
 ARG VERSION=0.1.0
